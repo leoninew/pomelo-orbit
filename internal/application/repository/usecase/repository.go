@@ -10,6 +10,7 @@ import (
 
 	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
 	repositorydto "github.com/leoninew/pomelo-orbit/internal/application/repository/dto"
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -192,11 +193,11 @@ func (s Service) repositoryDetail(ctx context.Context, projectId string, item mo
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	variables, err := repositoryVariables(item)
+	variables, err := variableview.Repository(item)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	return repositorydto.RepositoryDetail{Repository: item, GitCredentialName: name, VariableDeclarations: variables}, nil
+	return repositorydto.RepositoryDetail{Repository: item, GitCredentialName: name, Variables: variables}, nil
 }
 func (s Service) repositoryCredentialName(ctx context.Context, projectId string, credentialId *string) (*string, error) {
 	if credentialId == nil {

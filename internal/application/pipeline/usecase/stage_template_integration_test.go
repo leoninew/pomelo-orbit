@@ -76,6 +76,9 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 
 	sourcePipelineId, sourceTemplateName, repositoryId, repositoryName := "source-template", "Source template", "repository-1", "Repository"
 	sourcePipelineVersion, sourceStageVersion, sortOrder := 1, 1, 0
+	if err := vcsrepo.NewRepository(database).CreateRepository(ctx, model.Repository{Id: repositoryId, ProjectId: stringPointer(pipelineTemplateUpdateProjectId), Name: repositoryName, Code: "repository", RepositoryType: "git", RepositoryUrl: "https://example.invalid/repository.git", DefaultBranch: "main"}); err != nil {
+		t.Fatalf("create repository: %v", err)
+	}
 	applicationPipeline := model.Pipeline{
 		Id:                    "application-pipeline-update",
 		ProjectId:             stringPointer(pipelineTemplateUpdateProjectId),

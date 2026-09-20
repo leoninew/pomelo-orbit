@@ -24,13 +24,14 @@ type RuntimeVariables struct {
 }
 
 func (r RuntimeVariables) ValuesForStage(stage model.StageDefinition) map[string]any {
-	values := make(map[string]any, len(r.Global)+len(r.Stage[stageScopeId(stage)]))
+	values := make(map[string]any, len(r.Global)+len(r.Stage[StageScopeId(stage)]))
 	maps.Copy(values, r.Global)
-	maps.Copy(values, r.Stage[stageScopeId(stage)])
+	maps.Copy(values, r.Stage[StageScopeId(stage)])
 	return values
 }
 
-func stageScopeId(stage model.StageDefinition) string {
+// StageScopeId returns the stable identifier used for a Stage-scoped value.
+func StageScopeId(stage model.StageDefinition) string {
 	if strings.TrimSpace(stage.Id) != "" {
 		return stage.Id
 	}
@@ -49,7 +50,7 @@ func declarationScopeId(declaration model.VariableDeclaration) string {
 // declarations are historical data; callers must provide the current
 // repository, pipeline and stage definitions.
 func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline, stages []model.StageDefinition) ([]model.VariableDeclaration, error) {
-	repositoryVariables, err := repositoryVariableDeclarations(repo.VariableOverrides)
+	repositoryVariables, err := RepositoryVariableDeclarations(repo.VariableOverrides)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +77,7 @@ func RuntimeVariableDeclarations(repo model.Repository, pipeline model.Pipeline,
 	pipelineGlobals := make(map[string]model.VariableDeclaration)
 	pipelineStages := make(map[string]model.VariableDeclaration)
 	for _, raw := range pipelineVariables {
-		declaration, err := variableDeclarationFromMap(raw, "pipeline")
+		declaration, err := VariableDeclarationFromMap(raw, "pipeline")
 		if err != nil {
 			return nil, err
 		}
@@ -187,7 +188,7 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 		}
 	}
 
-	repositoryVariables, err := repositoryVariableDeclarations(repo.VariableOverrides)
+	repositoryVariables, err := RepositoryVariableDeclarations(repo.VariableOverrides)
 	if err != nil {
 		return nil, RuntimeVariables{}, err
 	}
@@ -212,7 +213,7 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 	pipelineGlobalByName := make(map[string]model.VariableDeclaration)
 	pipelineStageByKey := make(map[string]model.VariableDeclaration)
 	for _, raw := range pipelineVariables {
-		declaration, err := variableDeclarationFromMap(raw, "pipeline")
+		declaration, err := VariableDeclarationFromMap(raw, "pipeline")
 		if err != nil {
 			return nil, RuntimeVariables{}, err
 		}
@@ -245,9 +246,9 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 			runtime.Global[name] = value
 		}
 	}
-	runtime.Global["repository_code"] = systemVariableValue(repo, "repository_code")
-	runtime.Global["repository_url"] = systemVariableValue(repo, "repository_url")
-	runtime.Global["runtime_datetime"] = systemVariableValue(repo, "runtime_datetime")
+	runtime.Global["repository_code"] = SystemVariableValue(repo, "repository_code")
+	runtime.Global["repository_url"] = SystemVariableValue(repo, "repository_url")
+	runtime.Global["runtime_datetime"] = SystemVariableValue(repo, "runtime_datetime")
 	runtime.Global["repository_ref"] = repo.DefaultBranch
 	if value, ok := overrides.Global["repository_ref"]; ok && HasRuntimeValue(value) {
 		runtime.Global["repository_ref"] = value
@@ -260,7 +261,7 @@ func ResolveRuntimeVariables(repo model.Repository, pipeline model.Pipeline, sta
 	}
 
 	for _, stage := range stages {
-		stageId := stageScopeId(stage)
+		stageId := StageScopeId(stage)
 		stageValues := make(map[string]any)
 		for name, value := range systemRoots {
 			stageValues[name] = value
@@ -375,7 +376,8 @@ func UnmarshalRuntimeVariableSnapshot(value string) ([]model.VariableDeclaration
 	return declarations, runtime, nil
 }
 
-func repositoryVariableDeclarations(value string) ([]model.VariableDeclaration, error) {
+// RepositoryVariableDeclarations parses stored Repository variable overrides.
+func RepositoryVariableDeclarations(value string) ([]model.VariableDeclaration, error) {
 	variables, err := PipelineVariables(value)
 	if err != nil {
 		return nil, err
@@ -387,7 +389,7 @@ func repositoryVariableDeclarations(value string) ([]model.VariableDeclaration, 
 		if name == "" || IsPipelineBuiltinVariable(name) {
 			continue
 		}
-		declaration, err := variableDeclarationFromMap(raw, "repository")
+		declaration, err := VariableDeclarationFromMap(raw, "repository")
 		if err != nil {
 			return nil, err
 		}
@@ -398,20 +400,22 @@ func repositoryVariableDeclarations(value string) ([]model.VariableDeclaration, 
 
 func extractStageVariableDeclarations(stages []model.StageDefinition) ([]model.VariableDeclaration, error) {
 	found := map[string]*model.VariableDeclaration{}
-	for _, stage := range stages {
-		if err := collectStageVariableReferences(stage, stage.Script, "script", found); err != nil {
-			return nil, err
+	references, err := ExtractStageVariableReferences(stages)
+	if err != nil {
+		return nil, err
+	}
+	for _, reference := range references {
+		if IsPipelineBuiltinVariable(reference.Name) {
+			continue
 		}
-		for index, artifact := range stage.Artifacts {
-			if err := collectStageVariableReferences(stage, artifact.Reference, fmt.Sprintf("artifacts[%d].reference", index), found); err != nil {
-				return nil, err
-			}
-			if err := collectStageVariableReferences(stage, artifact.Name, fmt.Sprintf("artifacts[%d].name", index), found); err != nil {
-				return nil, err
-			}
-			if err := collectStageVariableReferences(stage, artifact.Command, fmt.Sprintf("artifacts[%d].command", index), found); err != nil {
-				return nil, err
-			}
+		key := declarationScopeKey(reference.Name, reference.StageId)
+		declaration, exists := found[key]
+		if !exists {
+			declaration = &model.VariableDeclaration{Name: reference.Name, Source: "pipeline_stage", Editable: true, StageId: reference.StageId, StageName: reference.StageName}
+			found[key] = declaration
+		}
+		if reference.HasDefault {
+			declaration.StageDefaults = append(declaration.StageDefaults, model.StageVariableDefault{StageId: reference.StageId, StageName: reference.StageName, Default: reference.Default})
 		}
 	}
 	result := make([]model.VariableDeclaration, 0, len(found))
@@ -427,27 +431,61 @@ func extractStageVariableDeclarations(stages []model.StageDefinition) ([]model.V
 	return result, nil
 }
 
-func collectStageVariableReferences(stage model.StageDefinition, text, field string, found map[string]*model.VariableDeclaration) error {
+// StageVariableReference identifies one Liquid reference in a Stage field.
+type StageVariableReference struct {
+	Name          string
+	StageId       string
+	StageName     string
+	Field         string
+	ArtifactName  string
+	ArtifactIndex *int
+	Default       any
+	HasDefault    bool
+}
+
+// ExtractStageVariableReferences parses references in Scripts and Artifact
+// configuration without deciding which value supplies each reference.
+func ExtractStageVariableReferences(stages []model.StageDefinition) ([]StageVariableReference, error) {
+	result := make([]StageVariableReference, 0)
+	for _, stage := range stages {
+		references, err := collectStageVariableReferences(stage, stage.Script, "script", "", nil, "script")
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, references...)
+		for index, artifact := range stage.Artifacts {
+			artifactIndex := index
+			for _, field := range []struct {
+				kind string
+				text string
+				path string
+			}{
+				{kind: "artifact_reference", text: artifact.Reference, path: fmt.Sprintf("artifacts[%d].reference", index)},
+				{kind: "artifact_name", text: artifact.Name, path: fmt.Sprintf("artifacts[%d].name", index)},
+				{kind: "artifact_command", text: artifact.Command, path: fmt.Sprintf("artifacts[%d].command", index)},
+			} {
+				references, err := collectStageVariableReferences(stage, field.text, field.kind, artifact.Name, &artifactIndex, field.path)
+				if err != nil {
+					return nil, err
+				}
+				result = append(result, references...)
+			}
+		}
+	}
+	return result, nil
+}
+
+func collectStageVariableReferences(stage model.StageDefinition, text, field, artifactName string, artifactIndex *int, errorField string) ([]StageVariableReference, error) {
 	references, err := templatex.ExtractVariableReferences(text)
 	if err != nil {
-		return apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s %s: %v", stage.Name, field, err))
+		return nil, apperror.New(apperror.KindValidation, fmt.Sprintf("Stage %s %s: %v", stage.Name, errorField, err))
 	}
-	stageId := stageScopeId(stage)
+	stageId := StageScopeId(stage)
+	result := make([]StageVariableReference, 0, len(references))
 	for _, reference := range references {
-		if IsPipelineBuiltinVariable(reference.Name) {
-			continue
-		}
-		key := declarationScopeKey(reference.Name, stageId)
-		declaration, exists := found[key]
-		if !exists {
-			declaration = &model.VariableDeclaration{Name: reference.Name, Source: "pipeline_stage", Editable: true, StageId: stageId, StageName: stage.Name}
-			found[key] = declaration
-		}
-		if reference.HasDefault {
-			declaration.StageDefaults = append(declaration.StageDefaults, model.StageVariableDefault{StageId: stageId, StageName: stage.Name, Default: reference.Default})
-		}
+		result = append(result, StageVariableReference{Name: reference.Name, StageId: stageId, StageName: stage.Name, Field: field, ArtifactName: artifactName, ArtifactIndex: artifactIndex, Default: reference.Default, HasDefault: reference.HasDefault})
 	}
-	return nil
+	return result, nil
 }
 
 func validateStageTemplates(stages []model.StageDefinition, runtime RuntimeVariables) error {
@@ -481,7 +519,9 @@ func validateStageTemplateField(stage model.StageDefinition, field, text string,
 	return nil
 }
 
-func variableDeclarationFromMap(raw map[string]any, source string) (model.VariableDeclaration, error) {
+// VariableDeclarationFromMap decodes a persisted variable configuration while
+// assigning its owning configuration source.
+func VariableDeclarationFromMap(raw map[string]any, source string) (model.VariableDeclaration, error) {
 	data, err := json.Marshal(raw)
 	if err != nil {
 		return model.VariableDeclaration{}, apperror.Wrap(apperror.KindInternal, "Invalid variable declaration", err)
@@ -508,7 +548,8 @@ func sortedStringSet(values map[string]struct{}) []string {
 	return result
 }
 
-func systemVariableValue(repo model.Repository, name string) any {
+// SystemVariableValue returns a non-overridable value supplied at Run time.
+func SystemVariableValue(repo model.Repository, name string) any {
 	switch name {
 	case "repository_code":
 		return repo.Code
@@ -547,7 +588,7 @@ func ValidateNestedVariableValues(repo *model.Repository, pipeline model.Pipelin
 	repositoryVariables := []model.VariableDeclaration{}
 	if repo != nil {
 		var err error
-		repositoryVariables, err = repositoryVariableDeclarations(repo.VariableOverrides)
+		repositoryVariables, err = RepositoryVariableDeclarations(repo.VariableOverrides)
 		if err != nil {
 			return err
 		}
@@ -578,7 +619,7 @@ func ValidateNestedVariableValues(repo *model.Repository, pipeline model.Pipelin
 	pipelineStages := make(map[string]model.VariableDeclaration)
 	globalCandidates := make([]model.VariableDeclaration, 0, len(repositoryVariables)+len(pipelineVariables))
 	for _, raw := range pipelineVariables {
-		declaration, err := variableDeclarationFromMap(raw, "pipeline")
+		declaration, err := VariableDeclarationFromMap(raw, "pipeline")
 		if err != nil {
 			return err
 		}
@@ -626,7 +667,7 @@ func ValidateNestedVariableValues(repo *model.Repository, pipeline model.Pipelin
 		knownNames[declaration.Name] = struct{}{}
 	}
 	for _, stage := range stages {
-		stageId := stageScopeId(stage)
+		stageId := StageScopeId(stage)
 		values := make(map[string]any, len(knownNames))
 		stageCandidates := make([]model.VariableDeclaration, 0)
 		for name := range knownNames {
@@ -887,7 +928,7 @@ func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, e
 func ValidatePipelineVariableScopes(variables []map[string]any, stages []model.StageDefinition) error {
 	stageIds := make(map[string]struct{}, len(stages))
 	for _, stage := range stages {
-		stageIds[stageScopeId(stage)] = struct{}{}
+		stageIds[StageScopeId(stage)] = struct{}{}
 	}
 	for _, variable := range variables {
 		stageId, _ := variable["stage_id"].(string)
@@ -991,6 +1032,16 @@ func applyInheritedPipelineVariable(item, inherited map[string]any) {
 }
 
 func extractPipelineStageDeclarationsFromPipelineStages(stages []model.PipelineStage) ([]model.VariableDeclaration, error) {
+	definitions, err := StageDefinitionsFromPipelineStages(stages)
+	if err != nil {
+		return nil, err
+	}
+	return extractStageVariableDeclarations(definitions)
+}
+
+// StageDefinitionsFromPipelineStages decodes persisted Artifact configuration
+// for use by variable rules and derived read models.
+func StageDefinitionsFromPipelineStages(stages []model.PipelineStage) ([]model.StageDefinition, error) {
 	definitions := make([]model.StageDefinition, 0, len(stages))
 	for _, stage := range stages {
 		definition := model.StageDefinition{Id: stage.Id, Name: stage.Name, Script: stage.Script}
@@ -1003,7 +1054,7 @@ func extractPipelineStageDeclarationsFromPipelineStages(stages []model.PipelineS
 		}
 		definitions = append(definitions, definition)
 	}
-	return extractStageVariableDeclarations(definitions)
+	return definitions, nil
 }
 
 func declarationMap(declaration model.VariableDeclaration, editable bool) map[string]any {

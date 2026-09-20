@@ -1,25 +1,24 @@
 import type {
   VariableDeclarationReq,
-  VariableDeclarationResp,
+  VariableConfigurationResp,
 } from '@/gen/proto/orbit/v1/common/common';
 
 type VariableDeclarationRequestSource = Pick<
-  VariableDeclarationResp,
+  VariableDeclarationReq,
   'name' | 'description' | 'default' | 'value' | 'secret' | 'source' | 'editable' | 'stage_id'
 >;
 
-type VariableValueSource = Pick<VariableDeclarationResp, 'default' | 'value'> & {
-  stage_defaults?: VariableDeclarationResp['stage_defaults'];
-};
-
-export function effectiveVariableValue(variable: VariableValueSource) {
-  if (hasVariableValue(variable.value)) {
-    return variable.value;
+export function effectiveVariableValue(
+  configuration?: Pick<VariableConfigurationResp, 'default' | 'value'>
+) {
+  const value = configuration?.value;
+  if (hasVariableValue(value)) {
+    return value;
   }
-  if (hasVariableValue(variable.default)) {
-    return variable.default;
+  const defaultValue = configuration?.default;
+  if (hasVariableValue(defaultValue)) {
+    return defaultValue;
   }
-  return variable.stage_defaults?.find((item) => hasVariableValue(item.default))?.default;
 }
 
 function hasVariableValue(value: unknown) {

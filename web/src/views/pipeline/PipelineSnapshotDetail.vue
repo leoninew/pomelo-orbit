@@ -97,7 +97,7 @@
         </div>
       </DetailInfoCard>
       <DetailInfoCard title="变量快照">
-        <VariableDeclarationsTable :declarations="snapshot.variables_snapshot" readonly />
+        <VariableDeclarationsTable :variables="snapshot.variables" readonly />
       </DetailInfoCard>
     </template>
   </div>

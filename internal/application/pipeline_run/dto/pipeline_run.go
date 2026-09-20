@@ -1,6 +1,9 @@
 package dto
 
-import "github.com/leoninew/pomelo-orbit/internal/model"
+import (
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+)
 
 type PipelineRunDispatchInput struct {
 	PipelineRunId string
@@ -25,7 +28,7 @@ type PipelineRunListInput struct {
 
 type PipelineRunDetail struct {
 	Run               model.PipelineRun
-	VariablesSnapshot []model.VariableDeclaration
+	Variables         []variableview.View
 	PipelineStageRuns []model.PipelineStageRun
 	VersionBinding    *model.PipelineRunVersionBinding
 }

@@ -21,7 +21,7 @@ message PipelineSnapshotResp {
   optional string fixed_version_id = 13;
   optional string fixed_version_label = 14;
   repeated SnapshotStageResp stages_snapshot = 15;
-  repeated orbit.v1.common.VariableDeclarationResp variables_snapshot = 16;
+  repeated orbit.v1.common.VariableResp variables = 16;
   string created_at = 17;
 }
 

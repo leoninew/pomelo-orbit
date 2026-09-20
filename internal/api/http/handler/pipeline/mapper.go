@@ -1,14 +1,12 @@
 package pipelinehandler
 
 import (
-	"encoding/json"
-
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 
 	pipelinedto "github.com/leoninew/pomelo-orbit/internal/application/pipeline/dto"
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
 	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 	pipelinev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline"
-	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func pipelineResponse(detail pipelinedto.PipelineDetail) *pipelinev1.PipelineResp {
@@ -17,7 +15,30 @@ func pipelineResponse(detail pipelinedto.PipelineDetail) *pipelinev1.PipelineRes
 	for _, node := range detail.StageNodes {
 		nodes = append(nodes, pipelineStageNodeResponse(node))
 	}
-	return &pipelinev1.PipelineResp{Id: item.Id, ProjectId: item.ProjectId, Kind: item.Kind, SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: intPtrToInt32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, Name: item.Name, Description: item.Description, StageNodes: nodes, VariableDeclarations: variableResponses(detail.VariableDeclarations), Version: int32(item.Version), CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
+	return &pipelinev1.PipelineResp{Id: item.Id, ProjectId: item.ProjectId, Kind: item.Kind, SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: transport.OptionalInt32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, Name: item.Name, Description: item.Description, StageNodes: nodes, Variables: variableResponses(detail.Variables), Version: int32(item.Version), CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
+}
+
+func variableResponses(items []variableview.View) []*commonv1.VariableResp {
+	result := make([]*commonv1.VariableResp, 0, len(items))
+	for _, item := range items {
+		references := make([]*commonv1.VariableReferenceResp, 0, len(item.References))
+		for _, reference := range item.References {
+			references = append(references, &commonv1.VariableReferenceResp{StageId: reference.StageId, StageName: reference.StageName, Field: reference.Field, ArtifactName: reference.ArtifactName, ArtifactIndex: transport.OptionalInt32(reference.ArtifactIndex), Default: transport.ProtoValue(reference.Default), HasDefault: reference.HasDefault})
+		}
+		var binding *commonv1.VariableStageBindingResp
+		if item.StageBinding != nil {
+			binding = &commonv1.VariableStageBindingResp{StageId: item.StageBinding.StageId, StageName: item.StageBinding.StageName}
+		}
+		result = append(result, &commonv1.VariableResp{Name: item.Name, Kind: item.Kind, Scope: item.Scope, StageBinding: binding, References: references, Configuration: variableConfigurationResponse(item.Configuration), GlobalConfiguration: variableConfigurationResponse(item.GlobalConfiguration), StageOverride: variableConfigurationResponse(item.StageOverride), ValueSource: item.ValueSource, Editable: item.Editable})
+	}
+	return result
+}
+
+func variableConfigurationResponse(item *variableview.Configuration) *commonv1.VariableConfigurationResp {
+	if item == nil {
+		return nil
+	}
+	return &commonv1.VariableConfigurationResp{Description: item.Description, Default: transport.ProtoValue(item.Default), Value: transport.ProtoValue(item.Value), Secret: item.Secret, Editable: item.Editable}
 }
 func pipelineStageTemplateResponse(detail pipelinedto.PipelineStageTemplateDetail) *pipelinev1.PipelineStageResp {
 	item := detail.Stage
@@ -33,7 +54,7 @@ func pipelineStageNodeResponse(detail pipelinedto.PipelineStageNodeDetail) *pipe
 	for _, artifact := range detail.Artifacts {
 		artifacts = append(artifacts, &pipelinev1.ArtifactConfigResp{Name: artifact.Name, Collector: artifact.Collector, Reference: artifact.Reference, Command: artifact.Command, Format: artifact.Format, ComponentName: artifact.ComponentName})
 	}
-	return &pipelinev1.PipelineStageNodeResp{Id: item.Id, NodeType: item.NodeType, PipelineId: item.PipelineId, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: artifacts, DependsOn: detail.DependsOn, SortOrder: int32(item.SortOrder), Description: item.Description, SourceTemplateStageId: item.SourceTemplateStageId, SourceTemplateStageName: item.SourceTemplateStageName, SourceTemplateStageDescription: item.SourceTemplateStageDescription, SourceTemplateStageVersion: int32(item.SourceTemplateStageVersion), LatestTemplateStageVersion: intPtrToInt32(detail.LatestTemplateStageVersion), CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
+	return &pipelinev1.PipelineStageNodeResp{Id: item.Id, NodeType: item.NodeType, PipelineId: item.PipelineId, Name: item.Name, Image: item.Image, Script: item.Script, Artifacts: artifacts, DependsOn: detail.DependsOn, SortOrder: int32(item.SortOrder), Description: item.Description, SourceTemplateStageId: item.SourceTemplateStageId, SourceTemplateStageName: item.SourceTemplateStageName, SourceTemplateStageDescription: item.SourceTemplateStageDescription, SourceTemplateStageVersion: int32(item.SourceTemplateStageVersion), LatestTemplateStageVersion: transport.OptionalInt32(detail.LatestTemplateStageVersion), CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
 }
 func pipelineStageTemplateUpdatePreviewResponse(detail pipelinedto.PipelineStageTemplateUpdatePreview) *pipelinev1.PipelineStageTemplateUpdatePreviewResp {
 	differences := make([]*pipelinev1.PipelineStageTemplateFieldDifferenceResp, 0, len(detail.Differences))
@@ -52,7 +73,7 @@ func pipelineSnapshotResponse(detail pipelinedto.PipelineSnapshotDetail) *pipeli
 		}
 		stages = append(stages, &pipelinev1.SnapshotStageResp{Id: stage.Id, Name: stage.Name, Image: stage.Image, DependsOn: stage.DependsOn, Script: stage.Script, Artifacts: artifacts, SortOrder: int32(stage.SortOrder), Description: stage.Description})
 	}
-	return &pipelinev1.PipelineSnapshotResp{Id: item.Id, PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int32(item.PipelineVersion), SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, StagesSnapshot: stages, VariablesSnapshot: variableDeclarationResponses(detail.VariablesSnapshot), CreatedAt: transport.FormatTime(item.CreatedAt)}
+	return &pipelinev1.PipelineSnapshotResp{Id: item.Id, PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int32(item.PipelineVersion), SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, StagesSnapshot: stages, Variables: variableResponses(detail.Variables), CreatedAt: transport.FormatTime(item.CreatedAt)}
 }
 func serviceArtifacts(items []*pipelinev1.ArtifactConfigReq) []pipelinedto.ArtifactConfig {
 	result := make([]pipelinedto.ArtifactConfig, 0, len(items))
@@ -71,65 +92,6 @@ func variableRequestMaps(items []*commonv1.VariableDeclarationReq) []map[string]
 		}
 	}
 	return result
-}
-func variableResponses(items []map[string]any) []*commonv1.VariableDeclarationResp {
-	declarations, _ := variableDeclarations(items)
-	result := make([]*commonv1.VariableDeclarationResp, 0, len(declarations))
-	for _, item := range declarations {
-		result = append(result, variableDeclarationResponse(item))
-	}
-	return result
-}
-func variableDeclarationResponses(items []model.VariableDeclaration) []*commonv1.VariableDeclarationResp {
-	result := make([]*commonv1.VariableDeclarationResp, 0, len(items))
-	for _, item := range items {
-		result = append(result, variableDeclarationResponse(item))
-	}
-	return result
-}
-
-func variableDeclarationResponse(item model.VariableDeclaration) *commonv1.VariableDeclarationResp {
-	return &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transport.ProtoValue(item.Default), Value: transport.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable, StageDefaults: stageVariableDefaultResponses(item.StageDefaults), StageId: item.StageId, StageName: item.StageName}
-}
-
-func stageVariableDefaultResponses(items []model.StageVariableDefault) []*commonv1.StageVariableDefaultResp {
-	result := make([]*commonv1.StageVariableDefaultResp, 0, len(items))
-	for _, item := range items {
-		result = append(result, &commonv1.StageVariableDefaultResp{StageId: item.StageId, StageName: item.StageName, Default: transport.ProtoValue(item.Default)})
-	}
-	return result
-}
-
-func variableDeclarations(values []map[string]any) ([]model.VariableDeclaration, error) {
-	result := make([]model.VariableDeclaration, 0, len(values))
-	for _, value := range values {
-		result = append(result, model.VariableDeclaration{Name: stringValue(value["name"]), Description: stringValue(value["description"]), Default: value["default"], Value: value["value"], Secret: boolValue(value["secret"]), Source: stringValue(value["source"]), Editable: boolValue(value["editable"]), StageDefaults: stageVariableDefaults(value["stage_defaults"]), StageId: stringValue(value["stage_id"]), StageName: stringValue(value["stage_name"])})
-	}
-	return result, nil
-}
-
-func stageVariableDefaults(value any) []model.StageVariableDefault {
-	if value == nil {
-		return nil
-	}
-	data, err := json.Marshal(value)
-	if err != nil {
-		return nil
-	}
-	var result []model.StageVariableDefault
-	if json.Unmarshal(data, &result) != nil {
-		return nil
-	}
-	return result
-}
-func stringValue(value any) string { result, _ := value.(string); return result }
-func boolValue(value any) bool     { result, _ := value.(bool); return result }
-func intPtrToInt32(value *int) *int32 {
-	if value == nil {
-		return nil
-	}
-	result := int32(*value)
-	return &result
 }
 func int32PtrToInt(value *int32) *int {
 	if value == nil {

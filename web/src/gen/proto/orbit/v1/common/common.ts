@@ -16,23 +16,40 @@ export interface StringListResp {
   items: string[];
 }
 
-export interface StageVariableDefaultResp {
-  stage_id: string;
-  stage_name: string;
-  default: any | undefined;
-}
-
-export interface VariableDeclarationResp {
-  name: string;
+export interface VariableConfigurationResp {
   description: string;
   default: any | undefined;
   value: any | undefined;
   secret: boolean;
-  source: string;
   editable: boolean;
-  stage_defaults: StageVariableDefaultResp[];
+}
+
+export interface VariableStageBindingResp {
   stage_id: string;
   stage_name: string;
+}
+
+export interface VariableReferenceResp {
+  stage_id: string;
+  stage_name: string;
+  field: string;
+  artifact_name: string;
+  artifact_index?: number | undefined;
+  default: any | undefined;
+  has_default: boolean;
+}
+
+export interface VariableResp {
+  name: string;
+  kind: string;
+  scope: string;
+  stage_binding?: VariableStageBindingResp | undefined;
+  references: VariableReferenceResp[];
+  configuration?: VariableConfigurationResp | undefined;
+  global_configuration?: VariableConfigurationResp | undefined;
+  stage_override?: VariableConfigurationResp | undefined;
+  value_source: string;
+  editable: boolean;
 }
 
 export interface VariableDeclarationReq {

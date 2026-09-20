@@ -5,7 +5,7 @@
 // source: orbit/v1/pipeline/snapshot.proto
 
 /* eslint-disable */
-import type { VariableDeclarationResp } from "../common/common";
+import type { VariableResp } from "../common/common";
 import type { ArtifactConfigResp } from "./pipeline_stage";
 
 export const protobufPackage = "orbit.v1.pipeline";
@@ -26,7 +26,7 @@ export interface PipelineSnapshotResp {
   fixed_version_id?: string | undefined;
   fixed_version_label?: string | undefined;
   stages_snapshot: SnapshotStageResp[];
-  variables_snapshot: VariableDeclarationResp[];
+  variables: VariableResp[];
   created_at: string;
 }
 

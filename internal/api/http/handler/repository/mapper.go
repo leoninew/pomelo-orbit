@@ -2,29 +2,31 @@ package repositoryhandler
 
 import (
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
 	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 )
 
-func variableDeclarationResponses(items []map[string]any) []commonv1.VariableDeclarationResp {
-	resp := make([]commonv1.VariableDeclarationResp, 0, len(items))
+func variableResponses(items []variableview.View) []*commonv1.VariableResp {
+	resp := make([]*commonv1.VariableResp, 0, len(items))
 	for _, item := range items {
-		resp = append(resp, variableDeclarationResponse(item))
+		references := make([]*commonv1.VariableReferenceResp, 0, len(item.References))
+		for _, reference := range item.References {
+			references = append(references, &commonv1.VariableReferenceResp{StageId: reference.StageId, StageName: reference.StageName, Field: reference.Field, ArtifactName: reference.ArtifactName, ArtifactIndex: transport.OptionalInt32(reference.ArtifactIndex), Default: transport.ProtoValue(reference.Default), HasDefault: reference.HasDefault})
+		}
+		var binding *commonv1.VariableStageBindingResp
+		if item.StageBinding != nil {
+			binding = &commonv1.VariableStageBindingResp{StageId: item.StageBinding.StageId, StageName: item.StageBinding.StageName}
+		}
+		resp = append(resp, &commonv1.VariableResp{Name: item.Name, Kind: item.Kind, Scope: item.Scope, StageBinding: binding, References: references, Configuration: variableConfigurationResponse(item.Configuration), GlobalConfiguration: variableConfigurationResponse(item.GlobalConfiguration), StageOverride: variableConfigurationResponse(item.StageOverride), ValueSource: item.ValueSource, Editable: item.Editable})
 	}
 	return resp
 }
 
-func variableDeclarationResponse(item map[string]any) commonv1.VariableDeclarationResp {
-	return commonv1.VariableDeclarationResp{
-		Name:        stringFromMap(item, "name"),
-		Description: stringFromMap(item, "description"),
-		Default:     transport.ProtoValue(item["default"]),
-		Value:       transport.ProtoValue(item["value"]),
-		Secret:      boolFromMap(item, "secret"),
-		Source:      stringFromMap(item, "source"),
-		Editable:    boolFromMap(item, "editable"),
-		StageId:     stringFromMap(item, "stage_id"),
-		StageName:   stringFromMap(item, "stage_name"),
+func variableConfigurationResponse(item *variableview.Configuration) *commonv1.VariableConfigurationResp {
+	if item == nil {
+		return nil
 	}
+	return &commonv1.VariableConfigurationResp{Description: item.Description, Default: transport.ProtoValue(item.Default), Value: transport.ProtoValue(item.Value), Secret: item.Secret, Editable: item.Editable}
 }
 
 func variableDeclarationRequestMaps(items []*commonv1.VariableDeclarationReq) []map[string]any {
@@ -49,14 +51,4 @@ func variableDeclarationRequestMap(item *commonv1.VariableDeclarationReq) map[st
 		"editable":    item.Editable,
 		"stage_id":    item.StageId,
 	}
-}
-
-func stringFromMap(item map[string]any, key string) string {
-	value, _ := item[key].(string)
-	return value
-}
-
-func boolFromMap(item map[string]any, key string) bool {
-	value, _ := item[key].(bool)
-	return value
 }

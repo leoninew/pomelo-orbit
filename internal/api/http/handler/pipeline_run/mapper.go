@@ -3,6 +3,7 @@ package pipelinerunhandler
 import (
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
 	commonv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/common"
 	pipelinerunv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline_run"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -10,26 +11,33 @@ import (
 
 func pipelineRunResponse(detail pipelinerundto.PipelineRunDetail) *pipelinerunv1.PipelineRunResp {
 	item := detail.Run
-	response := &pipelinerunv1.PipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int32(item.PipelineVersion), Trigger: item.Trigger, RepositoryRef: item.RepositoryRef, VariablesSnapshot: pipelineRunVariableDeclarationResponses(detail.VariablesSnapshot), Status: item.Status, RetryOf: item.RetryOf, StartedAt: transport.FormatOptionalTime(item.StartedAt), FinishedAt: transport.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transport.FormatTime(item.CreatedAt), PipelineStageRuns: pipelineStageRunsResponse(detail.PipelineStageRuns)}
+	response := &pipelinerunv1.PipelineRunResp{Id: item.Id, ProjectId: item.ProjectId, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, SnapshotId: item.SnapshotId, PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int32(item.PipelineVersion), Trigger: item.Trigger, RepositoryRef: item.RepositoryRef, Variables: variableResponses(detail.Variables), Status: item.Status, RetryOf: item.RetryOf, StartedAt: transport.FormatOptionalTime(item.StartedAt), FinishedAt: transport.FormatOptionalTime(item.FinishedAt), ErrorMessage: item.ErrorMessage, CreatedAt: transport.FormatTime(item.CreatedAt), PipelineStageRuns: pipelineStageRunsResponse(detail.PipelineStageRuns)}
 	if detail.VersionBinding != nil {
 		response.VersionBinding = &pipelinerunv1.PipelineRunVersionBindingResp{ApplicationId: detail.VersionBinding.ApplicationId, ApplicationName: detail.VersionBinding.ApplicationName, SourceVersionId: detail.VersionBinding.SourceVersionId, SourceVersionLabel: detail.VersionBinding.SourceVersionLabel, GeneratedVersionId: detail.VersionBinding.GeneratedVersionId, GeneratedVersionLabel: detail.VersionBinding.GeneratedVersionLabel}
 	}
 	return response
 }
-func pipelineRunVariableDeclarationResponses(items []model.VariableDeclaration) []*commonv1.VariableDeclarationResp {
-	response := make([]*commonv1.VariableDeclarationResp, 0, len(items))
+func variableResponses(items []variableview.View) []*commonv1.VariableResp {
+	response := make([]*commonv1.VariableResp, 0, len(items))
 	for _, item := range items {
-		response = append(response, &commonv1.VariableDeclarationResp{Name: item.Name, Description: item.Description, Default: transport.ProtoValue(item.Default), Value: transport.ProtoValue(item.Value), Secret: item.Secret, Source: item.Source, Editable: item.Editable, StageDefaults: pipelineRunStageVariableDefaultResponses(item.StageDefaults), StageId: item.StageId, StageName: item.StageName})
+		references := make([]*commonv1.VariableReferenceResp, 0, len(item.References))
+		for _, reference := range item.References {
+			references = append(references, &commonv1.VariableReferenceResp{StageId: reference.StageId, StageName: reference.StageName, Field: reference.Field, ArtifactName: reference.ArtifactName, ArtifactIndex: transport.OptionalInt32(reference.ArtifactIndex), Default: transport.ProtoValue(reference.Default), HasDefault: reference.HasDefault})
+		}
+		var binding *commonv1.VariableStageBindingResp
+		if item.StageBinding != nil {
+			binding = &commonv1.VariableStageBindingResp{StageId: item.StageBinding.StageId, StageName: item.StageBinding.StageName}
+		}
+		response = append(response, &commonv1.VariableResp{Name: item.Name, Kind: item.Kind, Scope: item.Scope, StageBinding: binding, References: references, Configuration: variableConfigurationResponse(item.Configuration), GlobalConfiguration: variableConfigurationResponse(item.GlobalConfiguration), StageOverride: variableConfigurationResponse(item.StageOverride), ValueSource: item.ValueSource, Editable: item.Editable})
 	}
 	return response
 }
 
-func pipelineRunStageVariableDefaultResponses(items []model.StageVariableDefault) []*commonv1.StageVariableDefaultResp {
-	response := make([]*commonv1.StageVariableDefaultResp, 0, len(items))
-	for _, item := range items {
-		response = append(response, &commonv1.StageVariableDefaultResp{StageId: item.StageId, StageName: item.StageName, Default: transport.ProtoValue(item.Default)})
+func variableConfigurationResponse(item *variableview.Configuration) *commonv1.VariableConfigurationResp {
+	if item == nil {
+		return nil
 	}
-	return response
+	return &commonv1.VariableConfigurationResp{Description: item.Description, Default: transport.ProtoValue(item.Default), Value: transport.ProtoValue(item.Value), Secret: item.Secret, Editable: item.Editable}
 }
 func pipelineStageRunsResponse(items []model.PipelineStageRun) []*pipelinerunv1.PipelineStageRunResp {
 	response := make([]*pipelinerunv1.PipelineStageRunResp, 0, len(items))

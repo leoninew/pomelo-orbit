@@ -1,6 +1,9 @@
 package dto
 
-import "github.com/leoninew/pomelo-orbit/internal/model"
+import (
+	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+)
 
 type RepositoryCreateInput struct {
 	ProjectId         string
@@ -21,7 +24,7 @@ type RepositoryUpdateInput struct {
 	DefaultBranch     *string
 }
 type RepositoryDetail struct {
-	Repository           model.Repository
-	GitCredentialName    *string
-	VariableDeclarations []map[string]any
+	Repository        model.Repository
+	GitCredentialName *string
+	Variables         []variableview.View
 }

@@ -24,11 +24,11 @@ export function isProjectReadinessExemptPath(path: string): boolean {
 }
 
 export function isProjectReadinessGuardedPath(path: string): boolean {
-  if (isProjectReadinessExemptPath(path)) {
-    return false;
-  }
-  const scope = getNavigationScope(path);
-  return scope === 'home' || scope === 'pipeline' || scope === 'deployment';
+  return (
+    /^\/services\/?$/.test(path) ||
+    /^\/service\/[^/]+(?:\/.*)?$/.test(path) ||
+    /^\/gateway\/?$/.test(path)
+  );
 }
 
 export function initializationPath(projectId: string): string {

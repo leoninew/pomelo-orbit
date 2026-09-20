@@ -343,7 +343,7 @@
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import { useProjectStore } from '@/stores/project';
-  import { formatTime } from '@/utils/time';
+  import { formatTime, nowUnixTimestamp } from '@/utils/time';
 
   const route = useRoute();
   const router = useRouter();
@@ -628,7 +628,7 @@
     const detail = await pipelineApi.get(projectId, template.id);
     selectedTemplate.value = detail;
     Object.assign(instantiateForm, {
-      name: detail.name,
+      name: `${detail.name} ${nowUnixTimestamp()}`,
       applicationId: '',
       repositoryId: '',
       versionForkStrategy: 'latest',

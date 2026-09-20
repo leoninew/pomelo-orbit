@@ -169,7 +169,11 @@
       </template>
     </AppDrawer>
 
-    <AppDialog v-model:open="artifactOpen" :title="artifactIndex === -1 ? '添加制品' : '编辑制品'">
+    <AppDialog
+      v-model:open="artifactOpen"
+      :title="artifactIndex === -1 ? '添加制品' : '编辑制品'"
+      width-class="w-[min(600px,calc(100vw-32px))]"
+    >
       <form class="space-y-4" @submit.prevent="saveArtifact">
         <div class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
@@ -204,7 +208,7 @@
             </p>
           </div>
         </div>
-        <div v-if="artifactForm.collector === 'command'" class="grid gap-4 sm:grid-cols-2">
+        <div v-if="artifactForm.collector === 'command'" class="space-y-4">
           <div class="space-y-1.5">
             <label class="app-field-label">
               命令

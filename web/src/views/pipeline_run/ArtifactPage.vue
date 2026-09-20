@@ -5,7 +5,7 @@
         <ComboboxSelect
           :model-value="query.repository_id"
           :options="repoSelectOptions"
-          placeholder="筛选项目"
+          placeholder="筛选代码仓库"
           width-class="app-toolbar-select"
           @update:model-value="handleRepositoryChange"
         />
@@ -147,7 +147,7 @@
         repoOptions.value = resp.items;
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : '获取项目列表失败');
+      toast.error(err instanceof Error ? err.message : '获取仓库列表失败');
     }
   }
 
@@ -201,7 +201,7 @@
   }
 
   onMounted(async () => {
-    fetchArtifacts();
     await loadRepos();
+    fetchArtifacts();
   });
 </script>

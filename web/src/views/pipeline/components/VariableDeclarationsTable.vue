@@ -7,7 +7,6 @@
           <th>{{ t('variableDeclaration.name') }}</th>
           <th>{{ t('variableDeclaration.stage') }}</th>
           <th>{{ t('variableDeclaration.description') }}</th>
-          <th>{{ t('variableDeclaration.stageDefaults') }}</th>
           <th>{{ t('variableDeclaration.value') }}</th>
           <th>{{ t('variableDeclaration.source') }}</th>
           <th v-if="!readonly" class="w-32">{{ t('common.operation') }}</th>
@@ -26,18 +25,6 @@
             <span v-if="decl.description" class="text-muted-foreground">
               {{ decl.description }}
             </span>
-          </td>
-          <td class="max-w-sm">
-            <div v-if="decl.stage_defaults.length > 0" class="flex flex-col gap-1">
-              <span
-                v-for="(stageDefault, index) in decl.stage_defaults"
-                :key="stageDefault.stage_id + '-' + index"
-                class="min-w-0 truncate text-foreground"
-                :title="displayValue(stageDefault.default)"
-              >
-                {{ displayValue(stageDefault.default) }}
-              </span>
-            </div>
           </td>
           <td class="max-w-sm truncate" :title="String(effectiveValue(decl) ?? '')">
             <span v-if="hasDisplayValue(effectiveValue(decl))" class="text-foreground">
@@ -110,10 +97,6 @@
 
   function effectiveValue(decl: VariableDeclarationResp) {
     return effectiveVariableValue(decl);
-  }
-
-  function displayValue(value: unknown) {
-    return value == null ? '' : String(value);
   }
 
   function canEdit(decl: VariableDeclarationResp) {

@@ -43,6 +43,13 @@ export function nowUTC(): string {
 }
 
 /**
+ * 获取当前时间的 Unix 秒级时间戳
+ */
+export function nowUnixTimestamp(): number {
+  return Math.floor(Date.now() / 1000);
+}
+
+/**
  * 获取今天开始时间 (本地时区的 00:00:00)
  */
 export function getTodayStart(): Dayjs {

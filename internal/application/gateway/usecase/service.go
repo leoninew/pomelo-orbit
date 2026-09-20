@@ -39,6 +39,7 @@ type Service struct {
 	application            gatewayport.ApplicationStore
 	config                 gatewayport.ConfigStore
 	service                gatewayport.ServiceReader
+	deployment             repository.DeploymentStore
 	serviceCommands        servicesvc.Service
 	transaction            gatewayport.TransactionRunner
 	applicationDefinitions applicationsvc.Service
@@ -67,8 +68,8 @@ func New(
 ) Service {
 	return Service{
 		project: project, environment: environment, application: application, config: configStore, service: service,
-		serviceCommands: servicesvc.New(project, application, service, deployment),
-		transaction:     transaction,
+		deployment: deployment, serviceCommands: servicesvc.New(project, application, service, deployment),
+		transaction: transaction,
 	}
 }
 
@@ -291,7 +292,7 @@ func (s Service) ListGateways(ctx context.Context, userId string, projectId stri
 	if err != nil {
 		return repository.Page[gatewaydto.GatewayView]{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway config", err)
 	}
-	view, err := s.gatewayView(ctx, projectId, app, cfg, false)
+	view, err := s.gatewayView(ctx, projectId, app, cfg, true)
 	if err != nil {
 		return repository.Page[gatewaydto.GatewayView]{}, err
 	}
@@ -479,10 +480,18 @@ func (s Service) gatewayView(ctx context.Context, projectId string, app model.Ap
 	if len(services) != 1 {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "Gateway must have exactly one managed service")
 	}
+	if s.deployment == nil {
+		return gatewaydto.GatewayView{}, apperror.New(apperror.KindInternal, "gateway deployment store is not configured")
+	}
+	activeDeployment, err := s.deployment.HasActiveDeployment(ctx, projectId, services[0].Id)
+	if err != nil {
+		return gatewaydto.GatewayView{}, apperror.Wrap(apperror.KindInternal, "Failed to load gateway deployment state", err)
+	}
 	view := gatewaydto.GatewayView{
-		Application: app,
-		Config:      cfg,
-		Service:     &services[0],
+		Application:      app,
+		Config:           cfg,
+		Service:          &services[0],
+		ActiveDeployment: activeDeployment,
 	}
 	if !includeExposures {
 		return view, nil

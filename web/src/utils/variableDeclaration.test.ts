@@ -40,4 +40,24 @@ describe('effectiveVariableValue', () => {
       'current-value'
     );
   });
+
+  it('falls back to a stage default when no configured value exists', () => {
+    expect(
+      effectiveVariableValue({
+        value: undefined,
+        default: undefined,
+        stage_defaults: [{ stage_id: 'build', stage_name: 'Build', default: 'Dockerfile' }],
+      })
+    ).toBe('Dockerfile');
+  });
+
+  it('prefers a configured default over a stage default', () => {
+    expect(
+      effectiveVariableValue({
+        value: undefined,
+        default: 'configured-default',
+        stage_defaults: [{ stage_id: 'build', stage_name: 'Build', default: 'stage-default' }],
+      })
+    ).toBe('configured-default');
+  });
 });

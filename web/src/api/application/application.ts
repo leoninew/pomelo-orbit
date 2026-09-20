@@ -28,7 +28,6 @@ import type {
   VersionResp,
   VersionUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
-import type { ServiceListResp } from '@/gen/proto/orbit/v1/service/service';
 import request, { remoteRequestConfig, type AxiosRequestConfig } from '@/utils/request';
 
 export const applicationApi = {
@@ -99,10 +98,6 @@ export const applicationApi = {
       `/api/application/${id}/logs`,
       remoteRequestConfig({ ...config, params: { project_id: projectId, ...params } })
     );
-  },
-
-  listServices(projectId: string, id: string): Promise<ServiceListResp> {
-    return request.get(`/api/application/${id}/service`, { params: { project_id: projectId } });
   },
 
   listVersions(

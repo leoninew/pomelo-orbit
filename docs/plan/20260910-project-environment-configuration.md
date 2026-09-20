@@ -89,7 +89,7 @@ Mode: strict
 **修改范围**：
 
 - 在 `web/src/api` 和 `web/src/stores` 增加 initialization status/command client 与状态管理，所有请求显式使用当前 `activeProjectId`。
-- 在 `web/src/router/index.ts` 为项目级 route 和 Project 切换建立 readiness guard：`ready` 回到目标页，其他状态转至 Wizard。Project 管理、登录与 Wizard route 排除循环 guard。
+- 在 `web/src/router/index.ts` 为服务与网关 route 和对应的 Project 切换建立 readiness guard：`ready` 回到目标页，其他状态转至 Wizard。其他页面不主动检查初始化状态；Project 管理、登录与 Wizard route 排除循环 guard。
 - 新建 `web/src/views/project` 下的 Initialization Wizard 页面。第一步使用与环境页共用的 `EnvironmentTargetFields` 选择 `local | ssh`，主操作固定为“生成初始化命令”“检查连接”“下一步”：Windows SSH 的命令生成提交当前 form 至准备 command，并以返回的新公钥构造 PowerShell；连接失败时仍可用。用户在目标机管理员 PowerShell 执行命令后，SSH 目标的“下一步”须在当前 form 连接检查成功后才可用，Local 隐藏不适用动作；目标字段变更使连接结果失效。第二步“准备环境”展示目标连接/认证、Docker 引擎、Docker Compose（Windows SSH 额外包括 WSL2 与 Docker Desktop）待检查清单；点击“检查就绪”后逐项推进状态，“下一步”须在 Probe 成功后可用，失败后仍保留“检查就绪”文案；Linux SSH 主机初始化继续复用 `EnvironmentBootstrapFields` 作为准备动作。Windows SSH 提供当前表单参数驱动的 PowerShell 初始化命令，并在目标机管理员 PowerShell 中安装/启动 OpenSSH、放行端口后完成远端配置；Wizard 按后端 status 恢复 Environment 保存、Probe、Gateway 确认三个步骤，用初始化来源的服务端默认值填充初次表单，但保存后只展示当前 Project 的持久化结果。
 - 修改 `EnvironmentPage.vue`、Gateway 页面、`gatewayConfigForm.ts` 和导航，移除独立 Gateway 创建流程及 component-name 输入；环境页继续用同一套目标表单编辑已保存 Environment，并在 Windows SSH 目标上展示同一初始化命令 Dialog。未就绪资源不显示空页或错误加载状态。现有 SSH bootstrap 只保留与已保存 Environment 相关的明确能力，不替代 Wizard 生命周期。
 - 更新 Web i18n、类型、router/store/form 测试，覆盖空库默认 Project、新建 Project、切换 Project 和初始化完成后进入网关详情。

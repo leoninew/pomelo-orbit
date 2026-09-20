@@ -474,6 +474,7 @@ type GatewayResp struct {
 	ServiceId               string                   `protobuf:"bytes,14,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
 	ServiceCode             string                   `protobuf:"bytes,16,opt,name=service_code,json=serviceCode,proto3" json:"service_code,omitempty"`
 	ServiceStatus           string                   `protobuf:"bytes,17,opt,name=service_status,json=serviceStatus,proto3" json:"service_status,omitempty"`
+	ActiveDeployment        bool                     `protobuf:"varint,18,opt,name=active_deployment,json=activeDeployment,proto3" json:"active_deployment,omitempty"`
 	RestReadyTimeoutSeconds int32                    `protobuf:"varint,19,opt,name=rest_ready_timeout_seconds,json=restReadyTimeoutSeconds,proto3" json:"rest_ready_timeout_seconds,omitempty"`
 	AcmeProfile             string                   `protobuf:"bytes,20,opt,name=acme_profile,json=acmeProfile,proto3" json:"acme_profile,omitempty"`
 	AcmeEmail               string                   `protobuf:"bytes,21,opt,name=acme_email,json=acmeEmail,proto3" json:"acme_email,omitempty"`
@@ -624,6 +625,13 @@ func (x *GatewayResp) GetServiceStatus() string {
 		return x.ServiceStatus
 	}
 	return ""
+}
+
+func (x *GatewayResp) GetActiveDeployment() bool {
+	if x != nil {
+		return x.ActiveDeployment
+	}
+	return false
 }
 
 func (x *GatewayResp) GetRestReadyTimeoutSeconds() int32 {
@@ -818,7 +826,7 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\finternal_dns\x18\t \x01(\tR\vinternalDns\x12\x1f\n" +
 	"\vclient_hint\x18\n" +
 	" \x01(\tR\n" +
-	"clientHint\"\xbf\x06\n" +
+	"clientHint\"\xec\x06\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -842,7 +850,8 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\n" +
 	"service_id\x18\x0e \x01(\tR\tserviceId\x12!\n" +
 	"\fservice_code\x18\x10 \x01(\tR\vserviceCode\x12%\n" +
-	"\x0eservice_status\x18\x11 \x01(\tR\rserviceStatus\x12;\n" +
+	"\x0eservice_status\x18\x11 \x01(\tR\rserviceStatus\x12+\n" +
+	"\x11active_deployment\x18\x12 \x01(\bR\x10activeDeployment\x12;\n" +
 	"\x1arest_ready_timeout_seconds\x18\x13 \x01(\x05R\x17restReadyTimeoutSeconds\x12!\n" +
 	"\facme_profile\x18\x14 \x01(\tR\vacmeProfile\x12\x1d\n" +
 	"\n" +

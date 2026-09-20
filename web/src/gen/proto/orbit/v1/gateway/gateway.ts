@@ -78,6 +78,7 @@ export interface GatewayResp {
   service_id: string;
   service_code: string;
   service_status: string;
+  active_deployment: boolean;
   rest_ready_timeout_seconds: number;
   acme_profile: string;
   acme_email: string;

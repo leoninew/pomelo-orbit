@@ -50,6 +50,13 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	if created.Application.Code != "traefik" {
 		t.Fatalf("application code = %q", created.Application.Code)
 	}
+	listed, err := service.ListGateways(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, 1, 1, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if listed.Total != 1 || len(listed.Items) != 1 || listed.Items[0].Application.Id != created.Application.Id || listed.Items[0].Service == nil || listed.Items[0].Service.Id != created.Service.Id || listed.Items[0].ActiveDeployment {
+		t.Fatalf("aggregated gateway view = %#v", listed)
+	}
 	if len(created.Config.VersionBindings) != 4 {
 		t.Fatalf("gateway Version bindings = %#v", created.Config.VersionBindings)
 	}

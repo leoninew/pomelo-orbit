@@ -387,18 +387,19 @@
     }
     projectStore.setActiveProject(projectId);
     const current = router.currentRoute.value;
+    const shouldCheckReadiness =
+      isProjectReadinessGuardedPath(current.path) || isProjectInitializationPath(current.path);
     try {
-      const status = await initializationStore.fetchStatus(projectId);
-      if (status.status !== 'ready') {
-        await router.push({
-          name: 'ProjectInitialization',
-          params: { id: projectId },
-          query:
-            isProjectReadinessGuardedPath(current.path) || isProjectInitializationPath(current.path)
-              ? { redirect: current.fullPath }
-              : {},
-        });
-        return;
+      if (shouldCheckReadiness) {
+        const status = await initializationStore.fetchStatus(projectId);
+        if (status.status !== 'ready') {
+          await router.push({
+            name: 'ProjectInitialization',
+            params: { id: projectId },
+            query: { redirect: current.fullPath },
+          });
+          return;
+        }
       }
       if (isProjectInitializationPath(current.path)) {
         await router.push('/gateway');

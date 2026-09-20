@@ -8,13 +8,25 @@ type VariableDeclarationRequestSource = Pick<
   'name' | 'description' | 'default' | 'value' | 'secret' | 'source' | 'editable' | 'stage_id'
 >;
 
-type VariableValueSource = Pick<VariableDeclarationResp, 'default' | 'value'>;
+type VariableValueSource = Pick<VariableDeclarationResp, 'default' | 'value'> & {
+  stage_defaults?: VariableDeclarationResp['stage_defaults'];
+};
 
 export function effectiveVariableValue(variable: VariableValueSource) {
-  if (typeof variable.value === 'string' && variable.value.trim() === '') {
+  if (hasVariableValue(variable.value)) {
+    return variable.value;
+  }
+  if (hasVariableValue(variable.default)) {
     return variable.default;
   }
-  return variable.value ?? variable.default;
+  return variable.stage_defaults?.find((item) => hasVariableValue(item.default))?.default;
+}
+
+function hasVariableValue(value: unknown) {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  return typeof value !== 'string' || value.trim().length > 0;
 }
 
 export function toVariableDeclarationRequest(

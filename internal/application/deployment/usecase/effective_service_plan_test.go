@@ -2,9 +2,11 @@ package deploymentsvc
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -97,6 +99,48 @@ func TestEffectiveServicePlanHashTracksTraefikNetworkOption(t *testing.T) {
 	}
 	if withoutNetwork == original {
 		t.Fatalf("Traefik network option did not change plan hash: enabled=%s disabled=%s", original, withoutNetwork)
+	}
+}
+
+func TestDeploymentPlanHashSurvivesGatewaySnapshotRoundTrip(t *testing.T) {
+	joinTraefikNetwork := true
+	queuedPlan := model.EffectiveServicePlan{
+		Application:        model.Application{Code: "redis", Kind: status.ApplicationKindStandard},
+		Version:            model.Version{Label: "v1"},
+		Service:            model.Service{Code: "redis-default"},
+		JoinTraefikNetwork: &joinTraefikNetwork,
+		Gateway: &model.GatewayConfig{
+			ApplicationId: "gateway-1",
+			NetworkName:   model.GatewayNetworkName(),
+		},
+		Components: []model.EffectiveServiceComponent{{Name: "redis", Image: "redis:8-alpine"}},
+	}
+	queuedHash, err := EffectiveServicePlanHash(queuedPlan)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	optionsData, err := json.Marshal(deploymentdto.DeployOptionsJSON{
+		JoinTraefikNetwork: deploymentJoinTraefikNetwork(queuedPlan),
+		GatewayConfig:      cloneGatewayConfig(queuedPlan.Gateway),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	options, err := parseDeployOptions(stringPointer(string(optionsData)))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	executionPlan := queuedPlan
+	executionPlan.Gateway = cloneGatewayConfig(options.GatewayConfig)
+	setPlanJoinTraefikNetwork(&executionPlan, options.JoinTraefikNetwork)
+	deployment := model.Deployment{Id: "deployment-1", EffectivePlanHash: &queuedHash}
+	if err := verifyDeploymentPlanHash(deployment, executionPlan); err != nil {
+		t.Fatalf("Gateway snapshot changed an unchanged deployment plan: %v", err)
+	}
+	if got := executionPlan.Gateway.NetworkName; got != model.GatewayNetworkName() {
+		t.Fatalf("Gateway network name = %q, want %q", got, model.GatewayNetworkName())
 	}
 }
 

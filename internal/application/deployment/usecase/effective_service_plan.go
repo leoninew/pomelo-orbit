@@ -317,6 +317,7 @@ func cloneGatewayConfig(value *model.GatewayConfig) *model.GatewayConfig {
 	}
 	copy := *value
 	copy.VersionBindings = append([]model.GatewayVersionBinding(nil), value.VersionBindings...)
+	copy.NetworkName = model.GatewayNetworkName()
 	return &copy
 }
 

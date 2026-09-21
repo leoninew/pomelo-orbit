@@ -2,3 +2,4 @@ backup/
 cert/
 *.log
 .venv/
+.env

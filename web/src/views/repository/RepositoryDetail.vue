@@ -431,10 +431,7 @@
   const repositoryVariables = computed(() => repository.value?.variables ?? []);
   const repositoryCustomVariables = computed(() =>
     repositoryVariables.value
-      .filter(
-        (variable) =>
-          variable.kind === 'repository_variable' && variable.editable && variable.configuration
-      )
+      .filter((variable) => variable.editable && variable.configuration)
       .map((variable) =>
         toVariableDeclarationRequest({
           name: variable.name,
@@ -634,7 +631,7 @@
   }
 
   function openEditVariableDialog(variable: VariableResp) {
-    if (variable.kind !== 'repository_variable' || !variable.configuration) {
+    if (!variable.editable || !variable.configuration) {
       return;
     }
     editingVariableName.value = variable.name;

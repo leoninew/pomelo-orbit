@@ -24,7 +24,7 @@ Pipeline(kind=application)                      可运行的交付单元
 
 阶段库只定义通用执行步骤；`PipelineStage(kind=template)` 不保存 DAG、排序、Application、Component 或来源 Version 策略，但保存不带 `component_name` 的制品声明。Template Pipeline 通过 `PipelineStageReference` 保存阶段引入时的来源 ID/名称/版本/说明、镜像、脚本和制品声明快照，以及自己的节点名称、说明、DAG 和排序。
 
-Application Pipeline 必须从同项目 Template 创建。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
+Application Pipeline 必须从同项目 Template 创建。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，同时重映射带 `stage_id` 的变量配置，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
 
 ## 阶段与制品
 
@@ -45,7 +45,7 @@ Template Pipeline 的 `PipelineStageReference` 与 Application Stage 都可对�
 
 Stage 的 `script` 以及 Artifact 的 `reference`、`name`、`command` 使用同一套 Liquid 变量语法：`{{ NAME }}` 是必填变量，`{{ NAME | default: "value" }}` 是当前位置的阶段默认值。`${NAME:-value}` 等 shell 风格默认表达式不受支持。
 
-Repository 的 `value/default` 是全局覆盖；Application Pipeline 可以保存带 `stage_id` 的 Stage 覆盖，也可以保存不带 `stage_id` 的全局覆盖。缺少覆盖时，每个 Stage 独立应用自身 Liquid default。变量详情按 `(name, stage_id)` 展示，因此前端和后端 Stage 可以共用 `working_dir` 但分别默认 `web` 与 `webapi`，并可分别设置值。
+Repository 的 `value/default` 是全局覆盖；Template 和 Application Pipeline 都可以保存带 `stage_id` 的 Stage 覆盖，也可以保存不带 `stage_id` 的全局覆盖。Template 的阶段配置绑定 `PipelineStageReference` ID，实例化时重映射到 Application Pipeline 的阶段 ID。缺少覆盖时，每个 Stage 独立应用自身 Liquid default。变量详情按 `(name, stage_id)` 展示，因此前端和后端 Stage 可以共用 `working_dir` 但分别默认 `web` 与 `webapi`，并可分别设置值。
 
 变量配置的 `value` 还可由简单 `{{ NAME }}` 引用和文本拼接组成，并在 Run 创建前递归展开；例如 `image_repository = {{ repository_code }}-web`。这不是阶段字段的完整 Liquid 模板：变量 `value` 不接受 filter、tag、条件、循环、dotted path 或 Shell 插值，`default` 必须是无 Liquid 标记的字面量。保存时检查未知引用和循环，Stage 值只可读取同 Stage 和全局可见值。Liquid 的渲染、引用提取及嵌套解析均由通用模板模块负责，Pipeline 仅提供来源优先级与作用域。
 

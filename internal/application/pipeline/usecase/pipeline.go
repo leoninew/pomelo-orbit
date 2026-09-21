@@ -203,7 +203,11 @@ func (s Service) CreatePipeline(ctx context.Context, userId string, input pipeli
 	if err := s.ensurePipelineNameAvailable(ctx, projectId, name, ""); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	variables, err := marshalPipelineVariables(pipelinevariable.SanitizeTemplatePipelineVariables(input.VariableDeclarations))
+	variableDeclarations, err := pipelinevariable.NormalizePipelineVariables(input.VariableDeclarations)
+	if err != nil {
+		return pipelinedto.PipelineDetail{}, err
+	}
+	variables, err := marshalPipelineVariables(variableDeclarations)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
@@ -249,13 +253,9 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, projectId st
 		changed = true
 	}
 	if input.VariableDeclarations != nil {
-		variablesToStore := pipelinevariable.SanitizeTemplatePipelineVariables(*input.VariableDeclarations)
-		if pipeline.Kind == model.PipelineKindApplication {
-			var err error
-			variablesToStore, err = pipelinevariable.NormalizePipelineVariables(*input.VariableDeclarations)
-			if err != nil {
-				return pipelinedto.PipelineDetail{}, err
-			}
+		variablesToStore, err := pipelinevariable.NormalizePipelineVariables(*input.VariableDeclarations)
+		if err != nil {
+			return pipelinedto.PipelineDetail{}, err
 		}
 		variables, err := marshalPipelineVariables(variablesToStore)
 		if err != nil {
@@ -363,15 +363,20 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, project
 	}
 	templateIdCopy, templateName, templateVersion := template.Id, template.Name, template.Version
 	repositoryId, repositoryName := repo.Id, repo.Name
-	pipeline := model.Pipeline{
-		Id: idutil.NewId(), ProjectId: template.ProjectId, Kind: model.PipelineKindApplication,
-		SourcePipelineId: &templateIdCopy, SourceTemplateName: &templateName, SourceTemplateVersion: &templateVersion,
-		ApplicationId: applicationId, ApplicationName: applicationName, RepositoryId: &repositoryId, RepositoryName: &repositoryName,
-		Name: name, Description: template.Description, VariableDeclarations: template.VariableDeclarations, Version: 1,
-	}
-	stages, err := clonePipelineStageReferences(references, pipeline.Id, projectId)
+	pipelineId := idutil.NewId()
+	stages, stageIdMap, err := clonePipelineStageReferences(references, pipelineId, projectId)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
+	}
+	variables, err := remapPipelineVariableStageIds(template.VariableDeclarations, stageIdMap)
+	if err != nil {
+		return pipelinedto.PipelineDetail{}, err
+	}
+	pipeline := model.Pipeline{
+		Id: pipelineId, ProjectId: template.ProjectId, Kind: model.PipelineKindApplication,
+		SourcePipelineId: &templateIdCopy, SourceTemplateName: &templateName, SourceTemplateVersion: &templateVersion,
+		ApplicationId: applicationId, ApplicationName: applicationName, RepositoryId: &repositoryId, RepositoryName: &repositoryName,
+		Name: name, Description: template.Description, VariableDeclarations: variables, Version: 1,
 	}
 	if len(input.ArtifactBindings) > 0 && applicationId == nil {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "artifact bindings require an application")
@@ -632,6 +637,26 @@ func marshalPipelineVariables(variables []map[string]any) (string, error) {
 		return "", apperror.Wrap(apperror.KindValidation, "Invalid variable_declarations", err)
 	}
 	return string(data), nil
+}
+
+func remapPipelineVariableStageIds(value string, stageIdMap map[string]string) (string, error) {
+	variables, err := pipelinevariable.PipelineVariables(value)
+	if err != nil {
+		return "", err
+	}
+	for _, variable := range variables {
+		stageId, _ := variable["stage_id"].(string)
+		stageId = strings.TrimSpace(stageId)
+		if stageId == "" {
+			continue
+		}
+		mapped, exists := stageIdMap[stageId]
+		if !exists {
+			return "", apperror.New(apperror.KindValidation, "Pipeline variable stage_id does not exist: "+stageId)
+		}
+		variable["stage_id"] = mapped
+	}
+	return marshalPipelineVariables(variables)
 }
 
 func marshalPipelineStageArtifacts(input []pipelinedto.ArtifactConfig) (*string, error) {
@@ -916,9 +941,6 @@ func componentMappingsForStages(stages []model.PipelineStage) ([]componentMappin
 }
 
 func validatePipelineVariableScopes(pipeline model.Pipeline, stages []model.StageDefinition) error {
-	if pipeline.Kind != model.PipelineKindApplication {
-		return nil
-	}
 	variables, err := pipelinevariable.PipelineVariables(pipeline.VariableDeclarations)
 	if err != nil {
 		return err

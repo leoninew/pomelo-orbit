@@ -238,117 +238,23 @@ func (x *VariableStageBindingResp) GetStageName() string {
 	return ""
 }
 
-type VariableReferenceResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	StageId       string                 `protobuf:"bytes,1,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
-	StageName     string                 `protobuf:"bytes,2,opt,name=stage_name,json=stageName,proto3" json:"stage_name,omitempty"`
-	Field         string                 `protobuf:"bytes,3,opt,name=field,proto3" json:"field,omitempty"`
-	ArtifactName  string                 `protobuf:"bytes,4,opt,name=artifact_name,json=artifactName,proto3" json:"artifact_name,omitempty"`
-	ArtifactIndex *int32                 `protobuf:"varint,5,opt,name=artifact_index,json=artifactIndex,proto3,oneof" json:"artifact_index,omitempty"`
-	Default       *structpb.Value        `protobuf:"bytes,6,opt,name=default,proto3" json:"default,omitempty"`
-	HasDefault    bool                   `protobuf:"varint,7,opt,name=has_default,json=hasDefault,proto3" json:"has_default,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *VariableReferenceResp) Reset() {
-	*x = VariableReferenceResp{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[4]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *VariableReferenceResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*VariableReferenceResp) ProtoMessage() {}
-
-func (x *VariableReferenceResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[4]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use VariableReferenceResp.ProtoReflect.Descriptor instead.
-func (*VariableReferenceResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *VariableReferenceResp) GetStageId() string {
-	if x != nil {
-		return x.StageId
-	}
-	return ""
-}
-
-func (x *VariableReferenceResp) GetStageName() string {
-	if x != nil {
-		return x.StageName
-	}
-	return ""
-}
-
-func (x *VariableReferenceResp) GetField() string {
-	if x != nil {
-		return x.Field
-	}
-	return ""
-}
-
-func (x *VariableReferenceResp) GetArtifactName() string {
-	if x != nil {
-		return x.ArtifactName
-	}
-	return ""
-}
-
-func (x *VariableReferenceResp) GetArtifactIndex() int32 {
-	if x != nil && x.ArtifactIndex != nil {
-		return *x.ArtifactIndex
-	}
-	return 0
-}
-
-func (x *VariableReferenceResp) GetDefault() *structpb.Value {
-	if x != nil {
-		return x.Default
-	}
-	return nil
-}
-
-func (x *VariableReferenceResp) GetHasDefault() bool {
-	if x != nil {
-		return x.HasDefault
-	}
-	return false
-}
-
 type VariableResp struct {
 	state               protoimpl.MessageState     `protogen:"open.v1"`
 	Name                string                     `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Kind                string                     `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	Scope               string                     `protobuf:"bytes,3,opt,name=scope,proto3" json:"scope,omitempty"`
 	StageBinding        *VariableStageBindingResp  `protobuf:"bytes,4,opt,name=stage_binding,json=stageBinding,proto3,oneof" json:"stage_binding,omitempty"`
-	References          []*VariableReferenceResp   `protobuf:"bytes,5,rep,name=references,proto3" json:"references,omitempty"`
 	Configuration       *VariableConfigurationResp `protobuf:"bytes,6,opt,name=configuration,proto3,oneof" json:"configuration,omitempty"`
 	GlobalConfiguration *VariableConfigurationResp `protobuf:"bytes,7,opt,name=global_configuration,json=globalConfiguration,proto3,oneof" json:"global_configuration,omitempty"`
 	StageOverride       *VariableConfigurationResp `protobuf:"bytes,8,opt,name=stage_override,json=stageOverride,proto3,oneof" json:"stage_override,omitempty"`
-	ValueSource         string                     `protobuf:"bytes,9,opt,name=value_source,json=valueSource,proto3" json:"value_source,omitempty"`
-	Editable            bool                       `protobuf:"varint,10,opt,name=editable,proto3" json:"editable,omitempty"`
+	Editable            bool                       `protobuf:"varint,9,opt,name=editable,proto3" json:"editable,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
 
 func (x *VariableResp) Reset() {
 	*x = VariableResp{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[5]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -360,7 +266,7 @@ func (x *VariableResp) String() string {
 func (*VariableResp) ProtoMessage() {}
 
 func (x *VariableResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[5]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -373,7 +279,7 @@ func (x *VariableResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VariableResp.ProtoReflect.Descriptor instead.
 func (*VariableResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{5}
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *VariableResp) GetName() string {
@@ -404,13 +310,6 @@ func (x *VariableResp) GetStageBinding() *VariableStageBindingResp {
 	return nil
 }
 
-func (x *VariableResp) GetReferences() []*VariableReferenceResp {
-	if x != nil {
-		return x.References
-	}
-	return nil
-}
-
 func (x *VariableResp) GetConfiguration() *VariableConfigurationResp {
 	if x != nil {
 		return x.Configuration
@@ -430,13 +329,6 @@ func (x *VariableResp) GetStageOverride() *VariableConfigurationResp {
 		return x.StageOverride
 	}
 	return nil
-}
-
-func (x *VariableResp) GetValueSource() string {
-	if x != nil {
-		return x.ValueSource
-	}
-	return ""
 }
 
 func (x *VariableResp) GetEditable() bool {
@@ -462,7 +354,7 @@ type VariableDeclarationReq struct {
 
 func (x *VariableDeclarationReq) Reset() {
 	*x = VariableDeclarationReq{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[6]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -474,7 +366,7 @@ func (x *VariableDeclarationReq) String() string {
 func (*VariableDeclarationReq) ProtoMessage() {}
 
 func (x *VariableDeclarationReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[6]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -487,7 +379,7 @@ func (x *VariableDeclarationReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VariableDeclarationReq.ProtoReflect.Descriptor instead.
 func (*VariableDeclarationReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{6}
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *VariableDeclarationReq) GetName() string {
@@ -555,7 +447,7 @@ type VariableDeclarationListReq struct {
 
 func (x *VariableDeclarationListReq) Reset() {
 	*x = VariableDeclarationListReq{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[7]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -567,7 +459,7 @@ func (x *VariableDeclarationListReq) String() string {
 func (*VariableDeclarationListReq) ProtoMessage() {}
 
 func (x *VariableDeclarationListReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[7]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -580,7 +472,7 @@ func (x *VariableDeclarationListReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VariableDeclarationListReq.ProtoReflect.Descriptor instead.
 func (*VariableDeclarationListReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{7}
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *VariableDeclarationListReq) GetItems() []*VariableDeclarationReq {
@@ -599,7 +491,7 @@ type RawJsonReq struct {
 
 func (x *RawJsonReq) Reset() {
 	*x = RawJsonReq{}
-	mi := &file_orbit_v1_common_common_proto_msgTypes[8]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -611,7 +503,7 @@ func (x *RawJsonReq) String() string {
 func (*RawJsonReq) ProtoMessage() {}
 
 func (x *RawJsonReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_common_common_proto_msgTypes[8]
+	mi := &file_orbit_v1_common_common_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -624,7 +516,7 @@ func (x *RawJsonReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RawJsonReq.ProtoReflect.Descriptor instead.
 func (*RawJsonReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{8}
+	return file_orbit_v1_common_common_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RawJsonReq) GetFields() *structpb.Struct {
@@ -653,32 +545,16 @@ const file_orbit_v1_common_common_proto_rawDesc = "" +
 	"\x18VariableStageBindingResp\x12\x19\n" +
 	"\bstage_id\x18\x01 \x01(\tR\astageId\x12\x1d\n" +
 	"\n" +
-	"stage_name\x18\x02 \x01(\tR\tstageName\"\x9e\x02\n" +
-	"\x15VariableReferenceResp\x12\x19\n" +
-	"\bstage_id\x18\x01 \x01(\tR\astageId\x12\x1d\n" +
-	"\n" +
-	"stage_name\x18\x02 \x01(\tR\tstageName\x12\x14\n" +
-	"\x05field\x18\x03 \x01(\tR\x05field\x12#\n" +
-	"\rartifact_name\x18\x04 \x01(\tR\fartifactName\x12*\n" +
-	"\x0eartifact_index\x18\x05 \x01(\x05H\x00R\rartifactIndex\x88\x01\x01\x120\n" +
-	"\adefault\x18\x06 \x01(\v2\x16.google.protobuf.ValueR\adefault\x12\x1f\n" +
-	"\vhas_default\x18\a \x01(\bR\n" +
-	"hasDefaultB\x11\n" +
-	"\x0f_artifact_index\"\x8b\x05\n" +
+	"stage_name\x18\x02 \x01(\tR\tstageName\"\xa0\x04\n" +
 	"\fVariableResp\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05scope\x18\x03 \x01(\tR\x05scope\x12S\n" +
-	"\rstage_binding\x18\x04 \x01(\v2).orbit.v1.common.VariableStageBindingRespH\x00R\fstageBinding\x88\x01\x01\x12F\n" +
-	"\n" +
-	"references\x18\x05 \x03(\v2&.orbit.v1.common.VariableReferenceRespR\n" +
-	"references\x12U\n" +
+	"\rstage_binding\x18\x04 \x01(\v2).orbit.v1.common.VariableStageBindingRespH\x00R\fstageBinding\x88\x01\x01\x12U\n" +
 	"\rconfiguration\x18\x06 \x01(\v2*.orbit.v1.common.VariableConfigurationRespH\x01R\rconfiguration\x88\x01\x01\x12b\n" +
 	"\x14global_configuration\x18\a \x01(\v2*.orbit.v1.common.VariableConfigurationRespH\x02R\x13globalConfiguration\x88\x01\x01\x12V\n" +
-	"\x0estage_override\x18\b \x01(\v2*.orbit.v1.common.VariableConfigurationRespH\x03R\rstageOverride\x88\x01\x01\x12!\n" +
-	"\fvalue_source\x18\t \x01(\tR\vvalueSource\x12\x1a\n" +
-	"\beditable\x18\n" +
-	" \x01(\bR\beditableB\x10\n" +
+	"\x0estage_override\x18\b \x01(\v2*.orbit.v1.common.VariableConfigurationRespH\x03R\rstageOverride\x88\x01\x01\x12\x1a\n" +
+	"\beditable\x18\t \x01(\bR\beditableB\x10\n" +
 	"\x0e_stage_bindingB\x10\n" +
 	"\x0e_configurationB\x17\n" +
 	"\x15_global_configurationB\x11\n" +
@@ -711,38 +587,35 @@ func file_orbit_v1_common_common_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_common_common_proto_rawDescData
 }
 
-var file_orbit_v1_common_common_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_orbit_v1_common_common_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_orbit_v1_common_common_proto_goTypes = []any{
 	(*HealthResp)(nil),                 // 0: orbit.v1.common.HealthResp
 	(*StringListResp)(nil),             // 1: orbit.v1.common.StringListResp
 	(*VariableConfigurationResp)(nil),  // 2: orbit.v1.common.VariableConfigurationResp
 	(*VariableStageBindingResp)(nil),   // 3: orbit.v1.common.VariableStageBindingResp
-	(*VariableReferenceResp)(nil),      // 4: orbit.v1.common.VariableReferenceResp
-	(*VariableResp)(nil),               // 5: orbit.v1.common.VariableResp
-	(*VariableDeclarationReq)(nil),     // 6: orbit.v1.common.VariableDeclarationReq
-	(*VariableDeclarationListReq)(nil), // 7: orbit.v1.common.VariableDeclarationListReq
-	(*RawJsonReq)(nil),                 // 8: orbit.v1.common.RawJsonReq
-	(*structpb.Value)(nil),             // 9: google.protobuf.Value
-	(*structpb.Struct)(nil),            // 10: google.protobuf.Struct
+	(*VariableResp)(nil),               // 4: orbit.v1.common.VariableResp
+	(*VariableDeclarationReq)(nil),     // 5: orbit.v1.common.VariableDeclarationReq
+	(*VariableDeclarationListReq)(nil), // 6: orbit.v1.common.VariableDeclarationListReq
+	(*RawJsonReq)(nil),                 // 7: orbit.v1.common.RawJsonReq
+	(*structpb.Value)(nil),             // 8: google.protobuf.Value
+	(*structpb.Struct)(nil),            // 9: google.protobuf.Struct
 }
 var file_orbit_v1_common_common_proto_depIdxs = []int32{
-	9,  // 0: orbit.v1.common.VariableConfigurationResp.default:type_name -> google.protobuf.Value
-	9,  // 1: orbit.v1.common.VariableConfigurationResp.value:type_name -> google.protobuf.Value
-	9,  // 2: orbit.v1.common.VariableReferenceResp.default:type_name -> google.protobuf.Value
-	3,  // 3: orbit.v1.common.VariableResp.stage_binding:type_name -> orbit.v1.common.VariableStageBindingResp
-	4,  // 4: orbit.v1.common.VariableResp.references:type_name -> orbit.v1.common.VariableReferenceResp
-	2,  // 5: orbit.v1.common.VariableResp.configuration:type_name -> orbit.v1.common.VariableConfigurationResp
-	2,  // 6: orbit.v1.common.VariableResp.global_configuration:type_name -> orbit.v1.common.VariableConfigurationResp
-	2,  // 7: orbit.v1.common.VariableResp.stage_override:type_name -> orbit.v1.common.VariableConfigurationResp
-	9,  // 8: orbit.v1.common.VariableDeclarationReq.default:type_name -> google.protobuf.Value
-	9,  // 9: orbit.v1.common.VariableDeclarationReq.value:type_name -> google.protobuf.Value
-	6,  // 10: orbit.v1.common.VariableDeclarationListReq.items:type_name -> orbit.v1.common.VariableDeclarationReq
-	10, // 11: orbit.v1.common.RawJsonReq.fields:type_name -> google.protobuf.Struct
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	8,  // 0: orbit.v1.common.VariableConfigurationResp.default:type_name -> google.protobuf.Value
+	8,  // 1: orbit.v1.common.VariableConfigurationResp.value:type_name -> google.protobuf.Value
+	3,  // 2: orbit.v1.common.VariableResp.stage_binding:type_name -> orbit.v1.common.VariableStageBindingResp
+	2,  // 3: orbit.v1.common.VariableResp.configuration:type_name -> orbit.v1.common.VariableConfigurationResp
+	2,  // 4: orbit.v1.common.VariableResp.global_configuration:type_name -> orbit.v1.common.VariableConfigurationResp
+	2,  // 5: orbit.v1.common.VariableResp.stage_override:type_name -> orbit.v1.common.VariableConfigurationResp
+	8,  // 6: orbit.v1.common.VariableDeclarationReq.default:type_name -> google.protobuf.Value
+	8,  // 7: orbit.v1.common.VariableDeclarationReq.value:type_name -> google.protobuf.Value
+	5,  // 8: orbit.v1.common.VariableDeclarationListReq.items:type_name -> orbit.v1.common.VariableDeclarationReq
+	9,  // 9: orbit.v1.common.RawJsonReq.fields:type_name -> google.protobuf.Struct
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_common_common_proto_init() }
@@ -751,14 +624,13 @@ func file_orbit_v1_common_common_proto_init() {
 		return
 	}
 	file_orbit_v1_common_common_proto_msgTypes[4].OneofWrappers = []any{}
-	file_orbit_v1_common_common_proto_msgTypes[5].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_common_common_proto_rawDesc), len(file_orbit_v1_common_common_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

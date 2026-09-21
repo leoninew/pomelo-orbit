@@ -1,21 +1,23 @@
 # CI Pipeline 变量设计
-最后修改时间: 2026-09-20 20:35:12
+最后修改时间: 2026-09-21 17:07:18
 
 Doc role: living guide。与代码冲突时以代码为准。
 
 ## 归属
 
-Template Pipeline 的变量声明会在实例化时深复制到 Application Pipeline；之后两个对象独立演进。Template Pipeline 保留既有变量配置：内置变量和阶段声明只读，`pipeline_custom` 可新增、编辑、删除。Application Pipeline 详情在此基础上显示可管理变量和只读内置项：
+Template Pipeline 的变量声明会在实例化时深复制到 Application Pipeline；之后两个对象独立演进。Template 和 Application Pipeline 都可新增、编辑、删除 `pipeline_custom` 全局配置和带 `stage_id` 的阶段配置；内置上下文和从阶段文本提取的声明本身仍只读。Template 的 `stage_id` 指向其 `PipelineStageReference`，实例化时服务端重映射为新 Application Pipeline 的阶段 ID。
 
 | 管理来源 | 含义 | 操作 |
 |---|---|---|
-| `pipeline_custom` | 已持久化在当前 Application Pipeline 的变量 | 新增、编辑、删除 |
-| `pipeline_stage` | 从阶段脚本和制品 `reference`、`name`、`command` 提取的非内置 Liquid 变量 | 覆盖为同名 Pipeline 配置 |
+| `pipeline_custom` | 已持久化在当前 Pipeline 的变量 | 新增、编辑、删除 |
+| `pipeline_stage` | 从阶段脚本和制品 `reference`、`name`、`command` 提取的非内置 Liquid 变量 | 覆盖为同名、同 `stage_id` 的 Pipeline 配置 |
 | `pipeline` | 详情中展示的 `repository_ref`、`repository_code`、`repository_url`、`runtime_datetime` 内置上下文 | 只读；`repository_ref` 仅可在 Trigger 前临时填写 |
 
-Repository 自定义变量不显示也不能在 Pipeline 中覆盖；Repository 内置上下文以只读条目展示。删除一个覆盖阶段变量的 `pipeline_custom` 配置后，该变量恢复为 `pipeline_stage`，继续使用阶段中声明的 Liquid `default`（若有）。变量名必须是非内置 Liquid 标识符；Pipeline 配置的唯一键是 `(name, stage_id)`，其中空 `stage_id` 表示全局配置。变量表按 Stage 来源展示独立条目；没有同 Stage 覆盖时，阶段条目会显示同名全局 Pipeline 配置的 `value`/`default`，阶段默认值仍是派生展示数据。Stage 覆盖通过同一条目的 `stage_id` 提交。
+Repository 自定义变量与内置上下文在 Pipeline 中只读展示，不能在 Pipeline 中覆盖。删除一个覆盖阶段变量的 `pipeline_custom` 配置后，该变量恢复为 `pipeline_stage`，继续使用阶段中声明的 Liquid `default`（若有）。变量名必须是非内置 Liquid 标识符；Pipeline 配置的唯一键是 `(name, stage_id)`，其中空 `stage_id` 表示全局配置。变量表按 Stage 来源展示独立条目；没有同 Stage 覆盖时，阶段条目会显示同名全局 Pipeline 配置的 `value`/`default`，阶段默认值仍是派生展示数据。Template 的阶段配置必须指向当前 `PipelineStageReference`，并在实例化时由服务端替换为对应 Application Pipeline 阶段 ID。
 
-Repository 变量只在 Repository 管理，不出现在 Application Pipeline 的管理列表，也保持更高优先级。`runtime` 和 `system` 上下文由服务端生成，不可在 Pipeline 管理。
+Repository 变量只在 Repository 管理，在 Application Pipeline 中只读展示，也保持更高优先级。`runtime` 和 `system` 上下文由服务端生成，不可在 Pipeline 管理。
+
+详情 API 的 `kind` 直接使用三类英文原语：`system_generated`（如 `runtime_datetime`）、`repository_context`（如 `repository_code`、`repository_ref` 和 Repository 自定义变量）、`pipeline_context`（如 `image_name`、`working_dir` 和 Pipeline 配置）。前端直接展示这些值，不做映射或 i18n 翻译。不单独返回或展示取值来源；Pipeline 详情展示的是配置上下文，不是 Run 的变量预览。
 
 `default` 是 Repository 或 Pipeline 配置的全局回退值，`value` 是持久化配置值，`secret` 只影响展示元数据，不改变变量解析顺序。
 

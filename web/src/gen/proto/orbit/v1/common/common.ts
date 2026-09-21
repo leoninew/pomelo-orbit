@@ -29,26 +29,14 @@ export interface VariableStageBindingResp {
   stage_name: string;
 }
 
-export interface VariableReferenceResp {
-  stage_id: string;
-  stage_name: string;
-  field: string;
-  artifact_name: string;
-  artifact_index?: number | undefined;
-  default: any | undefined;
-  has_default: boolean;
-}
-
 export interface VariableResp {
   name: string;
   kind: string;
   scope: string;
   stage_binding?: VariableStageBindingResp | undefined;
-  references: VariableReferenceResp[];
   configuration?: VariableConfigurationResp | undefined;
   global_configuration?: VariableConfigurationResp | undefined;
   stage_override?: VariableConfigurationResp | undefined;
-  value_source: string;
   editable: boolean;
 }
 

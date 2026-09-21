@@ -187,7 +187,7 @@
         <VariableDeclarationsTable
           :variables="pipelineVariableRows"
           :readonly="false"
-          :allow-override="!isTemplate"
+          :allow-override="true"
           @edit="openEditVariableDialog"
           @delete="deleteVariable"
           @override="openOverrideVariableDialog"
@@ -708,9 +708,11 @@
   function pipelineConfigurationRequests(variables: VariableResp[]) {
     const requests = new Map<string, VariableDeclarationReq>();
     for (const variable of variables) {
-      const configuration =
-        variable.kind === 'pipeline_variable' ? variable.configuration : variable.stage_override;
-      if (!configuration) {
+      if (!variable.editable) {
+        continue;
+      }
+      const configuration = variable.configuration ?? variable.stage_override;
+      if (!configuration?.editable) {
         continue;
       }
       const stageId = variable.scope === 'stage' ? variable.stage_binding?.stage_id || '' : '';
@@ -776,7 +778,12 @@
   }
 
   function openOverrideVariableDialog(variable: VariableResp) {
-    if (variable.kind !== 'stage_variable' || !variable.stage_binding) {
+    if (
+      variable.scope !== 'stage' ||
+      !variable.stage_binding ||
+      variable.configuration?.editable ||
+      variable.stage_override?.editable
+    ) {
       return;
     }
     const configuration = variable.global_configuration ?? variable.configuration;

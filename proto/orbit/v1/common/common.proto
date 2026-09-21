@@ -26,27 +26,15 @@ message VariableStageBindingResp {
   string stage_name = 2;
 }
 
-message VariableReferenceResp {
-  string stage_id = 1;
-  string stage_name = 2;
-  string field = 3;
-  string artifact_name = 4;
-  optional int32 artifact_index = 5;
-  google.protobuf.Value default = 6;
-  bool has_default = 7;
-}
-
 message VariableResp {
   string name = 1;
   string kind = 2;
   string scope = 3;
   optional VariableStageBindingResp stage_binding = 4;
-  repeated VariableReferenceResp references = 5;
   optional VariableConfigurationResp configuration = 6;
   optional VariableConfigurationResp global_configuration = 7;
   optional VariableConfigurationResp stage_override = 8;
-  string value_source = 9;
-  bool editable = 10;
+  bool editable = 9;
 }
 
 message VariableDeclarationReq {

@@ -11,36 +11,26 @@ import (
 const (
 	pipelineVariableScopeGlobal = "global"
 	pipelineVariableScopeStage  = "stage"
+)
 
-	pipelineVariableKindRepository      = "repository_variable"
-	pipelineVariableKindPipeline        = "pipeline_variable"
-	pipelineVariableKindStage           = "stage_variable"
-	pipelineVariableKindRuntimeInput    = "runtime_input"
-	pipelineVariableKindSystemContext   = "system_context"
-	pipelineVariableKindSystemGenerated = "system_generated"
+type Kind string
 
-	pipelineVariableValueSourceRepository    = "repository_variable"
-	pipelineVariableValueSourcePipeline      = "pipeline_variable"
-	pipelineVariableValueSourceStageOverride = "stage_override"
-	pipelineVariableValueSourceLiquidDefault = "liquid_default"
-	pipelineVariableValueSourceRuntime       = "runtime_input"
-	pipelineVariableValueSourceSystem        = "system_generated"
-	pipelineVariableValueSourceSnapshot      = "snapshot"
-	pipelineVariableValueSourceMissing       = "missing"
+const (
+	KindSystemGenerated   Kind = "system_generated"
+	KindRepositoryContext Kind = "repository_context"
+	KindPipelineContext   Kind = "pipeline_context"
 )
 
 // View is the shared, derived variable read model used by resource details.
 // It is never persisted as Pipeline or Repository configuration.
 type View struct {
 	Name                string
-	Kind                string
+	Kind                Kind
 	Scope               string
 	StageBinding        *StageBinding
-	References          []Reference
 	Configuration       *Configuration
 	GlobalConfiguration *Configuration
 	StageOverride       *Configuration
-	ValueSource         string
 	Editable            bool
 }
 
@@ -57,16 +47,6 @@ type StageBinding struct {
 	StageName string
 }
 
-type Reference struct {
-	StageId       string
-	StageName     string
-	Field         string
-	ArtifactName  string
-	ArtifactIndex *int
-	Default       any
-	HasDefault    bool
-}
-
 func declarationScopeKey(name, stageId string) string {
 	return name + "\x00" + stageId
 }
@@ -78,16 +58,12 @@ func Pipeline(pipeline model.Pipeline, stages []model.StageDefinition, repo *mod
 	if err != nil {
 		return nil, err
 	}
-	if pipeline.Kind == model.PipelineKindTemplate {
-		pipelineVariables = pipelinevariable.SanitizeTemplatePipelineVariables(pipelineVariables)
-	} else {
-		pipelineVariables, err = pipelinevariable.NormalizePipelineVariables(pipelineVariables)
-		if err != nil {
-			return nil, err
-		}
-		if err := pipelinevariable.ValidatePipelineVariableScopes(pipelineVariables, stages); err != nil {
-			return nil, err
-		}
+	pipelineVariables, err = pipelinevariable.NormalizePipelineVariables(pipelineVariables)
+	if err != nil {
+		return nil, err
+	}
+	if err := pipelinevariable.ValidatePipelineVariableScopes(pipelineVariables, stages); err != nil {
+		return nil, err
 	}
 
 	pipelineGlobals, pipelineStages, err := pipelineVariableConfigurations(pipelineVariables)
@@ -104,16 +80,17 @@ func Pipeline(pipeline model.Pipeline, stages []model.StageDefinition, repo *mod
 	}
 
 	stageNames := make(map[string]string, len(stages))
-	stageReferences := make(map[string][]pipelinevariable.StageVariableReference)
-	globalReferences := make(map[string][]pipelinevariable.StageVariableReference)
+	stageReferences := make(map[string]pipelinevariable.StageVariableReference)
 	for _, stage := range stages {
 		stageNames[pipelinevariable.StageScopeId(stage)] = stage.Name
 	}
 	for _, reference := range references {
-		globalReferences[reference.Name] = append(globalReferences[reference.Name], reference)
-		if !pipelinevariable.IsPipelineBuiltinVariable(reference.Name) {
-			key := declarationScopeKey(reference.Name, reference.StageId)
-			stageReferences[key] = append(stageReferences[key], reference)
+		if pipelinevariable.IsPipelineBuiltinVariable(reference.Name) {
+			continue
+		}
+		key := declarationScopeKey(reference.Name, reference.StageId)
+		if _, exists := stageReferences[key]; !exists {
+			stageReferences[key] = reference
 		}
 	}
 
@@ -122,46 +99,41 @@ func Pipeline(pipeline model.Pipeline, stages []model.StageDefinition, repo *mod
 		declaration := repositoryVariables[name]
 		result = append(result, View{
 			Name:          name,
-			Kind:          pipelineVariableKindRepository,
+			Kind:          KindRepositoryContext,
 			Scope:         pipelineVariableScopeGlobal,
-			References:    variableReferenceViews(globalReferences[name]),
 			Configuration: variableConfiguration(declaration, false),
-			ValueSource:   pipelineVariableValueSourceRepository,
 		})
 	}
 	for _, name := range sortedVariableDeclarationNames(pipelineGlobals) {
 		declaration := pipelineGlobals[name]
 		result = append(result, View{
 			Name:          name,
-			Kind:          pipelineVariableKindPipeline,
+			Kind:          KindPipelineContext,
 			Scope:         pipelineVariableScopeGlobal,
-			References:    variableReferenceViews(globalReferences[name]),
 			Configuration: variableConfiguration(declaration, true),
-			ValueSource:   globalValueSource(name, repositoryVariables),
 			Editable:      true,
 		})
 	}
-	result = append(result, builtinVariableViews(repo, globalReferences)...)
+	result = append(result, builtinVariableViews(repo)...)
 
 	for _, key := range sortedStageReferenceKeys(stageReferences) {
-		references := stageReferences[key]
-		first := references[0]
+		first := stageReferences[key]
 		stageOverride, hasStageOverride := pipelineStages[key]
 		globalConfiguration, hasGlobalConfiguration := pipelineGlobals[first.Name]
 		variable := View{
 			Name:         first.Name,
-			Kind:         pipelineVariableKindStage,
+			Kind:         KindPipelineContext,
 			Scope:        pipelineVariableScopeStage,
 			StageBinding: &StageBinding{StageId: first.StageId, StageName: first.StageName},
-			References:   variableReferenceViews(references),
-			ValueSource:  stageValueSource(first.Name, first.StageId, repositoryVariables, pipelineGlobals, pipelineStages, references),
-			Editable:     pipeline.Kind != model.PipelineKindTemplate,
+			Editable:     true,
 		}
 		if hasGlobalConfiguration {
 			variable.GlobalConfiguration = variableConfiguration(globalConfiguration, true)
 		}
 		if hasStageOverride {
 			variable.StageOverride = variableConfiguration(stageOverride, true)
+		} else if !hasGlobalConfiguration && first.HasDefault {
+			variable.Configuration = &Configuration{Default: first.Default}
 		}
 		result = append(result, variable)
 	}
@@ -174,11 +146,10 @@ func Pipeline(pipeline model.Pipeline, stages []model.StageDefinition, repo *mod
 		stageName := stageNames[declaration.StageId]
 		result = append(result, View{
 			Name:          declaration.Name,
-			Kind:          pipelineVariableKindPipeline,
+			Kind:          KindPipelineContext,
 			Scope:         pipelineVariableScopeStage,
 			StageBinding:  &StageBinding{StageId: declaration.StageId, StageName: stageName},
 			Configuration: variableConfiguration(declaration, true),
-			ValueSource:   stageValueSource(declaration.Name, declaration.StageId, repositoryVariables, pipelineGlobals, pipelineStages, nil),
 			Editable:      true,
 		})
 	}
@@ -202,60 +173,40 @@ func Repository(repo model.Repository) ([]View, error) {
 	}
 	result := make([]View, 0, len(declarations)+3)
 	for _, declaration := range declarations {
-		result = append(result, View{Name: declaration.Name, Kind: pipelineVariableKindRepository, Scope: pipelineVariableScopeGlobal, References: []Reference{}, Configuration: variableConfiguration(declaration, true), ValueSource: pipelineVariableValueSourceRepository, Editable: true})
+		result = append(result, View{Name: declaration.Name, Kind: KindRepositoryContext, Scope: pipelineVariableScopeGlobal, Configuration: variableConfiguration(declaration, true), Editable: true})
 	}
 	result = append(result,
-		View{Name: "repository_code", Kind: pipelineVariableKindSystemContext, Scope: pipelineVariableScopeGlobal, References: []Reference{}, Configuration: &Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()["repository_code"], Value: repo.Code}, ValueSource: pipelineVariableValueSourceSystem},
-		View{Name: "repository_url", Kind: pipelineVariableKindSystemContext, Scope: pipelineVariableScopeGlobal, References: []Reference{}, Configuration: &Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()["repository_url"], Value: repo.RepositoryUrl}, ValueSource: pipelineVariableValueSourceSystem},
-		View{Name: "repository_ref", Kind: pipelineVariableKindRuntimeInput, Scope: pipelineVariableScopeGlobal, References: []Reference{}, Configuration: &Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()["repository_ref"], Default: repo.DefaultBranch}, ValueSource: pipelineVariableValueSourceRuntime},
+		View{Name: "repository_code", Kind: KindRepositoryContext, Scope: pipelineVariableScopeGlobal, Configuration: &Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()["repository_code"], Value: repo.Code}},
+		View{Name: "repository_url", Kind: KindRepositoryContext, Scope: pipelineVariableScopeGlobal, Configuration: &Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()["repository_url"], Value: repo.RepositoryUrl}},
+		View{Name: "repository_ref", Kind: KindRepositoryContext, Scope: pipelineVariableScopeGlobal, Configuration: &Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()["repository_ref"], Default: repo.DefaultBranch}},
 	)
 	sortVariableViews(result)
 	return result, nil
 }
 
-func Snapshot(stages []model.StageDefinition, declarations []model.VariableDeclaration) ([]View, error) {
-	references, err := pipelinevariable.ExtractStageVariableReferences(stages)
-	if err != nil {
-		return nil, err
-	}
-	globalReferences := make(map[string][]pipelinevariable.StageVariableReference)
-	stageReferences := make(map[string][]pipelinevariable.StageVariableReference)
-	for _, reference := range references {
-		globalReferences[reference.Name] = append(globalReferences[reference.Name], reference)
-		stageReferences[declarationScopeKey(reference.Name, reference.StageId)] = append(stageReferences[declarationScopeKey(reference.Name, reference.StageId)], reference)
-	}
+func Snapshot(_ []model.StageDefinition, declarations []model.VariableDeclaration) ([]View, error) {
 	result := make([]View, 0, len(declarations))
 	for _, declaration := range declarations {
 		scope := pipelineVariableScopeGlobal
 		var binding *StageBinding
-		variableReferences := globalReferences[declaration.Name]
 		if declaration.StageId != "" {
 			scope = pipelineVariableScopeStage
 			binding = &StageBinding{StageId: declaration.StageId, StageName: declaration.StageName}
-			variableReferences = stageReferences[declarationScopeKey(declaration.Name, declaration.StageId)]
 		}
-		result = append(result, View{Name: declaration.Name, Kind: snapshotVariableKind(declaration, len(variableReferences) > 0), Scope: scope, StageBinding: binding, References: variableReferenceViews(variableReferences), Configuration: variableConfiguration(declaration, false), ValueSource: pipelineVariableValueSourceSnapshot})
+		result = append(result, View{Name: declaration.Name, Kind: snapshotVariableKind(declaration), Scope: scope, StageBinding: binding, Configuration: variableConfiguration(declaration, false)})
 	}
 	sortVariableViews(result)
 	return result, nil
 }
 
-func snapshotVariableKind(declaration model.VariableDeclaration, hasReferences bool) string {
-	switch declaration.Name {
-	case "repository_ref":
-		return pipelineVariableKindRuntimeInput
-	case "repository_code", "repository_url":
-		return pipelineVariableKindSystemContext
-	case "runtime_datetime":
-		return pipelineVariableKindSystemGenerated
+func snapshotVariableKind(declaration model.VariableDeclaration) Kind {
+	if declaration.Name == "runtime_datetime" {
+		return KindSystemGenerated
 	}
-	if declaration.Source == "repository" {
-		return pipelineVariableKindRepository
+	if strings.HasPrefix(declaration.Name, "repository_") || declaration.Source == "repository" {
+		return KindRepositoryContext
 	}
-	if declaration.StageId != "" && hasReferences {
-		return pipelineVariableKindStage
-	}
-	return pipelineVariableKindPipeline
+	return KindPipelineContext
 }
 
 func sortVariableViews(variables []View) {
@@ -314,30 +265,26 @@ func pipelineRepositoryVariables(repo *model.Repository) (map[string]model.Varia
 	return result, nil
 }
 
-func builtinVariableViews(repo *model.Repository, references map[string][]pipelinevariable.StageVariableReference) []View {
+func builtinVariableViews(repo *model.Repository) []View {
 	result := make([]View, 0, len(pipelinevariable.PipelineBuiltinVariableSpecs()))
 	for _, name := range pipelinevariable.SortedPipelineBuiltinVariableNames() {
 		variable := View{
-			Name:       name,
-			Scope:      pipelineVariableScopeGlobal,
-			References: variableReferenceViews(references[name]),
+			Name:  name,
+			Scope: pipelineVariableScopeGlobal,
 		}
 		switch name {
 		case "repository_ref":
-			variable.Kind = pipelineVariableKindRuntimeInput
-			variable.ValueSource = pipelineVariableValueSourceRuntime
+			variable.Kind = KindRepositoryContext
 			configuration := Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()[name], Editable: false}
 			if repo != nil {
 				configuration.Default = repo.DefaultBranch
 			}
 			variable.Configuration = &configuration
 		case "runtime_datetime":
-			variable.Kind = pipelineVariableKindSystemGenerated
-			variable.ValueSource = pipelineVariableValueSourceSystem
+			variable.Kind = KindSystemGenerated
 			variable.Configuration = &Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()[name], Editable: false}
 		default:
-			variable.Kind = pipelineVariableKindSystemContext
-			variable.ValueSource = pipelineVariableValueSourceSystem
+			variable.Kind = KindRepositoryContext
 			configuration := Configuration{Description: pipelinevariable.PipelineBuiltinVariableSpecs()[name], Editable: false}
 			if repo != nil {
 				configuration.Value = pipelinevariable.SystemVariableValue(*repo, name)
@@ -349,49 +296,8 @@ func builtinVariableViews(repo *model.Repository, references map[string][]pipeli
 	return result
 }
 
-func globalValueSource(name string, repository map[string]model.VariableDeclaration) string {
-	if declaration, exists := repository[name]; exists {
-		if _, hasValue := pipelinevariable.EffectiveVariableValue(declaration); hasValue {
-			return pipelineVariableValueSourceRepository
-		}
-	}
-	return pipelineVariableValueSourcePipeline
-}
-
-func stageValueSource(name, stageId string, repository, globals, stages map[string]model.VariableDeclaration, references []pipelinevariable.StageVariableReference) string {
-	if declaration, exists := repository[name]; exists {
-		if _, hasValue := pipelinevariable.EffectiveVariableValue(declaration); hasValue {
-			return pipelineVariableValueSourceRepository
-		}
-	}
-	if declaration, exists := stages[declarationScopeKey(name, stageId)]; exists {
-		if _, hasValue := pipelinevariable.EffectiveVariableValue(declaration); hasValue {
-			return pipelineVariableValueSourceStageOverride
-		}
-	}
-	if declaration, exists := globals[name]; exists {
-		if _, hasValue := pipelinevariable.EffectiveVariableValue(declaration); hasValue {
-			return pipelineVariableValueSourcePipeline
-		}
-	}
-	for _, reference := range references {
-		if reference.HasDefault {
-			return pipelineVariableValueSourceLiquidDefault
-		}
-	}
-	return pipelineVariableValueSourceMissing
-}
-
 func variableConfiguration(declaration model.VariableDeclaration, editable bool) *Configuration {
 	return &Configuration{Description: declaration.Description, Default: declaration.Default, Value: declaration.Value, Secret: declaration.Secret, Editable: editable}
-}
-
-func variableReferenceViews(references []pipelinevariable.StageVariableReference) []Reference {
-	result := make([]Reference, 0, len(references))
-	for _, reference := range references {
-		result = append(result, Reference{StageId: reference.StageId, StageName: reference.StageName, Field: reference.Field, ArtifactName: reference.ArtifactName, ArtifactIndex: reference.ArtifactIndex, Default: reference.Default, HasDefault: reference.HasDefault})
-	}
-	return result
 }
 
 func sortedVariableDeclarationNames(values map[string]model.VariableDeclaration) []string {
@@ -418,13 +324,13 @@ func sortedVariableDeclarationKeys(values map[string]model.VariableDeclaration) 
 	return result
 }
 
-func sortedStageReferenceKeys(values map[string][]pipelinevariable.StageVariableReference) []string {
+func sortedStageReferenceKeys(values map[string]pipelinevariable.StageVariableReference) []string {
 	result := make([]string, 0, len(values))
 	for key := range values {
 		result = append(result, key)
 	}
 	sort.Slice(result, func(i, j int) bool {
-		left, right := values[result[i]][0], values[result[j]][0]
+		left, right := values[result[i]], values[result[j]]
 		if left.StageName != right.StageName {
 			return left.StageName < right.StageName
 		}

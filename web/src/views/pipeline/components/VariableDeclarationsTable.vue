@@ -20,7 +20,7 @@
     </div>
     <div role="tabpanel" class="overflow-x-auto">
       <AppEmptyState v-if="visibleVariables.length === 0" size="compact" />
-      <table v-else class="app-data-table min-w-[1180px]">
+      <table v-else class="app-data-table min-w-[1020px]">
         <thead>
           <tr>
             <th>{{ t('variableDeclaration.name') }}</th>
@@ -28,8 +28,6 @@
             <th>{{ t('variableDeclaration.stage') }}</th>
             <th>{{ t('variableDeclaration.description') }}</th>
             <th>{{ t('variableDeclaration.value') }}</th>
-            <th>取值来源</th>
-            <th>引用位置</th>
             <th v-if="!readonly" class="w-32">{{ t('common.operation') }}</th>
           </tr>
         </thead>
@@ -39,9 +37,7 @@
               <span class="text-foreground">{{ variable.name }}</span>
             </td>
             <td>
-              <AppBadge variant="status" :tone="kindTone(variable.kind)">
-                {{ kindLabel(variable.kind) }}
-              </AppBadge>
+              <AppBadge variant="status">{{ variable.kind }}</AppBadge>
             </td>
             <td class="max-w-40 truncate" :title="stageLabel(variable)">
               <span v-if="variable.stage_binding" class="text-foreground">
@@ -60,19 +56,6 @@
               <span v-if="hasDisplayValue(configurationValue(variable))" class="text-foreground">
                 {{ displayValue(variable) }}
               </span>
-            </td>
-            <td>
-              <AppBadge variant="status" :tone="valueSourceTone(variable.value_source)">
-                {{ valueSourceLabel(variable.value_source) }}
-              </AppBadge>
-            </td>
-            <td class="max-w-sm">
-              <div v-if="variable.references.length > 0" class="flex flex-wrap gap-1">
-                <AppBadge v-for="reference in variable.references" :key="referenceKey(reference)">
-                  {{ referenceLabel(reference) }}
-                </AppBadge>
-              </div>
-              <span v-else class="text-muted-foreground">-</span>
             </td>
             <td v-if="!readonly" class="w-32">
               <div class="flex items-center gap-3">
@@ -107,13 +90,8 @@
   import { computed, ref } from 'vue';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import type {
-    VariableConfigurationResp,
-    VariableReferenceResp,
-    VariableResp,
-  } from '@/gen/proto/orbit/v1/common/common';
+  import type { VariableConfigurationResp, VariableResp } from '@/gen/proto/orbit/v1/common/common';
   import { effectiveVariableValue } from '@/utils/variableDeclaration';
-  import type { BadgeTone } from '@/utils/status';
 
   const props = withDefaults(
     defineProps<{
@@ -155,15 +133,6 @@
     );
   }
 
-  function referenceKey(reference: VariableReferenceResp) {
-    return [
-      reference.stage_id,
-      reference.field,
-      reference.artifact_index ?? '',
-      reference.artifact_name,
-    ].join(':');
-  }
-
   function stageLabel(variable: VariableResp) {
     return variable.stage_binding?.stage_name || variable.stage_binding?.stage_id || '';
   }
@@ -195,7 +164,7 @@
     return (
       !props.readonly &&
       variable.editable &&
-      Boolean(variable.configuration || variable.stage_override)
+      Boolean(variable.configuration?.editable || variable.stage_override?.editable)
     );
   }
 
@@ -204,61 +173,9 @@
       !props.readonly &&
       props.allowOverride &&
       variable.editable &&
-      variable.kind === 'stage_variable' &&
       variable.scope === 'stage' &&
-      !variable.stage_override
+      !variable.configuration?.editable &&
+      !variable.stage_override?.editable
     );
-  }
-
-  function kindLabel(kind: string) {
-    return (
-      {
-        repository_variable: '仓库变量',
-        pipeline_variable: '流水线变量',
-        stage_variable: '阶段变量',
-        runtime_input: '运行时输入',
-        system_context: '系统上下文',
-        system_generated: '系统生成',
-      }[kind] ?? kind
-    );
-  }
-
-  function kindTone(kind: string): BadgeTone {
-    const tones: Record<string, BadgeTone> = {
-      repository_variable: 'info',
-      pipeline_variable: 'primary',
-      stage_variable: 'success',
-      runtime_input: 'warning',
-      system_context: 'default',
-      system_generated: 'default',
-    };
-    return tones[kind] ?? 'default';
-  }
-
-  function valueSourceLabel(source: string) {
-    return (
-      {
-        repository_variable: '仓库变量',
-        pipeline_variable: '全局流水线配置',
-        stage_override: '阶段覆盖',
-        liquid_default: 'Liquid 默认值',
-        runtime_input: '运行时输入',
-        system_generated: '系统生成',
-        snapshot: '冻结快照',
-        missing: '未配置',
-      }[source] ?? source
-    );
-  }
-
-  function valueSourceTone(source: string): BadgeTone {
-    if (source === 'missing') {
-      return 'warning';
-    }
-    return source === 'stage_override' ? 'success' : 'default';
-  }
-
-  function referenceLabel(reference: VariableReferenceResp) {
-    const artifact = reference.artifact_name ? ` / ${reference.artifact_name}` : '';
-    return `${reference.stage_name || reference.stage_id} / ${reference.field}${artifact}`;
   }
 </script>

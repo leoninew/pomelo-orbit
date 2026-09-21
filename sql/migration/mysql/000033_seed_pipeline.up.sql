@@ -1,5 +1,9 @@
 -- pipeline seed captured from data/mysql-transfer-20260816-103803.mysql.sql.
 
+-- repository: 1 row(s).
+INSERT INTO `repository` (`id`, `project_id`, `name`, `code`, `repository_type`, `repository_url`, `git_credential_id`, `variable_overrides`, `default_branch`) VALUES
+    ('01M327332NTE0VY4S5YRWJ2HZR', '01KRRKK0K3T519ZQZES3M4QA9Z', 'Go Docker', 'go-docker', 'remote_git', 'https://github.com/callicoder/go-docker.git', NULL, '[]', 'master');
+
 -- pipeline: 2 row(s).
 INSERT INTO `pipeline` (`id`, `project_id`, `kind`, `source_pipeline_id`, `source_template_name`, `source_template_version`, `application_id`, `application_name`, `repository_id`, `repository_name`, `version_fork_strategy`, `fixed_version_id`, `fixed_version_label`, `name`, `description`, `variable_declarations`, `version`) VALUES
     ('01KNVEJPWVK757139NMNNNCEFE', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Go 构建流水线', '- test & lint\n- build', '[{"default":null,"editable":true,"name":"working_dir","secret":false,"source":"pipeline_custom","value":".","description":""}]', 12),

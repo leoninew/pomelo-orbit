@@ -12,12 +12,12 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-func TestClonePipelineStageReferencesRemapsDependenciesAndKeepsSourceSnapshots(t *testing.T) {
+func TestClonePipelineStageReferencesRemapsDependenciesAndVariableScopes(t *testing.T) {
 	t.Parallel()
 
 	sourceArtifacts := `[{"name":"commit","collector":"command","command":"git rev-parse HEAD","format":"git_object_id"}]`
 	buildArtifacts := `[{"name":"image","collector":"docker_image","reference":"registry.example/build:latest"}]`
-	cloned, err := clonePipelineStageReferences([]model.PipelineStageReference{
+	cloned, stageIdMap, err := clonePipelineStageReferences([]model.PipelineStageReference{
 		{Id: "stage-source", SourceTemplateStageId: "template-source", SourceTemplateStageName: "source", SourceTemplateStageVersion: 2, SourceTemplateStageDescription: "source template", Name: "source", Image: "alpine", Script: "source", Description: "local source", Artifacts: sourceArtifacts, DependsOn: "[]", SortOrder: 1},
 		{Id: "stage-build", SourceTemplateStageId: "template-build", SourceTemplateStageName: "build", SourceTemplateStageVersion: 3, SourceTemplateStageDescription: "build template", Name: "build", Image: "builder", Script: "build", Description: "local build", Artifacts: buildArtifacts, DependsOn: "[\"stage-source\"]", SortOrder: 2},
 	}, "application-pipeline", "project-1")
@@ -48,6 +48,17 @@ func TestClonePipelineStageReferencesRemapsDependenciesAndKeepsSourceSnapshots(t
 	}
 	if cloned[1].Artifacts == nil || *cloned[1].Artifacts != buildArtifacts {
 		t.Fatalf("application stage must copy reference artifacts: %#v", cloned[1].Artifacts)
+	}
+	variables, err := remapPipelineVariableStageIds(`[{"name":"image_name","stage_id":"stage-build","value":"web"}]`, stageIdMap)
+	if err != nil {
+		t.Fatalf("remap template stage variable: %v", err)
+	}
+	var remapped []map[string]any
+	if err := json.Unmarshal([]byte(variables), &remapped); err != nil {
+		t.Fatalf("decode remapped variables: %v", err)
+	}
+	if len(remapped) != 1 || remapped[0]["stage_id"] != cloned[1].Id {
+		t.Fatalf("expected variable scope to be remapped to %q, got %#v", cloned[1].Id, remapped)
 	}
 }
 
@@ -234,10 +245,10 @@ func TestPipelineVariableScopedToStageBlocksDeletion(t *testing.T) {
 	}
 }
 
-func TestValidatePipelineVariableScopesRejectsUnknownStage(t *testing.T) {
+func TestValidatePipelineVariableScopesRejectsUnknownTemplateStage(t *testing.T) {
 	t.Parallel()
 
-	pipeline := model.Pipeline{Kind: model.PipelineKindApplication, VariableDeclarations: `[{"name":"working_dir","stage_id":"missing-stage","value":"web"}]`}
+	pipeline := model.Pipeline{Kind: model.PipelineKindTemplate, VariableDeclarations: `[{"name":"working_dir","stage_id":"missing-stage","value":"web"}]`}
 	err := validatePipelineVariableScopes(pipeline, []model.StageDefinition{{Id: "stage-build", Name: "build"}})
 	if err == nil || !strings.Contains(err.Error(), "stage_id does not exist: missing-stage") {
 		t.Fatalf("expected unknown stage scope error, got %v", err)

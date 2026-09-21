@@ -20,15 +20,11 @@ func pipelineRunResponse(detail pipelinerundto.PipelineRunDetail) *pipelinerunv1
 func variableResponses(items []variableview.View) []*commonv1.VariableResp {
 	response := make([]*commonv1.VariableResp, 0, len(items))
 	for _, item := range items {
-		references := make([]*commonv1.VariableReferenceResp, 0, len(item.References))
-		for _, reference := range item.References {
-			references = append(references, &commonv1.VariableReferenceResp{StageId: reference.StageId, StageName: reference.StageName, Field: reference.Field, ArtifactName: reference.ArtifactName, ArtifactIndex: transport.OptionalInt32(reference.ArtifactIndex), Default: transport.ProtoValue(reference.Default), HasDefault: reference.HasDefault})
-		}
 		var binding *commonv1.VariableStageBindingResp
 		if item.StageBinding != nil {
 			binding = &commonv1.VariableStageBindingResp{StageId: item.StageBinding.StageId, StageName: item.StageBinding.StageName}
 		}
-		response = append(response, &commonv1.VariableResp{Name: item.Name, Kind: item.Kind, Scope: item.Scope, StageBinding: binding, References: references, Configuration: variableConfigurationResponse(item.Configuration), GlobalConfiguration: variableConfigurationResponse(item.GlobalConfiguration), StageOverride: variableConfigurationResponse(item.StageOverride), ValueSource: item.ValueSource, Editable: item.Editable})
+		response = append(response, &commonv1.VariableResp{Name: item.Name, Kind: string(item.Kind), Scope: item.Scope, StageBinding: binding, Configuration: variableConfigurationResponse(item.Configuration), GlobalConfiguration: variableConfigurationResponse(item.GlobalConfiguration), StageOverride: variableConfigurationResponse(item.StageOverride), Editable: item.Editable})
 	}
 	return response
 }

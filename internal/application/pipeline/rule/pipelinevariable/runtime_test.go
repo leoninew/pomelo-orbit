@@ -431,7 +431,7 @@ func TestNormalizePipelineVariablesDropsDerivedStageDefaults(t *testing.T) {
 
 func TestResolveTemplatePipelineVariablesPreservesTemplateDetailContract(t *testing.T) {
 	stages := []model.PipelineStage{{Name: "build", Script: "echo {{ IMAGE_TAG }}"}}
-	variables := []map[string]any{{"name": "invalid-name", "value": "allowed-for-template"}}
+	variables := []map[string]any{{"name": "CUSTOM_IMAGE_TAG", "value": "allowed-for-template"}}
 
 	resolved, err := ResolveTemplatePipelineVariables(stages, variables)
 	if err != nil {
@@ -448,8 +448,8 @@ func TestResolveTemplatePipelineVariablesPreservesTemplateDetailContract(t *test
 	if _, exists := byName["repository_ref"]; !exists {
 		t.Fatalf("template declarations=%#v", byName)
 	}
-	if byName["invalid-name"]["value"] != "allowed-for-template" {
-		t.Fatalf("template custom declaration=%#v", byName["invalid-name"])
+	if byName["CUSTOM_IMAGE_TAG"]["value"] != "allowed-for-template" {
+		t.Fatalf("template custom declaration=%#v", byName["CUSTOM_IMAGE_TAG"])
 	}
 }
 

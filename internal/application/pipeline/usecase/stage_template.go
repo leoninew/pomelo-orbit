@@ -974,11 +974,11 @@ func removeApplicationStage(stages []model.PipelineStage, stageId string) ([]mod
 	return remaining, found
 }
 
-func clonePipelineStageReferences(references []model.PipelineStageReference, pipelineId, projectId string) ([]model.PipelineStage, error) {
+func clonePipelineStageReferences(references []model.PipelineStageReference, pipelineId, projectId string) ([]model.PipelineStage, map[string]string, error) {
 	idMap := make(map[string]string, len(references))
 	for _, reference := range references {
 		if reference.Id == "" || reference.SourceTemplateStageId == "" || reference.SourceTemplateStageVersion <= 0 {
-			return nil, apperror.New(apperror.KindValidation, "template pipeline stage reference source snapshot is required")
+			return nil, nil, apperror.New(apperror.KindValidation, "template pipeline stage reference source snapshot is required")
 		}
 		idMap[reference.Id] = idutil.NewId()
 	}
@@ -986,27 +986,27 @@ func clonePipelineStageReferences(references []model.PipelineStageReference, pip
 	for _, reference := range references {
 		dependsOn, err := dependsOnFromJSON(reference.DependsOn)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		for index, dependency := range dependsOn {
 			mapped, exists := idMap[dependency]
 			if !exists {
-				return nil, apperror.New(apperror.KindValidation, "Template stage dependency does not exist")
+				return nil, nil, apperror.New(apperror.KindValidation, "Template stage dependency does not exist")
 			}
 			dependsOn[index] = mapped
 		}
 		dependsOnData, err := marshalDependsOn(dependsOn)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		id, sourceId, sourceName, sourceDescription := idMap[reference.Id], reference.SourceTemplateStageId, reference.SourceTemplateStageName, reference.SourceTemplateStageDescription
 		version, sortOrder := reference.SourceTemplateStageVersion, reference.SortOrder
 		artifacts := reference.Artifacts
 		if strings.TrimSpace(artifacts) == "" {
-			return nil, apperror.New(apperror.KindValidation, "template pipeline stage reference artifacts are required")
+			return nil, nil, apperror.New(apperror.KindValidation, "template pipeline stage reference artifacts are required")
 		}
 		pipelineIdCopy := pipelineId
 		result = append(result, model.PipelineStage{Id: id, ProjectId: projectId, Kind: model.PipelineStageKindApplication, PipelineId: &pipelineIdCopy, Name: reference.Name, Image: reference.Image, Script: reference.Script, Description: reference.Description, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageVersion: &version, SourceTemplateStageDescription: &sourceDescription, Artifacts: &artifacts, DependsOn: &dependsOnData, SortOrder: &sortOrder})
 	}
-	return result, nil
+	return result, idMap, nil
 }

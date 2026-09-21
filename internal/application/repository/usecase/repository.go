@@ -277,29 +277,6 @@ func marshalVariableOverrides(values []map[string]any) (string, error) {
 	}
 	return string(data), nil
 }
-func repositoryVariables(item model.Repository) ([]map[string]any, error) {
-	custom, err := repositoryCustomVariables(item.VariableOverrides)
-	if err != nil {
-		return nil, err
-	}
-	return append(repositoryBuiltinVariableDeclarations(item), custom...), nil
-}
-func repositoryCustomVariables(value string) ([]map[string]any, error) {
-	if strings.TrimSpace(value) == "" {
-		return []map[string]any{}, nil
-	}
-	var values []map[string]any
-	if err := json.Unmarshal([]byte(value), &values); err != nil {
-		return nil, apperror.New(apperror.KindInternal, "Invalid repository variables")
-	}
-	return sanitizeRepositoryVariables(values), nil
-}
-func repositoryBuiltinVariableDeclarations(item model.Repository) []map[string]any {
-	return []map[string]any{repositoryBuiltinVariableDeclaration("repository_code", item.Code), repositoryBuiltinVariableDeclaration("repository_url", item.RepositoryUrl), repositoryBuiltinVariableDeclaration("repository_ref", item.DefaultBranch)}
-}
-func repositoryBuiltinVariableDeclaration(name string, value any) map[string]any {
-	return map[string]any{"name": name, "description": pipelinevariable.PipelineBuiltinVariableSpecs()[name], "default": value, "value": nil, "secret": false, "source": "repository", "editable": name == "repository_ref"}
-}
 func sanitizeRepositoryVariables(values []map[string]any) []map[string]any {
 	result := make([]map[string]any, 0, len(values))
 	for _, value := range values {

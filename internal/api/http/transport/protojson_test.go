@@ -29,7 +29,7 @@ func TestMarshalProtoJSONEmitsUnpopulatedFields(t *testing.T) {
 		t.Fatalf("MarshalProtoJSON() error = %v", err)
 	}
 	text := string(data)
-	for _, field := range []string{`"has_credential":false`, `"git_credential_id":""`, `"variable_declarations":[]`} {
+	for _, field := range []string{`"has_credential":false`, `"git_credential_id":""`, `"variables":[]`} {
 		if !strings.Contains(text, field) {
 			t.Fatalf("MarshalProtoJSON() = %s, want %s", text, field)
 		}

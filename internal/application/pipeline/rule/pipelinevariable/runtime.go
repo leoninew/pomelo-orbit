@@ -601,14 +601,12 @@ func ValidateNestedVariableValues(repo *model.Repository, pipeline model.Pipelin
 	if err != nil {
 		return err
 	}
-	if pipeline.Kind == model.PipelineKindApplication {
-		pipelineVariables, err = NormalizePipelineVariables(pipelineVariables)
-		if err != nil {
-			return err
-		}
-		if err := ValidatePipelineVariableScopes(pipelineVariables, stages); err != nil {
-			return err
-		}
+	pipelineVariables, err = NormalizePipelineVariables(pipelineVariables)
+	if err != nil {
+		return err
+	}
+	if err := ValidatePipelineVariableScopes(pipelineVariables, stages); err != nil {
+		return err
 	}
 
 	repositoryByName := make(map[string]model.VariableDeclaration, len(repositoryVariables))
@@ -844,35 +842,6 @@ func PipelineVariables(value string) ([]map[string]any, error) {
 	return variables, nil
 }
 
-func SanitizeTemplatePipelineVariables(variables []map[string]any) []map[string]any {
-	result := make([]map[string]any, 0, len(variables))
-	for _, variable := range variables {
-		name, _ := variable["name"].(string)
-		name = strings.TrimSpace(name)
-		if name == "" || IsPipelineBuiltinVariable(name) {
-			continue
-		}
-		source, _ := variable["source"].(string)
-		if source == "" {
-			source = "pipeline_custom"
-		}
-		if source != "pipeline_custom" && source != "pipeline_stage" {
-			continue
-		}
-		copy := map[string]any{}
-		maps.Copy(copy, variable)
-		delete(copy, "stage_defaults")
-		delete(copy, "stage_name")
-		delete(copy, "stage_id")
-		copy["name"], copy["source"], copy["editable"] = name, "pipeline_custom", true
-		if _, exists := copy["secret"]; !exists {
-			copy["secret"] = false
-		}
-		result = append(result, copy)
-	}
-	return result
-}
-
 func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, error) {
 	result := make([]map[string]any, 0, len(variables))
 	seen := make(map[string]struct{}, len(variables))
@@ -980,7 +949,18 @@ func ResolveTemplatePipelineVariables(stages []model.PipelineStage, custom []map
 	if err != nil {
 		return nil, err
 	}
-	return mergeExtractedAndCustomVariables(extracted, SanitizeTemplatePipelineVariables(custom)), nil
+	custom, err = NormalizePipelineVariables(custom)
+	if err != nil {
+		return nil, err
+	}
+	stageDefinitions := make([]model.StageDefinition, 0, len(stages))
+	for _, stage := range stages {
+		stageDefinitions = append(stageDefinitions, model.StageDefinition{Id: stage.Id, Name: stage.Name})
+	}
+	if err := ValidatePipelineVariableScopes(custom, stageDefinitions); err != nil {
+		return nil, err
+	}
+	return mergeExtractedAndCustomVariables(extracted, custom), nil
 }
 
 func mergeExtractedAndCustomVariables(extracted []model.VariableDeclaration, custom []map[string]any) []map[string]any {

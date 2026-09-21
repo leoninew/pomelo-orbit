@@ -75,7 +75,7 @@ git remote add origin {{ repository_url }}
 git fetch --depth=1 --force origin {{ repository_ref }}
 git clean -fd
 git checkout --force -B {{ repository_ref }} FETCH_HEAD', 'Clone source repository', '[{"collector":"command","command":"git rev-parse HEAD","format":"git_object_id","name":"source_commit"}]', '[]', 1),
-    ('01KZGBGDK1G249681EVBDA9035', '01KZG83K2MXG08EJ6G48SG38B3', '01KRCWNJVA1DM02TJXZ4STJD06', 'docker build', 4, 'Build container image', 'docker:29.4', 'set -e
+    ('01KZGBGDK1G249681EVBDA9035', '01KZG83K2MXG08EJ6G48SG38B3', '01KRCWNJVA1DM02TJXZ4STJD06', 'docker build', 4, 'Build container image', 'docker build', 'docker:29.4', 'set -e
 cd {{ working_dir | default: "." }}
 docker build -t {{ image_name }}:{{ runtime_datetime }} -f {{ repository_dockerfile | default: "Dockerfile" }} .', 'Build container image', '[{"collector":"docker_image","reference":"{{ image_name }}:{{ runtime_datetime }}","name":"{{ image_name }}"}]', '["01KZGBG9NT6NCK8AT6H6ENV874"]', 2),
     ('4smvyi2oq4n2kzrio4zmcqykge', '01KNVEJPWVK757139NMNNNCEFE', '01KNRANZDR4PASATAXKTBBTRX9', 'golang:1.23 test', 3, '运行 Go 单元测试', 'golang:1.25 test', 'golang:1.23-alpine', 'set -e

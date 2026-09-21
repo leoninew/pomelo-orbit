@@ -33,7 +33,7 @@ target-version = "py312"
 select = ["E4", "E7", "E9", "F"]
 
 [tool.mypy]
-files = ["src", "tests", "cert.py", "gen_ulid.py", "manage.py", "version-calc.py"]
+files = ["src", "tests", "cert.py", "gen_ulid.py", "manage.py", "reset_development_database.py", "version-calc.py"]
 
 [[tool.mypy.overrides]]
 module = ["dynaconf", "ulid"]

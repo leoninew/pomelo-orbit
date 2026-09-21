@@ -35,6 +35,10 @@
 
     <AppLoadingState v-if="status === 'loading'" size="section" />
 
+    <p v-else-if="status === 'error'" class="py-12 text-center text-sm text-destructive">
+      {{ t('gateway.toast.loadDetailFailed') }}
+    </p>
+
     <template v-else-if="gateway">
       <DetailInfoCard
         :title="t('gateway.sections.controlPlane')"
@@ -155,6 +159,13 @@
         </div>
       </DetailInfoCard>
     </template>
+
+    <div v-else class="flex flex-col items-center gap-3">
+      <AppEmptyState :message="t('gateway.empty')" size="section" />
+      <button type="button" class="app-button-primary h-9 px-3" @click="openInitialization">
+        {{ t('project.initialization.title') }}
+      </button>
+    </div>
 
     <AppDialog
       v-model:open="isControlPlaneEditDialogOpen"
@@ -489,6 +500,7 @@
   import { serviceApi } from '@/api/service/service';
   import { gatewayApi } from '@/api/gateway/gateway';
   import AppBadge from '@/components/AppBadge.vue';
+  import AppEmptyState from '@/components/AppEmptyState.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -807,15 +819,19 @@
     try {
       await execute(async () => {
         const response = await gatewayApi.list(projectId);
-        const current = response.items[0];
-        if (!current) {
-          throw new Error(t('gateway.toast.loadDetailFailed'));
-        }
-        gateway.value = current;
+        gateway.value = response.items[0] ?? null;
       });
     } catch {
       toast.error(t('gateway.toast.loadDetailFailed'));
     }
+  }
+
+  async function openInitialization() {
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      return;
+    }
+    await router.push({ name: 'ProjectInitialization', params: { id: projectId } });
   }
 
   async function openDeployDialog() {

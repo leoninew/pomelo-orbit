@@ -829,6 +829,7 @@ export default {
     searchPlaceholder: '搜索网关名称或代码',
     create: '创建网关',
     detailTitle: '网关详情',
+    empty: '当前项目尚未配置网关。',
     backToList: '返回网关列表',
     openWorkload: '应用',
     actions: {

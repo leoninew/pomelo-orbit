@@ -1,4 +1,4 @@
-"""Focused tests for the remote backup command."""
+"""Focused tests for manage.py commands."""
 
 from __future__ import annotations
 
@@ -41,6 +41,49 @@ class BackupTests(unittest.TestCase):
         )
         self.assertIn("--no-recursion", archive_command)
         self.assertNotIn("--exclude-workspace", archive_command)
+
+
+class TunnelTests(unittest.TestCase):
+    def test_start_enables_ssh_diagnostics_when_verbose(self) -> None:
+        config = SimpleNamespace(
+            ssh_host="example.test",
+            ssh_target="ubuntu@example.test",
+            ssh_user="ubuntu",
+        )
+        tunnel = manage.SSHTunnel(config)
+
+        with (
+            patch.object(tunnel, "_load_tunnels", return_value=[]),
+            patch.object(tunnel, "_port_in_use", return_value=False),
+            patch.object(tunnel, "_save_tunnels"),
+            patch.object(manage.time, "sleep"),
+            patch.object(manage.subprocess, "Popen") as popen,
+        ):
+            tunnel.start(remote_port=5432, local_port=5433, verbose=True)
+
+        command = popen.call_args.args[0]
+        self.assertIn("-v", command)
+        self.assertIsNone(popen.call_args.kwargs["stderr"])
+
+    def test_main_passes_verbose_to_tunnel_start(self) -> None:
+        config = SimpleNamespace()
+
+        with (
+            patch.object(manage, "Config", return_value=config),
+            patch.object(manage, "SSHTunnel") as tunnel_class,
+            patch.object(
+                sys,
+                "argv",
+                ["manage.py", "tunnel", "start", "-v", "5432:5433"],
+            ),
+        ):
+            manage.main()
+
+        tunnel_class.return_value.start.assert_called_once_with(
+            remote_port=5432,
+            local_port=5433,
+            verbose=True,
+        )
 
 
 if __name__ == "__main__":

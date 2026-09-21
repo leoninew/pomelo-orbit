@@ -3,4 +3,4 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-uv run --locked python reset_development_database.py "$@"
+uv run --locked python database_reset.py "$@"

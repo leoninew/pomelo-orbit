@@ -17,7 +17,7 @@ Pomelo Orbit Remote Deployment Tool
 
 用法:
   python scripts/manage.py upgrade --image IMAGE      - 更新部署镜像
-  python scripts/manage.py tunnel start <remote:local> [remote:local...] - 启动 SSH 隧道
+  python scripts/manage.py tunnel start [-v] <remote:local> [remote:local...] - 启动 SSH 隧道
   python scripts/manage.py tunnel stop                                  - 停止 SSH 隧道
   python scripts/manage.py tunnel status                                - 查看隧道状态
   python scripts/manage.py exec <command>             - 执行远程命令
@@ -30,7 +30,7 @@ Pomelo Orbit Remote Deployment Tool
 
 示例:
   python scripts/manage.py upgrade --image ghcr.io/leoninew/pomelo-orbit:v1.0
-  python scripts/manage.py tunnel start 8080:8888      - 转发 8080->8888
+  python scripts/manage.py tunnel start -v 8080:8888   - 转发 8080->8888 并显示 SSH 诊断
   python scripts/manage.py tunnel start 8080:8888 9090:9999
   python scripts/manage.py exec ls -al
   python scripts/manage.py docker-compose up -d
@@ -160,7 +160,7 @@ class SSHTunnel:
     def __init__(self, config: Config):
         self.config = config
 
-    def start(self, remote_port: int, local_port: int) -> bool:
+    def start(self, remote_port: int, local_port: int, verbose: bool = False) -> bool:
         """启动 SSH 隧道，支持多次调用添加多个端口转发"""
         # 检查该本地端口是否已在转发
         tunnels = self._load_tunnels()
@@ -175,22 +175,26 @@ class SSHTunnel:
             f"启动端口转发: localhost:{local_port} -> {self.config.ssh_host}:{remote_port}"
         )
 
+        ssh_command = [
+            "ssh",
+            "-fN",
+            "-o",
+            "ControlMaster=no",
+            "-o",
+            "ServerAliveInterval=60",
+            "-o",
+            "ExitOnForwardFailure=yes",
+            "-L",
+            f"{local_port}:localhost:{remote_port}",
+            self.config.ssh_target,
+        ]
+        if verbose:
+            ssh_command.insert(1, "-v")
+
         subprocess.Popen(
-            [
-                "ssh",
-                "-fN",
-                "-o",
-                "ControlMaster=no",
-                "-o",
-                "ServerAliveInterval=60",
-                "-o",
-                "ExitOnForwardFailure=yes",
-                "-L",
-                f"{local_port}:localhost:{remote_port}",
-                self.config.ssh_target,
-            ],
+            ssh_command,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=None if verbose else subprocess.DEVNULL,
         )
 
         # 等待端口就绪并获取 PID
@@ -670,6 +674,12 @@ def main():
         nargs="*",
         help="端口映射，格式: remote_port:local_port，如 8080:8888",
     )
+    tunnel_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="启动隧道时显示 SSH 诊断输出",
+    )
 
     # exec 命令
     exec_parser = subparsers.add_parser("exec", help="执行远程命令")
@@ -754,7 +764,11 @@ def main():
                 remote, local = int(parts[0]), int(parts[1])
                 port_mappings.append((remote, local))
             for remote, local in port_mappings:
-                tunnel.start(remote_port=remote, local_port=local)
+                tunnel.start(
+                    remote_port=remote,
+                    local_port=local,
+                    verbose=args.verbose,
+                )
         elif args.action == "stop":
             tunnel.stop()
         else:

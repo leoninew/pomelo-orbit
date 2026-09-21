@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+/* eslint-disable vue/one-component-per-file */
 import { createApp, nextTick, type App } from 'vue';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
@@ -55,6 +56,8 @@ const gateway: GatewayResp = {
   version_bindings: [],
 };
 
+const ProjectInitializationStub = { template: '<div>Project initialization</div>' };
+
 let mountedApp: App | undefined;
 let target: HTMLDivElement | undefined;
 let pinia: ReturnType<typeof createPinia> | undefined;
@@ -76,6 +79,56 @@ afterEach(() => {
 });
 
 describe('Gateway detail editing', () => {
+  it('keeps an unconfigured gateway page open until initialization is requested', async () => {
+    pinia = createPinia();
+    setActivePinia(pinia);
+    useProjectStore().setActiveProject('project-1');
+    vi.mocked(gatewayApi.list).mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      per_page: 1,
+      pages: 0,
+    });
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/gateway', component: GatewayDetail },
+        {
+          path: '/project/:id/initialization',
+          name: 'ProjectInitialization',
+          component: ProjectInitializationStub,
+        },
+      ],
+    });
+
+    await router.push('/gateway');
+    target = document.createElement('div');
+    document.body.append(target);
+    mountedApp = createApp({ template: '<RouterView />' });
+    mountedApp.use(pinia);
+    mountedApp.use(router);
+    mountedApp.use(i18n);
+    mountedApp.mount(target);
+    await flushRender();
+
+    expect(router.currentRoute.value.path).toBe('/gateway');
+    expect(target.textContent).toContain(i18n.global.t('gateway.empty'));
+
+    const initializeButton = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === i18n.global.t('project.initialization.title')
+    );
+    expect(initializeButton).toBeDefined();
+    initializeButton?.click();
+
+    await vi.waitFor(() =>
+      expect(router.currentRoute.value).toMatchObject({
+        name: 'ProjectInitialization',
+        params: { id: 'project-1' },
+      })
+    );
+  });
+
   it('saves control-plane fields in the detail dialog without a render error', async () => {
     pinia = createPinia();
     setActivePinia(pinia);

@@ -520,7 +520,7 @@
   } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { useRouter } from 'vue-router';
+  import { useRoute, useRouter } from 'vue-router';
   import {
     StepperDescription,
     StepperIndicator,
@@ -542,6 +542,7 @@
   } from '@/stores/projectInitialization';
   import { useProjectStore } from '@/stores/project';
   import { resolveInitializationCompletionRedirect } from '@/router/projectReadiness';
+  import { ApiError } from '@/utils/request';
   import { formatTime } from '@/utils/time';
   import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
   import { buildWindowsSshInitializationCommand } from '@/utils/windowsSshCommand';
@@ -568,6 +569,7 @@
   } from '@/views/gateway/gatewayConfigForm';
 
   const { t } = useI18n();
+  const route = useRoute();
   const router = useRouter();
   const toast = useToast();
   const projectStore = useProjectStore();
@@ -777,12 +779,20 @@
     loadingSshCommand.value = false;
   }
 
+  function routeProjectId(): string {
+    const value = route.params.id;
+    return (Array.isArray(value) ? value[0] : value)?.trim() ?? '';
+  }
+
   function openProject(id: string) {
-    if (!id) {
+    const projectId = id.trim();
+    if (!projectId) {
+      void router.replace({ name: 'Projects' });
       return;
     }
-    projectStore.setActiveProject(id);
-    void loadStatus(id);
+    resetWorkspace();
+    projectStore.setActiveProject(projectId);
+    void loadStatus(projectId);
   }
 
   function selectStep(step: number) {
@@ -798,16 +808,13 @@
     }
   }
 
-  async function loadStatus(id = projectStore.activeProjectId, force = false) {
-    if (!id) {
-      return;
-    }
+  async function loadStatus(id: string, force = false) {
     loadError.value = '';
     try {
       const view = force
         ? await initializationStore.fetchStatus(id)
         : await initializationStore.ensureStatus(id);
-      if (id !== projectStore.activeProjectId) {
+      if (id !== routeProjectId()) {
         return;
       }
       hydrate(view);
@@ -815,13 +822,23 @@
         await router.replace(resolveInitializationCompletionRedirect());
       }
     } catch (error: unknown) {
+      if (id !== routeProjectId()) {
+        return;
+      }
+      if (error instanceof ApiError && error.code === 'not_found') {
+        await router.replace({ name: 'Projects' });
+        return;
+      }
       loadError.value =
         error instanceof Error ? error.message : t('project.initialization.loadFailed');
     }
   }
 
   function reloadStatus() {
-    void loadStatus(projectStore.activeProjectId, true);
+    const projectId = routeProjectId();
+    if (projectId) {
+      void loadStatus(projectId, true);
+    }
   }
 
   function hydrate(view: NonNullable<typeof status.value>) {
@@ -978,16 +995,12 @@
     }
   }
 
-  onMounted(() => openProject(projectStore.activeProjectId ?? ''));
+  onMounted(() => openProject(routeProjectId()));
 
   watch(
-    () => projectStore.activeProjectId,
-    (nextId, previousId) => {
-      if (nextId === previousId) {
-        return;
-      }
-      resetWorkspace();
-      openProject(nextId ?? '');
+    () => route.params.id,
+    () => {
+      openProject(routeProjectId());
     }
   );
 </script>

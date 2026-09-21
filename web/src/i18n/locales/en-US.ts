@@ -847,6 +847,7 @@ export default {
     searchPlaceholder: 'Search gateway name or code',
     create: 'Create Gateway',
     detailTitle: 'Gateway detail',
+    empty: 'No Gateway is configured for this project.',
     backToList: 'Back to gateways',
     openWorkload: 'Application',
     actions: {

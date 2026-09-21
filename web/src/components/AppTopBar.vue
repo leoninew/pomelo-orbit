@@ -290,11 +290,7 @@
   import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
   import { useAuthStore } from '@/stores/auth';
   import { useProjectStore } from '@/stores/project';
-  import { useProjectInitializationStore } from '@/stores/projectInitialization';
-  import {
-    isProjectInitializationPath,
-    isProjectReadinessGuardedPath,
-  } from '@/router/projectReadiness';
+  import { isProjectInitializationPath } from '@/router/projectReadiness';
   import { useTheme } from '@/composables/useTheme';
   import { setLocale, type Locale } from '@/i18n';
   import { useToast } from '@/composables/useToast';
@@ -324,7 +320,6 @@
   const router = useRouter();
   const authStore = useAuthStore();
   const projectStore = useProjectStore();
-  const initializationStore = useProjectInitializationStore();
   const { theme, cycleTheme } = useTheme();
   const { t, locale } = useI18n({ useScope: 'global' });
   const toast = useToast();
@@ -385,29 +380,16 @@
     if (projectId === projectStore.activeProjectId) {
       return;
     }
-    projectStore.setActiveProject(projectId);
     const current = router.currentRoute.value;
-    const shouldCheckReadiness =
-      isProjectReadinessGuardedPath(current.path) || isProjectInitializationPath(current.path);
     try {
-      if (shouldCheckReadiness) {
-        const status = await initializationStore.fetchStatus(projectId);
-        if (status.status !== 'ready') {
-          await router.push({
-            name: 'ProjectInitialization',
-            params: { id: projectId },
-            query: { redirect: current.fullPath },
-          });
-          return;
-        }
-      }
+      projectStore.setActiveProject(projectId);
       if (isProjectInitializationPath(current.path)) {
-        await router.push('/gateway');
+        await router.push({ name: 'ProjectInitialization', params: { id: projectId } });
         return;
       }
       router.go(0);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t('project.initialization.loadFailed'));
+      toast.error(error instanceof Error ? error.message : t('project.loadFailed'));
     }
   }
 

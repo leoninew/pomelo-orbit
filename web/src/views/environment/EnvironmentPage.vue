@@ -197,6 +197,7 @@
   import { KeyRound, RefreshCw } from '@lucide/vue';
   import { computed, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
+  import { useRoute, useRouter } from 'vue-router';
   import { projectEnvironmentApi } from '@/api/project/environment';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -209,6 +210,7 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
+  import { ApiError } from '@/utils/request';
   import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import { formatTime } from '@/utils/time';
   import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
@@ -225,6 +227,8 @@
   } from '@/views/environment/environmentForm';
 
   const { t } = useI18n();
+  const route = useRoute();
+  const router = useRouter();
   const toast = useToast();
   const projectStore = useProjectStore();
   const { loading, execute } = useStatusAsync();
@@ -280,6 +284,14 @@
         environment.value = await projectEnvironmentApi.get(projectId);
       });
     } catch (error: unknown) {
+      if (error instanceof ApiError && error.code === 'not_found') {
+        await router.replace({
+          name: 'ProjectInitialization',
+          params: { id: projectId },
+          query: { redirect: route.fullPath },
+        });
+        return;
+      }
       loadError.value =
         error instanceof Error ? error.message : t('project.environment.loadFailed');
     }

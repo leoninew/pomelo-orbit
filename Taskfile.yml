@@ -8,6 +8,8 @@ vars:
   FIX_ENABLED: '{{if contains "--fix" .CLI_ARGS}}1{{end}}'
   FIX_FORMAT_ARGS: '{{if eq .FIX_ENABLED "1"}}{{else}}--diff{{end}}'
   FIX_LINT_ARGS: '{{if eq .FIX_ENABLED "1"}}--fix{{end}}'
+  WEB_LINT_TASK: '{{if eq .FIX_ENABLED "1"}}lint:fix{{else}}lint{{end}}'
+  WEB_FORMAT_TASK: '{{if eq .FIX_ENABLED "1"}}format:fix{{else}}format{{end}}'
   COVER_ENABLED: '{{if contains "--cov" .CLI_ARGS}}1{{end}}'
   COVER_ARGS: '{{if eq .COVER_ENABLED "1"}}-cover -coverprofile=coverage.out{{end}}'
   WEB_TEST_TASK: '{{if eq .COVER_ENABLED "1"}}test:cov{{else}}test{{end}}'
@@ -65,8 +67,8 @@ tasks:
     desc: Check web and Go formatting, lint, and types; use -- --fix to apply fixes
     cmds:
       - yarn --cwd web typecheck
-      - yarn --cwd web lint
-      - yarn --cwd web format
+      - yarn --cwd web {{.WEB_LINT_TASK}}
+      - yarn --cwd web {{.WEB_FORMAT_TASK}}
       - ./bin/golangci-lint config verify
       - ./bin/golangci-lint fmt {{.FIX_FORMAT_ARGS}} ./cmd/... ./internal/... ./sql
       - ./bin/golangci-lint run {{.FIX_LINT_ARGS}} ./cmd/... ./internal/... ./sql

@@ -21,80 +21,82 @@
     <div role="tabpanel" class="overflow-x-auto">
       <AppEmptyState v-if="visibleVariables.length === 0" size="compact" />
       <table v-else class="app-data-table min-w-[1180px]">
-      <thead>
-        <tr>
-          <th>{{ t('variableDeclaration.name') }}</th>
-          <th>类型</th>
-          <th>{{ t('variableDeclaration.stage') }}</th>
-          <th>{{ t('variableDeclaration.description') }}</th>
-          <th>{{ t('variableDeclaration.value') }}</th>
-          <th>取值来源</th>
-          <th>引用位置</th>
-          <th v-if="!readonly" class="w-32">{{ t('common.operation') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="variable in visibleVariables" :key="variableKey(variable)">
-          <td>
-            <span class="text-foreground">{{ variable.name }}</span>
-          </td>
-          <td>
-            <AppBadge variant="status" :tone="kindTone(variable.kind)">
-              {{ kindLabel(variable.kind) }}
-            </AppBadge>
-          </td>
-          <td class="max-w-40 truncate" :title="stageLabel(variable)">
-            <span v-if="variable.stage_binding" class="text-foreground">
-              {{ stageLabel(variable) }}
-            </span>
-            <span v-else class="text-muted-foreground">{{ t('variableDeclaration.global') }}</span>
-          </td>
-          <td class="max-w-md truncate" :title="configuration(variable)?.description">
-            <span v-if="configuration(variable)?.description" class="text-muted-foreground">
-              {{ configuration(variable)?.description }}
-            </span>
-          </td>
-          <td class="max-w-sm truncate" :title="displayValue(variable)">
-            <span v-if="hasDisplayValue(configurationValue(variable))" class="text-foreground">
-              {{ displayValue(variable) }}
-            </span>
-          </td>
-          <td>
-            <AppBadge variant="status" :tone="valueSourceTone(variable.value_source)">
-              {{ valueSourceLabel(variable.value_source) }}
-            </AppBadge>
-          </td>
-          <td class="max-w-sm">
-            <div v-if="variable.references.length > 0" class="flex flex-wrap gap-1">
-              <AppBadge v-for="reference in variable.references" :key="referenceKey(reference)">
-                {{ referenceLabel(reference) }}
+        <thead>
+          <tr>
+            <th>{{ t('variableDeclaration.name') }}</th>
+            <th>类型</th>
+            <th>{{ t('variableDeclaration.stage') }}</th>
+            <th>{{ t('variableDeclaration.description') }}</th>
+            <th>{{ t('variableDeclaration.value') }}</th>
+            <th>取值来源</th>
+            <th>引用位置</th>
+            <th v-if="!readonly" class="w-32">{{ t('common.operation') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="variable in visibleVariables" :key="variableKey(variable)">
+            <td>
+              <span class="text-foreground">{{ variable.name }}</span>
+            </td>
+            <td>
+              <AppBadge variant="status" :tone="kindTone(variable.kind)">
+                {{ kindLabel(variable.kind) }}
               </AppBadge>
-            </div>
-            <span v-else class="text-muted-foreground">-</span>
-          </td>
-          <td v-if="!readonly" class="w-32">
-            <div class="flex items-center gap-3">
-              <button v-if="canEdit(variable)" class="app-link" @click="emit('edit', variable)">
-                {{ t('common.edit') }}
-              </button>
-              <button
-                v-if="canEdit(variable)"
-                class="app-link-danger"
-                @click="emit('delete', variable)"
-              >
-                {{ t('common.reset') }}
-              </button>
-              <button
-                v-if="canOverride(variable)"
-                class="app-link"
-                @click="emit('override', variable)"
-              >
-                {{ t('common.edit') }}
-              </button>
-            </div>
-          </td>
-        </tr>
-      </tbody>
+            </td>
+            <td class="max-w-40 truncate" :title="stageLabel(variable)">
+              <span v-if="variable.stage_binding" class="text-foreground">
+                {{ stageLabel(variable) }}
+              </span>
+              <span v-else class="text-muted-foreground">
+                {{ t('variableDeclaration.global') }}
+              </span>
+            </td>
+            <td class="max-w-md truncate" :title="configuration(variable)?.description">
+              <span v-if="configuration(variable)?.description" class="text-muted-foreground">
+                {{ configuration(variable)?.description }}
+              </span>
+            </td>
+            <td class="max-w-sm truncate" :title="displayValue(variable)">
+              <span v-if="hasDisplayValue(configurationValue(variable))" class="text-foreground">
+                {{ displayValue(variable) }}
+              </span>
+            </td>
+            <td>
+              <AppBadge variant="status" :tone="valueSourceTone(variable.value_source)">
+                {{ valueSourceLabel(variable.value_source) }}
+              </AppBadge>
+            </td>
+            <td class="max-w-sm">
+              <div v-if="variable.references.length > 0" class="flex flex-wrap gap-1">
+                <AppBadge v-for="reference in variable.references" :key="referenceKey(reference)">
+                  {{ referenceLabel(reference) }}
+                </AppBadge>
+              </div>
+              <span v-else class="text-muted-foreground">-</span>
+            </td>
+            <td v-if="!readonly" class="w-32">
+              <div class="flex items-center gap-3">
+                <button v-if="canEdit(variable)" class="app-link" @click="emit('edit', variable)">
+                  {{ t('common.edit') }}
+                </button>
+                <button
+                  v-if="canEdit(variable)"
+                  class="app-link-danger"
+                  @click="emit('delete', variable)"
+                >
+                  {{ t('common.reset') }}
+                </button>
+                <button
+                  v-if="canOverride(variable)"
+                  class="app-link"
+                  @click="emit('override', variable)"
+                >
+                  {{ t('common.edit') }}
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
       </table>
     </div>
   </div>
@@ -133,8 +135,12 @@
   type VariableScope = 'global' | 'stage';
 
   const activeScope = ref<VariableScope>('global');
-  const globalVariables = computed(() => props.variables.filter((variable) => variable.scope === 'global'));
-  const stageVariables = computed(() => props.variables.filter((variable) => variable.scope === 'stage'));
+  const globalVariables = computed(() =>
+    props.variables.filter((variable) => variable.scope === 'global')
+  );
+  const stageVariables = computed(() =>
+    props.variables.filter((variable) => variable.scope === 'stage')
+  );
   const visibleVariables = computed(() =>
     activeScope.value === 'global' ? globalVariables.value : stageVariables.value
   );
@@ -144,11 +150,18 @@
   ]);
 
   function variableKey(variable: VariableResp) {
-    return variable.name + ':' + (variable.stage_binding?.stage_id || 'global') + ':' + variable.kind;
+    return (
+      variable.name + ':' + (variable.stage_binding?.stage_id || 'global') + ':' + variable.kind
+    );
   }
 
   function referenceKey(reference: VariableReferenceResp) {
-    return [reference.stage_id, reference.field, reference.artifact_index ?? '', reference.artifact_name].join(':');
+    return [
+      reference.stage_id,
+      reference.field,
+      reference.artifact_index ?? '',
+      reference.artifact_name,
+    ].join(':');
   }
 
   function stageLabel(variable: VariableResp) {
@@ -179,7 +192,11 @@
   }
 
   function canEdit(variable: VariableResp) {
-    return !props.readonly && variable.editable && Boolean(variable.configuration || variable.stage_override);
+    return (
+      !props.readonly &&
+      variable.editable &&
+      Boolean(variable.configuration || variable.stage_override)
+    );
   }
 
   function canOverride(variable: VariableResp) {

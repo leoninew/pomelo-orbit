@@ -349,10 +349,7 @@
   import { useProjectStore } from '@/stores/project';
   import type { CredentialResp } from '@/gen/proto/orbit/v1/credential/credential';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
-  import type {
-    VariableDeclarationReq,
-    VariableResp,
-  } from '@/gen/proto/orbit/v1/common/common';
+  import type { VariableDeclarationReq, VariableResp } from '@/gen/proto/orbit/v1/common/common';
   import { formatTime } from '@/utils/time';
   import {
     effectiveVariableValue,

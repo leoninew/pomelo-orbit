@@ -454,7 +454,7 @@ func TestResolveTemplatePipelineVariablesPreservesTemplateDetailContract(t *test
 }
 
 func TestResolveTemplatePipelineVariablesInheritsGlobalCustomOntoExtractedStageVariable(t *testing.T) {
-	artifacts := `[{"collector":"docker_image","reference":"{{ image_name }}:{{ runtime_datetime }}","name":"{{ image_name }}"}]`
+	artifacts := `[{"collector":"docker_image","reference":"{{ image_name }}:{{ runtime_datetime }}","name":"image"}]`
 	stages := []model.PipelineStage{{
 		Id:        "01KZGBGDK1G249681EVBDA9035",
 		Name:      "docker build",
@@ -490,7 +490,7 @@ func TestResolveTemplatePipelineVariablesInheritsGlobalCustomOntoExtractedStageV
 }
 
 func TestResolvePipelineVariablesInheritsGlobalCustomOntoExtractedStageVariable(t *testing.T) {
-	artifacts := `[{"collector":"docker_image","reference":"{{ image_name }}:{{ runtime_datetime }}","name":"{{ image_name }}"}]`
+	artifacts := `[{"collector":"docker_image","reference":"{{ image_name }}:{{ runtime_datetime }}","name":"image"}]`
 	stages := []model.PipelineStage{{
 		Id:        "stage-build",
 		Name:      "docker build",

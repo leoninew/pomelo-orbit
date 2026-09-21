@@ -124,7 +124,10 @@
               <tr v-for="stage in orderedStages" :key="stage.id">
                 <td>{{ stage.sort_order }}</td>
                 <td>
-                  <router-link :to="`/pipeline-stage/${stage.source_template_stage_id}`" class="app-link">
+                  <router-link
+                    :to="`/pipeline-stage/${stage.source_template_stage_id}`"
+                    class="app-link"
+                  >
                     {{ stage.name }}
                   </router-link>
                 </td>
@@ -455,10 +458,7 @@
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
-  import type {
-    VariableDeclarationReq,
-    VariableResp,
-  } from '@/gen/proto/orbit/v1/common/common';
+  import type { VariableDeclarationReq, VariableResp } from '@/gen/proto/orbit/v1/common/common';
   import type {
     PipelineStageNodeResp,
     PipelineStageTemplateUpdatePreviewResp,
@@ -729,7 +729,10 @@
     return [...requests.values()];
   }
 
-  function pipelineVariableRequestsWith(nextVariable?: VariableDeclarationReq, removeScopeKey?: string) {
+  function pipelineVariableRequestsWith(
+    nextVariable?: VariableDeclarationReq,
+    removeScopeKey?: string
+  ) {
     const next = pipelineCustomVariables.value.filter(
       (variable) =>
         requestScopeKey(variable) !== removeScopeKey &&

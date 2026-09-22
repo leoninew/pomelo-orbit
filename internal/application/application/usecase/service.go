@@ -31,7 +31,6 @@ func New(project repository.ProjectReader, application repository.ApplicationSto
 }
 
 func (s Service) ListApplications(ctx context.Context, userId string, projectId string, page int, perPage int, search string, kind string) (repository.Page[model.Application], error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return repository.Page[model.Application]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -46,7 +45,7 @@ func (s Service) ListApplications(ctx context.Context, userId string, projectId 
 }
 
 func (s Service) CreateApplication(ctx context.Context, userId string, input applicationdto.ApplicationCreateInput) (model.Application, error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	if projectId == "" {
 		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -108,7 +107,6 @@ func (s Service) ApplicationDefinitionForUser(ctx context.Context, userId, proje
 // CreateApplicationFromDefinition creates the complete static Application
 // definition without synthesizing an interactive initial Version.
 func (s Service) CreateApplicationFromDefinition(ctx context.Context, userId, projectId string, input applicationdto.ApplicationDefinition) (applicationdto.ApplicationDefinition, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return applicationdto.ApplicationDefinition{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -197,14 +195,12 @@ func (s Service) RemoveApplication(ctx context.Context, userId, projectId, appli
 }
 
 func (s Service) loadApplicationForUser(ctx context.Context, userId string, projectId string, applicationId string) (model.Application, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
-	applicationId = strings.TrimSpace(applicationId)
 	app, err := s.store.Application(ctx, projectId, applicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {

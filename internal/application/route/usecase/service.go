@@ -67,7 +67,7 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId string, 
 }
 
 func (s Service) resolveGatewayForRender(ctx context.Context, projectId string) (*model.GatewayConfig, error) {
-	cfg, err := s.gateway.GatewayConfigByProject(ctx, strings.TrimSpace(projectId))
+	cfg, err := s.gateway.GatewayConfigByProject(ctx, projectId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, apperror.New(apperror.KindValidation, "no gateway provisioned for this project environment")
@@ -116,7 +116,6 @@ var routeTargetUrlPattern = regexp.MustCompile(`^https?://[a-zA-Z0-9.-]+(?::\d+)
 
 // ListRoutes returns routes visible to the user.
 func (s Service) ListRoutes(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[model.Route], error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return repository.Page[model.Route]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -133,7 +132,6 @@ func (s Service) ListRoutes(ctx context.Context, userId string, projectId string
 // ListAllRoutes returns every route in the Project, including disabled
 // HTTP/TCP routes and both managed and custom targets.
 func (s Service) ListAllRoutes(ctx context.Context, userId string, projectId string) ([]model.Route, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return nil, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -149,7 +147,6 @@ func (s Service) ListAllRoutes(ctx context.Context, userId string, projectId str
 
 // CreateRoute creates a route and persists it.
 func (s Service) CreateRoute(ctx context.Context, userId string, projectId string, input routedto.RouteCreateInput) (model.Route, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Route{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -175,7 +172,6 @@ func (s Service) CreateRoute(ctx context.Context, userId string, projectId strin
 // CreateRouteFromDefinition persists a complete Route configuration without
 // publishing it. The imported route's enabled state is retained.
 func (s Service) CreateRouteFromDefinition(ctx context.Context, userId string, projectId string, input routedto.RouteDefinitionInput) (model.Route, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Route{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -542,7 +538,6 @@ func (s Service) EnableRouteMkcert(ctx context.Context, userId, projectId, route
 
 // TraefikRouteConfig reports the dashboard route state.
 func (s Service) TraefikRouteConfig(ctx context.Context, userId string, projectId string) (routedto.TraefikConfigView, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return routedto.TraefikConfigView{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -568,7 +563,6 @@ func (s Service) TraefikRouteConfig(ctx context.Context, userId string, projectI
 
 // ListTraefikRoutes fetches routers from the Traefik API.
 func (s Service) ListTraefikRoutes(ctx context.Context, userId string, projectId string) ([]routeport.TraefikRouter, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return nil, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -606,14 +600,12 @@ func (s Service) traefikClientError(err error, internalMessage string) error {
 }
 
 func (s Service) loadRouteForUser(ctx context.Context, userId, projectId, routeId string) (model.Route, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Route{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Route{}, err
 	}
-	routeId = strings.TrimSpace(routeId)
 	route, err := s.route.Route(ctx, projectId, routeId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -659,7 +651,6 @@ func cloneInt(input *int) *int {
 // compose up success is not sufficient: the Traefik REST control plane must
 // accept requests before the snapshot PUT.
 func (s Service) PublishSnapshot(ctx context.Context, projectId string) error {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return apperror.New(apperror.KindValidation, "project_id is required for route publish")
 	}

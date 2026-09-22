@@ -106,6 +106,6 @@ func decryptEnvironmentPrivateKey(secretKey string, item model.EnvironmentCreden
 func matchesEnvironmentCredential(environment model.Environment, credential model.EnvironmentCredential) bool {
 	return environment.IsSSH() &&
 		credential.Id == environment.SSH.CredentialId &&
-		strings.TrimSpace(credential.ProjectId) == environment.ProjectId &&
+		credential.ProjectId == environment.ProjectId &&
 		credential.Revision == environment.SSH.CredentialRevision
 }

@@ -3,7 +3,6 @@ package pipelinerunsvc
 import (
 	"context"
 	"errors"
-	"strings"
 
 	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -12,7 +11,7 @@ import (
 )
 
 func (s Service) ListArtifacts(ctx context.Context, userId string, input pipelinerundto.ArtifactListInput) (repository.Page[model.Artifact], error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	if projectId == "" {
 		return repository.Page[model.Artifact]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -33,14 +32,12 @@ func (s Service) ListArtifacts(ctx context.Context, userId string, input pipelin
 }
 
 func (s Service) ArtifactForUser(ctx context.Context, userId string, projectId string, artifactId string) (model.Artifact, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Artifact{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Artifact{}, err
 	}
-	artifactId = strings.TrimSpace(artifactId)
 	item, err := s.store.Artifact(ctx, projectId, artifactId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {

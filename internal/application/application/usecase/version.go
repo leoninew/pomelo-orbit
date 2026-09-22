@@ -113,7 +113,7 @@ func (s Service) CreateVersionFromDefinition(ctx context.Context, userId string,
 	}
 	var createdFromVersionId *string
 	if input.CreatedFromVersionId != nil {
-		value := strings.TrimSpace(*input.CreatedFromVersionId)
+		value := *input.CreatedFromVersionId
 		if value != "" {
 			createdFromVersionId = &value
 		}
@@ -158,7 +158,7 @@ func (s Service) createDefinitionVersions(ctx context.Context, projectId string,
 	}
 	bySourceId := make(map[string]applicationdto.VersionDefinition, len(definitions))
 	for _, definition := range definitions {
-		sourceId := strings.TrimSpace(definition.Version.Id)
+		sourceId := definition.Version.Id
 		if sourceId == "" {
 			return nil, apperror.New(apperror.KindValidation, "Application definition Version id is required")
 		}
@@ -184,7 +184,7 @@ func (s Service) createDefinitionVersions(ctx context.Context, projectId string,
 		visiting[sourceId] = true
 		var parentId *string
 		if definition.Version.CreatedFromVersionId != nil {
-			parentSourceId := strings.TrimSpace(*definition.Version.CreatedFromVersionId)
+			parentSourceId := *definition.Version.CreatedFromVersionId
 			if parentSourceId == "" {
 				return apperror.New(apperror.KindValidation, "Application definition Version parent id is invalid")
 			}
@@ -226,13 +226,13 @@ func (s Service) createDefinitionVersions(ctx context.Context, projectId string,
 		return nil
 	}
 	for _, definition := range definitions {
-		if err := create(strings.TrimSpace(definition.Version.Id)); err != nil {
+		if err := create(definition.Version.Id); err != nil {
 			return nil, err
 		}
 	}
 	created := make([]applicationdto.VersionDefinition, 0, len(definitions))
 	for _, definition := range definitions {
-		created = append(created, createdBySourceId[strings.TrimSpace(definition.Version.Id)])
+		created = append(created, createdBySourceId[definition.Version.Id])
 	}
 	return created, nil
 }
@@ -263,7 +263,7 @@ func (s Service) VersionComponentForUser(ctx context.Context, userId string, pro
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
-	component, err := s.store.VersionComponent(ctx, projectId, strings.TrimSpace(componentId))
+	component, err := s.store.VersionComponent(ctx, projectId, componentId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.VersionComponent{}, apperror.New(apperror.KindNotFound, "Component "+componentId+" not found")
@@ -549,14 +549,12 @@ func (s Service) versionView(ctx context.Context, projectId string, version mode
 }
 
 func (s Service) loadVersionForUser(ctx context.Context, userId string, projectId string, versionId string) (model.Version, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Version{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Version{}, err
 	}
-	versionId = strings.TrimSpace(versionId)
 	version, err := s.store.Version(ctx, projectId, versionId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {

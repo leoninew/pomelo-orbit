@@ -97,7 +97,6 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 }
 
 func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, changes []routedto.RouteSyncChange) ([]model.Route, []routeport.TraefikRouter, []routeport.TraefikService, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return nil, nil, nil, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -137,7 +136,7 @@ func (s Service) syncCandidateRoutes(ctx context.Context, projectId string, chan
 	}
 	requested := make(map[string]bool, len(changes))
 	for _, change := range changes {
-		routeId := strings.TrimSpace(change.RouteId)
+		routeId := change.RouteId
 		if routeId == "" {
 			return nil, apperror.New(apperror.KindValidation, "route_id is required")
 		}
@@ -203,7 +202,7 @@ func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, routes
 
 func (s Service) applyRouteSyncChanges(ctx context.Context, projectId string, changes []routedto.RouteSyncChange) error {
 	for _, change := range changes {
-		routeId := strings.TrimSpace(change.RouteId)
+		routeId := change.RouteId
 		route, err := s.route.Route(ctx, projectId, routeId)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {

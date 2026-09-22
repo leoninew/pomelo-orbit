@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"strings"
 	"time"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
@@ -290,7 +289,6 @@ func (s Service) loadApplicationForUser(ctx context.Context, userId string, proj
 	if s.commandStore == nil {
 		return model.Application{}, apperror.New(apperror.KindInternal, "deployment command store is not configured")
 	}
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -308,7 +306,7 @@ func (s Service) loadApplicationForUser(ctx context.Context, userId string, proj
 }
 
 func (s Service) resolveServiceTarget(ctx context.Context, projectId, applicationId string, input deploymentdto.ServiceTargetInput) (model.Service, error) {
-	serviceId := strings.TrimSpace(input.ServiceId)
+	serviceId := input.ServiceId
 	if serviceId == "" {
 		return model.Service{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}
@@ -326,7 +324,6 @@ func (s Service) resolveServiceTarget(ctx context.Context, projectId, applicatio
 }
 
 func (s Service) serviceForUser(ctx context.Context, userId string, projectId string, serviceId string) (model.Service, model.Application, error) {
-	serviceId = strings.TrimSpace(serviceId)
 	if serviceId == "" {
 		return model.Service{}, model.Application{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}

@@ -135,7 +135,6 @@ func (s Service) Members(ctx context.Context, projectId string) ([]model.User, e
 }
 
 func (s Service) AddMember(ctx context.Context, projectId string, userId string) ([]model.User, error) {
-	userId = strings.TrimSpace(userId)
 	if userId == "" {
 		return nil, apperror.New(apperror.KindValidation, "user_id is required")
 	}
@@ -152,7 +151,7 @@ func (s Service) AddMember(ctx context.Context, projectId string, userId string)
 }
 
 func (s Service) RemoveMember(ctx context.Context, projectId string, userId string) ([]model.User, error) {
-	if err := s.repo.RemoveProjectMember(ctx, projectId, strings.TrimSpace(userId)); err != nil {
+	if err := s.repo.RemoveProjectMember(ctx, projectId, userId); err != nil {
 		return nil, err
 	}
 	return s.repo.ProjectMembers(ctx, projectId)
@@ -161,7 +160,7 @@ func (s Service) RemoveMember(ctx context.Context, projectId string, userId stri
 // RemoveUserFromAllProjects removes Project-owned memberships before the User
 // domain deletes the account itself.
 func (s Service) RemoveUserFromAllProjects(ctx context.Context, userId string) error {
-	return s.repo.RemoveUserFromAllProjects(ctx, strings.TrimSpace(userId))
+	return s.repo.RemoveUserFromAllProjects(ctx, userId)
 }
 
 func (s Service) ensureCodeAvailable(ctx context.Context, code string, currentProjectId string) error {

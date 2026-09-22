@@ -143,10 +143,10 @@ func (s Service) resolveManagedRouteTarget(ctx context.Context, projectId string
 }
 
 func (s Service) ensureTCPListenerAvailable(ctx context.Context, candidate model.Route, excludeId string) error {
-	if candidate.ProjectId == nil || strings.TrimSpace(*candidate.ProjectId) == "" {
+	if candidate.ProjectId == nil || *candidate.ProjectId == "" {
 		return apperror.New(apperror.KindValidation, "Route project is required")
 	}
-	projectId := strings.TrimSpace(*candidate.ProjectId)
+	projectId := *candidate.ProjectId
 	routes, err := s.route.ListEnabledRoutesByProject(ctx, projectId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
@@ -170,7 +170,6 @@ func (s Service) ensureTCPListenerAvailable(ctx context.Context, candidate model
 }
 
 func (s Service) componentPortConflict(ctx context.Context, projectId string, listenPort int) (string, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return "", apperror.New(apperror.KindValidation, "project_id is required")
 	}

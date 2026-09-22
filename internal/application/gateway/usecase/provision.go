@@ -2,7 +2,6 @@ package gatewaysvc
 
 import (
 	"context"
-	"strings"
 
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -12,7 +11,7 @@ import (
 // publishes a Version, creates a Deployment, waits for runtime state, or
 // changes an existing Service binding. Missing Gateway resources are not created.
 func (s Service) ProvisionGateway(ctx context.Context, userId string, input gatewaydto.ProvisionGatewayInput) (gatewaydto.ProvisionGatewayResult, error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	if projectId == "" {
 		return gatewaydto.ProvisionGatewayResult{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}

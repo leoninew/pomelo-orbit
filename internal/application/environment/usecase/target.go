@@ -21,7 +21,6 @@ func NewTargetResolver(environments repository.EnvironmentStore, environmentCred
 }
 
 func (r TargetResolver) ResolveProjectTarget(ctx context.Context, projectId string) (environmentport.Target, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "project_id is required for deployment target")
 	}

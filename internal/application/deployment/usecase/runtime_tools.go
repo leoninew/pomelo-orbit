@@ -20,7 +20,6 @@ var runtimeSegmentPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]*$`)
 // ResolveRuntimeTarget validates that a requested runtime target is an Orbit
 // managed Service belonging to the configured actor.
 func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, projectId, serviceId string, allowGateway bool) (deploymentdto.RuntimeTarget, error) {
-	serviceId = strings.TrimSpace(serviceId)
 	if serviceId == "" {
 		return deploymentdto.RuntimeTarget{}, apperror.New(apperror.KindValidation, "service_id is required")
 	}
@@ -112,7 +111,6 @@ func (s Service) RuntimeComposeLogs(ctx context.Context, target deploymentdto.Ru
 }
 
 func (s Service) RuntimeContainerInspect(ctx context.Context, target deploymentdto.RuntimeTarget, containerId string) (deploymentdto.RuntimeInspectResult, error) {
-	containerId = strings.TrimSpace(containerId)
 	if !safeRuntimeSegment(containerId) {
 		return deploymentdto.RuntimeInspectResult{}, apperror.New(apperror.KindValidation, "invalid container_id")
 	}

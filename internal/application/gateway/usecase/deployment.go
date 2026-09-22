@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -118,7 +117,7 @@ func remapGatewayServiceComponents(mappings []model.ServiceComponent, declaratio
 		if !ok {
 			return fmt.Errorf("selected Gateway Version does not declare component %s", mappings[index].ComponentName)
 		}
-		if strings.TrimSpace(mappings[index].SourceVersionComponentId) == "" {
+		if mappings[index].SourceVersionComponentId == "" {
 			return fmt.Errorf("gateway Service component %s is missing its source Version component", mappings[index].ComponentName)
 		}
 		mappings[index].SourceVersionComponentId = declaration.Id

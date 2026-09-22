@@ -20,7 +20,6 @@ import (
 var repositoryCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
 
 func (s Service) ListRepositories(ctx context.Context, userId string, projectId string, page, perPage int, search string) (repository.Page[model.Repository], error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return repository.Page[model.Repository]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -34,7 +33,7 @@ func (s Service) ListRepositories(ctx context.Context, userId string, projectId 
 	return items, nil
 }
 func (s Service) CreateRepository(ctx context.Context, userId string, input repositorydto.RepositoryCreateInput) (repositorydto.RepositoryDetail, error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	if projectId == "" {
 		return repositorydto.RepositoryDetail{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -133,14 +132,13 @@ func (s Service) DeleteRepository(ctx context.Context, userId string, projectId 
 	return nil
 }
 func (s Service) loadRepositoryForUser(ctx context.Context, userId string, projectId string, repositoryId string) (model.Repository, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Repository{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Repository{}, err
 	}
-	item, err := s.store.Repository(ctx, projectId, strings.TrimSpace(repositoryId))
+	item, err := s.store.Repository(ctx, projectId, repositoryId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 	}

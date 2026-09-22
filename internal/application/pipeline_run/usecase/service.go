@@ -294,7 +294,7 @@ func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeli
 }
 
 func (s Service) ListPipelineRuns(ctx context.Context, userId string, input pipelinerundto.PipelineRunListInput) (repository.Page[pipelinerundto.PipelineRunDetail], error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	if projectId == "" {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -375,7 +375,6 @@ func (s Service) workspaceForProject(ctx context.Context, projectId string) (pip
 	if !ok {
 		return s.workspace, nil
 	}
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return nil, errors.New("pipeline run project is missing")
 	}
@@ -440,7 +439,7 @@ func (s Service) PipelineStageLog(ctx context.Context, userId string, projectId 
 	if offset < 0 {
 		return pipelinerundto.PipelineStageLog{}, apperror.New(apperror.KindValidation, "offset must be greater than or equal to 0")
 	}
-	stageRun, err := s.store.PipelineStageRun(ctx, projectId, strings.TrimSpace(stageRunId))
+	stageRun, err := s.store.PipelineStageRun(ctx, projectId, stageRunId)
 	if errors.Is(err, repository.ErrNotFound) || (err == nil && stageRun.PipelineRunId != run.Id) {
 		return pipelinerundto.PipelineStageLog{Offset: offset, IsComplete: true}, nil
 	}
@@ -459,14 +458,13 @@ func (s Service) PipelineStageLog(ctx context.Context, userId string, projectId 
 }
 
 func (s Service) loadPipelineRunForUser(ctx context.Context, userId string, projectId string, runId string) (model.PipelineRun, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.PipelineRun{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.PipelineRun{}, err
 	}
-	run, err := s.store.PipelineRun(ctx, projectId, strings.TrimSpace(runId))
+	run, err := s.store.PipelineRun(ctx, projectId, runId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.PipelineRun{}, apperror.New(apperror.KindNotFound, "Pipeline run "+runId+" not found")
 	}
@@ -483,14 +481,13 @@ func (s Service) warnPipelineRunFileCleanupSkipped(runId string, reason string) 
 }
 
 func (s Service) pipelineForUser(ctx context.Context, userId string, projectId string, pipelineId string) (model.Pipeline, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Pipeline{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Pipeline{}, err
 	}
-	pipeline, err := s.store.Pipeline(ctx, projectId, strings.TrimSpace(pipelineId))
+	pipeline, err := s.store.Pipeline(ctx, projectId, pipelineId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Pipeline{}, apperror.New(apperror.KindNotFound, "Pipeline "+pipelineId+" not found")
 	}
@@ -594,7 +591,7 @@ func pipelineStageRuns(runId, stagesSnapshot string) ([]model.PipelineStageRun, 
 	return runs, nil
 }
 func (s Service) ensureRunRepositoryFilter(ctx context.Context, projectId, repositoryId string) error {
-	if strings.TrimSpace(repositoryId) == "" {
+	if repositoryId == "" {
 		return nil
 	}
 	_, err := s.store.Repository(ctx, projectId, repositoryId)
@@ -607,7 +604,7 @@ func (s Service) ensureRunRepositoryFilter(ctx context.Context, projectId, repos
 	return nil
 }
 func (s Service) ensureRunPipelineFilter(ctx context.Context, projectId, pipelineId string) error {
-	if strings.TrimSpace(pipelineId) == "" {
+	if pipelineId == "" {
 		return nil
 	}
 	_, err := s.store.Pipeline(ctx, projectId, pipelineId)

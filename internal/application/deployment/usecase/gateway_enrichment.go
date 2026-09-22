@@ -18,7 +18,7 @@ func requiresGatewayConfig(plan model.EffectiveServicePlan) bool {
 }
 
 func isGatewayCarrier(plan model.EffectiveServicePlan) bool {
-	return plan.Gateway != nil && strings.TrimSpace(plan.Gateway.ApplicationId) != "" && strings.TrimSpace(plan.Gateway.ApplicationId) == plan.Application.Id
+	return plan.Gateway != nil && plan.Gateway.ApplicationId != "" && plan.Gateway.ApplicationId == plan.Application.Id
 }
 
 func hasGatewayEndpoint(plan model.EffectiveServicePlan) bool {

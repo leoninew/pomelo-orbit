@@ -14,8 +14,8 @@ import (
 )
 
 func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.ExecutePipelineRunInput) error {
-	projectId := strings.TrimSpace(input.ProjectId)
-	runId := strings.TrimSpace(input.PipelineRunId)
+	projectId := input.ProjectId
+	runId := input.PipelineRunId
 	if projectId == "" || runId == "" {
 		return fmt.Errorf("project_id and pipeline_run_id are required")
 	}

@@ -108,7 +108,6 @@ func (s Service) CreateGatewayFromDefinition(ctx context.Context, userId, projec
 	if !s.definitionsConfigured {
 		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindInternal, "gateway definition services are not configured")
 	}
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -118,7 +117,7 @@ func (s Service) CreateGatewayFromDefinition(ctx context.Context, userId, projec
 	if s.environment == nil {
 		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindInternal, "gateway environment store is not configured")
 	}
-	if strings.TrimSpace(input.Application.Application.Id) == "" {
+	if input.Application.Application.Id == "" {
 		return gatewaydto.GatewayDefinition{}, apperror.New(apperror.KindValidation, "Gateway Application definition id is required")
 	}
 	environment, err := s.environment.EnvironmentByProject(ctx, projectId)
@@ -216,7 +215,7 @@ func definitionIdMaps(source, target applicationdto.ApplicationDefinition) (map[
 	versionIds := make(map[string]string, len(source.Versions))
 	componentIds := make(map[string]string)
 	for index, sourceVersion := range source.Versions {
-		sourceVersionId := strings.TrimSpace(sourceVersion.Version.Id)
+		sourceVersionId := sourceVersion.Version.Id
 		if sourceVersionId == "" || len(sourceVersion.Components) != len(target.Versions[index].Components) {
 			return nil, nil, apperror.New(apperror.KindValidation, "Gateway Version definition is incomplete")
 		}
@@ -225,7 +224,7 @@ func definitionIdMaps(source, target applicationdto.ApplicationDefinition) (map[
 		}
 		versionIds[sourceVersionId] = target.Versions[index].Version.Id
 		for componentIndex, sourceComponent := range sourceVersion.Components {
-			sourceComponentId := strings.TrimSpace(sourceComponent.Id)
+			sourceComponentId := sourceComponent.Id
 			if sourceComponentId == "" {
 				return nil, nil, apperror.New(apperror.KindValidation, "Gateway Component definition id is required")
 			}
@@ -240,17 +239,17 @@ func definitionIdMaps(source, target applicationdto.ApplicationDefinition) (map[
 
 func targetGatewayServiceDefinition(input gatewaydto.GatewayDefinition, applicationId string, versionIds, componentIds map[string]string) (servicedto.ServiceDefinition, error) {
 	definition := input.RuntimeService
-	if strings.TrimSpace(definition.Service.ApplicationId) != strings.TrimSpace(input.Application.Application.Id) {
+	if definition.Service.ApplicationId != input.Application.Application.Id {
 		return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service does not belong to the Gateway Application")
 	}
-	versionId, exists := versionIds[strings.TrimSpace(definition.Service.VersionId)]
+	versionId, exists := versionIds[definition.Service.VersionId]
 	if !exists {
 		return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service Version is not part of the Gateway definition")
 	}
 	definition.Service.ApplicationId = applicationId
 	definition.Service.VersionId = versionId
 	for index := range definition.Components {
-		targetComponentId, exists := componentIds[strings.TrimSpace(definition.Components[index].SourceVersionComponentId)]
+		targetComponentId, exists := componentIds[definition.Components[index].SourceVersionComponentId]
 		if !exists {
 			return servicedto.ServiceDefinition{}, apperror.New(apperror.KindValidation, "Gateway Service Component is not part of the Gateway Version")
 		}
@@ -260,7 +259,6 @@ func targetGatewayServiceDefinition(input gatewaydto.GatewayDefinition, applicat
 }
 
 func (s Service) ListGateways(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[gatewaydto.GatewayView], error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return repository.Page[gatewaydto.GatewayView]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -305,7 +303,6 @@ func (s Service) ListGateways(ctx context.Context, userId string, projectId stri
 }
 
 func (s Service) CreateGateway(ctx context.Context, userId string, projectId string, input gatewaydto.GatewayCreateInput) (gatewaydto.GatewayView, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return gatewaydto.GatewayView{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -604,14 +601,12 @@ func (s Service) DeleteGateway(ctx context.Context, userId string, projectId str
 }
 
 func (s Service) loadApplicationForUser(ctx context.Context, userId string, projectId string, applicationId string) (model.Application, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
-	applicationId = strings.TrimSpace(applicationId)
 	app, err := s.application.Application(ctx, projectId, applicationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -839,7 +834,7 @@ func gatewayConfigFromDefinition(input model.GatewayConfig, applicationId string
 	configInput := input
 	configInput.VersionBindings = make([]model.GatewayVersionBinding, 0, len(input.VersionBindings))
 	for _, binding := range input.VersionBindings {
-		versionId, exists := versionIds[strings.TrimSpace(binding.VersionId)]
+		versionId, exists := versionIds[binding.VersionId]
 		if !exists {
 			return model.GatewayConfig{}, apperror.New(apperror.KindValidation, "Gateway Version binding is not part of the Gateway definition")
 		}
@@ -856,7 +851,7 @@ func (s Service) validateGatewayVersionBindings(ctx context.Context, projectId s
 		return apperror.New(apperror.KindValidation, "Gateway requires base, http, dns, and http-dns Version bindings")
 	}
 	for _, binding := range bindings {
-		if _, known := required[binding.Profile]; !known || strings.TrimSpace(binding.VersionId) == "" {
+		if _, known := required[binding.Profile]; !known || binding.VersionId == "" {
 			return apperror.New(apperror.KindValidation, "Gateway Version bindings are invalid")
 		}
 		if _, duplicate := required[binding.Profile]; !duplicate {

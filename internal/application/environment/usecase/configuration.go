@@ -45,7 +45,7 @@ func (s Service) saveTargetDefinitionForUser(ctx context.Context, userId string,
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.TargetDefinition{}, err
 	}
-	project, err := s.projects.Project(ctx, strings.TrimSpace(projectId))
+	project, err := s.projects.Project(ctx, projectId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return environmentdto.TargetDefinition{}, apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
@@ -160,7 +160,7 @@ func (s Service) configurationCredential(ctx context.Context, projectId string, 
 	}
 	item := model.EnvironmentCredential{Id: idutil.NewId(), ProjectId: projectId, CreatedAt: time.Now().UTC()}
 	credentialCreating := true
-	if !creating && existing.IsSSH() && strings.TrimSpace(existing.SSH.CredentialId) != "" {
+	if !creating && existing.IsSSH() && existing.SSH.CredentialId != "" {
 		loaded, err := s.environmentCredential(ctx, existing.SSH.CredentialId)
 		if err != nil {
 			return nil, false, err

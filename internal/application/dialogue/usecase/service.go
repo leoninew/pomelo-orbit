@@ -88,8 +88,6 @@ func (s service) DeleteConversation(ctx context.Context, userId, projectId, conv
 }
 
 func (s service) completeTurn(ctx context.Context, userId, projectId string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
-	projectId = strings.TrimSpace(projectId)
-	input.ConversationId = strings.TrimSpace(input.ConversationId)
 	if projectId == "" {
 		return dialoguedto.TurnResult{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -243,11 +241,10 @@ func (s service) persistTurn(ctx context.Context, userId, projectId string, conv
 }
 
 func (s service) loadConversationForUser(ctx context.Context, userId, projectId, conversationId string) (model.DeploymentDialogueConversation, error) {
-	projectId = strings.TrimSpace(projectId)
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.DeploymentDialogueConversation{}, err
 	}
-	conversation, err := s.dialogue.DeploymentDialogueConversation(ctx, projectId, strings.TrimSpace(conversationId))
+	conversation, err := s.dialogue.DeploymentDialogueConversation(ctx, projectId, conversationId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.DeploymentDialogueConversation{}, apperror.New(apperror.KindNotFound, "Deployment dialogue conversation not found")
@@ -258,7 +255,6 @@ func (s service) loadConversationForUser(ctx context.Context, userId, projectId,
 }
 
 func (s service) ensureProjectMembership(ctx context.Context, projectId, userId string) error {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return apperror.New(apperror.KindValidation, "project_id is required")
 	}

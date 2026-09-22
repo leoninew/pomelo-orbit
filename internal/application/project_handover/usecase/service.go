@@ -2,7 +2,6 @@ package handoversvc
 
 import (
 	"context"
-	"strings"
 
 	applicationdto "github.com/leoninew/pomelo-orbit/internal/application/application/dto"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
@@ -134,9 +133,9 @@ func decryptPackagePrivateKey(systemKey string, suppliedKey string, item *handov
 	if item.Environment.Credential == nil || item.Environment.Credential.EncryptedPrivateKey == "" {
 		return nil
 	}
-	decryptionKey := strings.TrimSpace(suppliedKey)
-	if decryptionKey == "" {
-		decryptionKey = systemKey
+	decryptionKey := systemKey
+	if suppliedKey != "" {
+		decryptionKey = suppliedKey
 	}
 	privateKey, err := security.DecryptString(decryptionKey, item.Environment.Credential.EncryptedPrivateKey)
 	if err != nil {
@@ -211,6 +210,16 @@ func (s Service) Export(ctx context.Context, userId, projectId string) (handover
 		}
 		result.Services = append(result.Services, definition)
 	}
+	exportedServiceIds := make(map[string]struct{}, len(result.Services)+1)
+	for _, definition := range result.Services {
+		exportedServiceIds[definition.Service.Id] = struct{}{}
+	}
+	if gateway != nil {
+		gatewayServiceId := gateway.RuntimeService.Service.Id
+		if gatewayServiceId != "" {
+			exportedServiceIds[gatewayServiceId] = struct{}{}
+		}
+	}
 	routes, err := s.route.ListAllRoutes(ctx, userId, project.Id)
 	if err != nil {
 		return handoverdto.Package{}, err
@@ -219,9 +228,43 @@ func (s Service) Export(ctx context.Context, userId, projectId string) (handover
 		return handoverdto.Package{}, apperror.New(apperror.KindValidation, "Project has too many routes to export")
 	}
 	for _, item := range routes {
+		if err := validateRouteForExport(item, exportedServiceIds, gateway); err != nil {
+			return handoverdto.Package{}, err
+		}
 		result.Routes = append(result.Routes, routedto.RouteDefinitionInput{Route: item})
 	}
 	return result, nil
+}
+
+func validateRouteForExport(route model.Route, exportedServiceIds map[string]struct{}, gateway *gatewaydto.GatewayDefinition) error {
+	if route.ServiceId != nil && *route.ServiceId != "" {
+		if _, exists := exportedServiceIds[*route.ServiceId]; !exists {
+			return apperror.New(apperror.KindValidation, "Route "+route.Name+" references a Service that is unavailable for export")
+		}
+	}
+	if route.CertType != "letsencrypt" {
+		return nil
+	}
+	if gateway == nil {
+		return apperror.New(apperror.KindValidation, "Route "+route.Name+" requires a Gateway for Let's Encrypt")
+	}
+	switch route.AcmeChallenge {
+	case "http":
+		if gateway.Config.AcmeProfile == "http" || gateway.Config.AcmeProfile == "http-dns" {
+			return nil
+		}
+		return apperror.New(apperror.KindValidation, "Route "+route.Name+" requires the Gateway http or http-dns ACME profile")
+	case "dns":
+		if gateway.Config.AcmeProfile != "dns" && gateway.Config.AcmeProfile != "http-dns" {
+			return apperror.New(apperror.KindValidation, "Route "+route.Name+" requires the Gateway dns or http-dns ACME profile")
+		}
+		if gateway.Config.DNSApiToken == "" {
+			return apperror.New(apperror.KindValidation, "Route "+route.Name+" requires the Gateway DNS API token")
+		}
+		return nil
+	default:
+		return apperror.New(apperror.KindValidation, "Route "+route.Name+" has an invalid Let's Encrypt challenge")
+	}
 }
 
 func (s Service) Import(ctx context.Context, userId string, input handoverdto.ImportInput) (model.Project, error) {
@@ -238,7 +281,7 @@ func (s Service) Import(ctx context.Context, userId string, input handoverdto.Im
 			IsActive: true,
 		})
 	case handoverdto.ImportModeReplace:
-		project, err = s.project.LoadForUser(ctx, strings.TrimSpace(input.TargetProjectId), userId)
+		project, err = s.project.LoadForUser(ctx, input.TargetProjectId, userId)
 		if err == nil {
 			err = s.ensureProjectConfigurationReplaceable(ctx, userId, project.Id)
 		}
@@ -298,7 +341,7 @@ func sourceDefinitionIds(item handoverdto.Package) (packageIdMaps, error) {
 		services:     make(map[string]string, len(item.Services)+1),
 	}
 	for _, definition := range item.Applications {
-		applicationId := strings.TrimSpace(definition.Application.Id)
+		applicationId := definition.Application.Id
 		if applicationId == "" {
 			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Application definition id is required")
 		}
@@ -310,7 +353,7 @@ func sourceDefinitionIds(item handoverdto.Package) (packageIdMaps, error) {
 			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Application definition requires a Version")
 		}
 		for _, version := range definition.Versions {
-			versionId := strings.TrimSpace(version.Version.Id)
+			versionId := version.Version.Id
 			if versionId == "" {
 				return packageIdMaps{}, apperror.New(apperror.KindValidation, "Version definition id is required")
 			}
@@ -319,7 +362,7 @@ func sourceDefinitionIds(item handoverdto.Package) (packageIdMaps, error) {
 			}
 			maps.versions[versionId] = ""
 			for _, component := range version.Components {
-				componentId := strings.TrimSpace(component.Id)
+				componentId := component.Id
 				if componentId == "" {
 					return packageIdMaps{}, apperror.New(apperror.KindValidation, "Version Component definition id is required")
 				}
@@ -331,28 +374,28 @@ func sourceDefinitionIds(item handoverdto.Package) (packageIdMaps, error) {
 		}
 	}
 	for _, definition := range item.Services {
-		serviceId := strings.TrimSpace(definition.Service.Id)
+		serviceId := definition.Service.Id
 		if serviceId == "" {
 			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition id is required")
 		}
 		if _, exists := maps.services[serviceId]; exists {
 			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition ids must be unique")
 		}
-		if _, exists := maps.applications[strings.TrimSpace(definition.Service.ApplicationId)]; !exists {
+		if _, exists := maps.applications[definition.Service.ApplicationId]; !exists {
 			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition Application is not in the package")
 		}
-		if _, exists := maps.versions[strings.TrimSpace(definition.Service.VersionId)]; !exists {
+		if _, exists := maps.versions[definition.Service.VersionId]; !exists {
 			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition Version is not in the package")
 		}
 		for _, component := range definition.Components {
-			if _, exists := maps.components[strings.TrimSpace(component.SourceVersionComponentId)]; !exists {
+			if _, exists := maps.components[component.SourceVersionComponentId]; !exists {
 				return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service Component definition is not in the package")
 			}
 		}
 		maps.services[serviceId] = ""
 	}
 	if item.Gateway != nil {
-		gatewayServiceId := strings.TrimSpace(item.Gateway.RuntimeService.Service.Id)
+		gatewayServiceId := item.Gateway.RuntimeService.Service.Id
 		if gatewayServiceId != "" {
 			if _, exists := maps.services[gatewayServiceId]; exists {
 				return packageIdMaps{}, apperror.New(apperror.KindValidation, "Service definition ids must be unique")
@@ -361,10 +404,10 @@ func sourceDefinitionIds(item handoverdto.Package) (packageIdMaps, error) {
 		}
 	}
 	for _, definition := range item.Routes {
-		if definition.Route.ServiceId == nil || strings.TrimSpace(*definition.Route.ServiceId) == "" {
+		if definition.Route.ServiceId == nil || *definition.Route.ServiceId == "" {
 			continue
 		}
-		if _, exists := maps.services[strings.TrimSpace(*definition.Route.ServiceId)]; !exists {
+		if _, exists := maps.services[*definition.Route.ServiceId]; !exists {
 			return packageIdMaps{}, apperror.New(apperror.KindValidation, "Route Service is not in the package")
 		}
 	}
@@ -449,9 +492,9 @@ func (s Service) restoreProjectConfiguration(ctx context.Context, userId string,
 		if err != nil {
 			return model.Project{}, err
 		}
-		gatewayServiceId := strings.TrimSpace(item.Gateway.RuntimeService.Service.Id)
+		gatewayServiceId := item.Gateway.RuntimeService.Service.Id
 		if gatewayServiceId != "" {
-			targetGatewayServiceId := strings.TrimSpace(created.RuntimeService.Service.Id)
+			targetGatewayServiceId := created.RuntimeService.Service.Id
 			if targetGatewayServiceId == "" {
 				return model.Project{}, apperror.New(apperror.KindInternal, "Gateway definition restoration returned incomplete RuntimeService")
 			}

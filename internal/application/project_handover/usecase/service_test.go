@@ -87,6 +87,92 @@ func TestImportReplaceKeepsTargetProjectIdentity(t *testing.T) {
 	}
 }
 
+func TestExportRejectsRouteReferencingServiceOutsidePackage(t *testing.T) {
+	calls := []string{}
+	applicationId, versionId, serviceId := "source-application", "source-version", "source-service"
+	missingServiceId := "removed-service"
+	application := &testApplicationDomain{
+		calls: &calls,
+		items: []model.Application{{Id: applicationId}},
+		definitions: map[string]applicationdto.ApplicationDefinition{
+			applicationId: {
+				Application: model.Application{Id: applicationId},
+				Versions:    []applicationdto.VersionDefinition{{Version: model.Version{Id: versionId}}},
+			},
+		},
+	}
+	serviceDomain := &testServiceDomain{
+		calls: &calls,
+		items: repository.Page[servicedto.ServiceView]{Items: []servicedto.ServiceView{{
+			Service: model.Service{Id: serviceId},
+		}}},
+		definitions: map[string]servicedto.ServiceDefinition{
+			serviceId: {Service: model.Service{Id: serviceId, ApplicationId: applicationId, VersionId: versionId}},
+		},
+	}
+	routeDomain := &testRouteDomain{
+		calls: &calls,
+		items: []model.Route{
+			{Id: "custom-route"},
+			{Id: "valid-route", ServiceId: &serviceId},
+			{Id: "stale-route", Name: "stale-route", ServiceId: &missingServiceId},
+		},
+	}
+	service := New(
+		&testProjectDomain{calls: &calls},
+		&testEnvironmentDomain{calls: &calls},
+		application,
+		serviceDomain,
+		routeDomain,
+		&testGatewayDomain{calls: &calls},
+		&testPipelineDomain{calls: &calls},
+		&testPipelineRunDomain{calls: &calls},
+		&testDeploymentDomain{calls: &calls},
+		testHandoverSecretKey,
+	)
+
+	_, err := service.Export(context.Background(), "operator", "source-project")
+	if err == nil || apperror.Classify(err).Message != "Route stale-route references a Service that is unavailable for export" {
+		t.Fatalf("Export() error = %v", err)
+	}
+}
+
+func TestExportRejectsDNS01RouteUnsupportedByGatewayPackage(t *testing.T) {
+	calls := []string{}
+	gatewayApplicationId, gatewayServiceId := "gateway-application", "gateway-service"
+	routeDomain := &testRouteDomain{calls: &calls, items: []model.Route{
+		{Id: "custom-route"},
+		{Id: "unsupported-dns-route", Name: "unsupported-dns-route", ServiceId: &gatewayServiceId, CertType: "letsencrypt", AcmeChallenge: "dns"},
+	}}
+	gatewayDomain := &testGatewayDomain{
+		calls: &calls,
+		items: repository.Page[gatewaydto.GatewayView]{Items: []gatewaydto.GatewayView{{
+			Application: model.Application{Id: gatewayApplicationId},
+		}}},
+		definition: gatewaydto.GatewayDefinition{
+			Application:    applicationdto.ApplicationDefinition{Application: model.Application{Id: gatewayApplicationId}},
+			RuntimeService: servicedto.ServiceDefinition{Service: model.Service{Id: gatewayServiceId}},
+		},
+	}
+	service := New(
+		&testProjectDomain{calls: &calls},
+		&testEnvironmentDomain{calls: &calls},
+		&testApplicationDomain{calls: &calls},
+		&testServiceDomain{calls: &calls},
+		routeDomain,
+		gatewayDomain,
+		&testPipelineDomain{calls: &calls},
+		&testPipelineRunDomain{calls: &calls},
+		&testDeploymentDomain{calls: &calls},
+		testHandoverSecretKey,
+	)
+
+	_, err := service.Export(context.Background(), "operator", "source-project")
+	if err == nil || apperror.Classify(err).Message != "Route unsupported-dns-route requires the Gateway dns or http-dns ACME profile" {
+		t.Fatalf("Export() error = %v", err)
+	}
+}
+
 func TestRestoreProjectConfigurationCreatesGatewayBeforeRoutes(t *testing.T) {
 	calls := []string{}
 	service := newTestService(&calls)
@@ -359,14 +445,18 @@ func (d *testEnvironmentDomain) SaveTargetDefinitionForHandover(_ context.Contex
 	return definition, nil
 }
 
-type testApplicationDomain struct{ calls *[]string }
+type testApplicationDomain struct {
+	calls       *[]string
+	items       []model.Application
+	definitions map[string]applicationdto.ApplicationDefinition
+}
 
 func (d *testApplicationDomain) ListApplications(context.Context, string, string, int, int, string, string) (repository.Page[model.Application], error) {
 	*d.calls = append(*d.calls, "application.list")
-	return repository.Page[model.Application]{}, nil
+	return repository.Page[model.Application]{Items: d.items, Total: len(d.items)}, nil
 }
-func (*testApplicationDomain) ApplicationDefinitionForUser(context.Context, string, string, string) (applicationdto.ApplicationDefinition, error) {
-	return applicationdto.ApplicationDefinition{}, nil
+func (d *testApplicationDomain) ApplicationDefinitionForUser(_ context.Context, _ string, _ string, applicationId string) (applicationdto.ApplicationDefinition, error) {
+	return d.definitions[applicationId], nil
 }
 func (d *testApplicationDomain) CreateApplicationFromDefinition(_ context.Context, _ string, _ string, definition applicationdto.ApplicationDefinition) (applicationdto.ApplicationDefinition, error) {
 	*d.calls = append(*d.calls, "application.create")
@@ -377,14 +467,18 @@ func (d *testApplicationDomain) RemoveApplication(context.Context, string, strin
 	return nil
 }
 
-type testServiceDomain struct{ calls *[]string }
+type testServiceDomain struct {
+	calls       *[]string
+	items       repository.Page[servicedto.ServiceView]
+	definitions map[string]servicedto.ServiceDefinition
+}
 
 func (d *testServiceDomain) ListServices(context.Context, string, servicedto.ServiceListInput) (repository.Page[servicedto.ServiceView], error) {
 	*d.calls = append(*d.calls, "service.list")
-	return repository.Page[servicedto.ServiceView]{}, nil
+	return d.items, nil
 }
-func (*testServiceDomain) ServiceDefinitionForUser(context.Context, string, string, string) (servicedto.ServiceDefinition, error) {
-	return servicedto.ServiceDefinition{}, nil
+func (d *testServiceDomain) ServiceDefinitionForUser(_ context.Context, _ string, _ string, serviceId string) (servicedto.ServiceDefinition, error) {
+	return d.definitions[serviceId], nil
 }
 func (d *testServiceDomain) CreateServiceFromDefinition(_ context.Context, _ string, _ string, definition servicedto.ServiceDefinition) (servicedto.ServiceView, error) {
 	*d.calls = append(*d.calls, "service.create")
@@ -397,11 +491,12 @@ func (d *testServiceDomain) RemoveService(context.Context, string, string, strin
 
 func (d *testRouteDomain) ListAllRoutes(context.Context, string, string) ([]model.Route, error) {
 	*d.calls = append(*d.calls, "route.list")
-	return nil, nil
+	return d.items, nil
 }
 
 type testRouteDomain struct {
 	calls   *[]string
+	items   []model.Route
 	created []routedto.RouteDefinitionInput
 }
 
@@ -416,16 +511,18 @@ func (d *testRouteDomain) RemoveRoute(context.Context, string, string, string) e
 }
 
 type testGatewayDomain struct {
-	calls   *[]string
-	created gatewaydto.GatewayDefinition
+	calls      *[]string
+	items      repository.Page[gatewaydto.GatewayView]
+	definition gatewaydto.GatewayDefinition
+	created    gatewaydto.GatewayDefinition
 }
 
 func (d *testGatewayDomain) ListGateways(context.Context, string, string, int, int, string) (repository.Page[gatewaydto.GatewayView], error) {
 	*d.calls = append(*d.calls, "gateway.list")
-	return repository.Page[gatewaydto.GatewayView]{}, nil
+	return d.items, nil
 }
-func (*testGatewayDomain) GatewayDefinitionForUser(context.Context, string, string, string) (gatewaydto.GatewayDefinition, error) {
-	return gatewaydto.GatewayDefinition{}, nil
+func (d *testGatewayDomain) GatewayDefinitionForUser(context.Context, string, string, string) (gatewaydto.GatewayDefinition, error) {
+	return d.definition, nil
 }
 func (d *testGatewayDomain) CreateGatewayFromDefinition(context.Context, string, string, gatewaydto.GatewayDefinition) (gatewaydto.GatewayDefinition, error) {
 	*d.calls = append(*d.calls, "gateway.create")

@@ -262,6 +262,9 @@ func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeli
 	if _, _, err := pipelinevariable.ResolveRuntimeVariablesFromPipelineStages(repo, pipeline, stages, overrides); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
+	if err := s.ensureWorkspaceReady(ctx, projectId); err != nil {
+		return pipelinerundto.PipelineRunDetail{}, err
+	}
 	snapshot, err := pipelinesvc.GetOrCreatePipelineSnapshot(ctx, s.store, projectId, pipeline, repo)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
@@ -377,6 +380,22 @@ func (s Service) workspaceForProject(ctx context.Context, projectId string) (pip
 		return nil, errors.New("pipeline run project is missing")
 	}
 	return resolver.WorkspaceForProject(ctx, projectId)
+}
+
+func (s Service) ensureWorkspaceReady(ctx context.Context, projectId string) error {
+	if s.workspace == nil {
+		return nil
+	}
+	if _, err := s.workspaceForProject(ctx, projectId); err != nil {
+		if _, ok := apperror.As(err); ok {
+			return err
+		}
+		if errors.Is(err, repository.ErrNotFound) {
+			return apperror.New(apperror.KindValidation, "project environment is not configured")
+		}
+		return apperror.New(apperror.KindValidation, err.Error())
+	}
+	return nil
 }
 
 func (s Service) ListPipelineRunArtifacts(ctx context.Context, userId string, projectId string, runId string) ([]model.Artifact, error) {

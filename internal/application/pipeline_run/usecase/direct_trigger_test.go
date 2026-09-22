@@ -2,9 +2,13 @@ package pipelinerunsvc
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
+	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
@@ -23,7 +27,7 @@ func TestTriggerPipelineRejectsMissingVariableBeforeCreatingSnapshot(t *testing.
 		project:     directTriggerProjectStore{},
 		repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, ProjectId: &projectId, DefaultBranch: "main"}},
 		pipeline:    pipelineStore,
-		pipelineRun: directTriggerPipelineRunStore{},
+		pipelineRun: &directTriggerPipelineRunStore{},
 	}}
 
 	_, err := service.TriggerPipeline(context.Background(), "user-1", projectId, pipeline.Id, "release")
@@ -32,6 +36,87 @@ func TestTriggerPipelineRejectsMissingVariableBeforeCreatingSnapshot(t *testing.
 	}
 	if pipelineStore.snapshotRequested {
 		t.Fatal("missing variables must be rejected before a snapshot is created")
+	}
+}
+
+func TestTriggerPipelineRejectsUnconfiguredWorkspaceBeforeCreatingSnapshot(t *testing.T) {
+	projectId, repositoryId := "project-1", "repository-1"
+	pipeline := model.Pipeline{
+		Id:                   "pipeline-1",
+		ProjectId:            &projectId,
+		RepositoryId:         &repositoryId,
+		Kind:                 model.PipelineKindApplication,
+		VariableDeclarations: `[]`,
+	}
+	pipelineStore := &directTriggerPipelineStore{pipeline: pipeline}
+	runStore := &directTriggerPipelineRunStore{}
+	service := Service{
+		store: stores{
+			project:     directTriggerProjectStore{},
+			repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, ProjectId: &projectId, DefaultBranch: "main"}},
+			pipeline:    pipelineStore,
+			pipelineRun: runStore,
+		},
+		workspace: directTriggerFailingWorkspace{err: errors.New("project environment is not configured")},
+	}
+
+	_, err := service.TriggerPipeline(context.Background(), "user-1", projectId, pipeline.Id, "release")
+	if err == nil || !strings.Contains(err.Error(), "project environment is not configured") {
+		t.Fatalf("TriggerPipeline error = %v, want unconfigured workspace validation", err)
+	}
+	if !apperror.IsKind(err, apperror.KindValidation) {
+		t.Fatalf("TriggerPipeline error kind = %v, want %v", apperror.Kind(err.Error()), apperror.KindValidation)
+	}
+	if pipelineStore.snapshotRequested {
+		t.Fatal("unconfigured workspace must be rejected before a snapshot is created")
+	}
+	if runStore.createdRun != nil {
+		t.Fatal("unconfigured workspace must not insert a pipeline_run record")
+	}
+}
+
+func TestRetryPipelineRunRejectsUnconfiguredWorkspaceBeforeCreatingSnapshot(t *testing.T) {
+	projectId, repositoryId := "project-1", "repository-1"
+	pipeline := model.Pipeline{
+		Id:                   "pipeline-1",
+		ProjectId:            &projectId,
+		RepositoryId:         &repositoryId,
+		Kind:                 model.PipelineKindApplication,
+		VariableDeclarations: `[]`,
+	}
+	pipelineStore := &directTriggerPipelineStore{pipeline: pipeline}
+	runStore := &directTriggerPipelineRunStore{
+		run: model.PipelineRun{
+			Id:                "run-1",
+			ProjectId:         &projectId,
+			RepositoryId:      repositoryId,
+			PipelineId:        pipeline.Id,
+			Status:            status.WorkStatusFaulted,
+			VariablesSnapshot: `[]`,
+		},
+	}
+	service := Service{
+		store: stores{
+			project:     directTriggerProjectStore{},
+			repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, ProjectId: &projectId, DefaultBranch: "main"}},
+			pipeline:    pipelineStore,
+			pipelineRun: runStore,
+		},
+		workspace: directTriggerFailingWorkspace{err: errors.New("project environment is not configured")},
+	}
+
+	_, err := service.RetryPipelineRun(context.Background(), "user-1", projectId, "run-1")
+	if err == nil || !strings.Contains(err.Error(), "project environment is not configured") {
+		t.Fatalf("RetryPipelineRun error = %v, want unconfigured workspace validation", err)
+	}
+	if !apperror.IsKind(err, apperror.KindValidation) {
+		t.Fatalf("RetryPipelineRun error kind = %v, want %v", apperror.Kind(err.Error()), apperror.KindValidation)
+	}
+	if pipelineStore.snapshotRequested {
+		t.Fatal("unconfigured workspace must be rejected before a snapshot is created on retry")
+	}
+	if runStore.createdRun != nil {
+		t.Fatal("unconfigured workspace must not insert a pipeline_run record on retry")
 	}
 }
 
@@ -77,8 +162,39 @@ func (s *directTriggerPipelineStore) LatestPipelineSnapshot(context.Context, str
 
 type directTriggerPipelineRunStore struct {
 	repository.PipelineRunStore
+	run        model.PipelineRun
+	createdRun *model.PipelineRun
+}
+
+func (s *directTriggerPipelineRunStore) PipelineRun(context.Context, string, string) (model.PipelineRun, error) {
+	if s.run.Id != "" {
+		return s.run, nil
+	}
+	return model.PipelineRun{}, repository.ErrNotFound
+}
+
+func (s *directTriggerPipelineRunStore) CreatePipelineRun(_ context.Context, run model.PipelineRun, _ *model.PipelineRunVersionBinding, _ []model.PipelineStageRun) error {
+	s.createdRun = &run
+	return nil
 }
 
 func (directTriggerPipelineRunStore) RepositoryHasActivePipelineRun(context.Context, string, string) (bool, error) {
 	return false, nil
+}
+
+type directTriggerFailingWorkspace struct {
+	err error
+}
+
+func (w directTriggerFailingWorkspace) WorkspaceForProject(context.Context, string) (pipelinerunport.Workspace, error) {
+	return nil, w.err
+}
+
+func (directTriggerFailingWorkspace) CreateRunDirectories(string, string) error   { return nil }
+func (directTriggerFailingWorkspace) ArtifactsPath(string) string                 { return "" }
+func (directTriggerFailingWorkspace) ArtifactExists(string, string) (bool, error) { return false, nil }
+func (directTriggerFailingWorkspace) StageLogPath(string, string) string          { return "" }
+func (directTriggerFailingWorkspace) RemoveRunFiles(string) error                 { return nil }
+func (directTriggerFailingWorkspace) DockerStageMounts(context.Context, string, string) ([]pipelinerunport.VolumeMount, error) {
+	return nil, nil
 }

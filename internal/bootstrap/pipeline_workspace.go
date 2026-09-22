@@ -25,7 +25,7 @@ func newPipelineWorkspace(cfg config.Config, stores domainStores, resolver pipel
 				return "", errors.New("pipeline workspace requires a local Environment")
 			}
 			if strings.TrimSpace(environment.WorkspaceRoot) == "" {
-				return "", errors.New("environment workspace root must be configured before running a pipeline")
+				return "", errors.New("project environment workspace root must be configured before running a pipeline")
 			}
 			return environment.WorkspaceRoot, nil
 		},

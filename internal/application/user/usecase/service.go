@@ -108,7 +108,7 @@ func (s Service) UpdateByActor(ctx context.Context, actor userdto.Actor, userId 
 	if err := requirePermission(actor, "user:write"); err != nil {
 		return userdto.Detail{}, err
 	}
-	user, err := s.find(ctx, strings.TrimSpace(userId))
+	user, err := s.find(ctx, userId)
 	if err != nil {
 		return userdto.Detail{}, err
 	}
@@ -134,7 +134,7 @@ func (s Service) SetStatusByActor(ctx context.Context, actor userdto.Actor, user
 	if err := requirePermission(actor, "user:write"); err != nil {
 		return err
 	}
-	user, err := s.find(ctx, strings.TrimSpace(userId))
+	user, err := s.find(ctx, userId)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (s Service) SetRoles(ctx context.Context, actor userdto.Actor, userId strin
 	if err := requirePermission(actor, "role:write"); err != nil {
 		return userdto.Detail{}, err
 	}
-	user, err := s.find(ctx, strings.TrimSpace(userId))
+	user, err := s.find(ctx, userId)
 	if err != nil {
 		return userdto.Detail{}, err
 	}
@@ -184,7 +184,7 @@ func (s Service) DeleteByActor(ctx context.Context, actor userdto.Actor, userId 
 	if err := requirePermission(actor, "user:write"); err != nil {
 		return err
 	}
-	user, err := s.find(ctx, strings.TrimSpace(userId))
+	user, err := s.find(ctx, userId)
 	if err != nil {
 		return err
 	}

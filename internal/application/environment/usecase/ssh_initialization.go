@@ -23,7 +23,7 @@ func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, proje
 	if input.TargetType == nil || strings.TrimSpace(*input.TargetType) != model.EnvironmentTargetTypeSSH || input.SSH == nil || input.Local != nil {
 		return environmentdto.View{}, "", apperror.New(apperror.KindValidation, "SSH initialization command requires a complete SSH target")
 	}
-	project, err := s.projects.Project(ctx, strings.TrimSpace(projectId))
+	project, err := s.projects.Project(ctx, projectId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return environmentdto.View{}, "", apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")

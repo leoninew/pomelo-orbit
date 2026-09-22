@@ -158,7 +158,6 @@ func (s stores) Repository(ctx context.Context, projectId string, id string) (mo
 }
 
 func (s Service) ListPipelines(ctx context.Context, userId string, projectId string, kind string, page int, perPage int, search string) (repository.Page[pipelinedto.PipelineDetail], error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return repository.Page[pipelinedto.PipelineDetail]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -186,7 +185,7 @@ func (s Service) ListPipelines(ctx context.Context, userId string, projectId str
 // CreatePipeline only creates a template. Application pipelines are created
 // by InstantiatePipeline so their immutable identity is always complete.
 func (s Service) CreatePipeline(ctx context.Context, userId string, input pipelinedto.PipelineCreateInput) (pipelinedto.PipelineDetail, error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	if projectId == "" {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -293,12 +292,12 @@ func (s Service) bindApplicationIfUnbound(ctx context.Context, projectId string,
 	if pipeline.Kind != model.PipelineKindApplication {
 		return false, apperror.New(apperror.KindValidation, "only application pipelines can bind an application")
 	}
-	id := strings.TrimSpace(applicationId)
+	id := applicationId
 	if id == "" {
 		return false, apperror.New(apperror.KindValidation, "application_id cannot be empty")
 	}
 	if pipeline.ApplicationId != nil {
-		if strings.TrimSpace(*pipeline.ApplicationId) == id {
+		if *pipeline.ApplicationId == id {
 			return false, nil
 		}
 		return false, apperror.New(apperror.KindValidation, "application binding cannot be changed once set")
@@ -338,13 +337,13 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, project
 	if err := s.ensurePipelineNameAvailable(ctx, projectId, name, ""); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	repo, err := s.repositoryInProject(ctx, strings.TrimSpace(input.RepositoryId), projectId)
+	repo, err := s.repositoryInProject(ctx, input.RepositoryId, projectId)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	var applicationId, applicationName *string
 	if input.ApplicationId != nil {
-		id := strings.TrimSpace(*input.ApplicationId)
+		id := *input.ApplicationId
 		if id == "" {
 			return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "application_id cannot be empty")
 		}
@@ -409,7 +408,7 @@ func applyPipelineArtifactBindings(stages []model.PipelineStage, references []mo
 	}
 	seen := make(map[string]struct{}, len(bindings))
 	for _, binding := range bindings {
-		stageId, artifactName := strings.TrimSpace(binding.StageId), strings.TrimSpace(binding.ArtifactName)
+		stageId, artifactName := binding.StageId, strings.TrimSpace(binding.ArtifactName)
 		componentName, err := optionalComponentName(stageTemplateStringPointer(binding.ComponentName))
 		if err != nil || componentName == nil || stageId == "" || artifactName == "" {
 			return apperror.New(apperror.KindValidation, "invalid pipeline artifact binding")
@@ -458,14 +457,13 @@ func applyPipelineArtifactBindings(stages []model.PipelineStage, references []mo
 }
 
 func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, projectId string, snapshotId string) (pipelinedto.PipelineSnapshotDetail, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return pipelinedto.PipelineSnapshotDetail{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return pipelinedto.PipelineSnapshotDetail{}, err
 	}
-	snapshot, err := s.store.PipelineSnapshot(ctx, projectId, strings.TrimSpace(snapshotId))
+	snapshot, err := s.store.PipelineSnapshot(ctx, projectId, snapshotId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return pipelinedto.PipelineSnapshotDetail{}, apperror.New(apperror.KindNotFound, "Pipeline snapshot "+snapshotId+" not found")
@@ -488,14 +486,12 @@ func (s Service) PipelineSnapshotForUser(ctx context.Context, userId string, pro
 }
 
 func (s Service) loadPipelineForUser(ctx context.Context, userId string, projectId string, pipelineId string) (model.Pipeline, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Pipeline{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Pipeline{}, err
 	}
-	pipelineId = strings.TrimSpace(pipelineId)
 	pipeline, err := s.store.Pipeline(ctx, projectId, pipelineId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -646,7 +642,6 @@ func remapPipelineVariableStageIds(value string, stageIdMap map[string]string) (
 	}
 	for _, variable := range variables {
 		stageId, _ := variable["stage_id"].(string)
-		stageId = strings.TrimSpace(stageId)
 		if stageId == "" {
 			continue
 		}
@@ -869,7 +864,7 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, projectId st
 			return apperror.New(apperror.KindValidation, "latest version strategy cannot set fixed_version_id")
 		}
 	case model.VersionForkStrategyFixed:
-		if pipeline.FixedVersionId == nil || strings.TrimSpace(*pipeline.FixedVersionId) == "" {
+		if pipeline.FixedVersionId == nil || *pipeline.FixedVersionId == "" {
 			return apperror.New(apperror.KindValidation, "fixed version strategy requires fixed_version_id")
 		}
 		if err := s.populateFixedVersionLabel(ctx, projectId, &pipeline); err != nil {
@@ -972,7 +967,7 @@ func pipelineStageDefinitions(stages []model.PipelineStage) ([]model.StageDefini
 }
 
 func validatePipelineStageTemplate(stage model.PipelineStage) error {
-	if strings.TrimSpace(stage.Id) == "" || strings.TrimSpace(stage.ProjectId) == "" || stage.Kind != model.PipelineStageKindTemplate || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version == nil || *stage.Version <= 0 {
+	if stage.Id == "" || stage.ProjectId == "" || stage.Kind != model.PipelineStageKindTemplate || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version == nil || *stage.Version <= 0 {
 		return apperror.New(apperror.KindValidation, "invalid pipeline stage template")
 	}
 	if stage.PipelineId != nil || stage.SourceTemplateStageId != nil || stage.SourceTemplateStageName != nil || stage.SourceTemplateStageVersion != nil || stage.SourceTemplateStageDescription != nil || stage.DependsOn != nil || stage.SortOrder != nil {
@@ -983,10 +978,10 @@ func validatePipelineStageTemplate(stage model.PipelineStage) error {
 }
 
 func validateApplicationPipelineStage(stage model.PipelineStage) error {
-	if strings.TrimSpace(stage.Id) == "" || strings.TrimSpace(stage.ProjectId) == "" || stage.Kind != model.PipelineStageKindApplication || stage.PipelineId == nil || strings.TrimSpace(*stage.PipelineId) == "" || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version != nil || stage.Artifacts == nil || stage.DependsOn == nil || stage.SortOrder == nil || *stage.SortOrder < 0 {
+	if stage.Id == "" || stage.ProjectId == "" || stage.Kind != model.PipelineStageKindApplication || stage.PipelineId == nil || *stage.PipelineId == "" || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version != nil || stage.Artifacts == nil || stage.DependsOn == nil || stage.SortOrder == nil || *stage.SortOrder < 0 {
 		return apperror.New(apperror.KindValidation, "invalid application pipeline stage")
 	}
-	if stage.SourceTemplateStageId == nil || strings.TrimSpace(*stage.SourceTemplateStageId) == "" || stage.SourceTemplateStageName == nil || strings.TrimSpace(*stage.SourceTemplateStageName) == "" || stage.SourceTemplateStageVersion == nil || *stage.SourceTemplateStageVersion <= 0 || stage.SourceTemplateStageDescription == nil {
+	if stage.SourceTemplateStageId == nil || *stage.SourceTemplateStageId == "" || stage.SourceTemplateStageName == nil || strings.TrimSpace(*stage.SourceTemplateStageName) == "" || stage.SourceTemplateStageVersion == nil || *stage.SourceTemplateStageVersion <= 0 || stage.SourceTemplateStageDescription == nil {
 		return apperror.New(apperror.KindValidation, "application pipeline stage source snapshot is required")
 	}
 	return nil

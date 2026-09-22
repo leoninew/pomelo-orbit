@@ -26,7 +26,6 @@ func New(project repository.ProjectReader, credential repository.CredentialStore
 }
 
 func (s Service) ListCredentials(ctx context.Context, userId string, projectId string, page int, perPage int, search string) (repository.Page[model.Credential], error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return repository.Page[model.Credential]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -173,14 +172,12 @@ func (s Service) decryptCredentialData(data string) (string, error) {
 }
 
 func (s Service) loadCredentialForUser(ctx context.Context, userId string, projectId string, credentialId string) (model.Credential, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Credential{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Credential{}, err
 	}
-	credentialId = strings.TrimSpace(credentialId)
 	credential, err := s.credential.Credential(ctx, projectId, credentialId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -209,7 +206,7 @@ func (s Service) ensureCredentialNameAvailable(ctx context.Context, projectId st
 }
 
 func normalizeCredentialCreateInput(input credentialdto.CredentialCreateInput) (string, string, string, string, error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	name := strings.TrimSpace(input.Name)
 	credentialType := strings.TrimSpace(input.Type)
 	if projectId == "" {

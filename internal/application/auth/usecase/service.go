@@ -93,7 +93,6 @@ func (s Service) AuthenticateMCPAccessToken(ctx context.Context, rawToken string
 }
 
 func (s Service) CreateMCPAccessToken(ctx context.Context, userId string, input authdto.MCPAccessTokenCreateInput) (authdto.MCPAccessTokenCreated, error) {
-	userId = strings.TrimSpace(userId)
 	name := strings.TrimSpace(input.Name)
 	if userId == "" || name == "" || len(name) > maxMCPAccessTokenNameLen || input.ExpiresInDays < 0 || input.ExpiresInDays > maxMCPAccessTokenLifetime {
 		return authdto.MCPAccessTokenCreated{}, apperror.New(apperror.KindValidation, "Invalid MCP access token fields")
@@ -120,7 +119,7 @@ func (s Service) CreateMCPAccessToken(ctx context.Context, userId string, input 
 }
 
 func (s Service) ListMCPAccessTokens(ctx context.Context, userId string) ([]model.MCPAccessToken, error) {
-	items, err := s.auth.ListMCPAccessTokens(ctx, strings.TrimSpace(userId))
+	items, err := s.auth.ListMCPAccessTokens(ctx, userId)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list MCP access tokens", err)
 	}
@@ -128,8 +127,7 @@ func (s Service) ListMCPAccessTokens(ctx context.Context, userId string) ([]mode
 }
 
 func (s Service) RevokeMCPAccessToken(ctx context.Context, userId string, tokenId string) error {
-	tokenId = strings.TrimSpace(tokenId)
-	_, err := s.auth.MCPAccessTokenForUser(ctx, strings.TrimSpace(userId), tokenId)
+	_, err := s.auth.MCPAccessTokenForUser(ctx, userId, tokenId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return apperror.New(apperror.KindNotFound, "MCP access token "+tokenId+" not found")

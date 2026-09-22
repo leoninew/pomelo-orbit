@@ -52,7 +52,7 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.View{}, err
 	}
-	project, err := s.projects.Project(ctx, strings.TrimSpace(projectId))
+	project, err := s.projects.Project(ctx, projectId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return environmentdto.View{}, apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
@@ -146,7 +146,7 @@ func (s Service) UpdateForUser(ctx context.Context, userId string, projectId str
 }
 
 func (s Service) environmentForProject(ctx context.Context, projectId string) (model.Environment, error) {
-	item, err := s.environments.EnvironmentByProject(ctx, strings.TrimSpace(projectId))
+	item, err := s.environments.EnvironmentByProject(ctx, projectId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Environment{}, apperror.New(apperror.KindNotFound, "Project environment not found")
 	}
@@ -157,7 +157,6 @@ func (s Service) environmentForProject(ctx context.Context, projectId string) (m
 }
 
 func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return apperror.New(apperror.KindValidation, "project_id is required")
 	}

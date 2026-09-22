@@ -32,7 +32,7 @@ func (r RuntimeVariables) ValuesForStage(stage model.StageDefinition) map[string
 
 // StageScopeId returns the stable identifier used for a Stage-scoped value.
 func StageScopeId(stage model.StageDefinition) string {
-	if strings.TrimSpace(stage.Id) != "" {
+	if stage.Id != "" {
 		return stage.Id
 	}
 	return stage.Name
@@ -531,7 +531,6 @@ func VariableDeclarationFromMap(raw map[string]any, source string) (model.Variab
 		return model.VariableDeclaration{}, apperror.Wrap(apperror.KindInternal, "Invalid variable declaration", err)
 	}
 	declaration.Name = strings.TrimSpace(declaration.Name)
-	declaration.StageId = strings.TrimSpace(declaration.StageId)
 	declaration.StageName = strings.TrimSpace(declaration.StageName)
 	declaration.Source = source
 	declaration.Editable = true
@@ -861,7 +860,6 @@ func NormalizePipelineVariables(variables []map[string]any) ([]map[string]any, e
 		if _, provided := variable["stage_id"]; provided && !exists {
 			return nil, apperror.New(apperror.KindValidation, "Pipeline variable stage_id must be a string")
 		}
-		stageId = strings.TrimSpace(stageId)
 		key := declarationScopeKey(name, stageId)
 		if _, exists := seen[key]; exists {
 			return nil, apperror.New(apperror.KindValidation, "Duplicate pipeline variable: "+name+" in scope "+stageId)
@@ -901,7 +899,6 @@ func ValidatePipelineVariableScopes(variables []map[string]any, stages []model.S
 	}
 	for _, variable := range variables {
 		stageId, _ := variable["stage_id"].(string)
-		stageId = strings.TrimSpace(stageId)
 		if stageId == "" {
 			continue
 		}
@@ -968,7 +965,7 @@ func mergeExtractedAndCustomVariables(extracted []model.VariableDeclaration, cus
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)
 		stageId, _ := variable["stage_id"].(string)
-		customByKey[declarationScopeKey(name, strings.TrimSpace(stageId))] = variable
+		customByKey[declarationScopeKey(name, stageId)] = variable
 	}
 	result := make([]map[string]any, 0, len(extracted)+len(custom)+len(PipelineBuiltinVariableSpecs()))
 	for _, name := range SortedPipelineBuiltinVariableNames() {
@@ -994,7 +991,7 @@ func mergeExtractedAndCustomVariables(extracted []model.VariableDeclaration, cus
 	for _, variable := range custom {
 		name, _ := variable["name"].(string)
 		stageId, _ := variable["stage_id"].(string)
-		key := declarationScopeKey(name, strings.TrimSpace(stageId))
+		key := declarationScopeKey(name, stageId)
 		if _, exists := consumed[key]; !exists {
 			result = append(result, variable)
 		}

@@ -67,7 +67,7 @@ func (s Service) RemoveService(ctx context.Context, userId, projectId, serviceId
 }
 
 func (s Service) ListServices(ctx context.Context, userId string, input servicedto.ServiceListInput) (repository.Page[servicedto.ServiceView], error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	if projectId == "" {
 		return repository.Page[servicedto.ServiceView]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -93,7 +93,7 @@ func (s Service) GetService(ctx context.Context, userId, projectId, serviceId st
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	item, err := s.service.ServiceListItem(ctx, projectId, strings.TrimSpace(serviceId))
+	item, err := s.service.ServiceListItem(ctx, projectId, serviceId)
 	if err != nil {
 		return servicedto.ServiceView{}, serviceReadError("Service", serviceId, err)
 	}
@@ -101,7 +101,7 @@ func (s Service) GetService(ctx context.Context, userId, projectId, serviceId st
 }
 
 func (s Service) CreateService(ctx context.Context, userId string, projectId string, input servicedto.ServiceCreateInput) (servicedto.ServiceView, error) {
-	applicationId, versionId := strings.TrimSpace(input.ApplicationId), strings.TrimSpace(input.VersionId)
+	applicationId, versionId := input.ApplicationId, input.VersionId
 	code, err := normalizeServiceCode(input.Code)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
@@ -149,8 +149,8 @@ func (s Service) ServiceDefinitionForUser(ctx context.Context, userId, projectId
 // configuration without operating a runtime. All component references must
 // belong to the selected Version.
 func (s Service) CreateServiceFromDefinition(ctx context.Context, userId, projectId string, input servicedto.ServiceDefinition) (servicedto.ServiceView, error) {
-	applicationId := strings.TrimSpace(input.Service.ApplicationId)
-	versionId := strings.TrimSpace(input.Service.VersionId)
+	applicationId := input.Service.ApplicationId
+	versionId := input.Service.VersionId
 	code, err := normalizeServiceCode(input.Service.Code)
 	if err != nil {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, err.Error())
@@ -209,7 +209,7 @@ func (s Service) UpdateServiceBasic(ctx context.Context, userId, projectId, serv
 	if err != nil {
 		return servicedto.ServiceView{}, err
 	}
-	versionId := strings.TrimSpace(input.VersionId)
+	versionId := input.VersionId
 	if versionId == "" {
 		return servicedto.ServiceView{}, apperror.New(apperror.KindValidation, "version_id is required")
 	}
@@ -240,7 +240,7 @@ func (s Service) GetServiceComponent(ctx context.Context, userId, projectId, ser
 	if err != nil {
 		return servicedto.ServiceComponentDetail{}, err
 	}
-	component, err := s.service.ServiceComponent(ctx, projectId, strings.TrimSpace(componentId))
+	component, err := s.service.ServiceComponent(ctx, projectId, componentId)
 	if err != nil {
 		return servicedto.ServiceComponentDetail{}, serviceReadError("Service component", componentId, err)
 	}
@@ -355,7 +355,7 @@ func (s Service) ResolveServiceTarget(ctx context.Context, userId, projectId, ap
 	if err != nil {
 		return model.Service{}, err
 	}
-	svc, err := s.service.Service(ctx, projectId, strings.TrimSpace(input.ServiceId))
+	svc, err := s.service.Service(ctx, projectId, input.ServiceId)
 	if err != nil {
 		return model.Service{}, serviceReadError("Service", input.ServiceId, err)
 	}
@@ -378,8 +378,6 @@ func mappedServiceComponents(serviceId string, declarations []model.VersionCompo
 // Version declarations. Gateway compile replaces version_component rows and
 // ON DELETE CASCADE would otherwise leave Services without mappings.
 func (s Service) AlignComponentMappingsToVersion(ctx context.Context, projectId, applicationId, versionId string) error {
-	applicationId = strings.TrimSpace(applicationId)
-	versionId = strings.TrimSpace(versionId)
 	if applicationId == "" || versionId == "" {
 		return apperror.New(apperror.KindValidation, "application_id and version_id are required")
 	}
@@ -729,7 +727,7 @@ func (s Service) serviceForUser(ctx context.Context, userId, projectId, serviceI
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Service{}, err
 	}
-	svc, err := s.service.Service(ctx, projectId, strings.TrimSpace(serviceId))
+	svc, err := s.service.Service(ctx, projectId, serviceId)
 	if err != nil {
 		return model.Service{}, serviceReadError("Service", serviceId, err)
 	}
@@ -750,14 +748,13 @@ func (s Service) versionComponents(ctx context.Context, projectId, versionId, ap
 	return version, components, nil
 }
 func (s Service) loadApplicationForUser(ctx context.Context, userId, projectId, applicationId string) (model.Application, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Application{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Application{}, err
 	}
-	app, err := s.application.Application(ctx, projectId, strings.TrimSpace(applicationId))
+	app, err := s.application.Application(ctx, projectId, applicationId)
 	if err != nil {
 		return model.Application{}, serviceReadError("Application", applicationId, err)
 	}

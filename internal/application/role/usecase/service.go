@@ -144,7 +144,6 @@ func (s Service) update(ctx context.Context, role model.Role, input roledto.Save
 }
 
 func (s Service) find(ctx context.Context, roleId string) (model.Role, error) {
-	roleId = strings.TrimSpace(roleId)
 	role, err := s.repo.RoleById(ctx, roleId)
 	if err == nil {
 		return role, nil

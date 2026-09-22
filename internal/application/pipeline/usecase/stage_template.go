@@ -15,7 +15,6 @@ import (
 )
 
 func (s Service) ListPipelineStageTemplates(ctx context.Context, userId, projectId string, page, perPage int, search string) (repository.Page[pipelinedto.PipelineStageTemplateDetail], error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return repository.Page[pipelinedto.PipelineStageTemplateDetail]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -46,7 +45,7 @@ func (s Service) PipelineStageTemplateForUser(ctx context.Context, userId string
 }
 
 func (s Service) CreatePipelineStageTemplate(ctx context.Context, userId string, input pipelinedto.PipelineStageTemplateCreateInput) (pipelinedto.PipelineStageTemplateDetail, error) {
-	projectId := strings.TrimSpace(input.ProjectId)
+	projectId := input.ProjectId
 	if projectId == "" {
 		return pipelinedto.PipelineStageTemplateDetail{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -341,7 +340,7 @@ func pipelineVariableScopedToStage(value, stageId string) (string, error) {
 	}
 	for _, variable := range variables {
 		variableStageId, _ := variable["stage_id"].(string)
-		if strings.TrimSpace(variableStageId) != stageId {
+		if variableStageId != stageId {
 			continue
 		}
 		name, _ := variable["name"].(string)
@@ -351,7 +350,7 @@ func pipelineVariableScopedToStage(value, stageId string) (string, error) {
 }
 
 func templateStageDeletionDependency(references []model.PipelineStageReference, stageId string) (string, string, error) {
-	targetId := strings.TrimSpace(stageId)
+	targetId := stageId
 	targetName := ""
 	for _, reference := range references {
 		if reference.Id == targetId {
@@ -380,7 +379,7 @@ func templateStageDeletionDependency(references []model.PipelineStageReference, 
 }
 
 func applicationStageDeletionDependency(stages []model.PipelineStage, stageId string) (string, string, error) {
-	targetId := strings.TrimSpace(stageId)
+	targetId := stageId
 	targetName := ""
 	for _, stage := range stages {
 		if stage.Id == targetId {
@@ -510,14 +509,12 @@ func (s Service) ApplyPipelineStageTemplateUpdate(ctx context.Context, userId st
 }
 
 func (s Service) pipelineStageTemplateForUser(ctx context.Context, userId string, projectId string, stageId string) (model.PipelineStage, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.PipelineStage{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.PipelineStage{}, err
 	}
-	stageId = strings.TrimSpace(stageId)
 	stage, err := s.store.PipelineStageTemplate(ctx, projectId, stageId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.PipelineStage{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
@@ -745,7 +742,7 @@ func (s Service) pipelineStageNode(ctx context.Context, projectId string, pipeli
 		return pipelinedto.PipelineStageNodeDetail{}, err
 	}
 	for _, node := range nodes {
-		if node.Node.Id == strings.TrimSpace(stageId) {
+		if node.Node.Id == stageId {
 			return node, nil
 		}
 	}
@@ -841,7 +838,7 @@ func dependsOnFromJSON(value string) ([]string, error) {
 }
 
 func validatePipelineStageReference(pipeline model.Pipeline, reference model.PipelineStageReference) error {
-	if strings.TrimSpace(reference.Id) == "" || reference.PipelineId != pipeline.Id || strings.TrimSpace(reference.SourceTemplateStageId) == "" || strings.TrimSpace(reference.SourceTemplateStageName) == "" || reference.SourceTemplateStageVersion <= 0 || strings.TrimSpace(reference.Name) == "" || strings.TrimSpace(reference.Image) == "" || strings.TrimSpace(reference.Artifacts) == "" || reference.SortOrder < 0 {
+	if reference.Id == "" || reference.PipelineId != pipeline.Id || reference.SourceTemplateStageId == "" || strings.TrimSpace(reference.SourceTemplateStageName) == "" || reference.SourceTemplateStageVersion <= 0 || strings.TrimSpace(reference.Name) == "" || strings.TrimSpace(reference.Image) == "" || strings.TrimSpace(reference.Artifacts) == "" || reference.SortOrder < 0 {
 		return apperror.New(apperror.KindValidation, "invalid template pipeline stage reference")
 	}
 	if err := validateJSONArray(reference.DependsOn, "depends_on"); err != nil {
@@ -854,7 +851,7 @@ func validatePipelineStageReference(pipeline model.Pipeline, reference model.Pip
 
 func applyTemplateReferenceUpdate(references []model.PipelineStageReference, stageId string, input pipelinedto.PipelineStageNodeUpdateInput) (bool, bool, error) {
 	for index := range references {
-		if references[index].Id != strings.TrimSpace(stageId) {
+		if references[index].Id != stageId {
 			continue
 		}
 		changed := false
@@ -894,7 +891,7 @@ func applyTemplateReferenceUpdate(references []model.PipelineStageReference, sta
 
 func applyApplicationStageUpdate(stages []model.PipelineStage, stageId string, input pipelinedto.PipelineStageNodeUpdateInput) (bool, bool, error) {
 	for index := range stages {
-		if stages[index].Id != strings.TrimSpace(stageId) {
+		if stages[index].Id != stageId {
 			continue
 		}
 		changed := false
@@ -952,7 +949,7 @@ func removeTemplateReference(references []model.PipelineStageReference, stageId 
 	remaining := make([]model.PipelineStageReference, 0, len(references))
 	found := false
 	for _, reference := range references {
-		if reference.Id == strings.TrimSpace(stageId) {
+		if reference.Id == stageId {
 			found = true
 			continue
 		}
@@ -965,7 +962,7 @@ func removeApplicationStage(stages []model.PipelineStage, stageId string) ([]mod
 	remaining := make([]model.PipelineStage, 0, len(stages))
 	found := false
 	for _, stage := range stages {
-		if stage.Id == strings.TrimSpace(stageId) {
+		if stage.Id == stageId {
 			found = true
 			continue
 		}

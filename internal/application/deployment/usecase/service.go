@@ -208,7 +208,6 @@ func (s Service) DeploymentContainerLog(ctx context.Context, userId string, proj
 }
 
 func (s Service) loadDeploymentForUser(ctx context.Context, userId string, projectId string, deploymentId string) (model.Deployment, error) {
-	projectId = strings.TrimSpace(projectId)
 	if projectId == "" {
 		return model.Deployment{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -226,7 +225,7 @@ func (s Service) loadDeploymentForUser(ctx context.Context, userId string, proje
 }
 
 func (s Service) removeDeploymentLog(ctx context.Context, projectId string, deployment model.Deployment) error {
-	if deployment.ServiceId == nil || strings.TrimSpace(*deployment.ServiceId) == "" {
+	if deployment.ServiceId == nil || *deployment.ServiceId == "" {
 		s.warnDeploymentLogCleanupSkipped(deployment.Id, "deployment has no associated service")
 		return nil
 	}

@@ -121,25 +121,26 @@
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
-        <template v-if="!editingProject">
-          <div class="space-y-1.5">
-            <label class="app-field-label block" for="project-code">
-              {{ t('project.code') }}
-              <span class="text-destructive">*</span>
-            </label>
-            <input
-              id="project-code"
-              v-model="form.code"
-              type="text"
-              class="app-input"
-              :class="errors.code ? 'app-input-error' : ''"
-              :placeholder="t('project.codeHint')"
-              :aria-invalid="errors.code ? 'true' : undefined"
-              @input="errors.code = ''"
-            />
-            <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
-          </div>
-        </template>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="project-code">
+            {{ t('project.code') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="project-code"
+            v-model="form.code"
+            type="text"
+            class="app-input"
+            :class="errors.code ? 'app-input-error' : ''"
+            :placeholder="t('project.codeHint')"
+            :readonly="Boolean(editingProject)"
+            :disabled="operating"
+            :aria-readonly="editingProject ? 'true' : undefined"
+            :aria-invalid="errors.code ? 'true' : undefined"
+            @input="errors.code = ''"
+          />
+          <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
+        </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <p v-if="submitError" class="app-field-error mt-3" role="alert">{{ submitError }}</p>

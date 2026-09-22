@@ -75,12 +75,12 @@
           <label class="app-field-label block" for="mcp-token-expiry">
             {{ t('mcpAccessTokens.expiresIn') }}
           </label>
-          <select id="mcp-token-expiry" v-model.number="form.expires_in_days" class="app-input">
-            <option :value="0">{{ t('mcpAccessTokens.neverExpires') }}</option>
-            <option :value="30">{{ t('mcpAccessTokens.expiresIn30Days') }}</option>
-            <option :value="90">{{ t('mcpAccessTokens.expiresIn90Days') }}</option>
-            <option :value="365">{{ t('mcpAccessTokens.expiresIn365Days') }}</option>
-          </select>
+          <SelectControl
+            id="mcp-token-expiry"
+            :model-value="form.expires_in_days"
+            :options="expiryOptions"
+            @update:model-value="form.expires_in_days = Number($event)"
+          />
         </div>
       </div>
       <p v-if="createError" class="app-field-error mt-3" role="alert">{{ createError }}</p>
@@ -155,6 +155,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import SelectControl, { type SelectOption } from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { MCPAccessTokenResp } from '@/gen/proto/orbit/v1/auth/auth';
@@ -176,6 +177,12 @@
   const createError = ref('');
   const revokeError = ref('');
   const environmentValue = computed(() => `POMELO_ORBIT_MCP__ACCESS_TOKEN=${createdToken.value}`);
+  const expiryOptions = computed<SelectOption[]>(() => [
+    { value: 0, label: t('mcpAccessTokens.neverExpires') },
+    { value: 30, label: t('mcpAccessTokens.expiresIn30Days') },
+    { value: 90, label: t('mcpAccessTokens.expiresIn90Days') },
+    { value: 365, label: t('mcpAccessTokens.expiresIn365Days') },
+  ]);
 
   async function loadTokens() {
     try {

@@ -149,6 +149,21 @@
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block" for="project-code">
+            {{ t('project.code') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="project-code"
+            v-model="form.code"
+            type="text"
+            class="app-input"
+            readonly
+            :disabled="operating"
+            aria-readonly="true"
+          />
+        </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
       <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
@@ -234,7 +249,7 @@
   const appliedMemberSearch = ref('');
   const users = ref<UserListResp[]>([]);
   const selectedUserId = ref('');
-  const form = reactive({ name: '' });
+  const form = reactive({ name: '', code: '' });
   const errors = reactive({ name: '' });
   const memberErrors = reactive({ userId: '' });
   const editSubmitError = ref('');
@@ -268,6 +283,7 @@
 
   function resetForm() {
     form.name = project.value?.name ?? '';
+    form.code = project.value?.code ?? '';
     errors.name = '';
     editSubmitError.value = '';
   }

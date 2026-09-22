@@ -17,7 +17,7 @@
         <dl class="app-detail-info-grid">
           <div class="flex gap-2 sm:col-span-2">
             <dt>ID</dt>
-            <dd class="min-w-0 break-all font-mono text-foreground">{{ artifact.id }}</dd>
+            <dd class="min-w-0 break-all text-foreground">{{ artifact.id }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>名称</dt>
@@ -71,13 +71,13 @@
             <dd class="min-w-0 break-all text-foreground">{{ artifact.location }}</dd>
           </div>
           <div v-if="artifact.value_format !== undefined" class="flex gap-2">
-            <dt>值格式</dt>
+            <dt>格式</dt>
             <dd class="text-foreground">{{ artifact.value_format }}</dd>
           </div>
           <div v-if="artifact.value !== undefined" class="flex gap-2 sm:col-span-2">
             <dt>值</dt>
             <dd class="min-w-0 flex-1">
-              <pre class="whitespace-pre-wrap break-all text-sm text-foreground">{{
+              <pre class="whitespace-pre-wrap break-all font-sans text-sm text-foreground">{{
                 artifact.value
               }}</pre>
             </dd>

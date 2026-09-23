@@ -42,6 +42,7 @@ type Service struct {
 	executionTimeout  time.Duration
 	pollInterval      time.Duration
 	runner            pipelinerunport.ContainerRunner
+	remoteRuntime     pipelinerunport.RemoteRuntimeFactory
 	localSource       repositoryport.LocalDirectorySource
 }
 
@@ -81,6 +82,10 @@ func NewExecutionService(project repository.ProjectReader, credential repository
 	return Service{store: store, executionStore: store, environments: environments, targetResolver: targetResolver, versionForker: versionForker, transactionRunner: transactionRunner, workspace: workspace, secretKey: secretKey, logger: logger, executionTimeout: executionTimeout, pollInterval: pollInterval, runner: runner, logStore: logStore, executionLogStore: logStore, localSource: localSource}
 }
 
+func (s Service) WithRemoteRuntime(runtime pipelinerunport.RemoteRuntimeFactory) Service {
+	s.remoteRuntime = runtime
+	return s
+}
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
 	return s.project.Project(ctx, id)
 }
@@ -278,7 +283,9 @@ func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeli
 		if repo.RepositoryType != model.RepositoryTypeRemoteGit || err != nil || remoteURL.Scheme != "https" || remoteURL.Hostname() == "" {
 			return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "SSH pipeline runs require an HTTPS Git repository URL")
 		}
-		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "SSH pipeline execution is not installed for this environment")
+		if target.Environment.SSH.Platform != model.EnvironmentPlatformWindows || s.remoteRuntime == nil {
+			return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "SSH pipeline execution is not installed for this environment")
+		}
 	}
 	if target.Environment.IsLocal() {
 		if err := s.ensureWorkspaceReady(ctx, target.Environment); err != nil {
@@ -363,6 +370,11 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId string, projectId
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
 	}
+	if run.EnvironmentTargetType != nil && *run.EnvironmentTargetType == model.EnvironmentTargetTypeSSH {
+		if err := workspace.RemoveRunFiles(run.Id); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return apperror.Wrap(apperror.KindInternal, "Failed to delete remote pipeline run files", err)
+		}
+	}
 	deleteRecord := func(txCtx context.Context) error {
 		return s.store.DeletePipelineRun(txCtx, projectId, run.Id)
 	}
@@ -375,11 +387,13 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId string, projectId
 	if deleteErr != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run", deleteErr)
 	}
-	if err := workspace.RemoveRunFiles(run.Id); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			s.warnPipelineRunFileCleanupSkipped(run.Id, "pipeline run file or directory does not exist")
-		} else {
-			return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run files", err)
+	if run.EnvironmentTargetType == nil || *run.EnvironmentTargetType != model.EnvironmentTargetTypeSSH {
+		if err := workspace.RemoveRunFiles(run.Id); err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				s.warnPipelineRunFileCleanupSkipped(run.Id, "pipeline run file or directory does not exist")
+			} else {
+				return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline run files", err)
+			}
 		}
 	}
 	return nil

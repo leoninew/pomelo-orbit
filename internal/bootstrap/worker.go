@@ -15,6 +15,7 @@ import (
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
 	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
+	sshrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/ssh"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/executionlog"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/repositorysource"
 	"github.com/leoninew/pomelo-orbit/internal/queue/worker"
@@ -65,7 +66,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		pipelinerunner.DockerRunner{},
 		pipelineLogStore,
 		localSource,
-	)
+	).WithRemoteRuntime(sshrunner.NewPipelineRuntime())
 	deploymentService := deploymentsvc.NewExecutionService(
 		stores.project,
 		stores.application,

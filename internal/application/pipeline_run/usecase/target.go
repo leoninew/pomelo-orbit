@@ -115,6 +115,20 @@ type runRuntime struct {
 	writer    pipelinerunport.ExecutionLogStore
 }
 
+func (s Service) runtimeForTarget(ctx context.Context, target environmentport.Target) (runRuntime, error) {
+	if target.Environment.IsSSH() {
+		if s.remoteRuntime == nil {
+			return runRuntime{}, errors.New("SSH pipeline runtime is not configured")
+		}
+		workspace, runner, logs, err := s.remoteRuntime.RuntimeForTarget(ctx, target)
+		if err != nil {
+			return runRuntime{}, err
+		}
+		return runRuntime{workspace: workspace, runner: runner, reader: logs, writer: logs}, nil
+	}
+	return s.runtimeForEnvironment(ctx, target.Environment)
+}
+
 func (s Service) runtimeForEnvironment(ctx context.Context, environment model.Environment) (runRuntime, error) {
 	workspace, err := s.workspaceForEnvironment(ctx, environment)
 	if err != nil {
@@ -127,6 +141,16 @@ func (s Service) runtimeForRun(ctx context.Context, projectId string, run model.
 	environment, err := s.runEnvironment(ctx, projectId, run)
 	if err != nil {
 		return runRuntime{}, err
+	}
+	if environment.IsSSH() {
+		target, err := s.resolveProjectTarget(ctx, projectId)
+		if err != nil {
+			return runRuntime{}, err
+		}
+		if err := verifyRunTargetSnapshot(run, target.Environment); err != nil {
+			return runRuntime{}, err
+		}
+		return s.runtimeForTarget(ctx, target)
 	}
 	return s.runtimeForEnvironment(ctx, environment)
 }

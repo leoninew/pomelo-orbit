@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -26,6 +27,9 @@ type ExecutionLogStore interface {
 	Writer(logPath string) (io.WriteCloser, error)
 }
 
+type RemoteRuntimeFactory interface {
+	RuntimeForTarget(ctx context.Context, target environmentport.Target) (Workspace, ContainerRunner, ExecutionLogStore, error)
+}
 type VolumeMount struct {
 	HostPath      string
 	ContainerPath string
@@ -44,6 +48,9 @@ type Workspace interface {
 // ProjectWorkspaceResolver selects the control-plane pipeline workspace for a
 // project. Production wiring resolves this from the project's Environment;
 // tests and embedded callers may continue to provide a fixed Workspace.
+type ArtifactLocator interface {
+	ArtifactLocation(runId string, artifactPath string) (string, error)
+}
 type ProjectWorkspaceResolver interface {
 	WorkspaceForProject(ctx context.Context, projectId string) (Workspace, error)
 }

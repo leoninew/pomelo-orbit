@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -38,13 +39,16 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 	if err != nil {
 		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Load repository failed: %v", err))
 	}
-	if target.Environment.IsSSH() && repo.RepositoryType == model.RepositoryTypeLocalDirectory {
-		return s.failRun(ctx, projectId, run.Id, "Local directory repositories cannot run on SSH environments; retry with an HTTPS Git repository")
+	if target.Environment.IsSSH() {
+		if repo.RepositoryType == model.RepositoryTypeLocalDirectory {
+			return s.failRun(ctx, projectId, run.Id, "Local directory repositories cannot run on SSH environments; retry with an HTTPS Git repository")
+		}
+		remoteURL, parseErr := url.Parse(repo.RepositoryUrl)
+		if repo.RepositoryType != model.RepositoryTypeRemoteGit || parseErr != nil || remoteURL.Scheme != "https" || remoteURL.Hostname() == "" {
+			return s.failRun(ctx, projectId, run.Id, "SSH pipeline runs require an HTTPS Git repository URL")
+		}
 	}
-	if !target.Environment.IsLocal() {
-		return s.failRun(ctx, projectId, run.Id, "SSH pipeline execution is not installed for this environment")
-	}
-	runtime, err := s.runtimeForEnvironment(ctx, target.Environment)
+	runtime, err := s.runtimeForTarget(ctx, target)
 	if err != nil {
 		return s.failRun(ctx, projectId, run.Id, err.Error())
 	}

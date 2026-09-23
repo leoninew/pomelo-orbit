@@ -1,5 +1,5 @@
 # 文档主题索引
-最后修改时间: 2026-09-23 11:38:19
+最后修改时间: 2026-09-23 19:59:36
 
 独立索引文件（与 [README.md](./README.md) 分工：README 讲规则与阅读顺序，本页讲主题 → 路径）。
 
@@ -26,8 +26,7 @@
 |------|--------|
 | CD 部署概念 | [guides/deployment.md](./guides/deployment.md) |
 | 客户端与云端调用机制 | [guides/client-cloud-invocation.md](./guides/client-cloud-invocation.md) |
-| Docker 部署 | [guides/docker-deployment.md](./guides/docker-deployment.md) |
-| 服务器首次部署 | [guides/server-deployment.md](./guides/server-deployment.md) |
+| Docker 与服务器首次部署 | [guides/docker-deployment.md](./guides/docker-deployment.md) |
 | 路由与证书 | [guides/routing-and-certificates.md](./guides/routing-and-certificates.md) |
 | 证书管理 | [guides/certificate-management.md](./guides/certificate-management.md) |
 | Docker labels 路由 | [guides/docker-label-routing.md](./guides/docker-label-routing.md) |

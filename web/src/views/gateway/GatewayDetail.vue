@@ -495,6 +495,7 @@
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
+  import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { applicationApi } from '@/api/application/application';
 
   import { serviceApi } from '@/api/service/service';
@@ -860,7 +861,11 @@
     }
     try {
       await executeOp(async () => {
-        const result = await serviceApi.deploy(selectedProjectId(), current.service_id, {
+        const projectId = selectedProjectId();
+        if (!(await ensureProjectExecutionReady(projectId, router, 'cd'))) {
+          return;
+        }
+        const result = await serviceApi.deploy(projectId, current.service_id, {
           force_recreate: deployForm.force_recreate,
         });
         for (const warning of result.warnings) {

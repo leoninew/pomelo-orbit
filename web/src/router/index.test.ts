@@ -17,7 +17,7 @@ describe('domain routes', () => {
     expect(router.resolve(path).name).toBe(name);
   });
 
-  it('places environment in the deployment navigation scope', () => {
-    expect(getNavigationScope('/environment')).toBe('deployment');
+  it('places environment in the system management navigation scope', () => {
+    expect(getNavigationScope('/environment')).toBe('settings');
   });
 });

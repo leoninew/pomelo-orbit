@@ -1,11 +1,11 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-09-11 14:48:17
+最后修改时间: 2026-09-23 11:37:27
 
 Doc role: living architecture
 
 ## 运行时模型
 
-Project 是部署运行边界：一个 Project 有一个 Environment，Environment 有一个默认 Gateway。Application、Version、Component、Service 与 Deployment 仍是 Compose 拓扑的唯一来源；Gateway 是关联 `GatewayConfig` 的普通 Application。
+Project 的共用 Environment 是 CD 的部署运行边界：当前初始化向导完成后的 Project 有一个 Environment 和一个默认 Gateway；新建 Project 不预置这两项。Application、Version、Component、Service 与 Deployment 仍是 Compose 拓扑的唯一来源；Gateway 是关联 `GatewayConfig` 的普通 Application。
 
 ```text
 Project

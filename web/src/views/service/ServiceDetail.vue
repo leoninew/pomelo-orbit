@@ -307,6 +307,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
+  import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { applicationApi } from '@/api/application/application';
   import { serviceApi } from '@/api/service/service';
   import AppBadge from '@/components/AppBadge.vue';
@@ -635,6 +636,10 @@
     }
     try {
       await executeOperation(async () => {
+        const projectId = selectedProjectId();
+        if (!(await ensureProjectExecutionReady(projectId, router, 'cd'))) {
+          return;
+        }
         let serviceForDeploy = current;
         if (deployForm.version_id !== current.version_id) {
           serviceForDeploy = await serviceApi.updateBasic(selectedProjectId(), serviceId, {

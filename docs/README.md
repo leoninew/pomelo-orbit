@@ -1,12 +1,12 @@
 # Pomelo Orbit 文档中心
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-09-23 11:38:19
 
 ## 阅读顺序（实现 / Agent 默认）
 
 1. **[INDEX.md](./INDEX.md)** — 主题 → 文件导航  
 2. **活 SoT**  
    - [产品概览](./product/overview.md)  
-   - [CD 领域模型](./product/cd-model.md)  
+   - [Project 环境与 CD 领域模型](./product/cd-model.md)
    - [后端架构](./architecture/backend.md)  
    - [CD 运行时](./architecture/cd-runtime.md)  
    - [决策账本](./decisions/ledger.md)  

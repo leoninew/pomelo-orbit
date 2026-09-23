@@ -369,6 +369,7 @@
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
+  import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppDialog from '@/components/AppDialog.vue';
@@ -655,7 +656,11 @@
   async function handleRetry() {
     try {
       await executeRetry(async () => {
-        const newRun = await pipelineRunApi.retry(selectedProjectId(), runId.value, {});
+        const projectId = selectedProjectId();
+        if (!(await ensureProjectExecutionReady(projectId, router, 'ci'))) {
+          return;
+        }
+        const newRun = await pipelineRunApi.retry(projectId, runId.value, {});
         toast.success(t('pipelineRun.toast.retrySuccess'));
         router.push(`/pipeline-run/${newRun.id}`);
       });

@@ -372,6 +372,7 @@
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
+  import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import { serviceApi } from '@/api/service/service';
@@ -683,6 +684,9 @@
     }
     try {
       await executeOp(async () => {
+        if (!(await ensureProjectExecutionReady(projectId, router, 'cd'))) {
+          return;
+        }
         let serviceForDeploy = service;
         if (deployForm.version_id !== service.version_id) {
           serviceForDeploy = await serviceApi.updateBasic(projectId, service.id, {

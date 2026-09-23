@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PERMISSIONS } from '@/constants/permissions';
 import {
   getNavigationScope,
   getSecondaryNavigationTitle,
@@ -25,6 +26,7 @@ describe('domain navigation declarations', () => {
     ['/users', 'settings'],
     ['/mcp-access-token', 'settings'],
     ['/settings', 'settings'],
+    ['/environment', 'settings'],
     ['/pipeline/example', 'pipeline'],
     ['/pipeline-run/artifact', 'pipeline'],
     ['/application/example', 'deployment'],
@@ -64,7 +66,6 @@ describe('domain navigation declarations', () => {
           expect.objectContaining({ key: 'applications', path: '/applications' }),
           expect.objectContaining({ key: 'services', path: '/services' }),
           expect.objectContaining({ key: 'deployments', path: '/deployments' }),
-          expect.objectContaining({ key: 'environment', path: '/environment' }),
         ],
       }),
       expect.objectContaining({
@@ -85,12 +86,14 @@ describe('domain navigation declarations', () => {
       'nav.gateway': '网关',
       'nav.groups.admin': '系统管理',
       'nav.settings': '系统设置',
+      'nav.environment': '环境',
     };
     const t = (key: string) => labels[key] || key;
 
     expect(getSecondaryNavigationTitle('pipeline', 'repository', t)).toBe('代码仓库 仓库');
     expect(getSecondaryNavigationTitle('deployment', 'gateway', t)).toBe('网络接入 网关');
     expect(getSecondaryNavigationTitle('settings', 'settings', t)).toBe('系统管理 系统设置');
+    expect(getSecondaryNavigationTitle('settings', 'environment', t)).toBe('系统管理 环境');
     expect(getSecondaryNavigationTitle('pipeline', 'missing', t)).toBeNull();
   });
 
@@ -104,9 +107,21 @@ describe('domain navigation declarations', () => {
           expect.objectContaining({ key: 'roles', path: '/roles' }),
           expect.objectContaining({ key: 'loginhistory', path: '/login-history' }),
           expect.objectContaining({ key: 'mcpAccessTokens', path: '/mcp-access-token' }),
+          expect.objectContaining({ key: 'environment', path: '/environment' }),
           expect.objectContaining({ key: 'settings', path: '/settings' }),
         ],
       }),
     ]);
+  });
+
+  it('keeps project environment accessible without system settings permission', () => {
+    const environment = secondaryNavigation.settings[0].children.find(
+      (entry) => entry.key === 'environment'
+    );
+    const settings = secondaryNavigation.settings[0].children.find(
+      (entry) => entry.key === 'settings'
+    );
+    expect(environment?.permission).toBeUndefined();
+    expect(settings?.permission).toBe(PERMISSIONS.SETTING_READ);
   });
 });

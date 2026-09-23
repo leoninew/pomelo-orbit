@@ -148,7 +148,7 @@ const router = createRouter({
       path: '/environment',
       name: 'Environment',
       component: () => import('@/views/environment/EnvironmentPage.vue'),
-      meta: { title: '部署环境', menuKey: 'environment' },
+      meta: { title: '项目环境', menuKey: 'environment' },
     },
     {
       path: '/dialogue',

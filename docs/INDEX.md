@@ -1,5 +1,5 @@
 # 文档主题索引
-最后修改时间: 2026-09-17 10:55:15
+最后修改时间: 2026-09-23 11:38:19
 
 独立索引文件（与 [README.md](./README.md) 分工：README 讲规则与阅读顺序，本页讲主题 → 路径）。
 
@@ -8,7 +8,7 @@
 | 主题 | 活文档 |
 |------|--------|
 | 产品边界与阅读入口 | [product/overview.md](./product/overview.md) |
-| CD 领域模型 / 术语 / 生命周期 | [product/cd-model.md](./product/cd-model.md) |
+| Project 共用环境 / CD 领域模型 / 术语 / 生命周期 | [product/cd-model.md](./product/cd-model.md) |
 | 有效与废止决策 | [decisions/ledger.md](./decisions/ledger.md) |
 
 ## 架构与技术

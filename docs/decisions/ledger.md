@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-09-17 10:55:15
+最后修改时间: 2026-09-23 11:37:27
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -26,7 +26,7 @@ Doc role: living SoT
 | C-16 | 文档：活 SoT vs archive；过程库仅进行中任务 | 本整理任务 |
 | C-17 | Route 发布统一走全量同步 | 业务变更先写 Route 数据；列表/详情启停均为前端草稿。同步预览展示业务与全部 REST 路由的可读差异，确认后覆盖 Traefik REST；Gateway deploy/restart 成功后自动发布完整快照 |
 | C-18 | MCP 仅采用本地 stdio 与内部 actor 绑定 | Web Dialogue 为每 turn 建立固定 actor 的内存 Core；Grok/Codex stdio 用显式 MCP PAT `POMELO_ORBIT_MCP__ACCESS_TOKEN`，每次 tools/call 认证；无远程 /mcp |
-| C-19 | 部署资源初始化只走 Web Wizard；MCP 使用 connection-local 已就绪 Project scope | Project 创建和 identity seed 不预建 Environment/Gateway；`ProjectInitializationConfig` 只给 Wizard 初值；运行时只读库存；Grok/Codex 先 list/select，后续工具不再传 `project_id` |
+| C-19 | Project 环境/Gateway 初始化只走 Web Wizard；MCP 使用 connection-local 已就绪 Project scope | Project 创建和 identity seed 不预建 Environment/Gateway；`ProjectInitializationConfig` 只给 Wizard 初值；运行时只读库存；Grok/Codex 先 list/select，后续工具不再传 `project_id` |
 
 ## 废止（Superseded）
 
@@ -44,6 +44,8 @@ Doc role: living SoT
 | X-10 | 以 code 或 Application.kind 推断 Gateway 行为 | C-04 + GatewayConfig |
 | X-11 | Route 写操作直接增量发布，或发现未知 REST router 即阻断全量覆盖 | C-17；同步预览展示差异，用户确认后以业务快照覆盖 Traefik |
 | X-12 | MCP 浏览器 grant、loopback callback、token file、HTTP /mcp Bearer transport | C-18；显式进程凭据与内存 Core |
+| X-13 | Project 创建时自动预建 local Environment，空库预置 Gateway/Service | C-19；Project 与 membership 创建后由 Web Wizard 配置 Environment、Probe 与 Gateway |
+| X-14 | local Environment 工作目录来自 `workspace.deployment` 或运行时 YAML 回退 | `Environment.workspace_root` 为已保存的唯一工作区根；当前 CI 只在 local 执行，CD 按 local/ssh 目标执行 |
 
 ## Backlog（非本账本承诺交付）
 

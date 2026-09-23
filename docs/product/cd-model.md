@@ -1,5 +1,5 @@
-# CD 产品模型
-最后修改时间: 2026-09-16 18:02:22
+# Project 环境与 CD 产品模型
+最后修改时间: 2026-09-23 11:37:27
 
 Doc role: living product model
 
@@ -7,8 +7,8 @@ Doc role: living product model
 
 | 对象 | 职责 |
 | --- | --- |
-| Project | 成员权限、资源隔离和部署环境切换边界；类似轻量租户 |
-| Environment | Project 唯一的部署目标；类型为控制面本机或 SSH 宿主 |
+| Project | 成员权限、资源隔离和 CI/CD 共用环境切换边界；类似轻量租户 |
+| Environment | Project 唯一的 CI/CD 共用执行目标；类型为控制面本机或 SSH 宿主（当前 CI 仅支持 local） |
 | Application | 通用应用元数据，属于一个 Project |
 | Version / Component | 可编辑、可 fork 的 Compose 拓扑声明 |
 | Service | Version 的独立运行绑定和运行时覆盖，由 Project 内唯一的服务编码标识 |
@@ -16,9 +16,9 @@ Doc role: living product model
 | GatewayConfig | Gateway Application 的业务属性和 ACME profile 选择 |
 | Route | 自定义 HTTP/TCP 入口和受管 target |
 
-`Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。切换当前 Project 就是切换该 Project 已保存的部署环境和默认 Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
+`Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。切换当前 Project 就是切换该 Project 已保存的共用环境及关联的 CD Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
 
-Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CI 使用 `<workspace_root>/pipeline`，CD 使用 `<workspace_root>/deployment/<service-code>`，Gateway certificates 与 Route snapshot 也位于对应 Service 目录下。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准，运行时按 Project Environment 解析实际 CI 根；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
+Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD 使用 `<workspace_root>/deployment/<service-code>`，Gateway certificates 与 Route snapshot 也位于对应 Service 目录下。当前 CI 仅支持 `local` Environment，在其 `<workspace_root>/pipeline` 中由控制面执行；`ssh` Environment 的远程工作区目前只用于 CD，不能作为控制面 Docker 的本地挂载源。这是 CI 执行能力的现有限制，不表示 Environment 归 CD 独有。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
 
 ## Environment
 

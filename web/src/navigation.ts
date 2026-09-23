@@ -98,6 +98,12 @@ const settingsNavigation: NavigationBranch[] = [
         path: '/mcp-access-token',
       },
       {
+        key: 'environment',
+        label: '环境',
+        labelKey: 'nav.environment',
+        path: '/environment',
+      },
+      {
         key: 'settings',
         label: '系统设置',
         labelKey: 'nav.settings',
@@ -137,12 +143,6 @@ const deploymentNavigation: NavigationBranch[] = [
         label: '部署',
         labelKey: 'nav.deployments',
         path: '/deployments',
-      },
-      {
-        key: 'environment',
-        label: '环境',
-        labelKey: 'nav.environment',
-        path: '/environment',
       },
     ],
   },
@@ -312,6 +312,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path.startsWith('/role/') ||
     path === '/login-history' ||
     path === '/mcp-access-token' ||
+    path === '/environment' ||
     path === '/settings'
   ) {
     return path === '/' || path === '/home' ? 'home' : 'settings';
@@ -343,7 +344,6 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/deployment' ||
     path.startsWith('/deployment/') ||
     path === '/deployments' ||
-    path === '/environment' ||
     path === '/dialogue' ||
     path === '/gateway' ||
     path === '/route' ||

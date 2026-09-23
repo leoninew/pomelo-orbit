@@ -441,6 +441,7 @@
   import { ArrowLeft, CopyPlus, Play, Plus, RefreshCw, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
+  import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { applicationApi } from '@/api/application/application';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
@@ -1115,7 +1116,11 @@
     }
     try {
       await executeSave(async () => {
-        const run = await pipelineRunApi.trigger(selectedProjectId(), pipelineId.value, {
+        const projectId = selectedProjectId();
+        if (!(await ensureProjectExecutionReady(projectId, router, 'ci'))) {
+          return;
+        }
+        const run = await pipelineRunApi.trigger(projectId, pipelineId.value, {
           repository_ref: repositoryRef,
         });
         runOpen.value = false;

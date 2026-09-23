@@ -209,6 +209,15 @@
                 }}
               </button>
               <button
+                v-if="ciReturnTo && canContinueToGateway"
+                type="button"
+                class="app-button h-9 px-4"
+                :disabled="operating"
+                @click="router.push(ciReturnTo)"
+              >
+                {{ t('project.initialization.continueCI') }}
+              </button>
+              <button
                 type="button"
                 class="app-button-primary h-9 px-4"
                 :disabled="operating || !canContinueToGateway"
@@ -473,6 +482,15 @@
                 {{ t('common.back') }}
               </button>
               <button
+                v-if="ciReturnTo && status.status === 'needs_gateway'"
+                type="button"
+                class="app-button h-9 px-4"
+                :disabled="operating"
+                @click="router.push(ciReturnTo)"
+              >
+                {{ t('project.initialization.continueCI') }}
+              </button>
+              <button
                 type="submit"
                 class="app-button-primary h-9 px-4"
                 :disabled="operating"
@@ -607,6 +625,13 @@
   ]);
 
   const status = computed(() => initializationStore.statusFor(projectStore.activeProjectId ?? ''));
+  const ciReturnTo = computed(() => {
+    if (route.query.purpose !== 'ci') {
+      return '';
+    }
+    const target = resolveInitializationCompletionRedirect(route.query.returnTo);
+    return target === '/gateway' ? '' : target;
+  });
   const loading = computed(() => initializationStore.loading);
   const localWorkspaceRoot = computed(() => status.value?.defaults?.local_workspace_root || '');
   const isRemoteSSH = computed(() => environmentForm.targetType === 'ssh');
@@ -819,7 +844,7 @@
       }
       hydrate(view);
       if (view.status === READY_INITIALIZATION_STATUS) {
-        await router.replace(resolveInitializationCompletionRedirect());
+        await router.replace(resolveInitializationCompletionRedirect(route.query.returnTo));
       }
     } catch (error: unknown) {
       if (id !== routeProjectId()) {
@@ -916,6 +941,9 @@
         hydrate(view);
         if (view.status === 'needs_gateway' || view.status === READY_INITIALIZATION_STATUS) {
           toast.success(t('project.initialization.probeSucceeded'));
+          if (view.status === READY_INITIALIZATION_STATUS) {
+            await router.replace(resolveInitializationCompletionRedirect(route.query.returnTo));
+          }
         } else {
           toast.error(
             view.environment?.last_probe_diagnostic || t('project.initialization.probeFailed')
@@ -975,7 +1003,7 @@
         if (latest.status !== 'needs_gateway') {
           hydrate(latest);
           if (latest.status === READY_INITIALIZATION_STATUS) {
-            await router.replace(resolveInitializationCompletionRedirect());
+            await router.replace(resolveInitializationCompletionRedirect(route.query.returnTo));
           }
           return;
         }
@@ -985,7 +1013,7 @@
         );
         hydrate(view);
         toast.success(t('project.initialization.created'));
-        await router.replace(resolveInitializationCompletionRedirect());
+        await router.replace(resolveInitializationCompletionRedirect(route.query.returnTo));
       });
     } catch (error: unknown) {
       gatewaySubmitError.value =

@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-16 17:27:38
+最后修改时间: 2026-09-23 11:23:09
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -66,7 +66,9 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 
 ## Runtime workspace
 
-Pipeline checkout、Stage log 和 Run artifact 都位于当前 Project `Environment.workspace_root/pipeline`。`workspace.root` 只作为启动配置基准，实际执行按 Project Environment 解析；配置值表示 Orbit 进程可见路径。Pipeline 容器的 `/workspace` 与 `/artifacts` bind mount 会解析为 Docker daemon 可见的宿主路径。因此 DooD 部署必须将该工作区根目录显式挂入 Orbit 容器，不能把容器内路径直接传给 Docker。SSH Environment 的远端 workspace 仅用于 CD，不能作为控制面 Pipeline 的本地 bind source。
+当前 Pipeline Run 只支持 `local` Environment：触发时检查所属 Project 有 local Environment 且保存了工作区根目录，不以 Project 初始化 `ready`、Gateway 是否部署或最新 Probe 成功作为 CI 准入条件。Worker 执行时重新解析 Environment；若环境在排队后变更，当前 Run 未保存目标修订快照。`ssh` Environment 会在触发时被拒绝，远端工作区目前只用于 CD。
+
+本地 Pipeline checkout、Stage log 和 Run artifact 位于当前 Project 的 `<Environment.workspace_root>/pipeline`。`workspace.root` 只作为启动配置基准；当前 CI 使用控制面 Docker CLI，`/workspace` 与 `/artifacts` bind mount 必须解析为该 Docker daemon 可见的宿主路径。DooD 部署必须显式挂载工作区根目录，不能把容器内路径直接传给 Docker。支持在 Project 的 SSH 目标运行 CI 是后续需求，不能通过把远端 `workspace_root` 当本地路径来实现。
 
 ## Git 凭据
 

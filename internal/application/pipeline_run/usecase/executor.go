@@ -296,6 +296,12 @@ func (e Executor) saveArtifacts(ctx context.Context, projectId string, run model
 				return fmt.Errorf("check file artifact %s: %w", artifact.Reference, err)
 			}
 			location := filepath.Join(e.workspace.ArtifactsPath(run.Id), artifact.Reference)
+			if locator, ok := e.workspace.(pipelinerunport.ArtifactLocator); ok {
+				location, err = locator.ArtifactLocation(run.Id, artifact.Reference)
+				if err != nil {
+					return fmt.Errorf("resolve file artifact %s: %w", artifact.Reference, err)
+				}
+			}
 			if !exists {
 				e.logger.Warn("artifact file not found, skipping", "run", run.Id, "stage", stage.Name, "location", location)
 				continue

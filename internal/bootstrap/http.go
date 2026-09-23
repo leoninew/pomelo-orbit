@@ -164,7 +164,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		pipelinerunner.DockerRunner{},
 		pipelineLogStore,
 		localSource,
-	)
+	).WithRemoteRuntime(sshrunner.NewPipelineRuntime())
 	projectHandoverService := handoversvc.New(
 		projectService,
 		environmentService,

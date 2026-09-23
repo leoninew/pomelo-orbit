@@ -223,7 +223,7 @@ func TestSSHRunNeverSelectsControlPlaneResources(t *testing.T) {
 	run := model.PipelineRun{Id: "run-1"}
 	applyRunTargetSnapshot(&run, structTarget(environment))
 	_, err := service.workspaceForRun(context.Background(), "project-1", run)
-	if err == nil || !strings.Contains(err.Error(), "remote pipeline workspace") {
+	if err == nil || !strings.Contains(err.Error(), "resolver is not configured") {
 		t.Fatalf("SSH workspace error = %v", err)
 	}
 }
@@ -246,7 +246,7 @@ func (store *queuedRunStore) PipelineRun(context.Context, string, string) (model
 
 func (store *queuedRunStore) Repository(context.Context, string, string) (model.Repository, error) {
 	store.loadedRepository = true
-	return model.Repository{Id: "repo-1", RepositoryType: model.RepositoryTypeRemoteGit}, nil
+	return model.Repository{Id: "repo-1", RepositoryType: model.RepositoryTypeRemoteGit, RepositoryUrl: "https://git.example.test/repo.git"}, nil
 }
 
 func (store *queuedRunStore) CompletePipelineRun(_ context.Context, _, _ string, statusValue, message string) (bool, error) {
@@ -289,7 +289,7 @@ func TestQueuedSSHRunCannotFallBackToLocalRunner(t *testing.T) {
 		t.Fatal(err)
 	}
 	if store.completedStatus != status.WorkStatusFaulted ||
-		!strings.Contains(store.completedMessage, "not installed") {
+		!strings.Contains(store.completedMessage, "runtime is not configured") {
 		t.Fatalf("SSH run status=%q message=%q", store.completedStatus, store.completedMessage)
 	}
 }

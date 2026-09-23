@@ -1,5 +1,5 @@
 # 产品概览
-最后修改时间: 2026-09-23 12:49:28
+最后修改时间: 2026-09-23 14:50:48
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。
@@ -14,7 +14,7 @@ Pomelo Orbit 是自托管的 **CI + CD + 平台管理** 控制面：
 | **CI** | 仓库、项目级可复用阶段、Template/Application Pipeline、运行、制品、凭据与变量 |
 | **平台** | 项目及其 CI/CD 共用 Environment、用户、角色权限、系统设置、后台任务队列 |
 
-Environment 是 Project 级共用执行目标，当前 CI 仅支持 local、CD 支持 local/SSH；Web 环境入口已移至“系统管理”的独立页面（与 `/settings` 并列），CI/CD 操作前由 Web 检查当前 Project 初始化状态并引导未就绪环境完成配置；后端 CI 准入目前仍仅支持 local、未强制最新 Probe，不能将 Web 引导视作 API/MCP 安全边界。SSH CI 执行与后端准入改造仍属后续批次。
+Environment 是 Project 级共用执行目标：CI 支持 local 和 Windows SSH（native OpenSSH + WSL2 Docker Desktop），Linux SSH CI 尚未交付；CD 支持 local/SSH。Web 环境入口位于“系统管理”的独立页面（与 `/settings` 并列），CI/CD 操作前检查当前 Project 初始化状态并引导未就绪环境完成配置；CI 后端触发与重试同样要求当前修订 Probe 成功，SSH 还需受管凭据和固定 host key，不能绕过前端直接运行未就绪目标。
 
 前端目录：`web/`。后端：`cmd/server` + `internal/`（Go）。
 

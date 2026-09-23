@@ -88,7 +88,8 @@ func TestDeletePipelineRunKeepsFilesWhenRecordDeletionFails(t *testing.T) {
 
 func pipelineRunForDeletion(runStatus string) model.PipelineRun {
 	projectId := "project-1"
-	return model.PipelineRun{Id: "run-1", ProjectId: &projectId, Status: runStatus}
+	environmentId, targetType, targetRevision := "environment-1", model.EnvironmentTargetTypeLocal, int64(1)
+	return model.PipelineRun{Id: "run-1", ProjectId: &projectId, Status: runStatus, EnvironmentId: &environmentId, EnvironmentTargetType: &targetType, EnvironmentTargetRevision: &targetRevision}
 }
 
 func newPipelineRunDeletionService(pipelineRunStore *pipelineRunDeletionStore, workspace *pipelineRunDeletionWorkspace) Service {
@@ -97,8 +98,9 @@ func newPipelineRunDeletionService(pipelineRunStore *pipelineRunDeletionStore, w
 			project:     pipelineRunDeletionProjectStore{},
 			pipelineRun: pipelineRunStore,
 		},
-		workspace: workspace,
-		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+		environments: pipelineRunDeletionEnvironmentStore{},
+		workspace:    workspace,
+		logger:       slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 }
 
@@ -142,4 +144,34 @@ type pipelineRunDeletionWorkspace struct {
 func (w *pipelineRunDeletionWorkspace) RemoveRunFiles(runId string) error {
 	w.removedRunId = runId
 	return w.removeErr
+}
+
+type pipelineRunDeletionEnvironmentStore struct {
+	repository.EnvironmentStore
+	environment *model.Environment
+}
+
+func (store pipelineRunDeletionEnvironmentStore) EnvironmentByProject(context.Context, string) (model.Environment, error) {
+	if store.environment != nil {
+		return *store.environment, nil
+	}
+	return model.Environment{Id: "environment-1", ProjectId: "project-1", TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/orbit", TargetRevision: 1}, nil
+}
+
+func (w *pipelineRunDeletionWorkspace) WorkspaceForTarget(context.Context, model.Environment) (pipelinerunport.Workspace, error) {
+	return w, nil
+}
+
+func TestDeletePipelineRunRefusesChangedTargetWithoutTouchingFiles(t *testing.T) {
+	run := pipelineRunForDeletion(status.WorkStatusRanToCompletion)
+	store := &pipelineRunDeletionStore{run: run}
+	workspace := &pipelineRunDeletionWorkspace{}
+	service := newPipelineRunDeletionService(store, workspace)
+	environment := model.Environment{Id: "environment-1", ProjectId: "project-1",
+		TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/new-root", TargetRevision: 2}
+	service.environments = pipelineRunDeletionEnvironmentStore{environment: &environment}
+	err := service.DeletePipelineRun(context.Background(), "user-1", "project-1", run.Id)
+	if err == nil || !strings.Contains(err.Error(), "changed") || store.deleted || workspace.removedRunId != "" {
+		t.Fatalf("delete after target change: err=%v deleted=%v removed=%q", err, store.deleted, workspace.removedRunId)
+	}
 }

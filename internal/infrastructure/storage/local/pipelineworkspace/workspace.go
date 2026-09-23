@@ -10,6 +10,7 @@ import (
 
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 type PhysicalWorkspaceResolver func(ctx context.Context, logicalWorkspaceRoot string) (string, error)
@@ -39,6 +40,21 @@ func NewWithProjectResolver(workspaceRoot string, resolver PhysicalWorkspaceReso
 		resolver:             resolver,
 		projectRootResolver:  projectResolver,
 	}
+}
+
+func (w *Workspace) WorkspaceForTarget(ctx context.Context, environment model.Environment) (pipelinerunport.Workspace, error) {
+	if !environment.IsLocal() {
+		return nil, fmt.Errorf("pipeline target requires a local Environment")
+	}
+	root := strings.TrimSpace(environment.WorkspaceRoot)
+	if root == "" {
+		return nil, fmt.Errorf("project Environment workspace root is required")
+	}
+	root, err := workspacepath.ExpandLocalHomePath(root)
+	if err != nil {
+		return nil, err
+	}
+	return NewWithResolver(workspacepath.PipelineRoot(root), w.resolver), nil
 }
 
 func (w *Workspace) WorkspaceForProject(ctx context.Context, projectId string) (pipelinerunport.Workspace, error) {

@@ -73,3 +73,17 @@ func IntPtrFromNullInt64(value sql.NullInt64) *int {
 	v := int(value.Int64)
 	return &v
 }
+
+func NullInt64(value *int64) sql.NullInt64 {
+	if value == nil {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: *value, Valid: true}
+}
+
+func Int64Ptr(value sql.NullInt64) *int64 {
+	if !value.Valid {
+		return nil
+	}
+	return &value.Int64
+}

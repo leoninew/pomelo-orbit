@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -57,7 +58,8 @@ func TestTriggerPipelineRejectsUnconfiguredWorkspaceBeforeCreatingSnapshot(t *te
 			pipeline:    pipelineStore,
 			pipelineRun: runStore,
 		},
-		workspace: directTriggerFailingWorkspace{err: errors.New("project environment is not configured")},
+		targetResolver: directTriggerTargetResolver{environment: model.Environment{Id: "env-1", ProjectId: projectId, TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/orbit", TargetRevision: 1}},
+		workspace:      directTriggerFailingWorkspace{err: errors.New("project environment is not configured")},
 	}
 
 	_, err := service.TriggerPipeline(context.Background(), "user-1", projectId, pipeline.Id, "release")
@@ -102,7 +104,8 @@ func TestRetryPipelineRunRejectsUnconfiguredWorkspaceBeforeCreatingSnapshot(t *t
 			pipeline:    pipelineStore,
 			pipelineRun: runStore,
 		},
-		workspace: directTriggerFailingWorkspace{err: errors.New("project environment is not configured")},
+		targetResolver: directTriggerTargetResolver{environment: model.Environment{Id: "env-1", ProjectId: projectId, TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/orbit", TargetRevision: 1}},
+		workspace:      directTriggerFailingWorkspace{err: errors.New("project environment is not configured")},
 	}
 
 	_, err := service.RetryPipelineRun(context.Background(), "user-1", projectId, "run-1")
@@ -197,4 +200,17 @@ func (directTriggerFailingWorkspace) StageLogPath(string, string) string        
 func (directTriggerFailingWorkspace) RemoveRunFiles(string) error                 { return nil }
 func (directTriggerFailingWorkspace) DockerStageMounts(context.Context, string, string) ([]pipelinerunport.VolumeMount, error) {
 	return nil, nil
+}
+
+type directTriggerTargetResolver struct {
+	environment model.Environment
+	err         error
+}
+
+func (resolver directTriggerTargetResolver) ResolveProjectTarget(context.Context, string) (environmentport.Target, error) {
+	return environmentport.Target{Environment: resolver.environment}, resolver.err
+}
+
+func (w directTriggerFailingWorkspace) WorkspaceForTarget(context.Context, model.Environment) (pipelinerunport.Workspace, error) {
+	return nil, w.err
 }

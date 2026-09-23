@@ -596,3 +596,45 @@ func TestSQLiteSeedContainsExportedPipelineLibrary(t *testing.T) {
 		}
 	}
 }
+
+func TestPipelineRunTargetMigrationPreservesExistingRuns(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	if _, err := database.Exec(`CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, status TEXT NOT NULL);
+		INSERT INTO pipeline_run (id, status) VALUES ('existing', 'ran_to_completion')`); err != nil {
+		t.Fatal(err)
+	}
+	migrationPath := path.Join(migrationsRoot, config.DatabaseDriverSQLite, "000048_pipeline_run_target.up.sql")
+	migrationSQL, err := fs.ReadFile(migrationfiles.Files, migrationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(string(migrationSQL)); err != nil {
+		t.Fatalf("apply pipeline run target migration: %v", err)
+	}
+	var status string
+	var environmentId, credentialId sql.NullString
+	if err := database.QueryRow(`SELECT status, environment_id, ssh_credential_id FROM pipeline_run WHERE id = 'existing'`).Scan(
+		&status, &environmentId, &credentialId,
+	); err != nil || status != "ran_to_completion" || environmentId.Valid || credentialId.Valid {
+		t.Fatalf("historical run after migration: status=%q env=%v credential=%v err=%v", status, environmentId, credentialId, err)
+	}
+	if _, err := database.Exec(`UPDATE pipeline_run SET environment_id = 'env', environment_target_type = 'ssh',
+		environment_target_revision = 2, ssh_credential_id = 'key', ssh_credential_revision = 3 WHERE id = 'existing'`); err != nil {
+		t.Fatal(err)
+	}
+	migrationPath = path.Join(migrationsRoot, config.DatabaseDriverSQLite, "000048_pipeline_run_target.down.sql")
+	migrationSQL, err = fs.ReadFile(migrationfiles.Files, migrationPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(string(migrationSQL)); err != nil {
+		t.Fatalf("rollback pipeline run target migration: %v", err)
+	}
+	if err := database.QueryRow(`SELECT status FROM pipeline_run WHERE id = 'existing'`).Scan(&status); err != nil || status != "ran_to_completion" {
+		t.Fatalf("historical run after rollback: status=%q err=%v", status, err)
+	}
+}

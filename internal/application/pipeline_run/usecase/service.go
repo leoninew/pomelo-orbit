@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net/url"
 	"strings"
 	"time"
 
 	applicationport "github.com/leoninew/pomelo-orbit/internal/application/application/port"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
@@ -26,6 +28,8 @@ import (
 
 type Service struct {
 	store             stores
+	environments      repository.EnvironmentStore
+	targetResolver    environmentport.TargetResolver
 	executionStore    pipelineExecutionStore
 	versionForker     applicationport.BuildVersionForker
 	transactionRunner pipelinerunport.TransactionRunner
@@ -67,14 +71,14 @@ type stores struct {
 	application repository.ApplicationStore
 }
 
-func New(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, versionForker applicationport.BuildVersionForker, transactionRunner pipelinerunport.TransactionRunner, dispatcher pipelinerunport.PipelineRunDispatcher, workspace pipelinerunport.Workspace, secretKey string, logger *slog.Logger, runner pipelinerunport.ContainerRunner, logStore pipelinerunport.LogReader, localSource repositoryport.LocalDirectorySource) Service {
+func New(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, environments repository.EnvironmentStore, targetResolver environmentport.TargetResolver, versionForker applicationport.BuildVersionForker, transactionRunner pipelinerunport.TransactionRunner, dispatcher pipelinerunport.PipelineRunDispatcher, workspace pipelinerunport.Workspace, secretKey string, logger *slog.Logger, runner pipelinerunport.ContainerRunner, logStore pipelinerunport.LogReader, localSource repositoryport.LocalDirectorySource) Service {
 	store := stores{project: project, credential: credential, repository: repos, pipeline: pipeline, pipelineRun: pipelineRun, application: application}
-	return Service{store: store, executionStore: store, versionForker: versionForker, transactionRunner: transactionRunner, dispatcher: dispatcher, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner, logStore: logStore, localSource: localSource}
+	return Service{store: store, executionStore: store, environments: environments, targetResolver: targetResolver, versionForker: versionForker, transactionRunner: transactionRunner, dispatcher: dispatcher, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner, logStore: logStore, localSource: localSource}
 }
 
-func NewExecutionService(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, versionForker applicationport.BuildVersionForker, transactionRunner pipelinerunport.TransactionRunner, workspace pipelinerunport.Workspace, secretKey string, logger *slog.Logger, executionTimeout time.Duration, pollInterval time.Duration, runner pipelinerunport.ContainerRunner, logStore pipelinerunport.ExecutionLogStore, localSource repositoryport.LocalDirectorySource) Service {
+func NewExecutionService(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, environments repository.EnvironmentStore, targetResolver environmentport.TargetResolver, versionForker applicationport.BuildVersionForker, transactionRunner pipelinerunport.TransactionRunner, workspace pipelinerunport.Workspace, secretKey string, logger *slog.Logger, executionTimeout time.Duration, pollInterval time.Duration, runner pipelinerunport.ContainerRunner, logStore pipelinerunport.ExecutionLogStore, localSource repositoryport.LocalDirectorySource) Service {
 	store := stores{project: project, credential: credential, repository: repos, pipeline: pipeline, pipelineRun: pipelineRun, application: application}
-	return Service{store: store, executionStore: store, versionForker: versionForker, transactionRunner: transactionRunner, workspace: workspace, secretKey: secretKey, logger: logger, executionTimeout: executionTimeout, pollInterval: pollInterval, runner: runner, logStore: logStore, executionLogStore: logStore, localSource: localSource}
+	return Service{store: store, executionStore: store, environments: environments, targetResolver: targetResolver, versionForker: versionForker, transactionRunner: transactionRunner, workspace: workspace, secretKey: secretKey, logger: logger, executionTimeout: executionTimeout, pollInterval: pollInterval, runner: runner, logStore: logStore, executionLogStore: logStore, localSource: localSource}
 }
 
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
@@ -262,8 +266,24 @@ func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeli
 	if _, _, err := pipelinevariable.ResolveRuntimeVariablesFromPipelineStages(repo, pipeline, stages, overrides); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	if err := s.ensureWorkspaceReady(ctx, projectId); err != nil {
+	target, err := s.resolveProjectTarget(ctx, projectId)
+	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
+	}
+	if target.Environment.IsSSH() {
+		if repo.RepositoryType == model.RepositoryTypeLocalDirectory {
+			return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "Local directory repositories cannot run on SSH environments; use an HTTPS Git repository")
+		}
+		remoteURL, err := url.Parse(repo.RepositoryUrl)
+		if repo.RepositoryType != model.RepositoryTypeRemoteGit || err != nil || remoteURL.Scheme != "https" || remoteURL.Hostname() == "" {
+			return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "SSH pipeline runs require an HTTPS Git repository URL")
+		}
+		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "SSH pipeline execution is not installed for this environment")
+	}
+	if target.Environment.IsLocal() {
+		if err := s.ensureWorkspaceReady(ctx, target.Environment); err != nil {
+			return pipelinerundto.PipelineRunDetail{}, err
+		}
 	}
 	snapshot, err := pipelinesvc.GetOrCreatePipelineSnapshot(ctx, s.store, projectId, pipeline, repo)
 	if err != nil {
@@ -278,6 +298,7 @@ func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeli
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
 	run := model.PipelineRun{Id: idutil.NewId(), ProjectId: pipeline.ProjectId, RepositoryId: repo.Id, RepositoryName: repo.Name, SnapshotId: snapshot.Id, PipelineId: pipeline.Id, PipelineName: pipeline.Name, PipelineVersion: pipeline.Version, Trigger: "manual", RepositoryRef: ref, VariablesSnapshot: variables, Status: status.WorkStatusWaitingToRun, RetryOf: retryOf}
+	applyRunTargetSnapshot(&run, target)
 	stageRuns, err := pipelineStageRuns(run.Id, snapshot.StagesSnapshot)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
@@ -338,10 +359,7 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId string, projectId
 	if !status.WorkStatusIsComplete(run.Status) {
 		return apperror.New(apperror.KindValidation, "Cannot delete pipeline run with status "+run.Status)
 	}
-	if s.workspace == nil {
-		return apperror.New(apperror.KindInternal, "pipeline workspace is not configured")
-	}
-	workspace, err := s.workspaceForProject(ctx, projectId)
+	workspace, err := s.workspaceForRun(ctx, projectId, run)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
 	}
@@ -367,31 +385,8 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId string, projectId
 	return nil
 }
 
-func (s Service) workspaceForProject(ctx context.Context, projectId string) (pipelinerunport.Workspace, error) {
-	if s.workspace == nil {
-		return nil, errors.New("pipeline workspace is not configured")
-	}
-	resolver, ok := s.workspace.(pipelinerunport.ProjectWorkspaceResolver)
-	if !ok {
-		return s.workspace, nil
-	}
-	if projectId == "" {
-		return nil, errors.New("pipeline run project is missing")
-	}
-	return resolver.WorkspaceForProject(ctx, projectId)
-}
-
-func (s Service) ensureWorkspaceReady(ctx context.Context, projectId string) error {
-	if s.workspace == nil {
-		return nil
-	}
-	if _, err := s.workspaceForProject(ctx, projectId); err != nil {
-		if _, ok := apperror.As(err); ok {
-			return err
-		}
-		if errors.Is(err, repository.ErrNotFound) {
-			return apperror.New(apperror.KindValidation, "project environment is not configured")
-		}
+func (s Service) ensureWorkspaceReady(ctx context.Context, environment model.Environment) error {
+	if _, err := s.workspaceForEnvironment(ctx, environment); err != nil {
 		return apperror.New(apperror.KindValidation, err.Error())
 	}
 	return nil
@@ -446,11 +441,11 @@ func (s Service) PipelineStageLog(ctx context.Context, userId string, projectId 
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stage run", err)
 	}
-	workspace, err := s.workspaceForProject(ctx, projectId)
+	runtime, err := s.runtimeForRun(ctx, projectId, run)
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
 	}
-	content, next, err := s.logStore.Read(workspace.StageLogPath(run.Id, stageRun.Id), offset)
+	content, next, err := runtime.reader.Read(runtime.workspace.StageLogPath(run.Id, stageRun.Id), offset)
 	if err != nil {
 		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
 	}

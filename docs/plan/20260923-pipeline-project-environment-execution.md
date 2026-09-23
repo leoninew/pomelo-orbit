@@ -1,5 +1,5 @@
 # CI/CD 共用 Project Environment 与流水线远端运行计划
-最后修改时间: 2026-09-23 12:59:58
+最后修改时间: 2026-09-23 13:52:58
 
 Review status: Accepted
 
@@ -89,4 +89,6 @@ Mode: standard
 ## Implementation progress
 
 - 批次一：环境入口迁至系统管理独立页面；CI Run/Retry 与 CD Deploy 的 Web 操作实时读取 Project 初始化状态，不就绪时引导至现有向导。CI 最新 Probe 成功但 Gateway 缺失时可返回原运行页；已有 Gateway 的过期 Probe 成功后返回原操作页。
-- 批次二至四尚未实施；后端/API/MCP 的 CI 就绪校验、Run 目标快照及 Windows/Linux SSH 执行仍按序待实现，Web 引导不构成后端安全边界。
+- 批次二：触发/Retry 经同一 TargetResolver 检查 local/SSH 当前修订 Probe 和 SSH 受管凭据；新增 Run 环境/凭据目标快照及三数据库迁移，Worker 在副作用前复核并拒绝过期 Run，Retry 重新绑定。读取/删除按快照定位，无法安全定位的历史 Run 拒绝文件访问；运行资源按已校验的目标选择，SSH 不会回退本机。SSH + 本地目录或非 HTTPS Git 在触发前拒绝；在批次三的 Windows SSH 执行器交付前，有效 HTTPS SSH 目标同样明确拒绝触发，不排入注定失败的 Run。local 目录 Repository 沿用既有行为。
+- 批次三、四尚未实施；远端工作区、日志/制品、容器执行与目标主机端到端验证均留待 Windows → Linux 两批。
+- 批次二检查：定向用例（触发/重试未就绪、目标/凭据漂移、SSH 源码约束与拒绝本机回退、历史访问、SQLC 往返、SQLite 新迁移与回滚）及 `go test ./cmd/... ./internal/...`、Go lint、`git diff HEAD --check` 通过；`task check` 的 Web typecheck/lint 通过，止于未修改的 `web/src/views/project/ProjectInitializationPage.test.ts` 既有 Prettier 差异，不扩范围修改。

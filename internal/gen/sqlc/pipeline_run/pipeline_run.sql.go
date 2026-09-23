@@ -606,28 +606,33 @@ func (q *Queries) InsertArtifact(ctx context.Context, arg InsertArtifactParams) 
 }
 
 const insertPipelineRun = `-- name: InsertPipelineRun :exec
-INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, environment_id, environment_target_type, environment_target_revision, ssh_credential_id, ssh_credential_revision, started_at, finished_at, error_message, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertPipelineRunParams struct {
-	Id                string         `db:"id"`
-	ProjectId         sql.NullString `db:"project_id"`
-	RepositoryId      string         `db:"repository_id"`
-	RepositoryName    string         `db:"repository_name"`
-	SnapshotId        string         `db:"snapshot_id"`
-	PipelineId        string         `db:"pipeline_id"`
-	PipelineName      string         `db:"pipeline_name"`
-	PipelineVersion   int64          `db:"pipeline_version"`
-	Trigger           string         `db:"trigger"`
-	RepositoryRef     string         `db:"repository_ref"`
-	VariablesSnapshot string         `db:"variables_snapshot"`
-	Status            string         `db:"status"`
-	RetryOf           sql.NullString `db:"retry_of"`
-	StartedAt         sql.NullTime   `db:"started_at"`
-	FinishedAt        sql.NullTime   `db:"finished_at"`
-	ErrorMessage      sql.NullString `db:"error_message"`
-	CreatedAt         time.Time      `db:"created_at"`
+	Id                        string         `db:"id"`
+	ProjectId                 sql.NullString `db:"project_id"`
+	RepositoryId              string         `db:"repository_id"`
+	RepositoryName            string         `db:"repository_name"`
+	SnapshotId                string         `db:"snapshot_id"`
+	PipelineId                string         `db:"pipeline_id"`
+	PipelineName              string         `db:"pipeline_name"`
+	PipelineVersion           int64          `db:"pipeline_version"`
+	Trigger                   string         `db:"trigger"`
+	RepositoryRef             string         `db:"repository_ref"`
+	VariablesSnapshot         string         `db:"variables_snapshot"`
+	Status                    string         `db:"status"`
+	RetryOf                   sql.NullString `db:"retry_of"`
+	EnvironmentId             sql.NullString `db:"environment_id"`
+	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
+	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
+	SSHCredentialId           sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
+	StartedAt                 sql.NullTime   `db:"started_at"`
+	FinishedAt                sql.NullTime   `db:"finished_at"`
+	ErrorMessage              sql.NullString `db:"error_message"`
+	CreatedAt                 time.Time      `db:"created_at"`
 }
 
 func (q *Queries) InsertPipelineRun(ctx context.Context, arg InsertPipelineRunParams) error {
@@ -645,6 +650,11 @@ func (q *Queries) InsertPipelineRun(ctx context.Context, arg InsertPipelineRunPa
 		arg.VariablesSnapshot,
 		arg.Status,
 		arg.RetryOf,
+		arg.EnvironmentId,
+		arg.EnvironmentTargetType,
+		arg.EnvironmentTargetRevision,
+		arg.SSHCredentialId,
+		arg.SshCredentialRevision,
 		arg.StartedAt,
 		arg.FinishedAt,
 		arg.ErrorMessage,
@@ -925,7 +935,7 @@ func (q *Queries) ListArtifactsByRun(ctx context.Context, arg ListArtifactsByRun
 }
 
 const listPipelineRuns = `-- name: ListPipelineRuns :many
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, environment_id, environment_target_type, environment_target_revision, ssh_credential_id, ssh_credential_revision, started_at, finished_at, error_message, created_at
 FROM pipeline_run
 WHERE project_id = ?
   AND (CAST(? AS CHAR) IS NULL OR repository_id = ?)
@@ -980,6 +990,11 @@ func (q *Queries) ListPipelineRuns(ctx context.Context, arg ListPipelineRunsPara
 			&i.VariablesSnapshot,
 			&i.Status,
 			&i.RetryOf,
+			&i.EnvironmentId,
+			&i.EnvironmentTargetType,
+			&i.EnvironmentTargetRevision,
+			&i.SSHCredentialId,
+			&i.SshCredentialRevision,
 			&i.StartedAt,
 			&i.FinishedAt,
 			&i.ErrorMessage,
@@ -1050,7 +1065,7 @@ func (q *Queries) ListPipelineStageRuns(ctx context.Context, arg ListPipelineSta
 }
 
 const pipelineRunById = `-- name: PipelineRunById :one
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, ` + "`" + `trigger` + "`" + `, repository_ref, variables_snapshot, status, retry_of, environment_id, environment_target_type, environment_target_revision, ssh_credential_id, ssh_credential_revision, started_at, finished_at, error_message, created_at
 FROM pipeline_run
 WHERE id = ?
   AND project_id = ?
@@ -1078,6 +1093,11 @@ func (q *Queries) PipelineRunById(ctx context.Context, arg PipelineRunByIdParams
 		&i.VariablesSnapshot,
 		&i.Status,
 		&i.RetryOf,
+		&i.EnvironmentId,
+		&i.EnvironmentTargetType,
+		&i.EnvironmentTargetRevision,
+		&i.SSHCredentialId,
+		&i.SshCredentialRevision,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.ErrorMessage,

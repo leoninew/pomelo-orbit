@@ -1,5 +1,5 @@
 -- name: ListPipelineRuns :many
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, `trigger`, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, `trigger`, repository_ref, variables_snapshot, status, retry_of, environment_id, environment_target_type, environment_target_revision, ssh_credential_id, ssh_credential_revision, started_at, finished_at, error_message, created_at
 FROM pipeline_run
 WHERE project_id = sqlc.arg(project_id)
   AND (CAST(sqlc.narg(repository_id) AS CHAR) IS NULL OR repository_id = sqlc.narg(repository_id))
@@ -17,7 +17,7 @@ WHERE project_id = sqlc.arg(project_id)
   AND (CAST(sqlc.narg(to_at) AS DATE) IS NULL OR created_at <= sqlc.narg(to_at));
 
 -- name: PipelineRunById :one
-SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, `trigger`, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at
+SELECT id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, `trigger`, repository_ref, variables_snapshot, status, retry_of, environment_id, environment_target_type, environment_target_revision, ssh_credential_id, ssh_credential_revision, started_at, finished_at, error_message, created_at
 FROM pipeline_run
 WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
@@ -81,8 +81,8 @@ WHERE pipeline_stage_run.id = sqlc.arg(id)
   );
 
 -- name: InsertPipelineRun :exec
-INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, `trigger`, repository_ref, variables_snapshot, status, retry_of, started_at, finished_at, error_message, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO pipeline_run (id, project_id, repository_id, repository_name, snapshot_id, pipeline_id, pipeline_name, pipeline_version, `trigger`, repository_ref, variables_snapshot, status, retry_of, environment_id, environment_target_type, environment_target_revision, ssh_credential_id, ssh_credential_revision, started_at, finished_at, error_message, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: InsertPipelineRunVersionBinding :exec
 INSERT INTO pipeline_run_version_binding (pipeline_run_id, application_id, application_name, source_version_id, source_version_label, generated_version_id, generated_version_label)

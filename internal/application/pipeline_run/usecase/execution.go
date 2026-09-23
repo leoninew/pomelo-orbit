@@ -30,11 +30,21 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 	if err != nil {
 		return err
 	}
+	target, err := s.resolveQueuedTarget(ctx, projectId, run)
+	if err != nil {
+		return s.failRun(ctx, projectId, run.Id, err.Error())
+	}
 	repo, err := s.executionStore.Repository(ctx, projectId, run.RepositoryId)
 	if err != nil {
-		return err
+		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Load repository failed: %v", err))
 	}
-	workspace, err := s.workspaceForProject(ctx, projectId)
+	if target.Environment.IsSSH() && repo.RepositoryType == model.RepositoryTypeLocalDirectory {
+		return s.failRun(ctx, projectId, run.Id, "Local directory repositories cannot run on SSH environments; retry with an HTTPS Git repository")
+	}
+	if !target.Environment.IsLocal() {
+		return s.failRun(ctx, projectId, run.Id, "SSH pipeline execution is not installed for this environment")
+	}
+	runtime, err := s.runtimeForEnvironment(ctx, target.Environment)
 	if err != nil {
 		return s.failRun(ctx, projectId, run.Id, err.Error())
 	}
@@ -57,7 +67,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
 
-	if err := workspace.CreateRunDirectories(repo.Code, run.Id); err != nil {
+	if err := runtime.workspace.CreateRunDirectories(repo.Code, run.Id); err != nil {
 		return s.failRun(ctx, projectId, run.Id, err.Error())
 	}
 	stageRuns, err := s.executionStore.ListPipelineStageRuns(ctx, projectId, run.Id)
@@ -67,7 +77,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 
 	executionCtx, cancel := s.pipelineExecutionContext(ctx, projectId, run.Id)
 	defer cancel()
-	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, transactionRunner: s.transactionRunner, workspace: workspace, logStore: s.executionLogStore, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: s.runner, localSource: s.localSource}
+	stageExecutor := Executor{store: s.executionStore, versionForker: s.versionForker, transactionRunner: s.transactionRunner, workspace: runtime.workspace, logStore: runtime.writer, secretKey: s.secretKey, logger: s.logger, executionTimeout: s.executionTimeout, runner: runtime.runner, localSource: s.localSource}
 	ok, message := stageExecutor.Execute(ctx, executionCtx, projectId, run, repo, variables, stages, stageRunByStageId(stageRuns))
 	current, err := s.executionStore.PipelineRun(ctx, projectId, run.Id)
 	if err != nil {

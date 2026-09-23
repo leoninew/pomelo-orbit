@@ -7,6 +7,7 @@ import (
 
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
@@ -38,10 +39,16 @@ func (r TargetResolver) ResolveProjectTarget(ctx context.Context, projectId stri
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment must pass probe after its latest configuration change")
 	}
 	if environment.IsLocal() {
+		if !validWorkspaceRoot(model.EnvironmentPlatformLinux, environment.WorkspaceRoot) && !validWorkspaceRoot(model.EnvironmentPlatformWindows, environment.WorkspaceRoot) {
+			return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment workspace_root is invalid")
+		}
 		return environmentport.Target{Environment: environment}, nil
 	}
 	if !environment.IsSSH() {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment target type is invalid")
+	}
+	if !validWorkspaceRoot(environment.SSH.Platform, environment.WorkspaceRoot) {
+		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment workspace_root is invalid")
 	}
 	if r.environmentCredentials == nil {
 		return environmentport.Target{}, apperror.New(apperror.KindInternal, "environment credential store is not configured")

@@ -71,6 +71,47 @@ func TestListRepositoriesUsesNamedSQLiteParameters(t *testing.T) {
 	}
 }
 
+func TestRepositoryCodeIsUniqueWithinProject(t *testing.T) {
+	database := openRepositoryTestDatabase(t)
+	defer func() { _ = database.Close() }()
+
+	ctx := context.Background()
+	for _, projectId := range []string{"project-1", "project-2"} {
+		if _, err := database.ExecContext(ctx, "INSERT INTO project (id, name, code) VALUES (?, ?, ?)", projectId, projectId, projectId); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	repo := NewRepository(database)
+	projectOne, projectTwo := "project-1", "project-2"
+	for _, item := range []model.Repository{
+		{Id: "repository-1", ProjectId: &projectOne, Name: "First", Code: "shared-code", RepositoryUrl: "https://example.test/first.git", VariableOverrides: "[]", DefaultBranch: "main"},
+		{Id: "repository-2", ProjectId: &projectTwo, Name: "Second", Code: "shared-code", RepositoryUrl: "https://example.test/second.git", VariableOverrides: "[]", DefaultBranch: "main"},
+	} {
+		if err := repo.CreateRepository(ctx, item); err != nil {
+			t.Fatalf("create repository %s: %v", item.Id, err)
+		}
+	}
+
+	for _, check := range []struct{ projectId, repositoryId string }{
+		{"project-1", "repository-1"},
+		{"project-2", "repository-2"},
+	} {
+		item, err := repo.RepositoryByCode(ctx, check.projectId, "shared-code")
+		if err != nil || item.Id != check.repositoryId {
+			t.Fatalf("repository by code in %s = %+v, %v", check.projectId, item, err)
+		}
+	}
+
+	err := repo.CreateRepository(ctx, model.Repository{
+		Id: "repository-3", ProjectId: &projectOne, Name: "Duplicate", Code: "shared-code",
+		RepositoryUrl: "https://example.test/duplicate.git", VariableOverrides: "[]", DefaultBranch: "main",
+	})
+	if err == nil {
+		t.Fatal("duplicate code in the same project must be rejected")
+	}
+}
+
 func TestRepositoryHasBoundPipelinesScopesProjectAndRepository(t *testing.T) {
 	database := openRepositoryTestDatabase(t)
 	defer func() { _ = database.Close() }()

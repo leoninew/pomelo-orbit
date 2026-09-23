@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS repository (
     id VARCHAR(26) PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    code VARCHAR(255) NOT NULL UNIQUE,
+    code VARCHAR(255) NOT NULL,
     repository_type VARCHAR(32) NOT NULL DEFAULT 'remote_git',
     repository_url VARCHAR(1024) NOT NULL,
     git_credential_id VARCHAR(26),
@@ -20,3 +20,4 @@ CREATE INDEX idx_repository_name ON repository(name);
 CREATE INDEX idx_repository_code ON repository(code);
 CREATE INDEX idx_repository_credential ON repository(git_credential_id);
 CREATE INDEX idx_repository_project ON repository(project_id);
+CREATE UNIQUE INDEX uq_repository_project_code ON repository(project_id, code);

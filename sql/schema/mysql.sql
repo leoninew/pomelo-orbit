@@ -229,7 +229,7 @@ CREATE TABLE IF NOT EXISTS pipeline_snapshot (
 CREATE TABLE IF NOT EXISTS repository (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    code TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL,
     repository_type TEXT NOT NULL DEFAULT 'remote_git',
     repository_url TEXT NOT NULL,
     git_credential_id TEXT,
@@ -240,6 +240,8 @@ CREATE TABLE IF NOT EXISTS repository (
     project_id TEXT REFERENCES project(id),
     FOREIGN KEY (git_credential_id) REFERENCES repository_credential(id)
 );
+
+CREATE UNIQUE INDEX uq_repository_project_code ON repository(project_id, code);
 
 
 CREATE TABLE IF NOT EXISTS pipeline_run (

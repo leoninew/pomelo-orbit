@@ -15,7 +15,7 @@ PRAGMA foreign_keys = OFF;
 CREATE TABLE repository_new (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    code TEXT NOT NULL UNIQUE,
+    code TEXT NOT NULL,
     repository_type TEXT NOT NULL DEFAULT 'remote_git',
     repository_url TEXT NOT NULL,
     git_credential_id TEXT,
@@ -40,4 +40,5 @@ CREATE INDEX IF NOT EXISTS idx_repository_name ON repository(name);
 CREATE INDEX IF NOT EXISTS idx_repository_code ON repository(code);
 CREATE INDEX IF NOT EXISTS idx_repository_credential ON repository(git_credential_id);
 CREATE INDEX IF NOT EXISTS idx_repository_project ON repository(project_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_repository_project_code ON repository(project_id, code);
 PRAGMA foreign_keys = ON;

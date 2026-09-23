@@ -35,6 +35,8 @@ Environment 是 Project 级共用执行目标：CI 支持 local、Windows SSH（
 
 ## CI 模型
 
+Repository 的 `code` 在同一 Project 内唯一，不同 Project 可以使用相同 `code`。
+
 CI 的可复用性与可运行性分为两个显式对象：
 
 - `Pipeline(kind=template)` 是通用编排来源，不能运行、不能绑定 Application 或 Repository，也不创建 Snapshot。

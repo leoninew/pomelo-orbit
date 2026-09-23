@@ -84,12 +84,12 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt>{{ t('common.createdAt') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(service.created_at) }}</dd>
-          </div>
-          <div class="flex gap-2">
             <dt>{{ t('common.updatedAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(service.updated_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('common.createdAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(service.created_at) }}</dd>
           </div>
         </dl>
       </DetailInfoCard>

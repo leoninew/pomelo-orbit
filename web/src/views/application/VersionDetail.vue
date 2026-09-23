@@ -68,22 +68,6 @@
               </AppBadge>
             </dd>
           </div>
-          <div v-if="version.note" class="flex gap-2">
-            <dt class="whitespace-nowrap">{{ t('application.detail.fields.note') }}</dt>
-            <dd class="text-foreground">{{ version.note }}</dd>
-          </div>
-          <div v-if="version.created_from_version_id" class="flex gap-2">
-            <dt class="whitespace-nowrap">来源版本</dt>
-            <dd>
-              <router-link :to="`/version/${version.created_from_version_id}`" class="app-link">
-                {{ version.created_from_version_id }}
-              </router-link>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">{{ t('common.createdAt') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(version.created_at) }}</dd>
-          </div>
         </dl>
       </DetailInfoCard>
       <VersionComponentsCard
@@ -97,6 +81,26 @@
         @delete="openComponentDeleteDialog"
         @search="fetchVersion"
       />
+      <DetailInfoCard :title="t('application.versionDetail.title')">
+        <dl class="app-detail-info-grid">
+          <div v-if="version.note" class="flex gap-2">
+            <dt class="whitespace-nowrap">{{ t('application.detail.fields.note') }}</dt>
+            <dd class="text-foreground">{{ version.note }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt class="whitespace-nowrap">{{ t('common.createdAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(version.created_at) }}</dd>
+          </div>
+          <div v-if="version.created_from_version_id" class="flex gap-2">
+            <dt class="whitespace-nowrap">来源版本</dt>
+            <dd>
+              <router-link :to="`/version/${version.created_from_version_id}`" class="app-link">
+                {{ version.created_from_version_id }}
+              </router-link>
+            </dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
     </template>
 
     <AppDrawer

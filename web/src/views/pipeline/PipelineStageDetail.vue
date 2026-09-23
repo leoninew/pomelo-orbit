@@ -26,25 +26,25 @@
             <dt>名称</dt>
             <dd class="text-foreground">{{ stage.name }}</dd>
           </div>
-          <div class="flex gap-2">
-            <dt>版本</dt>
-            <dd class="text-foreground">v{{ stage.version }}</dd>
-          </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt>执行镜像</dt>
             <dd class="min-w-0 break-all text-foreground">{{ stage.image }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>版本</dt>
+            <dd class="text-foreground">v{{ stage.version }}</dd>
           </div>
           <div v-if="stage.description" class="flex gap-2 sm:col-span-2">
             <dt>说明</dt>
             <dd class="whitespace-pre-wrap text-foreground">{{ stage.description }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>创建时间</dt>
-            <dd class="text-muted-foreground">{{ formatTime(stage.created_at) }}</dd>
-          </div>
-          <div class="flex gap-2">
             <dt>更新时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>创建时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(stage.created_at) }}</dd>
           </div>
         </dl>
       </DetailInfoCard>

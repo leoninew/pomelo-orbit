@@ -72,14 +72,14 @@
           <dd class="text-muted-foreground">{{ formatTime(user.created_at) }}</dd>
         </div>
         <div class="flex gap-2">
-          <dt>{{ t('common.updatedAt') }}</dt>
-          <dd class="text-muted-foreground">{{ formatTime(user.updated_at) }}</dd>
-        </div>
-        <div class="flex gap-2">
           <dt>{{ t('userManagement.lastLoginAt') }}</dt>
           <dd class="text-muted-foreground">
             {{ user.last_login_at ? formatTime(user.last_login_at) : '-' }}
           </dd>
+        </div>
+        <div class="flex gap-2">
+          <dt>{{ t('common.updatedAt') }}</dt>
+          <dd class="text-muted-foreground">{{ formatTime(user.updated_at) }}</dd>
         </div>
       </dl>
     </DetailInfoCard>
@@ -145,6 +145,22 @@
           </p>
         </div>
         <div class="space-y-1.5">
+          <label class="app-field-label block">
+            {{ t('common.status') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <RawValueSelect
+            v-model="form.status"
+            :values="userStatusValues"
+            :disabled="operating"
+            :invalid="Boolean(formErrors.status)"
+            @update:model-value="formErrors.status = ''"
+          />
+          <p v-if="formErrors.status" class="app-field-error" role="alert">
+            {{ formErrors.status }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
           <label class="app-field-label block" for="password">
             {{ t('userManagement.password') }}
           </label>
@@ -165,22 +181,6 @@
           </p>
           <p class="app-field-hint">
             {{ t('common.emptyKeepUnchanged') }}
-          </p>
-        </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block">
-            {{ t('common.status') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <RawValueSelect
-            v-model="form.status"
-            :values="userStatusValues"
-            :disabled="operating"
-            :invalid="Boolean(formErrors.status)"
-            @update:model-value="formErrors.status = ''"
-          />
-          <p v-if="formErrors.status" class="app-field-error" role="alert">
-            {{ formErrors.status }}
           </p>
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>

@@ -83,6 +83,10 @@
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
+          <label class="app-field-label block">凭据类型</label>
+          <input :value="credential?.type ?? ''" type="text" disabled class="app-input" />
+        </div>
+        <div class="space-y-1.5">
           <label class="app-field-label block">
             凭据内容
             <span class="text-destructive">*</span>

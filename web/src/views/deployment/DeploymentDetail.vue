@@ -36,7 +36,7 @@
       <!-- 基本信息卡片 -->
       <DetailInfoCard class="shrink-0" title="基本信息">
         <dl class="app-detail-info-grid">
-          <div v-if="deployment.application_id" class="flex gap-2">
+          <div class="flex gap-2">
             <dt>部署 ID</dt>
             <dd class="min-w-0 break-all text-foreground">{{ deploymentId }}</dd>
           </div>
@@ -50,14 +50,6 @@
             <dd v-else class="text-muted-foreground">-</dd>
           </div>
           <div class="flex gap-2">
-            <dt>状态</dt>
-            <dd>
-              <AppBadge variant="pill" :tone="deploymentStatusTone">
-                {{ deployment.status }}
-              </AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
             <dt>操作类型</dt>
             <dd>
               <AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge>
@@ -69,11 +61,17 @@
               <AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge>
             </dd>
           </div>
-          <div class="flex gap-2 sm:col-span-2">
-            <dt>执行命令</dt>
-            <dd class="min-w-0 break-all text-xs text-foreground">
-              {{ deployment.command_text || '未记录' }}
+          <div class="flex gap-2">
+            <dt>状态</dt>
+            <dd>
+              <AppBadge variant="pill" :tone="deploymentStatusTone">
+                {{ deployment.status }}
+              </AppBadge>
             </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>开始时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>耗时</dt>
@@ -81,13 +79,15 @@
               {{ formatDuration(deployment.started_at, deployment.finished_at) }}
             </dd>
           </div>
+          <div class="flex gap-2 sm:col-span-2">
+            <dt>执行命令</dt>
+            <dd class="min-w-0 break-all text-xs text-foreground">
+              {{ deployment.command_text || '未记录' }}
+            </dd>
+          </div>
           <div class="flex gap-2">
             <dt>创建时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(deployment.created_at) }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>开始时间</dt>
-            <dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>完成时间</dt>

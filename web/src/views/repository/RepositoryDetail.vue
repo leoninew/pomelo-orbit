@@ -32,18 +32,18 @@
             <dt>编码</dt>
             <dd class="min-w-0 text-foreground">{{ repository.code }}</dd>
           </div>
-          <div class="flex gap-2">
-            <dt>仓库类型</dt>
-            <dd class="text-foreground">
-              {{ repository.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
-            </dd>
-          </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt>
               {{ repository.repository_type === 'local_directory' ? '本地目录' : '仓库地址' }}
             </dt>
             <dd class="min-w-0 truncate text-foreground" :title="repositoryLocation(repository)">
               {{ repositoryLocation(repository) }}
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>仓库类型</dt>
+            <dd class="text-foreground">
+              {{ repository.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
             </dd>
           </div>
           <div class="flex gap-2">
@@ -64,16 +64,16 @@
             </dd>
           </div>
           <div class="flex gap-2">
+            <dt>创建时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(repository.created_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
             <dt>流水线记录</dt>
             <dd>
               <router-link :to="`/pipeline-run?repository_id=${repository.id}`" class="app-link">
                 查看所有记录
               </router-link>
             </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>创建时间</dt>
-            <dd class="text-muted-foreground">{{ formatTime(repository.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>更新时间</dt>
@@ -100,16 +100,6 @@
 
     <AppDialog :open="isEditDialogOpen" title="编辑仓库" @update:open="handleEditDialogOpenChange">
       <div class="space-y-4">
-        <div class="space-y-1.5">
-          <label for="edit-repository-type" class="app-field-label block">仓库类型</label>
-          <SelectControl
-            id="edit-repository-type"
-            :model-value="editForm.repository_type"
-            :options="repositoryTypeOptions"
-            @update:model-value="updateEditRepositoryType"
-          />
-        </div>
-
         <div class="space-y-1.5">
           <label for="edit-repository-name" class="app-field-label block">
             名称
@@ -186,13 +176,13 @@
             {{ editErrors.repository_url }}
           </p>
         </div>
-        <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
-          <label class="app-field-label block">Git 凭据</label>
-          <ComboboxSelect
-            v-model="editForm.git_credential_id"
-            :options="gitCredentialOptions"
-            placeholder="不使用凭据"
-            description-inline
+        <div class="space-y-1.5">
+          <label for="edit-repository-type" class="app-field-label block">仓库类型</label>
+          <SelectControl
+            id="edit-repository-type"
+            :model-value="editForm.repository_type"
+            :options="repositoryTypeOptions"
+            @update:model-value="updateEditRepositoryType"
           />
         </div>
         <div class="space-y-1.5">
@@ -202,6 +192,15 @@
             type="text"
             placeholder="master"
             class="app-input"
+          />
+        </div>
+        <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
+          <label class="app-field-label block">Git 凭据</label>
+          <ComboboxSelect
+            v-model="editForm.git_credential_id"
+            :options="gitCredentialOptions"
+            placeholder="不使用凭据"
+            description-inline
           />
         </div>
         <p v-if="editFormError" class="app-field-error text-xs" role="alert">

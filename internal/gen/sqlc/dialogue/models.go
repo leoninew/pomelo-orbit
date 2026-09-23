@@ -206,23 +206,28 @@ type Pipeline struct {
 }
 
 type PipelineRun struct {
-	Id                string         `db:"id"`
-	ProjectId         sql.NullString `db:"project_id"`
-	RepositoryId      string         `db:"repository_id"`
-	RepositoryName    string         `db:"repository_name"`
-	SnapshotId        string         `db:"snapshot_id"`
-	PipelineId        string         `db:"pipeline_id"`
-	PipelineName      string         `db:"pipeline_name"`
-	PipelineVersion   int64          `db:"pipeline_version"`
-	Trigger           string         `db:"trigger"`
-	RepositoryRef     string         `db:"repository_ref"`
-	VariablesSnapshot string         `db:"variables_snapshot"`
-	Status            string         `db:"status"`
-	RetryOf           sql.NullString `db:"retry_of"`
-	StartedAt         sql.NullTime   `db:"started_at"`
-	FinishedAt        sql.NullTime   `db:"finished_at"`
-	ErrorMessage      sql.NullString `db:"error_message"`
-	CreatedAt         time.Time      `db:"created_at"`
+	Id                        string         `db:"id"`
+	ProjectId                 sql.NullString `db:"project_id"`
+	RepositoryId              string         `db:"repository_id"`
+	RepositoryName            string         `db:"repository_name"`
+	SnapshotId                string         `db:"snapshot_id"`
+	PipelineId                string         `db:"pipeline_id"`
+	PipelineName              string         `db:"pipeline_name"`
+	PipelineVersion           int64          `db:"pipeline_version"`
+	Trigger                   string         `db:"trigger"`
+	RepositoryRef             string         `db:"repository_ref"`
+	VariablesSnapshot         string         `db:"variables_snapshot"`
+	Status                    string         `db:"status"`
+	RetryOf                   sql.NullString `db:"retry_of"`
+	EnvironmentId             sql.NullString `db:"environment_id"`
+	EnvironmentTargetType     sql.NullString `db:"environment_target_type"`
+	EnvironmentTargetRevision sql.NullInt64  `db:"environment_target_revision"`
+	SSHCredentialId           sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision     sql.NullInt64  `db:"ssh_credential_revision"`
+	StartedAt                 sql.NullTime   `db:"started_at"`
+	FinishedAt                sql.NullTime   `db:"finished_at"`
+	ErrorMessage              sql.NullString `db:"error_message"`
+	CreatedAt                 time.Time      `db:"created_at"`
 }
 
 type PipelineRunVersionBinding struct {

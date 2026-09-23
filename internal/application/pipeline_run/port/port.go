@@ -5,6 +5,7 @@ import (
 	"io"
 
 	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 type PipelineRunDispatcher interface {
@@ -47,6 +48,9 @@ type ProjectWorkspaceResolver interface {
 	WorkspaceForProject(ctx context.Context, projectId string) (Workspace, error)
 }
 
+type TargetWorkspaceResolver interface {
+	WorkspaceForTarget(ctx context.Context, environment model.Environment) (Workspace, error)
+}
 type RunOptions struct {
 	ContainerName string
 	Image         string

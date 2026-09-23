@@ -153,6 +153,8 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		stores.pipeline,
 		stores.pipelineRun,
 		stores.application,
+		stores.environment,
+		targetResolver,
 		applicationService,
 		transactionRunner,
 		pipelineRunDispatcher,

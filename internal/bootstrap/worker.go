@@ -53,6 +53,8 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		stores.pipeline,
 		stores.pipelineRun,
 		stores.application,
+		stores.environment,
+		targetResolver,
 		applicationService,
 		transactionRunner,
 		pipelineWorkspace,

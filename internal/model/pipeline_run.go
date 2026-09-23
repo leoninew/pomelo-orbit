@@ -3,23 +3,28 @@ package model
 import "time"
 
 type PipelineRun struct {
-	Id                string     `db:"id"`
-	ProjectId         *string    `db:"project_id"`
-	RepositoryId      string     `db:"repository_id"`
-	RepositoryName    string     `db:"repository_name"`
-	SnapshotId        string     `db:"snapshot_id"`
-	PipelineId        string     `db:"pipeline_id"`
-	PipelineName      string     `db:"pipeline_name"`
-	PipelineVersion   int        `db:"pipeline_version"`
-	Trigger           string     `db:"trigger"`
-	RepositoryRef     string     `db:"repository_ref"`
-	VariablesSnapshot string     `db:"variables_snapshot"`
-	Status            string     `db:"status"`
-	RetryOf           *string    `db:"retry_of"`
-	StartedAt         *time.Time `db:"started_at"`
-	FinishedAt        *time.Time `db:"finished_at"`
-	ErrorMessage      *string    `db:"error_message"`
-	CreatedAt         time.Time  `db:"created_at"`
+	Id                        string     `db:"id"`
+	ProjectId                 *string    `db:"project_id"`
+	RepositoryId              string     `db:"repository_id"`
+	RepositoryName            string     `db:"repository_name"`
+	SnapshotId                string     `db:"snapshot_id"`
+	PipelineId                string     `db:"pipeline_id"`
+	PipelineName              string     `db:"pipeline_name"`
+	PipelineVersion           int        `db:"pipeline_version"`
+	Trigger                   string     `db:"trigger"`
+	RepositoryRef             string     `db:"repository_ref"`
+	VariablesSnapshot         string     `db:"variables_snapshot"`
+	Status                    string     `db:"status"`
+	RetryOf                   *string    `db:"retry_of"`
+	EnvironmentId             *string    `db:"environment_id"`
+	EnvironmentTargetType     *string    `db:"environment_target_type"`
+	EnvironmentTargetRevision *int64     `db:"environment_target_revision"`
+	SSHCredentialId           *string    `db:"ssh_credential_id"`
+	SSHCredentialRevision     *int64     `db:"ssh_credential_revision"`
+	StartedAt                 *time.Time `db:"started_at"`
+	FinishedAt                *time.Time `db:"finished_at"`
+	ErrorMessage              *string    `db:"error_message"`
+	CreatedAt                 time.Time  `db:"created_at"`
 }
 
 type PipelineStageRun struct {

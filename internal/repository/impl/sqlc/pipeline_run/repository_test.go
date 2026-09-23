@@ -8,6 +8,7 @@ import (
 	"time"
 
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 	_ "modernc.org/sqlite"
 )
@@ -24,7 +25,8 @@ func TestListQueriesBindNamedPaginationParameters(t *testing.T) {
 			snapshot_id TEXT NOT NULL, pipeline_id TEXT NOT NULL, pipeline_name TEXT NOT NULL,
 			pipeline_version INTEGER NOT NULL, trigger TEXT NOT NULL, repository_ref TEXT NOT NULL,
 			variables_snapshot TEXT NOT NULL, status TEXT NOT NULL, retry_of TEXT,
-			started_at DATETIME, finished_at DATETIME, error_message TEXT, created_at DATETIME NOT NULL
+			environment_id TEXT, environment_target_type TEXT, environment_target_revision INTEGER,
+			ssh_credential_id TEXT, ssh_credential_revision INTEGER, started_at DATETIME, finished_at DATETIME, error_message TEXT, created_at DATETIME NOT NULL
 		);
 		CREATE TABLE artifact (
 			id TEXT PRIMARY KEY, project_id TEXT, pipeline_run_id TEXT NOT NULL, repository_id TEXT NOT NULL,
@@ -244,5 +246,52 @@ func TestPipelineRunDerivedQueriesRequireMatchingProject(t *testing.T) {
 	}
 	if _, err := repoStore.CommandArtifactByRunStageAndName(context.Background(), "project-2", "run-1", "stage-1", "commit"); !errors.Is(err, repository.ErrNotFound) {
 		t.Fatalf("cross-project command artifact error=%v, want not found", err)
+	}
+}
+
+func TestPipelineRunTargetSnapshotRoundTrip(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	_, err = database.Exec(`CREATE TABLE pipeline_run (
+		id TEXT PRIMARY KEY, project_id TEXT, repository_id TEXT NOT NULL, repository_name TEXT NOT NULL,
+		snapshot_id TEXT NOT NULL, pipeline_id TEXT NOT NULL, pipeline_name TEXT NOT NULL,
+		pipeline_version INTEGER NOT NULL, trigger TEXT NOT NULL, repository_ref TEXT NOT NULL,
+		variables_snapshot TEXT NOT NULL, status TEXT NOT NULL, retry_of TEXT,
+		environment_id TEXT, environment_target_type TEXT, environment_target_revision INTEGER,
+		ssh_credential_id TEXT, ssh_credential_revision INTEGER,
+		started_at DATETIME, finished_at DATETIME, error_message TEXT, created_at DATETIME NOT NULL
+	)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectId, environmentId, targetType, credentialId := "project-1", "environment-1", model.EnvironmentTargetTypeSSH, "credential-1"
+	targetRevision, credentialRevision := int64(3), int64(5)
+	run := model.PipelineRun{Id: "run-1", ProjectId: &projectId, RepositoryId: "repo-1", RepositoryName: "repo",
+		SnapshotId: "snapshot-1", PipelineId: "pipeline-1", PipelineName: "pipeline", PipelineVersion: 1,
+		Trigger: "manual", RepositoryRef: "main", VariablesSnapshot: `[]`, Status: status.WorkStatusWaitingToRun,
+		EnvironmentId: &environmentId, EnvironmentTargetType: &targetType, EnvironmentTargetRevision: &targetRevision,
+		SSHCredentialId: &credentialId, SSHCredentialRevision: &credentialRevision}
+	store := NewRepository(database)
+	if err := store.CreatePipelineRun(context.Background(), run, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.PipelineRun(context.Background(), projectId, run.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.EnvironmentId == nil || *loaded.EnvironmentId != environmentId ||
+		loaded.EnvironmentTargetType == nil || *loaded.EnvironmentTargetType != targetType ||
+		loaded.EnvironmentTargetRevision == nil || *loaded.EnvironmentTargetRevision != targetRevision ||
+		loaded.SSHCredentialId == nil || *loaded.SSHCredentialId != credentialId ||
+		loaded.SSHCredentialRevision == nil || *loaded.SSHCredentialRevision != credentialRevision {
+		t.Fatalf("persisted run target = %+v", loaded)
+	}
+	listed, err := store.ListPipelineRuns(context.Background(), projectId, "", "", nil, nil, 1, 10)
+	if err != nil || len(listed.Items) != 1 || listed.Items[0].SSHCredentialRevision == nil ||
+		*listed.Items[0].SSHCredentialRevision != credentialRevision {
+		t.Fatalf("listed run target = %+v, err = %v", listed, err)
 	}
 }

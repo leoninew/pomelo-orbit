@@ -84,6 +84,7 @@ describe('domain navigation declarations', () => {
       'nav.repositories': '仓库',
       'nav.groups.ingress': '网络接入',
       'nav.gateway': '网关',
+      'nav.groups.project': '项目',
       'nav.groups.admin': '系统管理',
       'nav.settings': '系统设置',
       'nav.environment': '环境',
@@ -93,21 +94,26 @@ describe('domain navigation declarations', () => {
     expect(getSecondaryNavigationTitle('pipeline', 'repository', t)).toBe('代码仓库 仓库');
     expect(getSecondaryNavigationTitle('deployment', 'gateway', t)).toBe('网络接入 网关');
     expect(getSecondaryNavigationTitle('settings', 'settings', t)).toBe('系统管理 系统设置');
-    expect(getSecondaryNavigationTitle('settings', 'environment', t)).toBe('系统管理 环境');
+    expect(getSecondaryNavigationTitle('settings', 'environment', t)).toBe('项目 环境');
     expect(getSecondaryNavigationTitle('pipeline', 'missing', t)).toBeNull();
   });
 
-  it('groups system management entries in the requested order', () => {
+  it('groups project resources before system management entries', () => {
     expect(secondaryNavigation.settings).toEqual([
+      expect.objectContaining({
+        key: 'project',
+        children: [
+          expect.objectContaining({ key: 'projects', path: '/projects' }),
+          expect.objectContaining({ key: 'environment', path: '/environment' }),
+        ],
+      }),
       expect.objectContaining({
         key: 'admin',
         children: [
-          expect.objectContaining({ key: 'projects', path: '/projects' }),
           expect.objectContaining({ key: 'users', path: '/users' }),
           expect.objectContaining({ key: 'roles', path: '/roles' }),
           expect.objectContaining({ key: 'loginhistory', path: '/login-history' }),
           expect.objectContaining({ key: 'mcpAccessTokens', path: '/mcp-access-token' }),
-          expect.objectContaining({ key: 'environment', path: '/environment' }),
           expect.objectContaining({ key: 'settings', path: '/settings' }),
         ],
       }),
@@ -115,12 +121,10 @@ describe('domain navigation declarations', () => {
   });
 
   it('keeps project environment accessible without system settings permission', () => {
-    const environment = secondaryNavigation.settings[0].children.find(
-      (entry) => entry.key === 'environment'
-    );
-    const settings = secondaryNavigation.settings[0].children.find(
-      (entry) => entry.key === 'settings'
-    );
+    const projectNavigation = secondaryNavigation.settings.find((entry) => entry.key === 'project');
+    const adminNavigation = secondaryNavigation.settings.find((entry) => entry.key === 'admin');
+    const environment = projectNavigation?.children.find((entry) => entry.key === 'environment');
+    const settings = adminNavigation?.children.find((entry) => entry.key === 'settings');
     expect(environment?.permission).toBeUndefined();
     expect(settings?.permission).toBe(PERMISSIONS.SETTING_READ);
   });

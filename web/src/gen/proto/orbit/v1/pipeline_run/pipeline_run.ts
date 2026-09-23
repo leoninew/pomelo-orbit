@@ -50,6 +50,8 @@ export interface PipelineRunResp {
   created_at: string;
   pipeline_stage_runs: PipelineStageRunResp[];
   version_binding?: PipelineRunVersionBindingResp | undefined;
+  environment_id?: string | undefined;
+  environment_target_type?: string | undefined;
 }
 
 export interface PipelineRunArtifactListResp {

@@ -11,6 +11,25 @@ import (
 	"time"
 )
 
+const countPipelinesByRepository = `-- name: CountPipelinesByRepository :one
+SELECT COUNT(*)
+FROM pipeline
+WHERE project_id = ?
+  AND repository_id = ?
+`
+
+type CountPipelinesByRepositoryParams struct {
+	ProjectId    sql.NullString `db:"project_id"`
+	RepositoryId sql.NullString `db:"repository_id"`
+}
+
+func (q *Queries) CountPipelinesByRepository(ctx context.Context, arg CountPipelinesByRepositoryParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countPipelinesByRepository, arg.ProjectId, arg.RepositoryId)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countRepositories = `-- name: CountRepositories :one
 SELECT COUNT(*)
 FROM repository

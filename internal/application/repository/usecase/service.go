@@ -15,14 +15,13 @@ type Service struct {
 	logger      *slog.Logger
 }
 type stores struct {
-	project     repository.ProjectReader
-	credential  repository.CredentialStore
-	repository  repository.RepositoryStore
-	pipelineRun repository.PipelineRunStore
+	project    repository.ProjectReader
+	credential repository.CredentialStore
+	repository repository.RepositoryStore
 }
 
-func New(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipelineRun repository.PipelineRunStore, localSource repositoryport.LocalDirectorySource, logger *slog.Logger) Service {
-	return Service{store: stores{project: project, credential: credential, repository: repos, pipelineRun: pipelineRun}, localSource: localSource, logger: logger}
+func New(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, localSource repositoryport.LocalDirectorySource, logger *slog.Logger) Service {
+	return Service{store: stores{project: project, credential: credential, repository: repos}, localSource: localSource, logger: logger}
 }
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
 	return s.project.Project(ctx, id)
@@ -48,8 +47,9 @@ func (s stores) UpdateRepository(ctx context.Context, projectId string, item mod
 func (s stores) DeleteRepository(ctx context.Context, projectId string, id string) error {
 	return s.repository.DeleteRepository(ctx, projectId, id)
 }
-func (s stores) RepositoryHasActivePipelineRun(ctx context.Context, projectId string, id string) (bool, error) {
-	return s.pipelineRun.RepositoryHasActivePipelineRun(ctx, projectId, id)
+
+func (s stores) RepositoryHasBoundPipelines(ctx context.Context, projectId string, id string) (bool, error) {
+	return s.repository.RepositoryHasBoundPipelines(ctx, projectId, id)
 }
 func (s stores) CredentialExists(ctx context.Context, projectId string, id string) (bool, error) {
 	return s.credential.CredentialExists(ctx, projectId, id)

@@ -60,9 +60,9 @@ const homeNavigation: NavigationBranch[] = [
 
 const settingsNavigation: NavigationBranch[] = [
   {
-    key: 'admin',
-    labelKey: 'nav.groups.admin',
-    icon: Wrench,
+    key: 'project',
+    labelKey: 'nav.groups.project',
+    icon: LayoutGrid,
     children: [
       {
         key: 'projects',
@@ -70,6 +70,19 @@ const settingsNavigation: NavigationBranch[] = [
         labelKey: 'nav.projects',
         path: '/projects',
       },
+      {
+        key: 'environment',
+        label: '环境',
+        labelKey: 'nav.environment',
+        path: '/environment',
+      },
+    ],
+  },
+  {
+    key: 'admin',
+    labelKey: 'nav.groups.admin',
+    icon: Wrench,
+    children: [
       {
         key: 'users',
         label: '用户',
@@ -96,12 +109,6 @@ const settingsNavigation: NavigationBranch[] = [
         label: '访问令牌',
         labelKey: 'nav.mcpAccessTokens',
         path: '/mcp-access-token',
-      },
-      {
-        key: 'environment',
-        label: '环境',
-        labelKey: 'nav.environment',
-        path: '/environment',
       },
       {
         key: 'settings',

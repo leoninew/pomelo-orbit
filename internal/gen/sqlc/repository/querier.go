@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	CountPipelinesByRepository(ctx context.Context, arg CountPipelinesByRepositoryParams) (int64, error)
 	CountRepositories(ctx context.Context, arg CountRepositoriesParams) (int64, error)
 	CountRepositoriesByProject(ctx context.Context, projectID sql.NullString) (int64, error)
 	CreateRepository(ctx context.Context, arg CreateRepositoryParams) error

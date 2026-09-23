@@ -74,9 +74,53 @@
 
     <DropdownMenuRoot>
       <DropdownMenuTrigger
+        class="ml-1 flex h-10 max-w-40 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:max-w-56"
+        :aria-label="t('app.projectMenuAria', { project: activeProjectLabel })"
+        :title="activeProjectLabel"
+        @click="handleProjectMenuOpen"
+      >
+        <Cloud class="size-4 shrink-0" />
+        <span class="min-w-0 truncate text-sm">{{ activeProjectLabel }}</span>
+        <ChevronDown class="size-4 shrink-0 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuPortal>
+        <DropdownMenuContent
+          class="z-50 min-w-56 max-w-[calc(100vw-1rem)] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-slideDownAndFade"
+          align="end"
+          :side-offset="8"
+        >
+          <div v-if="projectStore.loading" class="px-3 py-2 text-sm text-muted-foreground">
+            {{ t('common.loading') }}
+          </div>
+          <template v-else>
+            <DropdownMenuItem
+              v-for="project in projectStore.activeProjects"
+              :key="project.id"
+              class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+              :class="{ 'bg-accent': project.id === projectStore.activeProjectId }"
+              @select="handleSwitchProject(project.id)"
+            >
+              <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
+              <span class="shrink-0 text-xs text-muted-foreground">{{ project.code }}</span>
+              <Check
+                v-if="project.id === projectStore.activeProjectId"
+                class="size-4 shrink-0 text-primary"
+              />
+            </DropdownMenuItem>
+            <div
+              v-if="projectStore.activeProjects.length === 0"
+              class="px-3 py-2 text-sm text-muted-foreground"
+            >
+              {{ t('project.noProjects') }}
+            </div>
+          </template>
+        </DropdownMenuContent>
+      </DropdownMenuPortal>
+    </DropdownMenuRoot>
+    <DropdownMenuRoot>
+      <DropdownMenuTrigger
         class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
         :aria-label="t('app.userMenuAria')"
-        @click="handleUserMenuOpen"
       >
         <span
           class="flex size-8 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground"
@@ -92,43 +136,6 @@
           align="end"
           :side-offset="8"
         >
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger
-              class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[state=open]:bg-accent"
-            >
-              <FolderKanban class="size-4" />
-              <span class="min-w-0 flex-1 truncate">{{ activeProjectLabel }}</span>
-              <ChevronRight class="size-4 text-muted-foreground" />
-            </DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent
-                class="z-50 min-w-48 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-slideDownAndFade"
-                :side-offset="8"
-              >
-                <div v-if="projectStore.loading" class="px-3 py-2 text-sm text-muted-foreground">
-                  {{ t('common.loading') }}
-                </div>
-                <template v-else>
-                  <DropdownMenuItem
-                    v-for="project in projectStore.activeProjects"
-                    :key="project.id"
-                    class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
-                    :class="{ 'bg-accent': project.id === projectStore.activeProjectId }"
-                    @select="handleSwitchProject(project.id)"
-                  >
-                    <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
-                    <span class="text-xs text-muted-foreground">{{ project.code }}</span>
-                  </DropdownMenuItem>
-                  <div
-                    v-if="projectStore.activeProjects.length === 0"
-                    class="px-3 py-2 text-sm text-muted-foreground"
-                  >
-                    {{ t('project.noProjects') }}
-                  </div>
-                </template>
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
           <DropdownMenuItem
             class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
             @select="isAboutDialogOpen = true"
@@ -270,10 +277,10 @@
   import {
     BookOpenText,
     ChevronDown,
-    ChevronRight,
+    Check,
     CircleHelp,
     Code2,
-    FolderKanban,
+    Cloud,
     KeyRound,
     Languages,
     LogOut,
@@ -301,9 +308,6 @@
     DropdownMenuItem,
     DropdownMenuPortal,
     DropdownMenuRoot,
-    DropdownMenuSub,
-    DropdownMenuSubContent,
-    DropdownMenuSubTrigger,
     DropdownMenuTrigger,
     NavigationMenuItem,
     NavigationMenuLink,
@@ -339,10 +343,9 @@
   });
   const passwordSubmitError = ref('');
 
-  const activeProjectLabel = computed(() => {
-    const project = projectStore.activeProject;
-    return project ? project.name : t('project.noProjects');
-  });
+  const activeProjectLabel = computed(
+    () => projectStore.activeProjectName ?? t('project.noProjects')
+  );
 
   const localizedPrimaryNavigation = computed(() =>
     primaryNavigation.map((item) => ({
@@ -366,7 +369,7 @@
     return props.currentModule === moduleKey;
   }
 
-  async function handleUserMenuOpen() {
+  async function handleProjectMenuOpen() {
     if (projectStore.projects.length === 0 && !projectStore.loading) {
       try {
         await projectStore.fetchProjects();

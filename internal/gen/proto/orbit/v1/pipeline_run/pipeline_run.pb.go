@@ -223,28 +223,30 @@ func (x *PipelineRunVersionBindingResp) GetGeneratedVersionLabel() string {
 }
 
 type PipelineRunResp struct {
-	state             protoimpl.MessageState         `protogen:"open.v1"`
-	Id                string                         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId         *string                        `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
-	RepositoryId      string                         `protobuf:"bytes,3,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
-	RepositoryName    string                         `protobuf:"bytes,4,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
-	SnapshotId        string                         `protobuf:"bytes,5,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
-	PipelineId        string                         `protobuf:"bytes,6,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
-	PipelineName      string                         `protobuf:"bytes,7,opt,name=pipeline_name,json=pipelineName,proto3" json:"pipeline_name,omitempty"`
-	PipelineVersion   int32                          `protobuf:"varint,8,opt,name=pipeline_version,json=pipelineVersion,proto3" json:"pipeline_version,omitempty"`
-	Trigger           string                         `protobuf:"bytes,9,opt,name=trigger,proto3" json:"trigger,omitempty"`
-	RepositoryRef     string                         `protobuf:"bytes,10,opt,name=repository_ref,json=repositoryRef,proto3" json:"repository_ref,omitempty"`
-	Variables         []*common.VariableResp         `protobuf:"bytes,11,rep,name=variables,proto3" json:"variables,omitempty"`
-	Status            string                         `protobuf:"bytes,12,opt,name=status,proto3" json:"status,omitempty"`
-	RetryOf           *string                        `protobuf:"bytes,13,opt,name=retry_of,json=retryOf,proto3,oneof" json:"retry_of,omitempty"`
-	StartedAt         *string                        `protobuf:"bytes,14,opt,name=started_at,json=startedAt,proto3,oneof" json:"started_at,omitempty"`
-	FinishedAt        *string                        `protobuf:"bytes,15,opt,name=finished_at,json=finishedAt,proto3,oneof" json:"finished_at,omitempty"`
-	ErrorMessage      *string                        `protobuf:"bytes,16,opt,name=error_message,json=errorMessage,proto3,oneof" json:"error_message,omitempty"`
-	CreatedAt         string                         `protobuf:"bytes,17,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	PipelineStageRuns []*PipelineStageRunResp        `protobuf:"bytes,18,rep,name=pipeline_stage_runs,json=pipelineStageRuns,proto3" json:"pipeline_stage_runs,omitempty"`
-	VersionBinding    *PipelineRunVersionBindingResp `protobuf:"bytes,19,opt,name=version_binding,json=versionBinding,proto3,oneof" json:"version_binding,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state                 protoimpl.MessageState         `protogen:"open.v1"`
+	Id                    string                         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ProjectId             *string                        `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
+	RepositoryId          string                         `protobuf:"bytes,3,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
+	RepositoryName        string                         `protobuf:"bytes,4,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
+	SnapshotId            string                         `protobuf:"bytes,5,opt,name=snapshot_id,json=snapshotId,proto3" json:"snapshot_id,omitempty"`
+	PipelineId            string                         `protobuf:"bytes,6,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	PipelineName          string                         `protobuf:"bytes,7,opt,name=pipeline_name,json=pipelineName,proto3" json:"pipeline_name,omitempty"`
+	PipelineVersion       int32                          `protobuf:"varint,8,opt,name=pipeline_version,json=pipelineVersion,proto3" json:"pipeline_version,omitempty"`
+	Trigger               string                         `protobuf:"bytes,9,opt,name=trigger,proto3" json:"trigger,omitempty"`
+	RepositoryRef         string                         `protobuf:"bytes,10,opt,name=repository_ref,json=repositoryRef,proto3" json:"repository_ref,omitempty"`
+	Variables             []*common.VariableResp         `protobuf:"bytes,11,rep,name=variables,proto3" json:"variables,omitempty"`
+	Status                string                         `protobuf:"bytes,12,opt,name=status,proto3" json:"status,omitempty"`
+	RetryOf               *string                        `protobuf:"bytes,13,opt,name=retry_of,json=retryOf,proto3,oneof" json:"retry_of,omitempty"`
+	StartedAt             *string                        `protobuf:"bytes,14,opt,name=started_at,json=startedAt,proto3,oneof" json:"started_at,omitempty"`
+	FinishedAt            *string                        `protobuf:"bytes,15,opt,name=finished_at,json=finishedAt,proto3,oneof" json:"finished_at,omitempty"`
+	ErrorMessage          *string                        `protobuf:"bytes,16,opt,name=error_message,json=errorMessage,proto3,oneof" json:"error_message,omitempty"`
+	CreatedAt             string                         `protobuf:"bytes,17,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	PipelineStageRuns     []*PipelineStageRunResp        `protobuf:"bytes,18,rep,name=pipeline_stage_runs,json=pipelineStageRuns,proto3" json:"pipeline_stage_runs,omitempty"`
+	VersionBinding        *PipelineRunVersionBindingResp `protobuf:"bytes,19,opt,name=version_binding,json=versionBinding,proto3,oneof" json:"version_binding,omitempty"`
+	EnvironmentId         *string                        `protobuf:"bytes,20,opt,name=environment_id,json=environmentId,proto3,oneof" json:"environment_id,omitempty"`
+	EnvironmentTargetType *string                        `protobuf:"bytes,21,opt,name=environment_target_type,json=environmentTargetType,proto3,oneof" json:"environment_target_type,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *PipelineRunResp) Reset() {
@@ -408,6 +410,20 @@ func (x *PipelineRunResp) GetVersionBinding() *PipelineRunVersionBindingResp {
 		return x.VersionBinding
 	}
 	return nil
+}
+
+func (x *PipelineRunResp) GetEnvironmentId() string {
+	if x != nil && x.EnvironmentId != nil {
+		return *x.EnvironmentId
+	}
+	return ""
+}
+
+func (x *PipelineRunResp) GetEnvironmentTargetType() string {
+	if x != nil && x.EnvironmentTargetType != nil {
+		return *x.EnvironmentTargetType
+	}
+	return ""
 }
 
 type PipelineRunArtifactListResp struct {
@@ -643,7 +659,7 @@ const file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc = "" +
 	"\x14generated_version_id\x18\x05 \x01(\tH\x00R\x12generatedVersionId\x88\x01\x01\x12;\n" +
 	"\x17generated_version_label\x18\x06 \x01(\tH\x01R\x15generatedVersionLabel\x88\x01\x01B\x17\n" +
 	"\x15_generated_version_idB\x1a\n" +
-	"\x18_generated_version_label\"\x90\a\n" +
+	"\x18_generated_version_label\"\xa8\b\n" +
 	"\x0fPipelineRunResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -670,13 +686,17 @@ const file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x11 \x01(\tR\tcreatedAt\x12[\n" +
 	"\x13pipeline_stage_runs\x18\x12 \x03(\v2+.orbit.v1.pipeline_run.PipelineStageRunRespR\x11pipelineStageRuns\x12b\n" +
-	"\x0fversion_binding\x18\x13 \x01(\v24.orbit.v1.pipeline_run.PipelineRunVersionBindingRespH\x05R\x0eversionBinding\x88\x01\x01B\r\n" +
+	"\x0fversion_binding\x18\x13 \x01(\v24.orbit.v1.pipeline_run.PipelineRunVersionBindingRespH\x05R\x0eversionBinding\x88\x01\x01\x12*\n" +
+	"\x0eenvironment_id\x18\x14 \x01(\tH\x06R\renvironmentId\x88\x01\x01\x12;\n" +
+	"\x17environment_target_type\x18\x15 \x01(\tH\aR\x15environmentTargetType\x88\x01\x01B\r\n" +
 	"\v_project_idB\v\n" +
 	"\t_retry_ofB\r\n" +
 	"\v_started_atB\x0e\n" +
 	"\f_finished_atB\x10\n" +
 	"\x0e_error_messageB\x12\n" +
-	"\x10_version_binding\"X\n" +
+	"\x10_version_bindingB\x11\n" +
+	"\x0f_environment_idB\x1a\n" +
+	"\x18_environment_target_type\"X\n" +
 	"\x1bPipelineRunArtifactListResp\x129\n" +
 	"\x05items\x18\x01 \x03(\v2#.orbit.v1.pipeline_run.ArtifactRespR\x05items\"c\n" +
 	"\x14PipelineStageLogResp\x12\x12\n" +

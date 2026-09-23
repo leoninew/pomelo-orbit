@@ -70,3 +70,52 @@ func TestListRepositoriesUsesNamedSQLiteParameters(t *testing.T) {
 		t.Fatalf("unexpected second project page: %+v", otherProject)
 	}
 }
+
+func TestRepositoryHasBoundPipelinesScopesProjectAndRepository(t *testing.T) {
+	database := openRepositoryTestDatabase(t)
+	defer func() { _ = database.Close() }()
+
+	ctx := context.Background()
+	for _, project := range []struct {
+		id   string
+		code string
+	}{
+		{id: "project-1", code: "project-one"},
+		{id: "project-2", code: "project-two"},
+	} {
+		if _, err := database.ExecContext(ctx, "INSERT INTO project (id, name, code) VALUES (?, ?, ?)", project.id, project.code, project.code); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := database.ExecContext(ctx, `
+		INSERT INTO pipeline (id, project_id, kind, repository_id, name)
+		VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)
+	`, "pipeline-1", "project-1", "application", "repository-1", "Build one", "pipeline-2", "project-2", "application", "repository-1", "Build two"); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := NewRepository(database)
+	bound, err := repo.RepositoryHasBoundPipelines(ctx, "project-1", "repository-1")
+	if err != nil {
+		t.Fatalf("check bound pipelines: %v", err)
+	}
+	if !bound {
+		t.Fatal("expected repository to have a bound pipeline")
+	}
+
+	bound, err = repo.RepositoryHasBoundPipelines(ctx, "project-1", "repository-2")
+	if err != nil {
+		t.Fatalf("check unrelated repository: %v", err)
+	}
+	if bound {
+		t.Fatal("unrelated repository must not be reported as bound")
+	}
+
+	bound, err = repo.RepositoryHasBoundPipelines(ctx, "project-2", "repository-1")
+	if err != nil {
+		t.Fatalf("check other project: %v", err)
+	}
+	if !bound {
+		t.Fatal("repository binding must be scoped to the selected project")
+	}
+}

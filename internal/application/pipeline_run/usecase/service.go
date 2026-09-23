@@ -283,7 +283,7 @@ func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeli
 		if repo.RepositoryType != model.RepositoryTypeRemoteGit || err != nil || remoteURL.Scheme != "https" || remoteURL.Hostname() == "" {
 			return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "SSH pipeline runs require an HTTPS Git repository URL")
 		}
-		if target.Environment.SSH.Platform != model.EnvironmentPlatformWindows || s.remoteRuntime == nil {
+		if (target.Environment.SSH.Platform != model.EnvironmentPlatformWindows && target.Environment.SSH.Platform != model.EnvironmentPlatformLinux) || s.remoteRuntime == nil {
 			return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "SSH pipeline execution is not installed for this environment")
 		}
 	}

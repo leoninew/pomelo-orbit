@@ -66,6 +66,15 @@
               </AppBadge>
             </dd>
           </div>
+          <div v-if="run.environment_target_type" class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.executionTarget') }}</dt>
+            <dd class="text-foreground">
+              {{ t(`project.environment.targetTypes.${run.environment_target_type}`) }}
+              <span v-if="run.environment_target_type === 'ssh'" class="text-muted-foreground">
+                · {{ t('pipelineRun.remoteStorageNote') }}
+              </span>
+            </dd>
+          </div>
           <div class="flex gap-2">
             <dt>
               {{ t('pipelineRun.fields.repository') }}

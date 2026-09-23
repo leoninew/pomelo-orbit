@@ -64,6 +64,7 @@ export default {
     homeAria: 'Pomelo Orbit 首页',
     primaryNavAria: '一级模块导航',
     globalToolbarAria: '全局工具',
+    projectMenuAria: '切换项目，当前项目：{project}',
     userMenuAria: '用户菜单',
     breadcrumbAria: '页面路径',
     about: '关于',
@@ -132,6 +133,7 @@ export default {
     credentials: '凭据',
     groups: {
       workspace: '工作台',
+      project: '项目',
       admin: '系统管理',
       delivery: '应用交付',
       ingress: '网络接入',
@@ -1249,6 +1251,7 @@ export default {
     refreshPaused: '暂停刷新',
     basicInfo: '基本信息',
     stageOrchestration: '阶段编排',
+    remoteStorageNote: '日志和文件制品保留在远端环境',
     stage: '阶段',
     dependency: '依赖',
     artifact: '制品',
@@ -1268,6 +1271,7 @@ export default {
     deleteConfirm: '确定要删除流水线运行「{id}」及其关联文件吗？此操作不可恢复。',
     fields: {
       runId: '运行 ID',
+      executionTarget: '执行目标',
       repository: '仓库',
       template: '模板',
       version: '版本',

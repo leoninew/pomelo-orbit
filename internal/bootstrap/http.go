@@ -192,7 +192,6 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 			stores.project,
 			stores.credential,
 			stores.repository,
-			stores.pipelineRun,
 			localSource,
 			logger,
 		),

@@ -7,6 +7,7 @@ import (
 
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 func TestWindowsPipelineWorkspacePathsAndSafety(t *testing.T) {
@@ -47,7 +48,7 @@ func TestWindowsPipelineWorkspacePathsAndSafety(t *testing.T) {
 }
 
 func TestWindowsPipelineDockerArgsKeepScriptOutOfShellCommand(t *testing.T) {
-	runner := &pipelineDockerRunner{root: "D:/Orbit Workspace/pipeline"}
+	runner := &pipelineDockerRunner{root: "D:/Orbit Workspace/pipeline", target: environmentport.Target{Environment: model.Environment{SSH: &model.EnvironmentSSHTarget{Platform: model.EnvironmentPlatformWindows}}}}
 	options := pipelinerunport.RunOptions{
 		ContainerName: "pomelo-orbit-stage-stage-1", Image: "alpine:latest", Script: "echo secret value",
 		Volumes: []pipelinerunport.VolumeMount{

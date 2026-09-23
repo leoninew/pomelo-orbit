@@ -21,5 +21,6 @@ type RepositoryStore interface {
 	CreateRepository(ctx context.Context, repo model.Repository) error
 	UpdateRepository(ctx context.Context, projectId string, repo model.Repository) error
 	DeleteRepository(ctx context.Context, projectId string, id string) error
+	RepositoryHasBoundPipelines(ctx context.Context, projectId string, id string) (bool, error)
 	RepositoryReferencesCredential(ctx context.Context, projectId string, credentialId string) (bool, error)
 }

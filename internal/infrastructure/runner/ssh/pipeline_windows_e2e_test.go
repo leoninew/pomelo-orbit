@@ -21,10 +21,18 @@ import (
 )
 
 func TestWindowsPipelineRemoteEndToEnd(t *testing.T) {
-	projectId := os.Getenv("POMELO_ORBIT_WINDOWS_PIPELINE_E2E_PROJECT_ID")
-	image := os.Getenv("POMELO_ORBIT_WINDOWS_PIPELINE_E2E_IMAGE")
+	testSSHPipelineRemoteEndToEnd(t, "WINDOWS", model.EnvironmentPlatformWindows)
+}
+
+func TestLinuxPipelineRemoteEndToEnd(t *testing.T) {
+	testSSHPipelineRemoteEndToEnd(t, "LINUX", model.EnvironmentPlatformLinux)
+}
+
+func testSSHPipelineRemoteEndToEnd(t *testing.T, targetName string, platform string) {
+	projectId := os.Getenv("POMELO_ORBIT_" + targetName + "_PIPELINE_E2E_PROJECT_ID")
+	image := os.Getenv("POMELO_ORBIT_" + targetName + "_PIPELINE_E2E_IMAGE")
 	if projectId == "" || image == "" {
-		t.Skip("set Windows SSH Project ID and an already-available shell image to run remote E2E")
+		t.Skipf("set %s SSH Project ID and an already-available shell image to run remote E2E", targetName)
 	}
 	_, sourceFile, _, _ := runtime.Caller(0)
 	originalDirectory, err := os.Getwd()
@@ -51,8 +59,11 @@ func TestWindowsPipelineRemoteEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !target.Environment.IsSSH() || target.Environment.SSH.Platform != model.EnvironmentPlatformWindows {
-		t.Fatal("selected Project is not a Windows SSH pipeline target")
+	if override := os.Getenv("POMELO_ORBIT_" + targetName + "_PIPELINE_E2E_WORKSPACE_ROOT"); override != "" {
+		target.Environment.WorkspaceRoot = override
+	}
+	if !target.Environment.IsSSH() || target.Environment.SSH.Platform != platform {
+		t.Fatal("selected Project is not the expected SSH pipeline target")
 	}
 	untrustedTarget := target
 	sshTarget := *target.Environment.SSH
@@ -66,7 +77,8 @@ func TestWindowsPipelineRemoteEndToEnd(t *testing.T) {
 		t.Fatal(err)
 	}
 	runner := container.(*pipelineDockerRunner)
-	runId := "windows-e2e-" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	projectCode := strings.ToLower(targetName) + "-e2e"
+	runId := projectCode + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	stageId := "stage-1"
 	t.Cleanup(func() {
 		cleanupCtx, stopCleanup := context.WithTimeout(context.Background(), 30*time.Second)
@@ -77,10 +89,10 @@ func TestWindowsPipelineRemoteEndToEnd(t *testing.T) {
 			t.Errorf("cleanup remote run: %v", err)
 		}
 	})
-	if err := workspace.CreateRunDirectories("windows-e2e", runId); err != nil {
+	if err := workspace.CreateRunDirectories(projectCode, runId); err != nil {
 		t.Fatal(err)
 	}
-	mounts, err := workspace.DockerStageMounts(ctx, "windows-e2e", runId)
+	mounts, err := workspace.DockerStageMounts(ctx, projectCode, runId)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,5 +156,5 @@ func TestWindowsPipelineRemoteEndToEnd(t *testing.T) {
 	if err != nil || exists {
 		t.Fatalf("remote artifact after cleanup exists=%v err=%v", exists, err)
 	}
-	t.Logf("Windows SSH pipeline probe and runtime verified for Project %s", projectId)
+	t.Logf("%s SSH pipeline probe and runtime verified for Project %s", platform, projectId)
 }

@@ -87,10 +87,15 @@ type remoteResourcesStub struct {
 	workspace *remoteWorkspaceStub
 	runner    *remoteRunnerStub
 	logs      *remoteLogStub
+	platform  string
 }
 
 func (resources remoteResourcesStub) RuntimeForTarget(_ context.Context, target environmentport.Target) (pipelinerunport.Workspace, pipelinerunport.ContainerRunner, pipelinerunport.ExecutionLogStore, error) {
-	if target.Environment.SSH.Platform != model.EnvironmentPlatformWindows {
+	platform := resources.platform
+	if platform == "" {
+		platform = model.EnvironmentPlatformWindows
+	}
+	if target.Environment.SSH.Platform != platform {
 		return nil, nil, nil, errors.New("unexpected platform")
 	}
 	return resources.workspace, resources.runner, resources.logs, nil
@@ -252,5 +257,33 @@ func TestWindowsSSHTriggerRetryAndIncrementalLog(t *testing.T) {
 	result, err := service.PipelineStageLog(context.Background(), "user-1", "project-1", second.Run.Id, "stage-run-1", 7)
 	if err != nil || result.Logs != "output" || result.Offset != len("remote output") {
 		t.Fatalf("remote log result = %+v, err = %v", result, err)
+	}
+}
+
+func TestLinuxSSHTriggerRetryAndRuntimeSelection(t *testing.T) {
+	environment := readySSHTarget()
+	environment.SSH.Platform = model.EnvironmentPlatformLinux
+	environmentStore := &runTargetEnvironmentStore{environment: environment}
+	repo := model.Repository{Id: "repo-1", Code: "repository", RepositoryType: model.RepositoryTypeRemoteGit,
+		RepositoryUrl: "https://git.example.test/repository.git", DefaultBranch: "main"}
+	service, runStore := targetTestService(environmentStore, repo)
+	workspace, logs, runner := &remoteWorkspaceStub{}, &remoteLogStub{}, &remoteRunnerStub{}
+	service.targetResolver = directTriggerTargetResolver{environment: environment}
+	service.remoteRuntime = remoteResourcesStub{workspace: workspace, logs: logs, runner: runner, platform: model.EnvironmentPlatformLinux}
+	first, err := service.TriggerPipeline(context.Background(), "user-1", "project-1", "pipeline-1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Run.EnvironmentTargetType == nil || *first.Run.EnvironmentTargetType != model.EnvironmentTargetTypeSSH {
+		t.Fatalf("Linux SSH run target = %+v", first.Run)
+	}
+	runStore.run = first.Run
+	selected, err := service.runtimeForRun(context.Background(), "project-1", first.Run)
+	if err != nil || selected.workspace != workspace || selected.runner != runner || selected.reader != logs {
+		t.Fatalf("Linux run resources = %+v, err = %v", selected, err)
+	}
+	second, err := service.RetryPipelineRun(context.Background(), "user-1", "project-1", first.Run.Id)
+	if err != nil || second.Run.RetryOf == nil || *second.Run.RetryOf != first.Run.Id {
+		t.Fatalf("Linux run retry = %+v, err = %v", second.Run, err)
 	}
 }

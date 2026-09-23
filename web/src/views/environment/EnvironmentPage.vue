@@ -353,7 +353,11 @@
               workspaceRoot: target.workspace_root,
               publicKey: result.public_key,
             })
-          : buildLinuxSshInitializationCommand({ publicKey: result.public_key });
+          : buildLinuxSshInitializationCommand({
+              username: target.username,
+              workspaceRoot: target.workspace_root,
+              publicKey: result.public_key,
+            });
     } catch (error: unknown) {
       sshCommandError.value =
         error instanceof Error ? error.message : t('project.initialization.sshCommandFailed');

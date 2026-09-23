@@ -773,7 +773,11 @@
               workspaceRoot: environmentForm.workspaceRoot,
               publicKey: result.public_key,
             })
-          : buildLinuxSshInitializationCommand({ publicKey: result.public_key });
+          : buildLinuxSshInitializationCommand({
+              username: environmentForm.username,
+              workspaceRoot: environmentForm.workspaceRoot,
+              publicKey: result.public_key,
+            });
     } catch (error: unknown) {
       sshCommandError.value =
         error instanceof Error ? error.message : t('project.initialization.sshCommandFailed');

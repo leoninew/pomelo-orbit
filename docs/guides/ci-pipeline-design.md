@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-23 14:50:48
+最后修改时间: 2026-09-23 15:36:02
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -66,9 +66,9 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 
 ## Runtime workspace
 
-当前 Pipeline Run 支持 `local` 和 Windows SSH Environment（Linux SSH 尚未交付）：触发和 Retry 均要求所属 Project 的 Environment 已配置有效工作区根目录，且最新修订的 Probe 成功；不要求 CD Gateway 已就绪。Run 保存 Environment ID、target type/revision，SSH 另保存凭据 ID/revision（不保存密钥）；Worker 在访问源码/工作区前复核当前环境与快照，不一致则失败并要求重新 Retry。Retry 创建新 Run 并以当前环境重新绑定。历史无目标快照的 Run 仅在能证明原 local 环境未变化时读取或删除文件，无法证明时明确拒绝。
+当前 Pipeline Run 支持 `local`、Windows SSH 和 Linux SSH Environment：触发和 Retry 均要求所属 Project 的 Environment 已配置有效工作区根目录，且最新修订的 Probe 成功；不要求 CD Gateway 已就绪。Run 保存 Environment ID、target type/revision，SSH 另保存凭据 ID/revision（不保存密钥）；Worker 在访问源码/工作区前复核当前环境与快照，不一致则失败并要求重新 Retry。Retry 创建新 Run 并以当前环境重新绑定。历史无目标快照的 Run 仅在能证明原 local 环境未变化时读取或删除文件，无法证明时明确拒绝。
 
-本地 Pipeline checkout、Stage log 和 Run artifact 位于当前 Project 的 `<Environment.workspace_root>/pipeline`，本地 Stage 使用控制面 Docker CLI；`workspace.root` 只作为启动配置基准。DooD 部署必须显式挂载工作区根目录，不能把容器内路径直接传给 Docker daemon。Windows SSH Pipeline 则通过受管 SSH 密钥与 host-key pinning，在目标 Windows 主机的 `<workspace_root>/pipeline` 创建工作区，以目标 Docker Desktop Linux containers 运行 Stage；控制面无需 Docker CLI，也不向远端传入本机挂载路径。远端 Stage 日志经 SFTP 增量读取，文件制品以远端位置保存和删除，不回传或提供下载接口；命令制品和镜像 ID 在目标上采集。SSH 运行只允许 HTTPS Git 来源，本地目录 Repository 保持 local 用法，在 SSH 触发前拒绝。Linux SSH CI 尚未交付，触发前明确拒绝；旧排队 SSH Run 不回退到控制面执行。
+本地 Pipeline checkout、Stage log 和 Run artifact 位于当前 Project 的 `<Environment.workspace_root>/pipeline`，本地 Stage 使用控制面 Docker CLI；`workspace.root` 只作为启动配置基准。DooD 部署必须显式挂载工作区根目录，不能把容器内路径直接传给 Docker daemon。Windows/Linux SSH Pipeline 通过受管 SSH 密钥与 host-key pinning，在各自目标主机的 `<workspace_root>/pipeline` 创建工作区，分别以目标 Docker Desktop Linux containers 或 Linux Docker Engine 运行 Stage；控制面无需 Docker CLI，也不向远端传入本机挂载路径。SSH 登录用户必须能写入远端 `pipeline` 工作区，目标 Docker daemon 必须能挂载对应的宿主路径；Environment Probe 成功不保证已存在的 `pipeline` 子目录可写。远端 Stage 日志经 SFTP 增量读取，文件制品以远端位置保存和删除，不回传或提供下载接口；命令制品和镜像 ID 在目标上采集。SSH 运行只允许 HTTPS Git 来源，本地目录 Repository 保持 local 用法，在 SSH 触发前拒绝。Run 详情展示目标类型；目标离线或被重配时远端日志/制品无法安全读取或删除，须恢复原目标或重试。旧排队 SSH Run 不回退到控制面执行。
 
 ## Git 凭据
 

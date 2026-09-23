@@ -119,12 +119,13 @@ func (s Service) DeleteRepository(ctx context.Context, userId string, projectId 
 	if err != nil {
 		return err
 	}
-	running, err := s.store.RepositoryHasActivePipelineRun(ctx, projectId, item.Id)
+
+	bound, err := s.store.RepositoryHasBoundPipelines(ctx, projectId, item.Id)
 	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to check repository pipelines", err)
+		return apperror.Wrap(apperror.KindInternal, "Failed to check repository pipeline bindings", err)
 	}
-	if running {
-		return apperror.New(apperror.KindValidation, "Repository has running pipelines. Cancel or wait for them to finish before deleting it.")
+	if bound {
+		return apperror.New(apperror.KindValidation, "Repository is bound to pipelines. Delete the bound pipelines before deleting it.")
 	}
 	if err := s.store.DeleteRepository(ctx, projectId, item.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete repository", err)

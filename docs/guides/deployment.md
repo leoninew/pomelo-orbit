@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-09-16 18:02:22
+最后修改时间: 2026-09-23 16:21:10
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -35,7 +35,7 @@ Environment 的 target type 是显式 `local | ssh`：
 
 创建 Project 时只填写名称和编码。Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。local 不创建 `environment_credential`。SSH target 可以先保存为未初始化状态；用户在完整表单后点击“生成初始化命令”时，Orbit 在同一写事务中保存 target，并创建或复用该 Environment 的受管密钥。重复生成命令始终返回同一有效公钥，保存、编辑、状态读取和 Probe 都不会隐式创建或轮换密钥。
 
-Linux 和 Windows SSH target 都在 Wizard 与已保存的 Environment detail 中提供可复制的初始化命令。用户必须通过云控制台、已有 SSH 登录或其他带外方式在目标端执行命令，随后回到页面运行 Probe。Linux Bash 命令仅幂等创建当前用户的 `~/.ssh`、修正 `700`/`600` 权限，并在缺失时追加 Orbit 公钥到 `authorized_keys`；不使用 `sudo`，不修改 `sshd`、Docker、Docker Compose、Docker 用户组或防火墙。Windows PowerShell 命令仍须在目标 Windows 主机的管理员 PowerShell 执行，用于准备 Windows OpenSSH、受管公钥、工作目录和 Docker Desktop 前置条件。
+Linux 和 Windows SSH target 都在 Wizard 与已保存的 Environment detail 中提供可复制的初始化命令。用户必须通过云控制台、已有 SSH 登录或其他带外方式在目标端执行命令，随后回到页面运行 Probe。Linux Bash 命令由所配置的 SSH 用户执行：幂等创建该用户的 `~/.ssh`、修正 `700`/`600` 权限并追加 Orbit 公钥；同时按所选 `workspace_root` 创建 `pipeline` 与 `deployment` 目录，将新建的工作区根目录及这两个子目录 `chown` 为该用户。非 root 用户执行目录准备时使用 `sudo`，不递归更改现有目录下的文件，不修改 `sshd`、Docker、Docker Compose、Docker 用户组或防火墙。Windows PowerShell 命令仍须在目标 Windows 主机的管理员 PowerShell 执行，用于准备 Windows OpenSSH、受管公钥、工作目录和 Docker Desktop 前置条件。
 
 Docker Engine/Compose（Windows 上包括 Docker Desktop、WSL2 Linux engine）是 SSH target 的外部前置条件。Orbit 不接收、读取或持久化操作者个人私钥、密码或一次性 bootstrap 认证。未生成初始化命令时，SSH Probe 会写入明确的恢复诊断且不会尝试裸网络连接或生成密钥。
 

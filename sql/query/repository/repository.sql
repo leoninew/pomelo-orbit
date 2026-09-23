@@ -58,6 +58,12 @@ SET name = sqlc.arg(name),
 WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
 
+-- name: CountPipelinesByRepository :one
+SELECT COUNT(*)
+FROM pipeline
+WHERE project_id = sqlc.arg(project_id)
+  AND repository_id = sqlc.arg(repository_id);
+
 -- name: DeleteRepository :exec
 DELETE FROM repository
 WHERE id = sqlc.arg(id)

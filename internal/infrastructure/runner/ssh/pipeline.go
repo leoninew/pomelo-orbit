@@ -30,8 +30,9 @@ type PipelineRuntime struct{ ssh *Runtime }
 func NewPipelineRuntime() *PipelineRuntime { return &PipelineRuntime{ssh: NewRuntime()} }
 
 func (runtime *PipelineRuntime) RuntimeForTarget(ctx context.Context, target environmentport.Target) (pipelinerunport.Workspace, pipelinerunport.ContainerRunner, pipelinerunport.ExecutionLogStore, error) {
-	if !target.Environment.IsSSH() || target.Environment.SSH.Platform != model.EnvironmentPlatformWindows || target.PrivateKey == nil {
-		return nil, nil, nil, errors.New("windows SSH pipeline target requires a pinned host key and managed credential")
+	if !target.Environment.IsSSH() || target.PrivateKey == nil ||
+		(target.Environment.SSH.Platform != model.EnvironmentPlatformWindows && target.Environment.SSH.Platform != model.EnvironmentPlatformLinux) {
+		return nil, nil, nil, errors.New("SSH pipeline target requires a supported platform and managed credential")
 	}
 	client, closeClient, err := runtime.ssh.openSFTP(ctx, target)
 	if err != nil {
@@ -42,8 +43,11 @@ func (runtime *PipelineRuntime) RuntimeForTarget(ctx context.Context, target env
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if !windowsDrivePath.MatchString(root) {
+	if target.Environment.SSH.Platform == model.EnvironmentPlatformWindows && !windowsDrivePath.MatchString(root) {
 		return nil, nil, nil, errors.New("windows SSH pipeline workspace must resolve to a drive-absolute path")
+	}
+	if target.Environment.SSH.Platform == model.EnvironmentPlatformLinux && !path.IsAbs(root) {
+		return nil, nil, nil, errors.New("linux SSH pipeline workspace must resolve to an absolute path")
 	}
 	root = path.Join(root, workspacepath.PipelineDirName)
 	workspace := &pipelineWorkspace{runtime: runtime.ssh, target: target, ctx: ctx, root: root}
@@ -79,7 +83,7 @@ func (workspace *pipelineWorkspace) CreateRunDirectories(projectCode string, run
 	defer closeClient()
 	for _, directory := range []string{path.Join(workspace.root, projectCode, "workspace"), path.Join(runPath, "artifacts"), path.Join(runPath, "stages")} {
 		if err := client.MkdirAll(directory); err != nil {
-			return fmt.Errorf("create remote pipeline directory: %w", err)
+			return fmt.Errorf("create remote pipeline directory %s: %w", directory, err)
 		}
 	}
 	return nil
@@ -272,8 +276,12 @@ func (runner *pipelineDockerRunner) dockerArgs(opts pipelinerunport.RunOptions, 
 	}
 	for _, volume := range opts.Volumes {
 		host := normalizeRemotePath(volume.HostPath)
-		if !windowsDrivePath.MatchString(host) || strings.Contains(host, ",") || !strings.HasPrefix(volume.ContainerPath, "/") || strings.Contains(volume.ContainerPath, ",") {
-			return nil, errors.New("invalid Windows Docker Desktop bind mount")
+		validHost := windowsDrivePath.MatchString(host)
+		if runner.target.Environment.SSH.Platform == model.EnvironmentPlatformLinux {
+			validHost = path.IsAbs(host)
+		}
+		if !validHost || strings.Contains(host, ",") || !strings.HasPrefix(volume.ContainerPath, "/") || strings.Contains(volume.ContainerPath, ",") {
+			return nil, errors.New("invalid remote Docker bind mount")
 		}
 		mount := "type=bind,source=" + host + ",target=" + volume.ContainerPath
 		if volume.Mode == "ro" {
@@ -286,7 +294,7 @@ func (runner *pipelineDockerRunner) dockerArgs(opts pipelinerunport.RunOptions, 
 }
 
 func (runner *pipelineDockerRunner) runDocker(ctx context.Context, args []string, script string, stdout io.Writer, stderr io.Writer) error {
-	command, _, err := remoteCommand(model.EnvironmentPlatformWindows, runner.root, "docker", args...)
+	command, _, err := remoteCommand(runner.target.Environment.SSH.Platform, runner.root, "docker", args...)
 	if err != nil {
 		return err
 	}
@@ -325,7 +333,7 @@ func (runner *pipelineDockerRunner) Run(ctx context.Context, opts pipelinerunpor
 	if errors.As(err, &exitError) {
 		return exitError.ExitStatus(), "", nil
 	}
-	return 1, "", fmt.Errorf("run Windows SSH pipeline container: %w", err)
+	return 1, "", fmt.Errorf("run SSH pipeline container: %w", err)
 }
 
 func (runner *pipelineDockerRunner) RunCommand(ctx context.Context, opts pipelinerunport.RunOptions, command string) (string, error) {
@@ -346,7 +354,7 @@ func (runner *pipelineDockerRunner) RunCommand(ctx context.Context, opts pipelin
 		return "", ctx.Err()
 	}
 	if err != nil {
-		return "", fmt.Errorf("run Windows SSH command artifact: %w: %s", err, boundedRemoteOutput(stderr.String()))
+		return "", fmt.Errorf("run SSH command artifact: %w: %s", err, boundedRemoteOutput(stderr.String()))
 	}
 	return stdout.String(), nil
 }
@@ -355,7 +363,7 @@ func (runner *pipelineDockerRunner) ImageId(ctx context.Context, imageRef string
 	if strings.TrimSpace(imageRef) == "" {
 		return "", errors.New("image reference is required")
 	}
-	command, _, err := remoteCommand(model.EnvironmentPlatformWindows, runner.root, "docker", "image", "inspect", "--format", "{{.Id}}", imageRef)
+	command, _, err := remoteCommand(runner.target.Environment.SSH.Platform, runner.root, "docker", "image", "inspect", "--format", "{{.Id}}", imageRef)
 	if err != nil {
 		return "", err
 	}
@@ -384,7 +392,7 @@ func (runner *pipelineDockerRunner) ImageId(ctx context.Context, imageRef string
 func (runner *pipelineDockerRunner) removeContainer(containerName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	command, _, err := remoteCommand(model.EnvironmentPlatformWindows, runner.root, "docker", "rm", "--force", containerName)
+	command, _, err := remoteCommand(runner.target.Environment.SSH.Platform, runner.root, "docker", "rm", "--force", containerName)
 	if err != nil {
 		return err
 	}

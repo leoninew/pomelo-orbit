@@ -41,6 +41,8 @@ message PipelineRunResp {
   string created_at = 17;
   repeated PipelineStageRunResp pipeline_stage_runs = 18;
   optional PipelineRunVersionBindingResp version_binding = 19;
+  optional string environment_id = 20;
+  optional string environment_target_type = 21;
 }
 
 message PipelineRunArtifactListResp { repeated ArtifactResp items = 1; }

@@ -24,10 +24,18 @@ import (
 )
 
 func TestWindowsPipelineApplicationRemoteEndToEnd(t *testing.T) {
-	projectId := os.Getenv("POMELO_ORBIT_WINDOWS_PIPELINE_E2E_PROJECT_ID")
-	image := os.Getenv("POMELO_ORBIT_WINDOWS_PIPELINE_E2E_IMAGE")
+	testSSHPipelineApplicationRemoteEndToEnd(t, "WINDOWS", model.EnvironmentPlatformWindows)
+}
+
+func TestLinuxPipelineApplicationRemoteEndToEnd(t *testing.T) {
+	testSSHPipelineApplicationRemoteEndToEnd(t, "LINUX", model.EnvironmentPlatformLinux)
+}
+
+func testSSHPipelineApplicationRemoteEndToEnd(t *testing.T, targetName string, platform string) {
+	projectId := os.Getenv("POMELO_ORBIT_" + targetName + "_PIPELINE_E2E_PROJECT_ID")
+	image := os.Getenv("POMELO_ORBIT_" + targetName + "_PIPELINE_E2E_IMAGE")
 	if projectId == "" || image == "" {
-		t.Skip("set Windows SSH Project ID and an already-available shell image to run remote E2E")
+		t.Skipf("set %s SSH Project ID and an already-available shell image to run remote E2E", targetName)
 	}
 	_, sourceFile, _, _ := runtime.Caller(0)
 	originalDirectory, err := os.Getwd()
@@ -54,14 +62,18 @@ func TestWindowsPipelineApplicationRemoteEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !target.Environment.IsSSH() || target.Environment.SSH.Platform != model.EnvironmentPlatformWindows {
-		t.Fatal("selected Project is not a Windows SSH target")
+	if override := os.Getenv("POMELO_ORBIT_" + targetName + "_PIPELINE_E2E_WORKSPACE_ROOT"); override != "" {
+		target.Environment.WorkspaceRoot = override
+	}
+	if !target.Environment.IsSSH() || target.Environment.SSH.Platform != platform {
+		t.Fatal("selected Project is not the expected SSH target")
 	}
 	workspace, container, logs, err := sshrunner.NewPipelineRuntime().RuntimeForTarget(ctx, target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	runId := "windows-app-e2e-" + strconv.FormatInt(time.Now().UnixNano(), 36)
+	projectCode := strings.ToLower(targetName) + "-app-e2e"
+	runId := projectCode + "-" + strconv.FormatInt(time.Now().UnixNano(), 36)
 	t.Cleanup(func() {
 		cleanupCtx, stop := context.WithTimeout(context.Background(), 30*time.Second)
 		defer stop()
@@ -74,11 +86,11 @@ func TestWindowsPipelineApplicationRemoteEndToEnd(t *testing.T) {
 			t.Errorf("remove remote run: %v", err)
 		}
 	})
-	if err := workspace.CreateRunDirectories("windows-e2e", runId); err != nil {
+	if err := workspace.CreateRunDirectories(projectCode, runId); err != nil {
 		t.Fatal(err)
 	}
 	run := model.PipelineRun{Id: runId, ProjectId: &projectId, RepositoryId: "repository", RepositoryName: "test",
-		PipelineId: "pipeline", PipelineName: "Windows E2E"}
+		PipelineId: "pipeline", PipelineName: platform + " E2E"}
 	stages := []model.StageDefinition{
 		{Id: "build", Name: "build", Image: image, Script: "echo remote-report > /artifacts/report.txt; echo build-complete", Artifacts: []model.ArtifactConfig{
 			{Name: "report", Collector: "file", Reference: "report.txt"},
@@ -95,7 +107,7 @@ func TestWindowsPipelineApplicationRemoteEndToEnd(t *testing.T) {
 	executor := Executor{store: store, workspace: workspace, logStore: logs, runner: container,
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)), executionTimeout: 3 * time.Minute}
 	ok, message := executor.Execute(ctx, ctx, projectId, run,
-		model.Repository{Id: "repository", Code: "windows-e2e", RepositoryType: model.RepositoryTypeRemoteGit,
+		model.Repository{Id: "repository", Code: projectCode, RepositoryType: model.RepositoryTypeRemoteGit,
 			RepositoryUrl: "https://git.example.test/repository.git"},
 		pipelinevariable.RuntimeVariables{Global: map[string]any{}}, stages, stageRuns)
 	if !ok {

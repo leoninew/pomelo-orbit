@@ -182,7 +182,9 @@ describe('Project initialization page', () => {
     mountedApp.mount(target);
 
     await vi.waitFor(() => {
-      expect(target?.textContent).toContain(i18n.global.t('project.initialization.probeChecklistTitle'));
+      expect(target?.textContent).toContain(
+        i18n.global.t('project.initialization.probeChecklistTitle')
+      );
     });
     const probeButton = [...(target?.querySelectorAll('button') || [])].find(
       (button) => button.textContent?.trim() === i18n.global.t('project.initialization.probe')

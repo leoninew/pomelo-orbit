@@ -145,6 +145,17 @@ func (r Repository) DeleteRepository(ctx context.Context, projectId string, id s
 	return nil
 }
 
+func (r Repository) RepositoryHasBoundPipelines(ctx context.Context, projectId string, id string) (bool, error) {
+	count, err := r.q(ctx).CountPipelinesByRepository(ctx, reposqlc.CountPipelinesByRepositoryParams{
+		ProjectId:    projectScopeId(projectId),
+		RepositoryId: projectScopeId(id),
+	})
+	if err != nil {
+		return false, fmt.Errorf("count repository pipeline bindings %s: %w", id, err)
+	}
+	return count > 0, nil
+}
+
 func (r Repository) RepositoryReferencesCredential(ctx context.Context, projectId string, credentialId string) (bool, error) {
 	count, err := r.q(ctx).RepositoryReferencesCredential(ctx, reposqlc.RepositoryReferencesCredentialParams{
 		ProjectId:       projectScopeId(projectId),

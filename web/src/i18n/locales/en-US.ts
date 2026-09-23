@@ -64,6 +64,7 @@ export default {
     homeAria: 'Pomelo Orbit home',
     primaryNavAria: 'Primary module navigation',
     globalToolbarAria: 'Global tools',
+    projectMenuAria: 'Switch project, current project: {project}',
     userMenuAria: 'User menu',
     breadcrumbAria: 'Page path',
     about: 'About',
@@ -133,6 +134,7 @@ export default {
     credentials: 'Credentials',
     groups: {
       workspace: 'Workspace',
+      project: 'Project',
       admin: 'Administration',
       delivery: 'Application Delivery',
       ingress: 'Network Access',
@@ -1272,6 +1274,7 @@ export default {
     refreshPaused: 'Refresh paused',
     basicInfo: 'Basic Info',
     stageOrchestration: 'Stage Orchestration',
+    remoteStorageNote: 'Logs and file artifacts stay on the remote target',
     stage: 'Stage',
     dependency: 'Dependency',
     artifact: 'Artifact',
@@ -1291,6 +1294,7 @@ export default {
     deleteConfirm: 'Delete pipeline run "{id}" and its related files? This cannot be undone.',
     fields: {
       runId: 'Run ID',
+      executionTarget: 'Execution Target',
       repository: 'Repository',
       template: 'Template',
       version: 'Version',

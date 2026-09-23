@@ -10,15 +10,15 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-func TestDeleteRepositoryRejectsRunningPipelinesWithValidation(t *testing.T) {
+func TestDeleteRepositoryRejectsBoundPipelinesWithValidation(t *testing.T) {
 	projectId := "project-1"
 	repositoryStore := &repositoryDeletionStore{
-		item: model.Repository{Id: "repository-1", ProjectId: &projectId},
+		item:  model.Repository{Id: "repository-1", ProjectId: &projectId},
+		bound: true,
 	}
 	service := Service{store: stores{
-		project:     repositoryDeletionProjectStore{},
-		repository:  repositoryStore,
-		pipelineRun: repositoryDeletionPipelineRunStore{running: true},
+		project:    repositoryDeletionProjectStore{},
+		repository: repositoryStore,
 	}}
 
 	err := service.DeleteRepository(context.Background(), "user-1", projectId, "repository-1")
@@ -28,11 +28,35 @@ func TestDeleteRepositoryRejectsRunningPipelinesWithValidation(t *testing.T) {
 	if !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("error = %v, want validation", err)
 	}
-	if !strings.Contains(err.Error(), "Cancel or wait") {
-		t.Fatalf("error = %q, want actionable guidance", err)
+	if !strings.Contains(err.Error(), "bound to pipelines") {
+		t.Fatalf("error = %q, want pipeline binding guidance", err)
 	}
 	if repositoryStore.deleted {
-		t.Fatal("repository must remain while pipelines are running")
+		t.Fatal("repository must remain while pipelines are bound")
+	}
+	if !repositoryStore.boundChecked {
+		t.Fatal("repository pipeline bindings must be checked before deletion")
+	}
+}
+
+func TestDeleteRepositoryAllowsDeletionWhenNoPipelineIsBound(t *testing.T) {
+	projectId := "project-1"
+	repositoryStore := &repositoryDeletionStore{
+		item: model.Repository{Id: "repository-1", ProjectId: &projectId},
+	}
+	service := Service{store: stores{
+		project:    repositoryDeletionProjectStore{},
+		repository: repositoryStore,
+	}}
+
+	if err := service.DeleteRepository(context.Background(), "user-1", projectId, "repository-1"); err != nil {
+		t.Fatalf("delete repository: %v", err)
+	}
+	if !repositoryStore.boundChecked {
+		t.Fatal("repository pipeline bindings must be checked before deletion")
+	}
+	if !repositoryStore.deleted {
+		t.Fatal("repository should be deleted when no pipeline is bound")
 	}
 }
 
@@ -50,24 +74,22 @@ func (repositoryDeletionProjectStore) IsProjectMember(context.Context, string, s
 
 type repositoryDeletionStore struct {
 	repository.RepositoryStore
-	item    model.Repository
-	deleted bool
+	item         model.Repository
+	bound        bool
+	boundChecked bool
+	deleted      bool
 }
 
 func (s *repositoryDeletionStore) Repository(context.Context, string, string) (model.Repository, error) {
 	return s.item, nil
 }
 
+func (s *repositoryDeletionStore) RepositoryHasBoundPipelines(context.Context, string, string) (bool, error) {
+	s.boundChecked = true
+	return s.bound, nil
+}
+
 func (s *repositoryDeletionStore) DeleteRepository(context.Context, string, string) error {
 	s.deleted = true
 	return nil
-}
-
-type repositoryDeletionPipelineRunStore struct {
-	repository.PipelineRunStore
-	running bool
-}
-
-func (s repositoryDeletionPipelineRunStore) RepositoryHasActivePipelineRun(context.Context, string, string) (bool, error) {
-	return s.running, nil
 }

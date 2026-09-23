@@ -26,9 +26,9 @@
             <tr>
               <th>名称</th>
               <th>编码</th>
+              <th>地址/目录</th>
               <th>仓库类型</th>
               <th>默认分支</th>
-              <th>地址/目录</th>
               <th>Git 凭据</th>
               <th>创建时间</th>
               <th>操作</th>
@@ -42,13 +42,13 @@
                 </router-link>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ p.code }}</td>
+              <td class="max-w-md truncate text-foreground" :title="repositoryLocation(p)">
+                {{ repositoryLocation(p) }}
+              </td>
               <td class="whitespace-nowrap text-foreground">
                 {{ p.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
               </td>
               <td class="whitespace-nowrap text-foreground">{{ p.default_branch }}</td>
-              <td class="max-w-md truncate text-foreground" :title="repositoryLocation(p)">
-                {{ repositoryLocation(p) }}
-              </td>
               <td class="whitespace-nowrap text-foreground">
                 <router-link
                   v-if="p.git_credential_id"
@@ -84,16 +84,6 @@
     <AppLoadingState v-if="modalStatus === 'loading'" size="compact" />
 
     <div v-else class="space-y-4">
-      <div class="space-y-1.5">
-        <label for="create-repository-type" class="app-field-label block">仓库类型</label>
-        <SelectControl
-          id="create-repository-type"
-          :model-value="form.repository_type"
-          :options="repositoryTypeOptions"
-          @update:model-value="updateCreateRepositoryType"
-        />
-      </div>
-
       <div class="space-y-1.5">
         <label for="create-repository-name" class="app-field-label block">
           名称
@@ -198,6 +188,21 @@
         </p>
       </div>
 
+      <div class="space-y-1.5">
+        <label for="create-repository-type" class="app-field-label block">仓库类型</label>
+        <SelectControl
+          id="create-repository-type"
+          :model-value="form.repository_type"
+          :options="repositoryTypeOptions"
+          @update:model-value="updateCreateRepositoryType"
+        />
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="app-field-label block">默认分支</label>
+        <input v-model="form.default_branch" type="text" placeholder="develop" class="app-input" />
+      </div>
+
       <div v-if="form.repository_type === 'remote_git'" class="space-y-1.5">
         <label class="app-field-label block">Git 凭据</label>
         <ComboboxSelect
@@ -205,11 +210,6 @@
           :options="gitCredentialOptions"
           placeholder="不使用凭据"
         />
-      </div>
-
-      <div class="space-y-1.5">
-        <label class="app-field-label block">默认分支</label>
-        <input v-model="form.default_branch" type="text" placeholder="develop" class="app-input" />
       </div>
 
       <p v-if="createFormError" class="app-field-error text-xs" role="alert">
@@ -230,16 +230,6 @@
     <AppLoadingState v-if="modalStatus === 'loading'" size="compact" />
 
     <form v-else class="space-y-4" novalidate @submit.prevent="handleEditOk">
-      <div class="space-y-1.5">
-        <label for="edit-repository-type" class="app-field-label block">仓库类型</label>
-        <SelectControl
-          id="edit-repository-type"
-          :model-value="editForm.repository_type"
-          :options="repositoryTypeOptions"
-          @update:model-value="updateEditRepositoryType"
-        />
-      </div>
-
       <div class="space-y-1.5">
         <label for="edit-repository-name" class="app-field-label block">
           名称
@@ -322,12 +312,13 @@
         </p>
       </div>
 
-      <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
-        <label class="app-field-label block">Git 凭据</label>
-        <ComboboxSelect
-          v-model="editForm.git_credential_id"
-          :options="gitCredentialOptions"
-          placeholder="不使用凭据"
+      <div class="space-y-1.5">
+        <label for="edit-repository-type" class="app-field-label block">仓库类型</label>
+        <SelectControl
+          id="edit-repository-type"
+          :model-value="editForm.repository_type"
+          :options="repositoryTypeOptions"
+          @update:model-value="updateEditRepositoryType"
         />
       </div>
 
@@ -339,6 +330,15 @@
           type="text"
           placeholder="master"
           class="app-input"
+        />
+      </div>
+
+      <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
+        <label class="app-field-label block">Git 凭据</label>
+        <ComboboxSelect
+          v-model="editForm.git_credential_id"
+          :options="gitCredentialOptions"
+          placeholder="不使用凭据"
         />
       </div>
 

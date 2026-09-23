@@ -93,10 +93,6 @@
               <span v-else class="text-foreground">{{ routeData.domain }}</span>
             </dd>
           </div>
-          <div class="flex gap-2">
-            <dt>{{ t('route.fields.protocol') }}</dt>
-            <dd class="text-foreground">{{ routeData.protocol.toUpperCase() }}</dd>
-          </div>
           <div v-if="routeData.protocol === 'http'" class="flex gap-2">
             <dt>{{ t('route.fields.pathPrefix') }}</dt>
             <dd class="text-foreground">{{ routeData.path_prefix }}</dd>
@@ -116,6 +112,10 @@
                 {{ routeEnabled ? t('route.status.enabled') : t('route.status.disabled') }}
               </AppBadge>
             </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('route.fields.protocol') }}</dt>
+            <dd class="text-foreground">{{ routeData.protocol.toUpperCase() }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('common.createdAt') }}</dt>
@@ -259,31 +259,21 @@
 
     <AppDialog v-model:open="isEditDialogOpen" :title="t('route.editRoute')">
       <div class="space-y-4">
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div class="space-y-1.5">
-            <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
-            <SelectControl
-              :model-value="form.protocol"
-              :options="protocolOptions"
-              @update:model-value="updateProtocol"
-            />
-          </div>
-          <div class="space-y-1.5">
-            <label class="app-field-label block">
-              {{ t('route.fields.name') }}
-              <span class="text-destructive">*</span>
-            </label>
-            <input
-              v-model="form.name"
-              type="text"
-              class="app-input"
-              :class="errors.name ? 'app-input-error' : ''"
-              :placeholder="t('route.hints.name')"
-              :aria-invalid="errors.name ? 'true' : undefined"
-              @input="errors.name = ''"
-            />
-            <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
-          </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">
+            {{ t('route.fields.name') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            v-model="form.name"
+            type="text"
+            class="app-input"
+            :class="errors.name ? 'app-input-error' : ''"
+            :placeholder="t('route.hints.name')"
+            :aria-invalid="errors.name ? 'true' : undefined"
+            @input="errors.name = ''"
+          />
+          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">
@@ -389,6 +379,14 @@
             "
           />
         </template>
+        <div class="space-y-1.5">
+          <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
+          <SelectControl
+            :model-value="form.protocol"
+            :options="protocolOptions"
+            @update:model-value="updateProtocol"
+          />
+        </div>
       </div>
       <template #footer>
         <AppDialogActions

@@ -280,28 +280,6 @@
           </p>
         </div>
         <div class="space-y-1.5">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('service.fields.version') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <ComboboxSelect
-            :model-value="createForm.version_id"
-            :options="createVersionSelectOptions"
-            :placeholder="t('service.create.selectVersion')"
-            :disabled="!createForm.application_id"
-            :invalid="Boolean(createErrors.version_id)"
-            description-inline
-            width-class="w-full"
-            @update:model-value="
-              createForm.version_id = String($event || '');
-              createErrors.version_id = '';
-            "
-          />
-          <p v-if="createErrors.version_id" class="app-field-error" role="alert">
-            {{ createErrors.version_id }}
-          </p>
-        </div>
-        <div class="space-y-1.5">
           <label for="create-service-code" class="app-field-label mb-1.5 block">
             {{ t('service.fields.code') }}
             <span class="text-destructive">*</span>
@@ -324,6 +302,28 @@
             role="alert"
           >
             {{ createErrors.code }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label mb-1.5 block">
+            {{ t('service.fields.version') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <ComboboxSelect
+            :model-value="createForm.version_id"
+            :options="createVersionSelectOptions"
+            :placeholder="t('service.create.selectVersion')"
+            :disabled="!createForm.application_id"
+            :invalid="Boolean(createErrors.version_id)"
+            description-inline
+            width-class="w-full"
+            @update:model-value="
+              createForm.version_id = String($event || '');
+              createErrors.version_id = '';
+            "
+          />
+          <p v-if="createErrors.version_id" class="app-field-error" role="alert">
+            {{ createErrors.version_id }}
           </p>
         </div>
         <p v-if="createError" class="app-field-error text-xs">{{ createError }}</p>

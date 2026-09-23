@@ -240,6 +240,21 @@
           </p>
         </div>
         <div class="space-y-1.5">
+          <label class="app-field-label block">
+            {{ t('common.status') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <RawValueSelect
+            v-model="editForm.status"
+            :values="userStatusValues"
+            :invalid="Boolean(editFormErrors.status)"
+            @update:model-value="editFormErrors.status = ''"
+          />
+          <p v-if="editFormErrors.status" class="app-field-error" role="alert">
+            {{ editFormErrors.status }}
+          </p>
+        </div>
+        <div class="space-y-1.5">
           <label class="app-field-label block" for="edit-password">
             {{ t('userManagement.password') }}
           </label>
@@ -259,21 +274,6 @@
           </p>
           <p class="app-field-hint">
             {{ t('common.emptyKeepUnchanged') }}
-          </p>
-        </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block">
-            {{ t('common.status') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <RawValueSelect
-            v-model="editForm.status"
-            :values="userStatusValues"
-            :invalid="Boolean(editFormErrors.status)"
-            @update:model-value="editFormErrors.status = ''"
-          />
-          <p v-if="editFormErrors.status" class="app-field-error" role="alert">
-            {{ editFormErrors.status }}
           </p>
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>

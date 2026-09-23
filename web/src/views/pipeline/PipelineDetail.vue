@@ -39,20 +39,12 @@
             <dt>名称</dt>
             <dd class="text-foreground">{{ pipeline.name }}</dd>
           </div>
-          <div class="flex gap-2">
-            <dt>配置版本</dt>
-            <dd class="text-foreground">v{{ pipeline.version }}</dd>
-          </div>
-          <div class="flex gap-2 sm:col-span-2">
-            <dt>说明</dt>
-            <dd class="text-foreground">{{ pipeline.description || '未填写' }}</dd>
-          </div>
           <template v-if="!isTemplate">
             <div class="flex gap-2">
-              <dt>来源模板</dt>
+              <dt>代码仓库</dt>
               <dd>
-                <router-link :to="`/pipeline/${pipeline.source_pipeline_id}`" class="app-link">
-                  {{ pipeline.source_template_name }} v{{ pipeline.source_template_version }}
+                <router-link :to="`/repository/${pipeline.repository_id}`" class="app-link">
+                  {{ pipeline.repository_name }}
                 </router-link>
               </dd>
             </div>
@@ -69,11 +61,21 @@
                 <span v-else class="text-muted-foreground">未绑定</span>
               </dd>
             </div>
+          </template>
+          <div class="flex gap-2">
+            <dt>配置版本</dt>
+            <dd class="text-foreground">v{{ pipeline.version }}</dd>
+          </div>
+          <div class="flex gap-2 sm:col-span-2">
+            <dt>说明</dt>
+            <dd class="text-foreground">{{ pipeline.description || '未填写' }}</dd>
+          </div>
+          <template v-if="!isTemplate">
             <div class="flex gap-2">
-              <dt>代码仓库</dt>
+              <dt>来源模板</dt>
               <dd>
-                <router-link :to="`/repository/${pipeline.repository_id}`" class="app-link">
-                  {{ pipeline.repository_name }}
+                <router-link :to="`/pipeline/${pipeline.source_pipeline_id}`" class="app-link">
+                  {{ pipeline.source_template_name }} v{{ pipeline.source_template_version }}
                 </router-link>
               </dd>
             </div>
@@ -259,23 +261,19 @@
           />
         </div>
         <div class="space-y-1.5">
-          <div class="space-y-1.5">
-            <label class="app-field-label">
-              名称
-              <span class="text-destructive">*</span>
-            </label>
-            <input v-model="stageForm.name" class="app-input" />
-          </div>
+          <label class="app-field-label">排序</label>
+          <input v-model.number="stageForm.sort_order" type="number" min="0" class="app-input" />
         </div>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div class="space-y-1.5">
-            <label class="app-field-label">排序</label>
-            <input v-model.number="stageForm.sort_order" type="number" min="0" class="app-input" />
-          </div>
-          <div class="space-y-1.5">
-            <label class="app-field-label">说明</label>
-            <input v-model="stageForm.description" class="app-input" />
-          </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label">
+            名称
+            <span class="text-destructive">*</span>
+          </label>
+          <input v-model="stageForm.name" class="app-input" />
+        </div>
+        <div class="space-y-1.5">
+          <label class="app-field-label">说明</label>
+          <input v-model="stageForm.description" class="app-input" />
         </div>
         <fieldset class="space-y-2">
           <legend class="app-field-label">依赖阶段</legend>
@@ -400,6 +398,14 @@
           />
           <p v-if="variableError" class="app-field-error">{{ variableError }}</p>
         </div>
+        <label class="flex items-center gap-2 text-sm text-foreground">
+          <input v-model="variableForm.secret" type="checkbox" class="app-checkbox" />
+          敏感变量
+        </label>
+        <div class="space-y-1.5">
+          <label class="app-field-label">说明</label>
+          <input v-model="variableForm.description" class="app-input" />
+        </div>
         <div class="space-y-1.5">
           <label class="app-field-label">当前值</label>
           <input
@@ -408,14 +414,6 @@
             class="app-input"
           />
         </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label">说明</label>
-          <input v-model="variableForm.description" class="app-input" />
-        </div>
-        <label class="flex items-center gap-2 text-sm text-foreground">
-          <input v-model="variableForm.secret" type="checkbox" class="app-checkbox" />
-          敏感变量
-        </label>
       </form>
       <template #footer>
         <AppDialogActions :busy="saving" @cancel="variableOpen = false" @confirm="saveVariable" />

@@ -30,14 +30,6 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt>流水线运行</dt>
-            <dd class="min-w-0">
-              <router-link :to="`/pipeline-run/${artifact.pipeline_run_id}`" class="app-link">
-                查看运行
-              </router-link>
-            </dd>
-          </div>
-          <div class="flex gap-2">
             <dt>构建阶段</dt>
             <dd class="min-w-0 text-foreground">{{ artifact.stage_name }}</dd>
           </div>
@@ -50,16 +42,24 @@
             </dd>
           </div>
           <div class="flex gap-2">
+            <dt>创建时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(artifact.created_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>流水线运行</dt>
+            <dd class="min-w-0">
+              <router-link :to="`/pipeline-run/${artifact.pipeline_run_id}`" class="app-link">
+                查看运行
+              </router-link>
+            </dd>
+          </div>
+          <div class="flex gap-2">
             <dt>流水线</dt>
             <dd class="min-w-0">
               <router-link :to="`/pipeline/${artifact.pipeline_id}`" class="app-link">
                 {{ artifact.pipeline_name }}
               </router-link>
             </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>创建时间</dt>
-            <dd class="text-muted-foreground">{{ formatTime(artifact.created_at) }}</dd>
           </div>
         </dl>
       </DetailInfoCard>

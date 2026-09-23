@@ -59,11 +59,47 @@
             <dd class="min-w-0 text-foreground">{{ runId }}</dd>
           </div>
           <div class="flex gap-2">
+            <dt>流水线</dt>
+            <dd>
+              <router-link :to="`/pipeline/${run.pipeline_id}`" class="app-link">
+                {{ run.pipeline_name }}
+              </router-link>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.repository') }}</dt>
+            <dd>
+              <router-link :to="`/repository/${run.repository_id}`" class="app-link">
+                {{ run.repository_name }}
+              </router-link>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>配置版本</dt>
+            <dd>
+              <AppBadge>v{{ run.pipeline_version }}</AppBadge>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.triggerBranch') }}</dt>
+            <dd class="text-foreground">{{ run.repository_ref }}</dd>
+          </div>
+          <div class="flex gap-2">
             <dt>{{ t('common.status') }}</dt>
             <dd>
               <AppBadge variant="pill" :tone="pipelineStatusTone">
                 {{ run.status }}
               </AppBadge>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.startTime') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(run.started_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>耗时</dt>
+            <dd class="text-muted-foreground">
+              {{ formatDuration(run.started_at, run.finished_at) }}
             </dd>
           </div>
           <div v-if="run.environment_target_type" class="flex gap-2">
@@ -76,37 +112,11 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt>
-              {{ t('pipelineRun.fields.repository') }}
-            </dt>
-            <dd>
-              <router-link :to="`/repository/${run.repository_id}`" class="app-link">
-                {{ run.repository_name }}
-              </router-link>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>
-              {{ t('pipelineRun.fields.triggerType') }}
-            </dt>
+            <dt>{{ t('pipelineRun.fields.triggerType') }}</dt>
             <dd>
               <AppBadge variant="pill">
                 {{ run.trigger }}
               </AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>
-              {{ t('pipelineRun.fields.triggerBranch') }}
-            </dt>
-            <dd class="text-foreground">{{ run.repository_ref }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>流水线</dt>
-            <dd>
-              <router-link :to="`/pipeline/${run.pipeline_id}`" class="app-link">
-                {{ run.pipeline_name }} v{{ run.pipeline_version }}
-              </router-link>
             </dd>
           </div>
           <div class="flex gap-2">
@@ -119,6 +129,10 @@
               </router-link>
             </dd>
           </div>
+          <div v-if="run.started_at" class="flex gap-2">
+            <dt>{{ t('common.createdAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
+          </div>
           <div v-if="run.retry_of" class="flex gap-2">
             <dt>
               {{ t('pipelineRun.fields.retryOf') }}
@@ -128,16 +142,6 @@
                 {{ t('application.view') }}
               </router-link>
             </dd>
-          </div>
-          <div v-if="run.started_at" class="flex gap-2">
-            <dt>{{ t('common.createdAt') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>
-              {{ t('pipelineRun.fields.startTime') }}
-            </dt>
-            <dd class="text-muted-foreground">{{ formatTime(run.started_at) }}</dd>
           </div>
           <div v-if="run.finished_at" class="flex gap-2">
             <dt>
@@ -404,7 +408,7 @@
   } from '@/gen/proto/orbit/v1/pipeline/snapshot';
   import { useProjectStore } from '@/stores/project';
   import { isComplete, statusTone } from '@/utils/status';
-  import { delayAsync, formatTime } from '@/utils/time';
+  import { delayAsync, formatDuration, formatTime } from '@/utils/time';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
   import type { editor } from 'monaco-editor';

@@ -270,31 +270,21 @@
 
   <AppDialog v-model:open="isCreateDialogOpen" title="创建路由">
     <div class="space-y-4">
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
-          <SelectControl
-            :model-value="form.protocol"
-            :options="protocolOptions"
-            @update:model-value="updateProtocol(form, $event)"
-          />
-        </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block">
-            {{ t('route.fields.name') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            v-model="form.name"
-            type="text"
-            class="app-input"
-            :class="errors.name ? 'app-input-error' : ''"
-            :placeholder="t('route.hints.name')"
-            :aria-invalid="errors.name ? 'true' : undefined"
-            @input="errors.name = ''"
-          />
-          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
-        </div>
+      <div class="space-y-1.5">
+        <label class="app-field-label block">
+          {{ t('route.fields.name') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          v-model="form.name"
+          type="text"
+          class="app-input"
+          :class="errors.name ? 'app-input-error' : ''"
+          :placeholder="t('route.hints.name')"
+          :aria-invalid="errors.name ? 'true' : undefined"
+          @input="errors.name = ''"
+        />
+        <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
       </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5" :class="form.protocol === 'tcp' ? 'sm:col-span-2' : undefined">
@@ -404,6 +394,14 @@
           {{ errors.target_url }}
         </p>
       </div>
+      <div class="space-y-1.5">
+        <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
+        <SelectControl
+          :model-value="form.protocol"
+          :options="protocolOptions"
+          @update:model-value="updateProtocol(form, $event)"
+        />
+      </div>
     </div>
     <p v-if="createSubmitError" class="app-field-error mt-3" role="alert">
       {{ createSubmitError }}
@@ -424,40 +422,30 @@
     @update:open="handleEditDialogOpenChange"
   >
     <form class="space-y-4" novalidate @submit.prevent="handleEditSave">
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="space-y-1.5">
-          <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
-          <SelectControl
-            :model-value="editForm.protocol"
-            :options="protocolOptions"
-            @update:model-value="updateProtocol(editForm, $event)"
-          />
-        </div>
-        <div class="space-y-1.5">
-          <label for="edit-route-name" class="app-field-label block">
-            {{ t('route.fields.name') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            id="edit-route-name"
-            v-model="editForm.name"
-            type="text"
-            class="app-input"
-            :class="editErrors.name ? 'app-input-error' : ''"
-            :placeholder="t('route.hints.name')"
-            :aria-invalid="editErrors.name ? 'true' : undefined"
-            :aria-describedby="editErrors.name ? 'edit-route-name-error' : undefined"
-            @input="clearEditError('name')"
-          />
-          <p
-            v-if="editErrors.name"
-            id="edit-route-name-error"
-            class="app-field-error text-xs"
-            role="alert"
-          >
-            {{ editErrors.name }}
-          </p>
-        </div>
+      <div class="space-y-1.5">
+        <label for="edit-route-name" class="app-field-label block">
+          {{ t('route.fields.name') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <input
+          id="edit-route-name"
+          v-model="editForm.name"
+          type="text"
+          class="app-input"
+          :class="editErrors.name ? 'app-input-error' : ''"
+          :placeholder="t('route.hints.name')"
+          :aria-invalid="editErrors.name ? 'true' : undefined"
+          :aria-describedby="editErrors.name ? 'edit-route-name-error' : undefined"
+          @input="clearEditError('name')"
+        />
+        <p
+          v-if="editErrors.name"
+          id="edit-route-name-error"
+          class="app-field-error text-xs"
+          role="alert"
+        >
+          {{ editErrors.name }}
+        </p>
       </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5" :class="editForm.protocol === 'tcp' ? 'sm:col-span-2' : undefined">
@@ -585,6 +573,14 @@
         >
           {{ editErrors.target_url }}
         </p>
+      </div>
+      <div class="space-y-1.5">
+        <label class="app-field-label block">{{ t('route.fields.protocol') }}</label>
+        <SelectControl
+          :model-value="editForm.protocol"
+          :options="protocolOptions"
+          @update:model-value="updateProtocol(editForm, $event)"
+        />
       </div>
     </form>
     <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">

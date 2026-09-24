@@ -1034,6 +1034,7 @@ export default {
   },
   route: {
     toolbar: 'Route toolbar',
+    initializationRequired: 'The environment is not ready. Please',
     sections: {
       traefikRouters: 'Traefik Routers',
       customConfiguration: 'Custom Routes',

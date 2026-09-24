@@ -16,21 +16,21 @@ type Querier interface {
 	CreatePipeline(ctx context.Context, arg CreatePipelineParams) error
 	DeleteApplicationPipelineStages(ctx context.Context, arg DeleteApplicationPipelineStagesParams) error
 	DeletePipeline(ctx context.Context, arg DeletePipelineParams) error
-	DeletePipelineStageTemplate(ctx context.Context, arg DeletePipelineStageTemplateParams) error
-	DeleteTemplatePipelineStageReferences(ctx context.Context, arg DeleteTemplatePipelineStageReferencesParams) error
+	DeletePipelineStageTemplate(ctx context.Context, id string) error
+	DeleteTemplatePipelineStageReferences(ctx context.Context, pipelineID string) error
 	InsertApplicationPipelineStage(ctx context.Context, arg InsertApplicationPipelineStageParams) error
 	InsertPipelineSnapshot(ctx context.Context, arg InsertPipelineSnapshotParams) error
 	InsertPipelineStageTemplate(ctx context.Context, arg InsertPipelineStageTemplateParams) error
 	InsertTemplatePipelineStageReference(ctx context.Context, arg InsertTemplatePipelineStageReferenceParams) error
 	LatestPipelineSnapshot(ctx context.Context, arg LatestPipelineSnapshotParams) (PipelineSnapshot, error)
-	ListPipelineStageTemplates(ctx context.Context, arg ListPipelineStageTemplatesParams) ([]PipelineStage, error)
+	ListPipelineStageTemplates(ctx context.Context, arg ListPipelineStageTemplatesParams) ([]ListPipelineStageTemplatesRow, error)
 	ListPipelines(ctx context.Context, arg ListPipelinesParams) ([]Pipeline, error)
 	PipelineById(ctx context.Context, arg PipelineByIdParams) (Pipeline, error)
 	PipelineByName(ctx context.Context, arg PipelineByNameParams) (Pipeline, error)
 	PipelineSnapshotById(ctx context.Context, arg PipelineSnapshotByIdParams) (PipelineSnapshot, error)
-	PipelineStageTemplateById(ctx context.Context, arg PipelineStageTemplateByIdParams) (PipelineStage, error)
-	PipelineStageTemplateByName(ctx context.Context, arg PipelineStageTemplateByNameParams) (PipelineStage, error)
-	TemplatePipelineStageReferences(ctx context.Context, arg TemplatePipelineStageReferencesParams) ([]PipelineStageReference, error)
+	PipelineStageTemplateById(ctx context.Context, id string) (PipelineStageTemplateByIdRow, error)
+	PipelineStageTemplateByName(ctx context.Context, name string) (PipelineStageTemplateByNameRow, error)
+	TemplatePipelineStageReferences(ctx context.Context, pipelineID string) ([]PipelineStageReference, error)
 	UpdatePipeline(ctx context.Context, arg UpdatePipelineParams) error
 	UpdatePipelineStageTemplate(ctx context.Context, arg UpdatePipelineStageTemplateParams) error
 }

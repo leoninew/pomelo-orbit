@@ -1,5 +1,5 @@
 # 产品概览
-最后修改时间: 2026-09-23 15:36:02
+最后修改时间: 2026-09-24 09:26:01
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。
@@ -40,8 +40,8 @@ Repository 的 `code` 在同一 Project 内唯一，不同 Project 可以使用�
 CI 的可复用性与可运行性分为两个显式对象：
 
 - `Pipeline(kind=template)` 是通用编排来源，不能运行、不能绑定 Application 或 Repository，也不创建 Snapshot。
-- `Pipeline(kind=application)` 由一个 Template 物化，固定绑定 Repository；Application 仅在需要将制品写入 Component Version 时绑定。运行时只提交 ref 与变量。
-- `PipelineStage(kind=template)` 是项目级可复用执行定义，保存名称、镜像、脚本、无 `component_name` 的制品声明、说明与版本；不保存 DAG、排序或 Application/Component 绑定。
+- `Pipeline(kind=application)` 由一个全局 Template 物化，固定绑定所属 Project 的 Repository；Application 仅在需要将制品写入 Component Version 时绑定。运行时只提交 ref 与变量。
+- `PipelineStage(kind=template)` 是所有 Project 共享的可复用执行定义，保存名称、镜像、脚本、无 `component_name` 的制品声明、说明与版本；不保存 DAG、排序或 Application/Component 绑定。
 - `PipelineStageReference` 是 Template Pipeline 内冻结的阶段引用，保存来源快照、制品声明和本地 DAG/排序；Application Pipeline 由引用快照物化独立的 `PipelineStage(kind=application)`。
 - Application Pipeline 仅在实例化时将 Docker 制品绑定到目标 Component；阶段模板、阶段引用和应用阶段不在运行时回读可变模板库。
 - `docker_image` 制品可以选择目标 Component。所有目标 Component 在同一 Pipeline 内唯一；一次成功 Run 将所有已映射镜像原子写入一个新 Version。

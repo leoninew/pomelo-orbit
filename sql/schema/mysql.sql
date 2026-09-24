@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS pipeline (
 
 CREATE TABLE IF NOT EXISTS pipeline_stage (
     id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
+    project_id TEXT,
     kind TEXT NOT NULL,
     pipeline_id TEXT,
     name TEXT NOT NULL,

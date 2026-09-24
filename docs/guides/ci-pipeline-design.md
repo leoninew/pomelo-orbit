@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-23 15:36:02
+最后修改时间: 2026-09-24 09:26:01
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -8,10 +8,10 @@ Doc role: living guide。与代码冲突时以代码为准。
 `Pipeline` 是唯一的流水线聚合根：
 
 ```text
-PipelineStage(kind=template, project scoped)    可复用阶段定义
+PipelineStage(kind=template, global)            所有 Project 共享的可复用阶段定义
   └── name / image / script / artifacts / description / version
 
-Pipeline(kind=template)                         只作为来源，不可运行
+Pipeline(kind=template, global)                只作为来源，不可运行
   └── PipelineStageReference[]                  冻结的阶段引用与 DAG 节点
 
 Pipeline(kind=application)                      可运行的交付单元
@@ -22,9 +22,9 @@ Pipeline(kind=application)                      可运行的交付单元
   └── PipelineStage(kind=application)[]         从引用快照物化的独立执行节点
 ```
 
-阶段库只定义通用执行步骤；`PipelineStage(kind=template)` 不保存 DAG、排序、Application、Component 或来源 Version 策略，但保存不带 `component_name` 的制品声明。Template Pipeline 通过 `PipelineStageReference` 保存阶段引入时的来源 ID/名称/版本/说明、镜像、脚本和制品声明快照，以及自己的节点名称、说明、DAG 和排序。
+阶段库是所有 Project 共享的全局资源，只定义通用执行步骤；`PipelineStage(kind=template)` 不保存 DAG、排序、Application、Component 或来源 Version 策略，但保存不带 `component_name` 的制品声明。Template Pipeline 通过 `PipelineStageReference` 保存阶段引入时的来源 ID/名称/版本/说明、镜像、脚本和制品声明快照，以及自己的节点名称、说明、DAG 和排序。访问、创建、更新和删除仍要求用户是当前 Project 成员，Project 只作为授权上下文，不作为模板资源归属。
 
-Application Pipeline 必须从同项目 Template 创建。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，同时重映射带 `stage_id` 的变量配置，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
+Application Pipeline 可以从全局 Template 创建。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，同时重映射带 `stage_id` 的变量配置，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
 
 ## 阶段与制品
 
@@ -98,7 +98,7 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 | `GET/POST /api/pipeline` | 查询 Pipeline；只能创建 Template |
 | `GET/PUT/DELETE /api/pipeline/:pipeline_id` | Pipeline 详情、更新、物理删除 |
 | `POST /api/pipeline/:pipeline_id/instantiate` | 用 Template 创建 Application Pipeline |
-| `GET/POST /api/pipeline-stage` | 项目内阶段库查询与创建 |
+| `GET/POST /api/pipeline-stage` | 全局阶段库查询与创建（按当前 Project 成员资格授权） |
 | `GET/PUT/DELETE /api/pipeline-stage/:stage_id` | 阶段库详情、更新与删除 |
 | `POST /api/pipeline/:pipeline_id/stage` | 从阶段库引入节点 |
 | `PUT/DELETE /api/pipeline/:pipeline_id/stage/:stage_id` | 更新/删除 Pipeline 节点 |

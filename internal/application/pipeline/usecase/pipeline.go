@@ -45,8 +45,8 @@ func (s stores) Pipeline(ctx context.Context, projectId string, id string) (mode
 	return s.pipeline.Pipeline(ctx, projectId, id)
 }
 
-func (s stores) PipelineByName(ctx context.Context, projectId string, name string) (model.Pipeline, error) {
-	return s.pipeline.PipelineByName(ctx, projectId, name)
+func (s stores) PipelineByName(ctx context.Context, projectId string, kind string, name string) (model.Pipeline, error) {
+	return s.pipeline.PipelineByName(ctx, projectId, kind, name)
 }
 
 func (s stores) ListPipelines(ctx context.Context, projectId string, kind string, page int, perPage int, search string) (repository.Page[model.Pipeline], error) {
@@ -158,6 +158,9 @@ func (s stores) Repository(ctx context.Context, projectId string, id string) (mo
 }
 
 func (s Service) ListPipelines(ctx context.Context, userId string, projectId string, kind string, page int, perPage int, search string) (repository.Page[pipelinedto.PipelineDetail], error) {
+	projectId = strings.TrimSpace(projectId)
+	kind = strings.TrimSpace(kind)
+	search = strings.TrimSpace(search)
 	if projectId == "" {
 		return repository.Page[pipelinedto.PipelineDetail]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -199,7 +202,7 @@ func (s Service) CreatePipeline(ctx context.Context, userId string, input pipeli
 	if name == "" {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "name is required")
 	}
-	if err := s.ensurePipelineNameAvailable(ctx, projectId, name, ""); err != nil {
+	if err := s.ensurePipelineNameAvailable(ctx, projectId, model.PipelineKindTemplate, name, ""); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	variableDeclarations, err := pipelinevariable.NormalizePipelineVariables(input.VariableDeclarations)
@@ -210,7 +213,7 @@ func (s Service) CreatePipeline(ctx context.Context, userId string, input pipeli
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	pipeline := model.Pipeline{Id: idutil.NewId(), ProjectId: &projectId, Kind: model.PipelineKindTemplate, Name: name, Description: input.Description, VariableDeclarations: variables, Version: 1}
+	pipeline := model.Pipeline{Id: idutil.NewId(), Kind: model.PipelineKindTemplate, Name: name, Description: input.Description, VariableDeclarations: variables, Version: 1}
 	if err := pipelinevariable.ValidateNestedVariableValues(nil, pipeline, nil); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
@@ -239,7 +242,7 @@ func (s Service) UpdatePipeline(ctx context.Context, userId string, projectId st
 		if name == "" {
 			return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "name is required")
 		}
-		if err := s.ensurePipelineNameAvailable(ctx, projectId, name, pipeline.Id); err != nil {
+		if err := s.ensurePipelineNameAvailable(ctx, projectId, pipeline.Kind, name, pipeline.Id); err != nil {
 			return pipelinedto.PipelineDetail{}, err
 		}
 		if name != pipeline.Name {
@@ -334,7 +337,7 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, project
 	if name == "" {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "name is required")
 	}
-	if err := s.ensurePipelineNameAvailable(ctx, projectId, name, ""); err != nil {
+	if err := s.ensurePipelineNameAvailable(ctx, projectId, model.PipelineKindApplication, name, ""); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	repo, err := s.repositoryInProject(ctx, input.RepositoryId, projectId)
@@ -372,7 +375,7 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, project
 		return pipelinedto.PipelineDetail{}, err
 	}
 	pipeline := model.Pipeline{
-		Id: pipelineId, ProjectId: template.ProjectId, Kind: model.PipelineKindApplication,
+		Id: pipelineId, ProjectId: &projectId, Kind: model.PipelineKindApplication,
 		SourcePipelineId: &templateIdCopy, SourceTemplateName: &templateName, SourceTemplateVersion: &templateVersion,
 		ApplicationId: applicationId, ApplicationName: applicationName, RepositoryId: &repositoryId, RepositoryName: &repositoryName,
 		Name: name, Description: template.Description, VariableDeclarations: variables, Version: 1,
@@ -571,8 +574,8 @@ func stringPointerEqual(left *string, right *string) bool {
 	return *left == *right
 }
 
-func (s Service) ensurePipelineNameAvailable(ctx context.Context, projectId string, name string, currentId string) error {
-	existing, err := s.store.PipelineByName(ctx, projectId, name)
+func (s Service) ensurePipelineNameAvailable(ctx context.Context, projectId, kind, name, currentId string) error {
+	existing, err := s.store.PipelineByName(ctx, projectId, kind, name)
 	if err == nil && existing.Id != currentId {
 		return apperror.New(apperror.KindConflict, "Pipeline '"+name+"' already exists")
 	}
@@ -967,7 +970,7 @@ func pipelineStageDefinitions(stages []model.PipelineStage) ([]model.StageDefini
 }
 
 func validatePipelineStageTemplate(stage model.PipelineStage) error {
-	if stage.Id == "" || stage.ProjectId == "" || stage.Kind != model.PipelineStageKindTemplate || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version == nil || *stage.Version <= 0 {
+	if stage.Id == "" || stage.Kind != model.PipelineStageKindTemplate || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version == nil || *stage.Version <= 0 {
 		return apperror.New(apperror.KindValidation, "invalid pipeline stage template")
 	}
 	if stage.PipelineId != nil || stage.SourceTemplateStageId != nil || stage.SourceTemplateStageName != nil || stage.SourceTemplateStageVersion != nil || stage.SourceTemplateStageDescription != nil || stage.DependsOn != nil || stage.SortOrder != nil {

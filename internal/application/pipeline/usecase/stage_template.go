@@ -15,6 +15,8 @@ import (
 )
 
 func (s Service) ListPipelineStageTemplates(ctx context.Context, userId, projectId string, page, perPage int, search string) (repository.Page[pipelinedto.PipelineStageTemplateDetail], error) {
+	projectId = strings.TrimSpace(projectId)
+	search = strings.TrimSpace(search)
 	if projectId == "" {
 		return repository.Page[pipelinedto.PipelineStageTemplateDetail]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -52,7 +54,7 @@ func (s Service) CreatePipelineStageTemplate(ctx context.Context, userId string,
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return pipelinedto.PipelineStageTemplateDetail{}, err
 	}
-	stage, err := pipelineStageTemplateFromInput(projectId, input.Name, input.Image, input.Script, input.Description, input.Artifacts)
+	stage, err := pipelineStageTemplateFromInput(input.Name, input.Image, input.Script, input.Description, input.Artifacts)
 	if err != nil {
 		return pipelinedto.PipelineStageTemplateDetail{}, err
 	}
@@ -539,7 +541,7 @@ func (s Service) ensurePipelineStageTemplateNameAvailable(ctx context.Context, p
 	return nil
 }
 
-func pipelineStageTemplateFromInput(projectId, name, image, script, description string, inputArtifacts []pipelinedto.ArtifactConfig) (model.PipelineStage, error) {
+func pipelineStageTemplateFromInput(name, image, script, description string, inputArtifacts []pipelinedto.ArtifactConfig) (model.PipelineStage, error) {
 	name, image, script = strings.TrimSpace(name), strings.TrimSpace(image), strings.TrimSpace(script)
 	if name == "" || image == "" {
 		return model.PipelineStage{}, apperror.New(apperror.KindValidation, "name and image are required")
@@ -549,7 +551,7 @@ func pipelineStageTemplateFromInput(projectId, name, image, script, description 
 	if err != nil {
 		return model.PipelineStage{}, err
 	}
-	stage := model.PipelineStage{Id: idutil.NewId(), ProjectId: projectId, Kind: model.PipelineStageKindTemplate, Name: name, Image: image, Script: script, Description: description, Artifacts: artifacts, Version: &version}
+	stage := model.PipelineStage{Id: idutil.NewId(), Kind: model.PipelineStageKindTemplate, Name: name, Image: image, Script: script, Description: description, Artifacts: artifacts, Version: &version}
 	if err := validatePipelineStageTemplate(stage); err != nil {
 		return model.PipelineStage{}, err
 	}

@@ -25,7 +25,7 @@ ORDER BY sort_order, id
 
 type ApplicationPipelineStagesParams struct {
 	PipelineId sql.NullString `db:"pipeline_id"`
-	ProjectId  string         `db:"project_id"`
+	ProjectId  sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) ApplicationPipelineStages(ctx context.Context, arg ApplicationPipelineStagesParams) ([]PipelineStage, error) {
@@ -97,18 +97,17 @@ func (q *Queries) CountCDConfigurationReferences(ctx context.Context, arg CountC
 
 const countPipelineStageTemplates = `-- name: CountPipelineStageTemplates :one
 SELECT COUNT(*) FROM pipeline_stage
-WHERE project_id = ?
+WHERE project_id IS NULL
   AND kind = 'template'
   AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
 `
 
 type CountPipelineStageTemplatesParams struct {
-	ProjectId     string         `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountPipelineStageTemplates(ctx context.Context, arg CountPipelineStageTemplatesParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPipelineStageTemplates, arg.ProjectId, arg.SearchPattern, arg.SearchPattern)
+	row := q.db.QueryRowContext(ctx, countPipelineStageTemplates, arg.SearchPattern, arg.SearchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -116,7 +115,10 @@ func (q *Queries) CountPipelineStageTemplates(ctx context.Context, arg CountPipe
 
 const countPipelines = `-- name: CountPipelines :one
 SELECT COUNT(*) FROM pipeline
-WHERE project_id = ?
+WHERE (
+    (kind = 'template' AND project_id IS NULL)
+    OR (kind = 'application' AND project_id = ?)
+  )
   AND (CAST(? AS CHAR) IS NULL OR kind = ?)
   AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
 `
@@ -201,7 +203,7 @@ WHERE pipeline_id = ?
 
 type DeleteApplicationPipelineStagesParams struct {
 	PipelineId sql.NullString `db:"pipeline_id"`
-	ProjectId  string         `db:"project_id"`
+	ProjectId  sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) DeleteApplicationPipelineStages(ctx context.Context, arg DeleteApplicationPipelineStagesParams) error {
@@ -212,7 +214,10 @@ func (q *Queries) DeleteApplicationPipelineStages(ctx context.Context, arg Delet
 const deletePipeline = `-- name: DeletePipeline :exec
 DELETE FROM pipeline
 WHERE id = ?
-  AND project_id = ?
+  AND (
+    (kind = 'template' AND project_id IS NULL)
+    OR (kind = 'application' AND project_id = ?)
+  )
 `
 
 type DeletePipelineParams struct {
@@ -228,17 +233,12 @@ func (q *Queries) DeletePipeline(ctx context.Context, arg DeletePipelineParams) 
 const deletePipelineStageTemplate = `-- name: DeletePipelineStageTemplate :exec
 DELETE FROM pipeline_stage
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
   AND kind = 'template'
 `
 
-type DeletePipelineStageTemplateParams struct {
-	Id        string `db:"id"`
-	ProjectId string `db:"project_id"`
-}
-
-func (q *Queries) DeletePipelineStageTemplate(ctx context.Context, arg DeletePipelineStageTemplateParams) error {
-	_, err := q.db.ExecContext(ctx, deletePipelineStageTemplate, arg.Id, arg.ProjectId)
+func (q *Queries) DeletePipelineStageTemplate(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deletePipelineStageTemplate, id)
 	return err
 }
 
@@ -249,17 +249,13 @@ WHERE pipeline_id = ?
     SELECT 1
     FROM pipeline
     WHERE pipeline.id = pipeline_stage_reference.pipeline_id
-      AND pipeline.project_id = ?
+      AND pipeline.kind = 'template'
+      AND pipeline.project_id IS NULL
   )
 `
 
-type DeleteTemplatePipelineStageReferencesParams struct {
-	PipelineId string         `db:"pipeline_id"`
-	ProjectId  sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) DeleteTemplatePipelineStageReferences(ctx context.Context, arg DeleteTemplatePipelineStageReferencesParams) error {
-	_, err := q.db.ExecContext(ctx, deleteTemplatePipelineStageReferences, arg.PipelineId, arg.ProjectId)
+func (q *Queries) DeleteTemplatePipelineStageReferences(ctx context.Context, pipelineID string) error {
+	_, err := q.db.ExecContext(ctx, deleteTemplatePipelineStageReferences, pipelineID)
 	return err
 }
 
@@ -273,7 +269,7 @@ VALUES (?, ?, 'application', ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 
 type InsertApplicationPipelineStageParams struct {
 	Id                             string         `db:"id"`
-	ProjectId                      string         `db:"project_id"`
+	ProjectId                      sql.NullString `db:"project_id"`
 	PipelineId                     sql.NullString `db:"pipeline_id"`
 	Name                           string         `db:"name"`
 	Image                          string         `db:"image"`
@@ -367,12 +363,11 @@ INSERT INTO pipeline_stage (id, project_id, kind, pipeline_id, name, image, scri
                             version, source_template_stage_id, source_template_stage_name,
                             source_template_stage_version, source_template_stage_description,
                             artifacts, depends_on, sort_order, created_at, updated_at)
-VALUES (?, ?, 'template', NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, NULL, NULL, ?, ?)
+VALUES (?, NULL, 'template', NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, NULL, NULL, ?, ?)
 `
 
 type InsertPipelineStageTemplateParams struct {
 	Id          string         `db:"id"`
-	ProjectId   string         `db:"project_id"`
 	Name        string         `db:"name"`
 	Image       string         `db:"image"`
 	Script      string         `db:"script"`
@@ -386,7 +381,6 @@ type InsertPipelineStageTemplateParams struct {
 func (q *Queries) InsertPipelineStageTemplate(ctx context.Context, arg InsertPipelineStageTemplateParams) error {
 	_, err := q.db.ExecContext(ctx, insertPipelineStageTemplate,
 		arg.Id,
-		arg.ProjectId,
 		arg.Name,
 		arg.Image,
 		arg.Script,
@@ -450,7 +444,7 @@ const latestPipelineSnapshot = `-- name: LatestPipelineSnapshot :one
 SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
 FROM pipeline_snapshot
 WHERE pipeline_id = ?
-  AND project_id = ?
+  AND (project_id = ? OR project_id IS NULL)
 ORDER BY pipeline_version DESC, created_at DESC
 LIMIT 1
 `
@@ -487,27 +481,46 @@ func (q *Queries) LatestPipelineSnapshot(ctx context.Context, arg LatestPipeline
 }
 
 const listPipelineStageTemplates = `-- name: ListPipelineStageTemplates :many
-SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,
+SELECT id, COALESCE(project_id, '') AS project_id, kind, pipeline_id, name, image, script, description, version,
        source_template_stage_id, source_template_stage_name,
        source_template_stage_version, source_template_stage_description, artifacts, depends_on, sort_order,
        created_at, updated_at
 FROM pipeline_stage
-WHERE project_id = ?
+WHERE project_id IS NULL
   AND kind = 'template'
   AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
 ORDER BY id DESC LIMIT ? OFFSET ?
 `
 
 type ListPipelineStageTemplatesParams struct {
-	ProjectId     string         `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Limit         int32          `db:"limit"`
 	Offset        int32          `db:"offset"`
 }
 
-func (q *Queries) ListPipelineStageTemplates(ctx context.Context, arg ListPipelineStageTemplatesParams) ([]PipelineStage, error) {
+type ListPipelineStageTemplatesRow struct {
+	Id                             string         `db:"id"`
+	ProjectId                      string         `db:"project_id"`
+	Kind                           string         `db:"kind"`
+	PipelineId                     sql.NullString `db:"pipeline_id"`
+	Name                           string         `db:"name"`
+	Image                          string         `db:"image"`
+	Script                         string         `db:"script"`
+	Description                    string         `db:"description"`
+	Version                        sql.NullInt64  `db:"version"`
+	SourceTemplateStageId          sql.NullString `db:"source_template_stage_id"`
+	SourceTemplateStageName        sql.NullString `db:"source_template_stage_name"`
+	SourceTemplateStageVersion     sql.NullInt64  `db:"source_template_stage_version"`
+	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
+	Artifacts                      sql.NullString `db:"artifacts"`
+	DependsOn                      sql.NullString `db:"depends_on"`
+	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	CreatedAt                      time.Time      `db:"created_at"`
+	UpdatedAt                      time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) ListPipelineStageTemplates(ctx context.Context, arg ListPipelineStageTemplatesParams) ([]ListPipelineStageTemplatesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listPipelineStageTemplates,
-		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.Limit,
@@ -517,9 +530,9 @@ func (q *Queries) ListPipelineStageTemplates(ctx context.Context, arg ListPipeli
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PipelineStage
+	var items []ListPipelineStageTemplatesRow
 	for rows.Next() {
-		var i PipelineStage
+		var i ListPipelineStageTemplatesRow
 		if err := rows.Scan(
 			&i.Id,
 			&i.ProjectId,
@@ -556,7 +569,10 @@ func (q *Queries) ListPipelineStageTemplates(ctx context.Context, arg ListPipeli
 const listPipelines = `-- name: ListPipelines :many
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
 FROM pipeline
-WHERE project_id = ?
+WHERE (
+    (kind = 'template' AND project_id IS NULL)
+    OR (kind = 'application' AND project_id = ?)
+  )
   AND (CAST(? AS CHAR) IS NULL OR kind = ?)
   AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
 ORDER BY id DESC LIMIT ? OFFSET ?
@@ -625,7 +641,10 @@ const pipelineById = `-- name: PipelineById :one
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
 FROM pipeline
 WHERE id = ?
-  AND project_id = ?
+  AND (
+    (kind = 'template' AND project_id IS NULL)
+    OR (kind = 'application' AND project_id = ?)
+  )
 `
 
 type PipelineByIdParams struct {
@@ -663,17 +682,22 @@ func (q *Queries) PipelineById(ctx context.Context, arg PipelineByIdParams) (Pip
 const pipelineByName = `-- name: PipelineByName :one
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
 FROM pipeline
-WHERE project_id = ?
+WHERE kind = ?
+  AND (
+    (kind = 'template' AND project_id IS NULL)
+    OR (kind = 'application' AND project_id = ?)
+  )
   AND name = ?
 `
 
 type PipelineByNameParams struct {
+	Kind      string         `db:"kind"`
 	ProjectId sql.NullString `db:"project_id"`
 	Name      string         `db:"name"`
 }
 
 func (q *Queries) PipelineByName(ctx context.Context, arg PipelineByNameParams) (Pipeline, error) {
-	row := q.db.QueryRowContext(ctx, pipelineByName, arg.ProjectId, arg.Name)
+	row := q.db.QueryRowContext(ctx, pipelineByName, arg.Kind, arg.ProjectId, arg.Name)
 	var i Pipeline
 	err := row.Scan(
 		&i.Id,
@@ -703,7 +727,7 @@ const pipelineSnapshotById = `-- name: PipelineSnapshotById :one
 SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
 FROM pipeline_snapshot
 WHERE id = ?
-  AND project_id = ?
+  AND (project_id = ? OR project_id IS NULL)
 `
 
 type PipelineSnapshotByIdParams struct {
@@ -738,24 +762,40 @@ func (q *Queries) PipelineSnapshotById(ctx context.Context, arg PipelineSnapshot
 }
 
 const pipelineStageTemplateById = `-- name: PipelineStageTemplateById :one
-SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,
+SELECT id, COALESCE(project_id, '') AS project_id, kind, pipeline_id, name, image, script, description, version,
        source_template_stage_id, source_template_stage_name,
        source_template_stage_version, source_template_stage_description, artifacts, depends_on, sort_order,
        created_at, updated_at
 FROM pipeline_stage
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
   AND kind = 'template'
 `
 
-type PipelineStageTemplateByIdParams struct {
-	Id        string `db:"id"`
-	ProjectId string `db:"project_id"`
+type PipelineStageTemplateByIdRow struct {
+	Id                             string         `db:"id"`
+	ProjectId                      string         `db:"project_id"`
+	Kind                           string         `db:"kind"`
+	PipelineId                     sql.NullString `db:"pipeline_id"`
+	Name                           string         `db:"name"`
+	Image                          string         `db:"image"`
+	Script                         string         `db:"script"`
+	Description                    string         `db:"description"`
+	Version                        sql.NullInt64  `db:"version"`
+	SourceTemplateStageId          sql.NullString `db:"source_template_stage_id"`
+	SourceTemplateStageName        sql.NullString `db:"source_template_stage_name"`
+	SourceTemplateStageVersion     sql.NullInt64  `db:"source_template_stage_version"`
+	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
+	Artifacts                      sql.NullString `db:"artifacts"`
+	DependsOn                      sql.NullString `db:"depends_on"`
+	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	CreatedAt                      time.Time      `db:"created_at"`
+	UpdatedAt                      time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) PipelineStageTemplateById(ctx context.Context, arg PipelineStageTemplateByIdParams) (PipelineStage, error) {
-	row := q.db.QueryRowContext(ctx, pipelineStageTemplateById, arg.Id, arg.ProjectId)
-	var i PipelineStage
+func (q *Queries) PipelineStageTemplateById(ctx context.Context, id string) (PipelineStageTemplateByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, pipelineStageTemplateById, id)
+	var i PipelineStageTemplateByIdRow
 	err := row.Scan(
 		&i.Id,
 		&i.ProjectId,
@@ -780,24 +820,40 @@ func (q *Queries) PipelineStageTemplateById(ctx context.Context, arg PipelineSta
 }
 
 const pipelineStageTemplateByName = `-- name: PipelineStageTemplateByName :one
-SELECT id, project_id, kind, pipeline_id, name, image, script, description, version,
+SELECT id, COALESCE(project_id, '') AS project_id, kind, pipeline_id, name, image, script, description, version,
        source_template_stage_id, source_template_stage_name,
        source_template_stage_version, source_template_stage_description, artifacts, depends_on, sort_order,
        created_at, updated_at
 FROM pipeline_stage
-WHERE project_id = ?
+WHERE project_id IS NULL
   AND name = ?
   AND kind = 'template'
 `
 
-type PipelineStageTemplateByNameParams struct {
-	ProjectId string `db:"project_id"`
-	Name      string `db:"name"`
+type PipelineStageTemplateByNameRow struct {
+	Id                             string         `db:"id"`
+	ProjectId                      string         `db:"project_id"`
+	Kind                           string         `db:"kind"`
+	PipelineId                     sql.NullString `db:"pipeline_id"`
+	Name                           string         `db:"name"`
+	Image                          string         `db:"image"`
+	Script                         string         `db:"script"`
+	Description                    string         `db:"description"`
+	Version                        sql.NullInt64  `db:"version"`
+	SourceTemplateStageId          sql.NullString `db:"source_template_stage_id"`
+	SourceTemplateStageName        sql.NullString `db:"source_template_stage_name"`
+	SourceTemplateStageVersion     sql.NullInt64  `db:"source_template_stage_version"`
+	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
+	Artifacts                      sql.NullString `db:"artifacts"`
+	DependsOn                      sql.NullString `db:"depends_on"`
+	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	CreatedAt                      time.Time      `db:"created_at"`
+	UpdatedAt                      time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) PipelineStageTemplateByName(ctx context.Context, arg PipelineStageTemplateByNameParams) (PipelineStage, error) {
-	row := q.db.QueryRowContext(ctx, pipelineStageTemplateByName, arg.ProjectId, arg.Name)
-	var i PipelineStage
+func (q *Queries) PipelineStageTemplateByName(ctx context.Context, name string) (PipelineStageTemplateByNameRow, error) {
+	row := q.db.QueryRowContext(ctx, pipelineStageTemplateByName, name)
+	var i PipelineStageTemplateByNameRow
 	err := row.Scan(
 		&i.Id,
 		&i.ProjectId,
@@ -831,18 +887,14 @@ WHERE pipeline_id = ?
     SELECT 1
     FROM pipeline
     WHERE pipeline.id = pipeline_stage_reference.pipeline_id
-      AND pipeline.project_id = ?
+      AND pipeline.kind = 'template'
+      AND pipeline.project_id IS NULL
   )
 ORDER BY sort_order, id
 `
 
-type TemplatePipelineStageReferencesParams struct {
-	PipelineId string         `db:"pipeline_id"`
-	ProjectId  sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) TemplatePipelineStageReferences(ctx context.Context, arg TemplatePipelineStageReferencesParams) ([]PipelineStageReference, error) {
-	rows, err := q.db.QueryContext(ctx, templatePipelineStageReferences, arg.PipelineId, arg.ProjectId)
+func (q *Queries) TemplatePipelineStageReferences(ctx context.Context, pipelineID string) ([]PipelineStageReference, error) {
+	rows, err := q.db.QueryContext(ctx, templatePipelineStageReferences, pipelineID)
 	if err != nil {
 		return nil, err
 	}
@@ -893,7 +945,10 @@ SET name = ?,
     fixed_version_label = ?,
     updated_at = ?
 WHERE id = ?
-  AND project_id = ?
+  AND (
+    (kind = 'template' AND project_id IS NULL)
+    OR (kind = 'application' AND project_id = ?)
+  )
 `
 
 type UpdatePipelineParams struct {
@@ -939,7 +994,7 @@ SET name = ?,
     version = ?,
     updated_at = ?
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
   AND kind = 'template'
 `
 
@@ -952,7 +1007,6 @@ type UpdatePipelineStageTemplateParams struct {
 	Version     sql.NullInt64  `db:"version"`
 	UpdatedAt   time.Time      `db:"updated_at"`
 	Id          string         `db:"id"`
-	ProjectId   string         `db:"project_id"`
 }
 
 func (q *Queries) UpdatePipelineStageTemplate(ctx context.Context, arg UpdatePipelineStageTemplateParams) error {
@@ -965,7 +1019,6 @@ func (q *Queries) UpdatePipelineStageTemplate(ctx context.Context, arg UpdatePip
 		arg.Version,
 		arg.UpdatedAt,
 		arg.Id,
-		arg.ProjectId,
 	)
 	return err
 }

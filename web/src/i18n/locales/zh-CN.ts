@@ -1015,6 +1015,7 @@ export default {
   },
   route: {
     toolbar: '路由工具栏',
+    initializationRequired: '环境未就绪，请先',
     sections: {
       traefikRouters: 'Traefik 路由',
       customConfiguration: '自定义路由',

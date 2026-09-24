@@ -1,5 +1,27 @@
 <template>
-  <div class="flex flex-col gap-4">
+  <AppLoadingState v-if="!projectReadinessChecked" size="section" />
+  <div v-else-if="!projectReady" class="app-surface">
+    <p v-if="projectReadinessError" class="py-16 text-center text-sm text-destructive">
+      {{ projectReadinessError }}
+    </p>
+    <AppEmptyState v-else>
+      <div class="flex flex-wrap items-center justify-center">
+        <span>{{ t('route.initializationRequired') }}</span>
+        <router-link
+          v-if="projectStore.activeProjectId"
+          :to="{
+            name: 'ProjectInitialization',
+            params: { id: projectStore.activeProjectId },
+            query: { returnTo: currentRoute.fullPath },
+          }"
+          class="app-link"
+        >
+          {{ t('project.initialization.title') }}
+        </router-link>
+      </div>
+    </AppEmptyState>
+  </div>
+  <div v-else class="flex flex-col gap-4">
     <DetailInfoCard :title="t('route.sections.traefikRouters')" actions-class="flex-nowrap">
       <template #actions>
         <ToolbarRoot
@@ -599,6 +621,7 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
+  import { projectInitializationApi } from '@/api/project/initialization';
   import { routeApi } from '@/api/route/route';
   import { traefikRouteApi } from '@/api/route/traefik';
   import AppBadge from '@/components/AppBadge.vue';
@@ -626,6 +649,9 @@
   const router = useRouter();
   const targetUrlPattern = /^https?:\/\/[a-zA-Z0-9.-]+(?::\d+)?$/;
   const projectStore = useProjectStore();
+  const projectReady = ref(false);
+  const projectReadinessChecked = ref(false);
+  const projectReadinessError = ref('');
   const { status: routeStatus, error: routeError, execute: executeRoutes } = useStatusAsync();
   const { loading: routeOperating, execute: executeRouteOperation } = useStatusAsync();
   const { status: traefikStatus, error: traefikError, execute: executeTraefik } = useStatusAsync();
@@ -1152,9 +1178,38 @@
     }
   }
 
+  async function loadProjectData(projectId: string | null) {
+    projectReady.value = false;
+    projectReadinessChecked.value = false;
+    projectReadinessError.value = '';
+    if (!projectId) {
+      projectReadinessChecked.value = true;
+      return;
+    }
+    try {
+      const status = await projectInitializationApi.getStatus(projectId);
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
+      projectReadinessChecked.value = true;
+      if (status.status !== 'ready') {
+        return;
+      }
+    } catch {
+      projectReadinessError.value = t('route.toast.loadFailed');
+      projectReadinessChecked.value = true;
+      return;
+    }
+    if (projectStore.activeProjectId !== projectId) {
+      return;
+    }
+    projectReady.value = true;
+    void fetchTraefikRoutes();
+    void fetchRoutes();
+  }
+
   onMounted(() => {
-    fetchTraefikRoutes();
-    fetchRoutes();
+    void loadProjectData(projectStore.activeProjectId);
   });
 
   watch(
@@ -1166,8 +1221,7 @@
       clearPendingChanges();
       isSyncDialogOpen.value = false;
       pagination.current = 1;
-      void fetchTraefikRoutes();
-      void fetchRoutes();
+      void loadProjectData(projectId);
     }
   );
 </script>

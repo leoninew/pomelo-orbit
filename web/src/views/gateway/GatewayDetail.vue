@@ -160,11 +160,8 @@
       </DetailInfoCard>
     </template>
 
-    <div v-else class="flex flex-col items-center gap-3">
-      <AppEmptyState :message="t('gateway.empty')" size="section" />
-      <button type="button" class="app-button-primary h-9 px-3" @click="openInitialization">
-        {{ t('project.initialization.title') }}
-      </button>
+    <div v-else class="app-surface">
+      <AppEmptyState />
     </div>
 
     <AppDialog
@@ -825,14 +822,6 @@
     } catch {
       toast.error(t('gateway.toast.loadDetailFailed'));
     }
-  }
-
-  async function openInitialization() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      return;
-    }
-    await router.push({ name: 'ProjectInitialization', params: { id: projectId } });
   }
 
   async function openDeployDialog() {

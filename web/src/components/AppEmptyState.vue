@@ -4,7 +4,9 @@
     :class="paddingClass"
   >
     <Inbox :class="iconClass" />
-    <p class="mt-2 text-sm">{{ displayMessage }}</p>
+    <div class="mt-2 text-sm">
+      <slot>{{ displayMessage }}</slot>
+    </div>
   </div>
 </template>
 

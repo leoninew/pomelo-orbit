@@ -279,6 +279,10 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId string, pro
 		if !found {
 			return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
 		}
+		pipeline.VariableDeclarations, err = removePipelineVariablesForStage(pipeline.VariableDeclarations, stageId)
+		if err != nil {
+			return pipelinedto.PipelineDetail{}, err
+		}
 		if err := validateTemplatePipelineConfiguration(pipeline, remaining); err != nil {
 			return pipelinedto.PipelineDetail{}, err
 		}
@@ -302,16 +306,13 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId string, pro
 	if dependentStageName != "" {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "Cannot delete stage "+stageName+" because stage "+dependentStageName+" depends on it")
 	}
-	variableName, err := pipelineVariableScopedToStage(pipeline.VariableDeclarations, stageId)
-	if err != nil {
-		return pipelinedto.PipelineDetail{}, err
-	}
-	if variableName != "" {
-		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "Cannot delete stage "+stageName+" because pipeline variable "+variableName+" is scoped to it")
-	}
 	remaining, found := removeApplicationStage(stages, stageId)
 	if !found {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindNotFound, "Pipeline stage "+stageId+" not found")
+	}
+	pipeline.VariableDeclarations, err = removePipelineVariablesForStage(pipeline.VariableDeclarations, stageId)
+	if err != nil {
+		return pipelinedto.PipelineDetail{}, err
 	}
 	mappings, err := componentMappingsForStages(remaining)
 	if err != nil {
@@ -330,7 +331,7 @@ func (s Service) DeletePipelineStageNode(ctx context.Context, userId string, pro
 	return s.pipelineDetail(ctx, projectId, pipeline)
 }
 
-func pipelineVariableScopedToStage(value, stageId string) (string, error) {
+func removePipelineVariablesForStage(value, stageId string) (string, error) {
 	variables, err := pipelinevariable.PipelineVariables(value)
 	if err != nil {
 		return "", err
@@ -339,15 +340,14 @@ func pipelineVariableScopedToStage(value, stageId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	remaining := make([]map[string]any, 0, len(variables))
 	for _, variable := range variables {
-		variableStageId, _ := variable["stage_id"].(string)
-		if variableStageId != stageId {
+		if variable["stage_id"] == stageId {
 			continue
 		}
-		name, _ := variable["name"].(string)
-		return strings.TrimSpace(name), nil
+		remaining = append(remaining, variable)
 	}
-	return "", nil
+	return marshalPipelineVariables(remaining)
 }
 
 func templateStageDeletionDependency(references []model.PipelineStageReference, stageId string) (string, string, error) {

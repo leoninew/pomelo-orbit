@@ -89,6 +89,8 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 
 跨生命周期关系是逻辑外键：存稳定 ID，也存删除目标后仍需展示的名称、标签或版本。Template、Application、Repository、Version 与 Pipeline 允许物理删除；历史 Snapshot、Run、Artifact 和 Version Component 不需要回写或置空。
 
+删除 Template 或 Application Pipeline 的阶段节点时，连带删除该 Pipeline 中所有绑定此阶段 ID 的自定义变量；其他阶段和全局变量保留。若有其他阶段依赖该节点，仍拒绝删除。
+
 只有聚合内部组成关系使用物理外键：Template Pipeline -> PipelineStageReference、Application Pipeline -> PipelineStage、PipelineSnapshot -> PipelineRun，PipelineRun -> Artifact。阶段来源使用逻辑快照引用，允许删除模板阶段后继续使用已保存的引用快照。空库通过迁移链至 version 30 直接创建该模型；旧阶段配置由独立离线脚本处置，业务代码不保留兼容路径。
 
 ## HTTP API

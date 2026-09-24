@@ -51,3 +51,49 @@ func TestPipelineUsesStageLiquidDefaultAsConfigurationDefault(t *testing.T) {
 	}
 	t.Fatal("working_dir stage variable was not found")
 }
+
+func TestSnapshotDisplaysStageDefaultWithoutChangingRunValue(t *testing.T) {
+	declarations := []model.VariableDeclaration{{
+		Name: "working_dir", StageId: "stage-build", StageName: "docker build",
+		Source: "pipeline_stage", StageDefaults: []model.StageVariableDefault{
+			{StageId: "stage-build", StageName: "docker build", Default: "."},
+			{StageId: "stage-build", StageName: "docker build", Default: "."},
+		},
+	}}
+	variables, err := Snapshot(nil, declarations)
+	if err != nil {
+		t.Fatalf("Snapshot() error = %v", err)
+	}
+	if len(variables) != 1 || variables[0].Configuration == nil || variables[0].Configuration.Default != "." || variables[0].Configuration.Value != nil {
+		t.Fatalf("snapshot variable = %#v", variables)
+	}
+	if declarations[0].Value != nil || declarations[0].Default != nil {
+		t.Fatalf("snapshot declaration was modified: %#v", declarations[0])
+	}
+}
+
+func TestSnapshotStageValueTakesPriorityOverExpressionDefault(t *testing.T) {
+	variables, err := Snapshot(nil, []model.VariableDeclaration{{
+		Name: "working_dir", StageId: "stage-build", Value: "backend",
+		StageDefaults: []model.StageVariableDefault{{Default: "."}},
+	}})
+	if err != nil {
+		t.Fatalf("Snapshot() error = %v", err)
+	}
+	if len(variables) != 1 || variables[0].Configuration == nil || variables[0].Configuration.Value != "backend" || variables[0].Configuration.Default != nil {
+		t.Fatalf("snapshot variable = %#v", variables)
+	}
+}
+
+func TestSnapshotDoesNotPresentConflictingExpressionDefaultsAsOneValue(t *testing.T) {
+	variables, err := Snapshot(nil, []model.VariableDeclaration{{
+		Name: "working_dir", StageId: "stage-build",
+		StageDefaults: []model.StageVariableDefault{{Default: "web"}, {Default: "webapi"}},
+	}})
+	if err != nil {
+		t.Fatalf("Snapshot() error = %v", err)
+	}
+	if len(variables) != 1 || variables[0].Configuration == nil || variables[0].Configuration.Default != nil {
+		t.Fatalf("snapshot variable = %#v", variables)
+	}
+}

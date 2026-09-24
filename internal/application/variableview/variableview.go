@@ -193,7 +193,23 @@ func Snapshot(_ []model.StageDefinition, declarations []model.VariableDeclaratio
 			scope = pipelineVariableScopeStage
 			binding = &StageBinding{StageId: declaration.StageId, StageName: declaration.StageName}
 		}
-		result = append(result, View{Name: declaration.Name, Kind: snapshotVariableKind(declaration), Scope: scope, StageBinding: binding, Configuration: variableConfiguration(declaration, false)})
+		configuration := variableConfiguration(declaration, false)
+		if scope == pipelineVariableScopeStage && !pipelinevariable.HasRuntimeValue(configuration.Value) && !pipelinevariable.HasRuntimeValue(configuration.Default) && len(declaration.StageDefaults) > 0 {
+			stageDefault, ok := declaration.StageDefaults[0].Default.(string)
+			if ok {
+				allSame := true
+				for _, item := range declaration.StageDefaults[1:] {
+					if item.Default != stageDefault {
+						allSame = false
+						break
+					}
+				}
+				if allSame {
+					configuration.Default = stageDefault
+				}
+			}
+		}
+		result = append(result, View{Name: declaration.Name, Kind: snapshotVariableKind(declaration), Scope: scope, StageBinding: binding, Configuration: configuration})
 	}
 	sortVariableViews(result)
 	return result, nil

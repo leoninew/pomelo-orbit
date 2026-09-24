@@ -76,4 +76,4 @@ Repository 值进入全局运行时变量；Pipeline 值根据是否带 `stage_i
 
 `PipelineSnapshot.variables_snapshot` 保存创建 Snapshot 时可获得的 Repository/Pipeline/Stage 声明与 runtime/system 元数据，用于历史展示和追溯；它不作为之后新 Run 的变量取值来源。
 
-创建 Run 或 Retry 时，都从当前 Repository、当前 Application Pipeline 配置和该次使用的冻结阶段定义解析最终变量，保存到 `PipelineRun.variables_snapshot`。全局有效值与带 `stage_id` 的 Stage 有效值分别保存到 Run；仅由 Stage default 提供的变量保留其阶段默认值元数据，并由冻结 Stage 文本在执行时独立渲染。执行器只使用 Run 快照和冻结 Stage；之后修改任何配置不影响已创建的 Run。Retry 以原 Run 的非 system 全局值构造内部 overrides，再创建新的 Run；该内部路径不对手动 Trigger 暴露变量表单。
+创建 Run 或 Retry 时，都从当前 Repository、当前 Application Pipeline 配置和该次使用的冻结阶段定义解析最终变量，保存到 `PipelineRun.variables_snapshot`。全局有效值与带 `stage_id` 的 Stage 有效值分别保存到 Run；仅由 Stage default 提供的变量保留其阶段默认值元数据，并由冻结 Stage 文本在执行时独立渲染。快照详情与 Run 详情在同一 Stage 的相关表达式默认值一致、且不存在更高优先级值时，展示该阶段默认值；这仅是展示回退，不将其写入 Run 的变量 `value`，不同表达式默认值不合并为单个变量值。执行器只使用 Run 快照和冻结 Stage；之后修改任何配置不影响已创建的 Run。Retry 以原 Run 的非 system 全局值构造内部 overrides，再创建新的 Run；该内部路径不对手动 Trigger 暴露变量表单。

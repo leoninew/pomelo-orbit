@@ -15,7 +15,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-var projectCodePattern = regexp.MustCompile(`^[a-z0-9_-]+$`)
+var projectCodePattern = regexp.MustCompile(`^[a-z][a-z0-9+.-]*$`)
 
 type Service struct {
 	repo         repository.ProjectStore
@@ -180,7 +180,7 @@ func (s Service) ensureCodeAvailable(ctx context.Context, code string, currentPr
 func normalizeAndValidateCreate(input projectdto.CreateInput) (string, string, error) {
 	name := strings.TrimSpace(input.Name)
 	code := strings.TrimSpace(input.Code)
-	if name == "" || len(name) > 100 || code == "" || len(code) > 100 || !projectCodePattern.MatchString(code) {
+	if name == "" || len(name) > 100 || code == "" || len(code) > 32 || !projectCodePattern.MatchString(code) {
 		return "", "", ErrInvalidProjectFields
 	}
 	return name, code, nil

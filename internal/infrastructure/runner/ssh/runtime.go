@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,6 +25,8 @@ import (
 )
 
 const maxRemoteErrorOutputBytes = 4 * 1024
+
+var windowsDrivePath = regexp.MustCompile(`^[A-Za-z]:/`)
 
 type Runtime struct {
 	dialContext func(context.Context, string, string) (net.Conn, error)
@@ -66,7 +69,7 @@ func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.T
 		return false, err
 	}
 	defer cleanup()
-	serviceDir, err = newSFTPPathResolver(client).resolve(serviceDir)
+	serviceDir, err = newSFTPPathResolver(client, target.Environment.SSH.Platform).resolve(serviceDir)
 	if err != nil {
 		return false, err
 	}
@@ -93,7 +96,7 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 		return err
 	}
 	defer cleanup()
-	pathResolver := newSFTPPathResolver(client)
+	pathResolver := newSFTPPathResolver(client, target.Environment.SSH.Platform)
 	serviceDir, err := pathResolver.resolve(logicalServiceDir)
 	if err != nil {
 		return err
@@ -371,12 +374,13 @@ func normalizeRemotePath(value string) string {
 }
 
 type sftpPathResolver struct {
-	client *sftp.Client
-	home   string
+	client   *sftp.Client
+	platform string
+	home     string
 }
 
-func newSFTPPathResolver(client *sftp.Client) *sftpPathResolver {
-	return &sftpPathResolver{client: client}
+func newSFTPPathResolver(client *sftp.Client, platform string) *sftpPathResolver {
+	return &sftpPathResolver{client: client, platform: platform}
 }
 
 func (r *sftpPathResolver) resolve(value string) (string, error) {
@@ -392,7 +396,7 @@ func (r *sftpPathResolver) resolve(value string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("resolve remote SSH home directory: %w", err)
 		}
-		r.home = normalizeRemotePath(home)
+		r.home = normalizeSFTPHomePath(r.platform, home)
 		if r.home == "" {
 			return "", errors.New("remote SSH home directory is empty")
 		}
@@ -401,6 +405,14 @@ func (r *sftpPathResolver) resolve(value string) (string, error) {
 		return r.home, nil
 	}
 	return path.Join(r.home, strings.TrimPrefix(value, "~/")), nil
+}
+
+func normalizeSFTPHomePath(platform, home string) string {
+	home = normalizeRemotePath(home)
+	if platform == model.EnvironmentPlatformWindows && strings.HasPrefix(home, "/") && windowsDrivePath.MatchString(home[1:]) {
+		return home[1:]
+	}
+	return home
 }
 
 func isRemoteHomePath(value string) bool {
@@ -518,7 +530,7 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 		return err
 	}
 	defer cleanup()
-	pathResolver := newSFTPPathResolver(client)
+	pathResolver := newSFTPPathResolver(client, target.Environment.SSH.Platform)
 	directory, err = pathResolver.resolve(directory)
 	if err != nil {
 		return err

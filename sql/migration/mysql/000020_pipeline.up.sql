@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     source_template_stage_description VARCHAR(1024),
     artifacts LONGTEXT,
     depends_on LONGTEXT,
-    sort_order INT,
+    sort_order INT NOT NULL DEFAULT 0,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     CONSTRAINT uq_pipeline_stage_pipeline_name UNIQUE (pipeline_id, name)

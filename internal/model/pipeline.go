@@ -60,7 +60,7 @@ type PipelineStage struct {
 	SourceTemplateStageDescription *string   `db:"source_template_stage_description"`
 	Artifacts                      *string   `db:"artifacts"`
 	DependsOn                      *string   `db:"depends_on"`
-	SortOrder                      *int      `db:"sort_order"`
+	SortOrder                      int       `db:"sort_order"`
 	CreatedAt                      time.Time `db:"created_at"`
 	UpdatedAt                      time.Time `db:"updated_at"`
 }

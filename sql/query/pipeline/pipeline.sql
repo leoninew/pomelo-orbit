@@ -101,7 +101,8 @@ FROM pipeline_stage
 WHERE project_id IS NULL
   AND kind = 'template'
   AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL OR name LIKE sqlc.narg(search_pattern))
-ORDER BY id DESC LIMIT ? OFFSET ?;
+ORDER BY id DESC
+LIMIT ? OFFSET ?;
 
 -- name: PipelineStageTemplateById :one
 SELECT id, COALESCE(project_id, '') AS project_id, kind, pipeline_id, name, image, script, description, version,
@@ -128,7 +129,7 @@ INSERT INTO pipeline_stage (id, project_id, kind, pipeline_id, name, image, scri
                             version, source_template_stage_id, source_template_stage_name,
                             source_template_stage_version, source_template_stage_description,
                             artifacts, depends_on, sort_order, created_at, updated_at)
-VALUES (?, NULL, 'template', NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, NULL, NULL, ?, ?);
+VALUES (?, NULL, 'template', NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, NULL, 0, ?, ?);
 
 -- name: UpdatePipelineStageTemplate :exec
 UPDATE pipeline_stage

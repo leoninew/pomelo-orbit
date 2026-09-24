@@ -281,7 +281,7 @@ type InsertApplicationPipelineStageParams struct {
 	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
 	Artifacts                      sql.NullString `db:"artifacts"`
 	DependsOn                      sql.NullString `db:"depends_on"`
-	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	SortOrder                      int64          `db:"sort_order"`
 	CreatedAt                      time.Time      `db:"created_at"`
 	UpdatedAt                      time.Time      `db:"updated_at"`
 }
@@ -363,7 +363,7 @@ INSERT INTO pipeline_stage (id, project_id, kind, pipeline_id, name, image, scri
                             version, source_template_stage_id, source_template_stage_name,
                             source_template_stage_version, source_template_stage_description,
                             artifacts, depends_on, sort_order, created_at, updated_at)
-VALUES (?, NULL, 'template', NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, NULL, NULL, ?, ?)
+VALUES (?, NULL, 'template', NULL, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, NULL, 0, ?, ?)
 `
 
 type InsertPipelineStageTemplateParams struct {
@@ -489,7 +489,8 @@ FROM pipeline_stage
 WHERE project_id IS NULL
   AND kind = 'template'
   AND (CAST(? AS CHAR) IS NULL OR name LIKE ?)
-ORDER BY id DESC LIMIT ? OFFSET ?
+ORDER BY id DESC
+LIMIT ? OFFSET ?
 `
 
 type ListPipelineStageTemplatesParams struct {
@@ -514,7 +515,7 @@ type ListPipelineStageTemplatesRow struct {
 	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
 	Artifacts                      sql.NullString `db:"artifacts"`
 	DependsOn                      sql.NullString `db:"depends_on"`
-	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	SortOrder                      int64          `db:"sort_order"`
 	CreatedAt                      time.Time      `db:"created_at"`
 	UpdatedAt                      time.Time      `db:"updated_at"`
 }
@@ -828,7 +829,7 @@ type PipelineStageTemplateByIdRow struct {
 	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
 	Artifacts                      sql.NullString `db:"artifacts"`
 	DependsOn                      sql.NullString `db:"depends_on"`
-	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	SortOrder                      int64          `db:"sort_order"`
 	CreatedAt                      time.Time      `db:"created_at"`
 	UpdatedAt                      time.Time      `db:"updated_at"`
 }
@@ -886,7 +887,7 @@ type PipelineStageTemplateByNameRow struct {
 	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
 	Artifacts                      sql.NullString `db:"artifacts"`
 	DependsOn                      sql.NullString `db:"depends_on"`
-	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	SortOrder                      int64          `db:"sort_order"`
 	CreatedAt                      time.Time      `db:"created_at"`
 	UpdatedAt                      time.Time      `db:"updated_at"`
 }

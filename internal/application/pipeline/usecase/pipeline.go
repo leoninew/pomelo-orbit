@@ -975,16 +975,16 @@ func pipelineStageDefinitions(stages []model.PipelineStage) ([]model.StageDefini
 		if err != nil {
 			return nil, err
 		}
-		definitions = append(definitions, model.StageDefinition{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, DependsOn: dependsOn, SortOrder: *stage.SortOrder, Description: stage.Description, SourceTemplateStageId: *stage.SourceTemplateStageId, SourceTemplateStageName: *stage.SourceTemplateStageName, SourceTemplateStageVersion: *stage.SourceTemplateStageVersion, SourceTemplateStageDescription: *stage.SourceTemplateStageDescription})
+		definitions = append(definitions, model.StageDefinition{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, DependsOn: dependsOn, SortOrder: stage.SortOrder, Description: stage.Description, SourceTemplateStageId: *stage.SourceTemplateStageId, SourceTemplateStageName: *stage.SourceTemplateStageName, SourceTemplateStageVersion: *stage.SourceTemplateStageVersion, SourceTemplateStageDescription: *stage.SourceTemplateStageDescription})
 	}
 	return definitions, nil
 }
 
 func validatePipelineStageTemplate(stage model.PipelineStage) error {
-	if stage.Id == "" || stage.Kind != model.PipelineStageKindTemplate || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version == nil || *stage.Version <= 0 {
+	if stage.Id == "" || stage.Kind != model.PipelineStageKindTemplate || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version == nil || *stage.Version <= 0 || stage.SortOrder < 0 {
 		return apperror.New(apperror.KindValidation, "invalid pipeline stage template")
 	}
-	if stage.PipelineId != nil || stage.SourceTemplateStageId != nil || stage.SourceTemplateStageName != nil || stage.SourceTemplateStageVersion != nil || stage.SourceTemplateStageDescription != nil || stage.DependsOn != nil || stage.SortOrder != nil {
+	if stage.PipelineId != nil || stage.SourceTemplateStageId != nil || stage.SourceTemplateStageName != nil || stage.SourceTemplateStageVersion != nil || stage.SourceTemplateStageDescription != nil || stage.DependsOn != nil {
 		return apperror.New(apperror.KindValidation, "pipeline stage templates cannot contain pipeline configuration")
 	}
 	_, err := templateStageArtifacts(stage)
@@ -992,7 +992,7 @@ func validatePipelineStageTemplate(stage model.PipelineStage) error {
 }
 
 func validateApplicationPipelineStage(stage model.PipelineStage) error {
-	if stage.Id == "" || stage.ProjectId == "" || stage.Kind != model.PipelineStageKindApplication || stage.PipelineId == nil || *stage.PipelineId == "" || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version != nil || stage.Artifacts == nil || stage.DependsOn == nil || stage.SortOrder == nil || *stage.SortOrder < 0 {
+	if stage.Id == "" || stage.ProjectId == "" || stage.Kind != model.PipelineStageKindApplication || stage.PipelineId == nil || *stage.PipelineId == "" || strings.TrimSpace(stage.Name) == "" || strings.TrimSpace(stage.Image) == "" || stage.Version != nil || stage.Artifacts == nil || stage.DependsOn == nil || stage.SortOrder < 0 {
 		return apperror.New(apperror.KindValidation, "invalid application pipeline stage")
 	}
 	if stage.SourceTemplateStageId == nil || *stage.SourceTemplateStageId == "" || stage.SourceTemplateStageName == nil || strings.TrimSpace(*stage.SourceTemplateStageName) == "" || stage.SourceTemplateStageVersion == nil || *stage.SourceTemplateStageVersion <= 0 || stage.SourceTemplateStageDescription == nil {

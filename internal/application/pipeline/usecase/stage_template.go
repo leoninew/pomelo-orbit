@@ -190,8 +190,7 @@ func (s Service) ImportPipelineStage(ctx context.Context, userId string, project
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	sortOrder := input.SortOrder
-	stages = append(stages, model.PipelineStage{Id: idutil.NewId(), ProjectId: projectId, Kind: model.PipelineStageKindApplication, PipelineId: &pipelineIdCopy, Name: name, Image: template.Image, Script: template.Script, Description: description, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageVersion: &version, SourceTemplateStageDescription: &sourceDescription, Artifacts: &artifacts, DependsOn: &dependsOn, SortOrder: &sortOrder})
+	stages = append(stages, model.PipelineStage{Id: idutil.NewId(), ProjectId: projectId, Kind: model.PipelineStageKindApplication, PipelineId: &pipelineIdCopy, Name: name, Image: template.Image, Script: template.Script, Description: description, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageVersion: &version, SourceTemplateStageDescription: &sourceDescription, Artifacts: &artifacts, DependsOn: &dependsOn, SortOrder: input.SortOrder})
 	if err := s.validatePipelineConfiguration(ctx, projectId, pipeline, stages); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
@@ -770,7 +769,7 @@ func (s Service) referenceNodeDetail(ctx context.Context, projectId string, refe
 }
 
 func (s Service) applicationNodeDetail(ctx context.Context, projectId string, stage model.PipelineStage) (pipelinedto.PipelineStageNodeDetail, error) {
-	if stage.PipelineId == nil || stage.SourceTemplateStageId == nil || stage.SourceTemplateStageName == nil || stage.SourceTemplateStageVersion == nil || stage.SourceTemplateStageDescription == nil || stage.DependsOn == nil || stage.SortOrder == nil {
+	if stage.PipelineId == nil || stage.SourceTemplateStageId == nil || stage.SourceTemplateStageName == nil || stage.SourceTemplateStageVersion == nil || stage.SourceTemplateStageDescription == nil || stage.DependsOn == nil {
 		return pipelinedto.PipelineStageNodeDetail{}, apperror.New(apperror.KindValidation, "application pipeline stage source snapshot is required")
 	}
 	dependsOn, err := dependsOnFromJSON(*stage.DependsOn)
@@ -785,7 +784,7 @@ func (s Service) applicationNodeDetail(ctx context.Context, projectId string, st
 	for _, artifact := range artifacts {
 		artifactViews = append(artifactViews, pipelinedto.ArtifactConfig{Name: artifact.Name, Collector: artifact.Collector, Reference: artifact.Reference, Command: artifact.Command, Format: artifact.Format, ComponentName: artifact.ComponentName})
 	}
-	node := model.PipelineStageNode{Id: stage.Id, NodeType: model.PipelineStageNodeTypeApplication, PipelineId: *stage.PipelineId, Name: stage.Name, Image: stage.Image, Script: stage.Script, Description: stage.Description, DependsOn: *stage.DependsOn, SortOrder: *stage.SortOrder, SourceTemplateStageId: *stage.SourceTemplateStageId, SourceTemplateStageName: *stage.SourceTemplateStageName, SourceTemplateStageVersion: *stage.SourceTemplateStageVersion, SourceTemplateStageDescription: *stage.SourceTemplateStageDescription, Artifacts: stage.Artifacts, CreatedAt: stage.CreatedAt, UpdatedAt: stage.UpdatedAt}
+	node := model.PipelineStageNode{Id: stage.Id, NodeType: model.PipelineStageNodeTypeApplication, PipelineId: *stage.PipelineId, Name: stage.Name, Image: stage.Image, Script: stage.Script, Description: stage.Description, DependsOn: *stage.DependsOn, SortOrder: stage.SortOrder, SourceTemplateStageId: *stage.SourceTemplateStageId, SourceTemplateStageName: *stage.SourceTemplateStageName, SourceTemplateStageVersion: *stage.SourceTemplateStageVersion, SourceTemplateStageDescription: *stage.SourceTemplateStageDescription, Artifacts: stage.Artifacts, CreatedAt: stage.CreatedAt, UpdatedAt: stage.UpdatedAt}
 	return s.withLatestTemplateStageVersion(ctx, projectId, pipelinedto.PipelineStageNodeDetail{Node: node, Artifacts: artifactViews, DependsOn: dependsOn})
 }
 
@@ -937,9 +936,8 @@ func applyApplicationStageUpdate(stages []model.PipelineStage, stageId string, i
 			if *input.SortOrder < 0 {
 				return false, true, apperror.New(apperror.KindValidation, "sort_order must not be negative")
 			}
-			if stages[index].SortOrder == nil || *stages[index].SortOrder != *input.SortOrder {
-				value := *input.SortOrder
-				stages[index].SortOrder, changed = &value, true
+			if stages[index].SortOrder != *input.SortOrder {
+				stages[index].SortOrder, changed = *input.SortOrder, true
 			}
 		}
 		return changed, true, nil
@@ -1005,7 +1003,7 @@ func clonePipelineStageReferences(references []model.PipelineStageReference, pip
 			return nil, nil, apperror.New(apperror.KindValidation, "template pipeline stage reference artifacts are required")
 		}
 		pipelineIdCopy := pipelineId
-		result = append(result, model.PipelineStage{Id: id, ProjectId: projectId, Kind: model.PipelineStageKindApplication, PipelineId: &pipelineIdCopy, Name: reference.Name, Image: reference.Image, Script: reference.Script, Description: reference.Description, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageVersion: &version, SourceTemplateStageDescription: &sourceDescription, Artifacts: &artifacts, DependsOn: &dependsOnData, SortOrder: &sortOrder})
+		result = append(result, model.PipelineStage{Id: id, ProjectId: projectId, Kind: model.PipelineStageKindApplication, PipelineId: &pipelineIdCopy, Name: reference.Name, Image: reference.Image, Script: reference.Script, Description: reference.Description, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageVersion: &version, SourceTemplateStageDescription: &sourceDescription, Artifacts: &artifacts, DependsOn: &dependsOnData, SortOrder: sortOrder})
 	}
 	return result, idMap, nil
 }

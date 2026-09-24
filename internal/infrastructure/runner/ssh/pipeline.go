@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -20,8 +19,6 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
-
-var windowsDrivePath = regexp.MustCompile(`^[A-Za-z]:/`)
 
 var _ pipelinerunport.RemoteRuntimeFactory = (*PipelineRuntime)(nil)
 
@@ -38,7 +35,7 @@ func (runtime *PipelineRuntime) RuntimeForTarget(ctx context.Context, target env
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	root, err := newSFTPPathResolver(client).resolve(normalizeRemotePath(target.Environment.WorkspaceRoot))
+	root, err := newSFTPPathResolver(client, target.Environment.SSH.Platform).resolve(target.Environment.WorkspaceRoot)
 	closeClient()
 	if err != nil {
 		return nil, nil, nil, err

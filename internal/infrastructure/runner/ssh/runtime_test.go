@@ -9,6 +9,22 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
+func TestNormalizeSFTPHomePathForWindowsAndLinux(t *testing.T) {
+	for _, testCase := range []struct {
+		platform string
+		input    string
+		want     string
+	}{
+		{model.EnvironmentPlatformWindows, `/C:/Users/deploy`, `C:/Users/deploy`},
+		{model.EnvironmentPlatformWindows, `C:\Users\deploy`, `C:/Users/deploy`},
+		{model.EnvironmentPlatformLinux, `/C:/Users/deploy`, `/C:/Users/deploy`},
+	} {
+		if got := normalizeSFTPHomePath(testCase.platform, testCase.input); got != testCase.want {
+			t.Fatalf("normalizeSFTPHomePath(%q, %q) = %q, want %q", testCase.platform, testCase.input, got, testCase.want)
+		}
+	}
+}
+
 func TestRemoteCommandUsesWindowsDockerDesktopCLI(t *testing.T) {
 	command, display, err := remoteCommand(model.EnvironmentPlatformWindows, `C:\orbit workspace\service`, "docker", "compose", "-p", "project name", "up", "-d")
 	if err != nil {

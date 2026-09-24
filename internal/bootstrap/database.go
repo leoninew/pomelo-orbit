@@ -19,7 +19,7 @@ func RunMigrations(database *sql.DB, driver string, logger *slog.Logger) error {
 		return fmt.Errorf("read schema migration version before migration: %w", err)
 	}
 	logger.Info("run schema migrations", "driver", driver, "from_version", before.Version, "dirty", before.Dirty)
-	if err := db.MigrateUp(database, driver); err != nil {
+	if err := db.MigrateUpWithLogger(database, driver, logger); err != nil {
 		return err
 	}
 	after, err := MigrationVersion(database, driver)

@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"path"
+	"strconv"
+	"strings"
 
 	gomigrate "github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
@@ -27,7 +30,11 @@ type MigrationVersion struct {
 }
 
 func MigrateUp(sqlDb *sql.DB, driver string) error {
-	runner, err := newMigrationRunner(sqlDb, driver)
+	return MigrateUpWithLogger(sqlDb, driver, nil)
+}
+
+func MigrateUpWithLogger(sqlDb *sql.DB, driver string, logger *slog.Logger) error {
+	runner, err := newMigrationRunner(sqlDb, driver, logger)
 	if err != nil {
 		return err
 	}
@@ -40,7 +47,7 @@ func MigrateUp(sqlDb *sql.DB, driver string) error {
 }
 
 func MigrateTo(sqlDb *sql.DB, driver string, version uint) error {
-	runner, err := newMigrationRunner(sqlDb, driver)
+	runner, err := newMigrationRunner(sqlDb, driver, nil)
 	if err != nil {
 		return err
 	}
@@ -69,7 +76,7 @@ func ReadMigrationVersion(sqlDb *sql.DB, driver string) (MigrationVersion, error
 	return MigrationVersion{Version: uint(version), Dirty: dirty}, nil
 }
 
-func newMigrationRunner(sqlDb *sql.DB, driver string) (*gomigrate.Migrate, error) {
+func newMigrationRunner(sqlDb *sql.DB, driver string, logger *slog.Logger) (*gomigrate.Migrate, error) {
 	migrationSource, err := iofs.New(migrationfiles.Files, path.Join(migrationsRoot, driver))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -90,7 +97,66 @@ func newMigrationRunner(sqlDb *sql.DB, driver string) (*gomigrate.Migrate, error
 		_ = databaseDriver.Close()
 		return nil, fmt.Errorf("create migration runner: %w", err)
 	}
+	if logger != nil {
+		runner.Log = migrationLogger{logger: logger}
+	}
 	return runner, nil
+}
+
+type migrationLogger struct {
+	logger *slog.Logger
+}
+
+func (l migrationLogger) Printf(format string, args ...interface{}) {
+	message := strings.TrimSpace(fmt.Sprintf(format, args...))
+	version, direction, identifier, duration, ok := parseMigrationLog(message)
+	if !ok {
+		l.logger.Debug("schema migration event", "message", message)
+		return
+	}
+	l.logger.Info("schema migration applied",
+		"version", version,
+		"direction", direction,
+		"identifier", identifier,
+		"duration", duration,
+	)
+}
+
+func (migrationLogger) Verbose() bool {
+	return false
+}
+
+func parseMigrationLog(message string) (uint64, string, string, string, bool) {
+	closeParenthesis := strings.LastIndex(message, " (")
+	if closeParenthesis <= 0 || !strings.HasSuffix(message, ")") {
+		return 0, "", "", "", false
+	}
+
+	prefix := message[:closeParenthesis]
+	duration := message[closeParenthesis+2 : len(message)-1]
+	parts := strings.SplitN(prefix, " ", 2)
+	if len(parts) != 2 {
+		return 0, "", "", "", false
+	}
+	versionAndDirection := strings.SplitN(parts[0], "/", 2)
+	if len(versionAndDirection) != 2 {
+		return 0, "", "", "", false
+	}
+	version, err := strconv.ParseUint(versionAndDirection[0], 10, 64)
+	if err != nil {
+		return 0, "", "", "", false
+	}
+
+	direction := ""
+	switch versionAndDirection[1] {
+	case "u":
+		direction = "up"
+	case "d":
+		direction = "down"
+	default:
+		return 0, "", "", "", false
+	}
+	return version, direction, parts[1], duration, true
 }
 
 func migrationDatabaseDriver(sqlDb *sql.DB, driver string) (database.Driver, error) {

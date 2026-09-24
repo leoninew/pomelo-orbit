@@ -18,7 +18,7 @@ func TestMergeApplicationStagesUsesSnapshotForSameVersionContentChanges(t *testi
 		Id: "application-stage", ProjectId: "project-1", Kind: model.PipelineStageKindApplication,
 		Name: "private build", Image: "old-image", Script: "old-script", Description: "private",
 		SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageVersion: &version,
-		SourceTemplateStageDescription: &sourceDescription, Artifacts: &artifacts, DependsOn: &dependsOn, SortOrder: &sortOrder,
+		SourceTemplateStageDescription: &sourceDescription, Artifacts: &artifacts, DependsOn: &dependsOn, SortOrder: sortOrder,
 	}}
 	references := []model.PipelineStageReference{{
 		Id: "reference-1", SourceTemplateStageId: sourceId, SourceTemplateStageName: sourceName,
@@ -59,7 +59,7 @@ func TestMergeApplicationStagesPreservesComponentMappings(t *testing.T) {
 		Id: "application-stage", ProjectId: "project-1", Kind: model.PipelineStageKindApplication,
 		Name: "private build", Image: "old-image", Script: "old-script", Description: "private",
 		SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageVersion: &version,
-		SourceTemplateStageDescription: &sourceDescription, Artifacts: &currentArtifacts, DependsOn: &dependsOn, SortOrder: &sortOrder,
+		SourceTemplateStageDescription: &sourceDescription, Artifacts: &currentArtifacts, DependsOn: &dependsOn, SortOrder: sortOrder,
 	}}
 	references := []model.PipelineStageReference{{
 		Id: "reference-1", SourceTemplateStageId: sourceId, SourceTemplateStageName: sourceName,

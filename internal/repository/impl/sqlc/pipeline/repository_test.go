@@ -126,9 +126,9 @@ func TestListPipelineStageTemplatesScopesGlobally(t *testing.T) {
 	createdAt := time.Now().UTC()
 	if _, err := database.Exec(`
 		INSERT INTO pipeline_stage (
-			id, project_id, kind, name, image, script, description, version, artifacts, created_at, updated_at
-		) VALUES (?, ?, 'template', ?, ?, ?, ?, ?, ?, ?, ?)
-	`, "stage-template", nil, "Shared build", "docker:27", "docker build .", "", 1, "[]", createdAt, createdAt); err != nil {
+			id, project_id, kind, name, image, script, description, version, artifacts, sort_order, created_at, updated_at
+		) VALUES (?, ?, 'template', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, "stage-template", nil, "Shared build", "docker:27", "docker build .", "", 1, "[]", 1, createdAt, createdAt); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.Exec(`

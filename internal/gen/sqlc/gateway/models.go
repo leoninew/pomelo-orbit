@@ -277,7 +277,7 @@ type PipelineStage struct {
 	SourceTemplateStageDescription sql.NullString `db:"source_template_stage_description"`
 	Artifacts                      sql.NullString `db:"artifacts"`
 	DependsOn                      sql.NullString `db:"depends_on"`
-	SortOrder                      sql.NullInt64  `db:"sort_order"`
+	SortOrder                      int64          `db:"sort_order"`
 	CreatedAt                      time.Time      `db:"created_at"`
 	UpdatedAt                      time.Time      `db:"updated_at"`
 }

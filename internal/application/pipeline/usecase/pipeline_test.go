@@ -154,7 +154,7 @@ func TestValidatePipelineConfigurationRejectsComponentMappingWithoutApplicationB
 	pipelineId, sourceId, sourceName, sourceDescription, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]"
 	sortOrder, sourceVersion := 0, 1
 	stages := []model.PipelineStage{{
-		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineId, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: &sortOrder, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
+		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineId, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: sortOrder, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
 	}}
 
 	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
@@ -188,7 +188,7 @@ func TestValidatePipelineConfigurationAllowsUnboundDockerArtifact(t *testing.T) 
 	pipelineId, sourceId, sourceName, sourceDescription, dependsOn := "pipeline-1", "template-stage-1", "build", "template description", "[]"
 	sortOrder, sourceVersion := 0, 1
 	stages := []model.PipelineStage{{
-		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineId, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: &sortOrder, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
+		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineId, Name: "build", Image: "builder", Script: "build", Artifacts: stringPointer(string(artifacts)), DependsOn: &dependsOn, SortOrder: sortOrder, SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
 	}}
 
 	err = (Service{}).validatePipelineConfiguration(context.Background(), "project-1", pipeline, stages)
@@ -218,7 +218,7 @@ func TestPipelineStageDefinitionsRejectsInvalidApplicationStageShape(t *testing.
 	sortOrder, sourceVersion := 0, 0
 	_, err := pipelineStageDefinitions([]model.PipelineStage{{
 		Id: "stage-build", ProjectId: "project-1", Kind: model.PipelineStageKindApplication, PipelineId: &pipelineId,
-		Name: "build", Image: "builder", Script: "build", Artifacts: &artifacts, DependsOn: &dependsOn, SortOrder: &sortOrder,
+		Name: "build", Image: "builder", Script: "build", Artifacts: &artifacts, DependsOn: &dependsOn, SortOrder: sortOrder,
 		SourceTemplateStageId: &sourceId, SourceTemplateStageName: &sourceName, SourceTemplateStageDescription: &sourceDescription, SourceTemplateStageVersion: &sourceVersion,
 	}})
 	if err == nil || !strings.Contains(err.Error(), "source snapshot is required") {

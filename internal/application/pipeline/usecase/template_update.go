@@ -270,7 +270,7 @@ func mergeApplicationStages(current []model.PipelineStage, references []model.Pi
 			continue
 		}
 		dependsOn = dependsOnData
-		stage.Artifacts, stage.DependsOn, stage.SortOrder = &artifacts, &dependsOn, &sortOrder
+		stage.Artifacts, stage.DependsOn, stage.SortOrder = &artifacts, &dependsOn, sortOrder
 		updates = append(updates, pipelinedto.PipelineTemplateStageUpdate{StageId: id, SourceTemplateStageId: sourceId, Status: pipelineTemplateUpdateStatusAdded, TargetVersion: reference.SourceTemplateStageVersion})
 		merged = append(merged, stage)
 	}

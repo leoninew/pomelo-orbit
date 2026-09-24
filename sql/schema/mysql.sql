@@ -174,7 +174,7 @@ CREATE TABLE IF NOT EXISTS pipeline_stage (
     source_template_stage_description TEXT,
     artifacts TEXT,
     depends_on TEXT,
-    sort_order BIGINT,
+    sort_order BIGINT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (pipeline_id) REFERENCES pipeline(id) ON DELETE CASCADE,

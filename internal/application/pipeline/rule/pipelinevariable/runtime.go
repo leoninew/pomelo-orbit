@@ -330,9 +330,7 @@ func ResolveRuntimeVariablesFromPipelineStages(repo model.Repository, pipeline m
 				return nil, RuntimeVariables{}, apperror.Wrap(apperror.KindInternal, "Invalid pipeline stage dependencies", err)
 			}
 		}
-		if stage.SortOrder != nil {
-			definition.SortOrder = *stage.SortOrder
-		}
+		definition.SortOrder = stage.SortOrder
 		definitions = append(definitions, definition)
 	}
 	return ResolveRuntimeVariables(repo, pipeline, definitions, overrides)

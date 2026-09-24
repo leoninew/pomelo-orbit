@@ -11,7 +11,7 @@ import (
 // Application Pipeline owns executable stages.
 type PipelineStore interface {
 	Pipeline(ctx context.Context, projectId string, id string) (model.Pipeline, error)
-	PipelineByName(ctx context.Context, projectId string, name string) (model.Pipeline, error)
+	PipelineByName(ctx context.Context, projectId string, kind string, name string) (model.Pipeline, error)
 	ListPipelines(ctx context.Context, projectId string, kind string, page int, perPage int, search string) (Page[model.Pipeline], error)
 	CreatePipeline(ctx context.Context, pipeline model.Pipeline) error
 	UpdatePipeline(ctx context.Context, projectId string, pipeline model.Pipeline) error

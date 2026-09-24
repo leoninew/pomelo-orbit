@@ -3,7 +3,6 @@ package pipelinerepo
 import (
 	"context"
 	"database/sql"
-	"strings"
 	"time"
 
 	pipelinesqlc "github.com/leoninew/pomelo-orbit/internal/gen/sqlc/pipeline"
@@ -27,15 +26,12 @@ func (r Repository) Pipeline(ctx context.Context, projectId string, id string) (
 	item, err := r.q(ctx).PipelineById(ctx, pipelinesqlc.PipelineByIdParams{Id: id, ProjectId: nullString(&projectId)})
 	return pipelineModel(item), translate(err)
 }
-func (r Repository) PipelineByName(ctx context.Context, projectId, name string) (model.Pipeline, error) {
-	item, err := r.q(ctx).PipelineByName(ctx, pipelinesqlc.PipelineByNameParams{ProjectId: nullString(&projectId), Name: name})
+func (r Repository) PipelineByName(ctx context.Context, projectId, kind, name string) (model.Pipeline, error) {
+	item, err := r.q(ctx).PipelineByName(ctx, pipelinesqlc.PipelineByNameParams{ProjectId: nullString(&projectId), Kind: kind, Name: name})
 	return pipelineModel(item), translate(err)
 }
 func (r Repository) ListPipelines(ctx context.Context, projectId, kind string, page, perPage int, search string) (repository.Page[model.Pipeline], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
-	projectId = strings.TrimSpace(projectId)
-	kind = strings.TrimSpace(kind)
-	search = strings.TrimSpace(search)
 	searchPattern := sql.NullString{String: "%" + search + "%", Valid: search != ""}
 	kindValue := sql.NullString{String: kind, Valid: kind != ""}
 	projectIdArg := sql.NullString{String: projectId, Valid: true}
@@ -65,10 +61,9 @@ func (r Repository) DeletePipeline(ctx context.Context, projectId string, id str
 }
 func (r Repository) ListPipelineStageTemplates(ctx context.Context, projectId string, page, perPage int, search string) (repository.Page[model.PipelineStage], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
-	projectId, search = strings.TrimSpace(projectId), strings.TrimSpace(search)
 	searchPattern := sql.NullString{String: "%" + search + "%", Valid: search != ""}
-	args := pipelinesqlc.ListPipelineStageTemplatesParams{ProjectId: projectId, SearchPattern: searchPattern, Offset: int32((page - 1) * perPage), Limit: int32(perPage)}
-	count, err := r.q(ctx).CountPipelineStageTemplates(ctx, pipelinesqlc.CountPipelineStageTemplatesParams{ProjectId: projectId, SearchPattern: searchPattern})
+	args := pipelinesqlc.ListPipelineStageTemplatesParams{SearchPattern: searchPattern, Offset: int32((page - 1) * perPage), Limit: int32(perPage)}
+	count, err := r.q(ctx).CountPipelineStageTemplates(ctx, pipelinesqlc.CountPipelineStageTemplatesParams{SearchPattern: searchPattern})
 	if err != nil {
 		return repository.Page[model.PipelineStage]{}, translate(err)
 	}
@@ -78,29 +73,29 @@ func (r Repository) ListPipelineStageTemplates(ctx context.Context, projectId st
 	}
 	items := make([]model.PipelineStage, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, stageModel(row))
+		items = append(items, stageTemplateListModel(row))
 	}
 	return repository.Page[model.PipelineStage]{Items: items, Total: int(count), Page: page, PerPage: perPage}, nil
 }
 func (r Repository) PipelineStageTemplate(ctx context.Context, projectId string, id string) (model.PipelineStage, error) {
-	row, err := r.q(ctx).PipelineStageTemplateById(ctx, pipelinesqlc.PipelineStageTemplateByIdParams{Id: id, ProjectId: projectId})
-	return stageModel(row), translate(err)
+	row, err := r.q(ctx).PipelineStageTemplateById(ctx, id)
+	return stageTemplateByIdModel(row), translate(err)
 }
 func (r Repository) PipelineStageTemplateByName(ctx context.Context, projectId, name string) (model.PipelineStage, error) {
-	row, err := r.q(ctx).PipelineStageTemplateByName(ctx, pipelinesqlc.PipelineStageTemplateByNameParams{ProjectId: projectId, Name: name})
-	return stageModel(row), translate(err)
+	row, err := r.q(ctx).PipelineStageTemplateByName(ctx, name)
+	return stageTemplateByNameModel(row), translate(err)
 }
 func (r Repository) CreatePipelineStageTemplate(ctx context.Context, item model.PipelineStage) error {
 	return translate(r.q(ctx).InsertPipelineStageTemplate(ctx, templateStageParams(item)))
 }
 func (r Repository) UpdatePipelineStageTemplate(ctx context.Context, projectId string, item model.PipelineStage) error {
-	return translate(r.q(ctx).UpdatePipelineStageTemplate(ctx, pipelinesqlc.UpdatePipelineStageTemplateParams{Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Artifacts: nullString(item.Artifacts), Version: nullInt(item.Version), UpdatedAt: time.Now().UTC(), Id: item.Id, ProjectId: projectId}))
+	return translate(r.q(ctx).UpdatePipelineStageTemplate(ctx, pipelinesqlc.UpdatePipelineStageTemplateParams{Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Artifacts: nullString(item.Artifacts), Version: nullInt(item.Version), UpdatedAt: time.Now().UTC(), Id: item.Id}))
 }
 func (r Repository) DeletePipelineStageTemplate(ctx context.Context, projectId string, id string) error {
-	return translate(r.q(ctx).DeletePipelineStageTemplate(ctx, pipelinesqlc.DeletePipelineStageTemplateParams{Id: id, ProjectId: projectId}))
+	return translate(r.q(ctx).DeletePipelineStageTemplate(ctx, id))
 }
 func (r Repository) TemplatePipelineStageReferences(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStageReference, error) {
-	rows, err := r.q(ctx).TemplatePipelineStageReferences(ctx, pipelinesqlc.TemplatePipelineStageReferencesParams{PipelineId: pipelineId, ProjectId: nullString(&projectId)})
+	rows, err := r.q(ctx).TemplatePipelineStageReferences(ctx, pipelineId)
 	if err != nil {
 		return nil, translate(err)
 	}
@@ -111,7 +106,7 @@ func (r Repository) TemplatePipelineStageReferences(ctx context.Context, project
 	return result, nil
 }
 func (r Repository) ApplicationPipelineStages(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStage, error) {
-	rows, err := r.q(ctx).ApplicationPipelineStages(ctx, pipelinesqlc.ApplicationPipelineStagesParams{PipelineId: nullString(&pipelineId), ProjectId: projectId})
+	rows, err := r.q(ctx).ApplicationPipelineStages(ctx, pipelinesqlc.ApplicationPipelineStagesParams{PipelineId: nullString(&pipelineId), ProjectId: nullString(&projectId)})
 	if err != nil {
 		return nil, translate(err)
 	}
@@ -137,7 +132,7 @@ func (r Repository) UpdateApplicationPipelineWithStages(ctx context.Context, pro
 		return err
 	}
 	q := r.q(ctx)
-	if err := translate(q.DeleteApplicationPipelineStages(ctx, pipelinesqlc.DeleteApplicationPipelineStagesParams{PipelineId: nullString(&pipeline.Id), ProjectId: projectId})); err != nil {
+	if err := translate(q.DeleteApplicationPipelineStages(ctx, pipelinesqlc.DeleteApplicationPipelineStagesParams{PipelineId: nullString(&pipeline.Id), ProjectId: nullString(&projectId)})); err != nil {
 		return err
 	}
 	for _, stage := range stages {
@@ -147,12 +142,13 @@ func (r Repository) UpdateApplicationPipelineWithStages(ctx context.Context, pro
 	}
 	return nil
 }
+
 func (r Repository) UpdateTemplatePipelineWithReferences(ctx context.Context, projectId string, pipeline model.Pipeline, references []model.PipelineStageReference) error {
 	if err := r.UpdatePipeline(ctx, projectId, pipeline); err != nil {
 		return err
 	}
 	q := r.q(ctx)
-	if err := translate(q.DeleteTemplatePipelineStageReferences(ctx, pipelinesqlc.DeleteTemplatePipelineStageReferencesParams{PipelineId: pipeline.Id, ProjectId: nullString(&projectId)})); err != nil {
+	if err := translate(q.DeleteTemplatePipelineStageReferences(ctx, pipeline.Id)); err != nil {
 		return err
 	}
 	for _, reference := range references {
@@ -183,10 +179,10 @@ func pipelineParams(item model.Pipeline) pipelinesqlc.CreatePipelineParams {
 	return pipelinesqlc.CreatePipelineParams{Id: item.Id, ProjectId: nullString(item.ProjectId), Kind: item.Kind, SourcePipelineId: nullString(item.SourcePipelineId), SourceTemplateName: nullString(item.SourceTemplateName), SourceTemplateVersion: nullInt(item.SourceTemplateVersion), ApplicationId: nullString(item.ApplicationId), ApplicationName: nullString(item.ApplicationName), RepositoryId: nullString(item.RepositoryId), RepositoryName: nullString(item.RepositoryName), VersionForkStrategy: nullString(item.VersionForkStrategy), FixedVersionId: nullString(item.FixedVersionId), FixedVersionLabel: nullString(item.FixedVersionLabel), Name: item.Name, Description: item.Description, VariableDeclarations: item.VariableDeclarations, Version: int64(item.Version), CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
 }
 func templateStageParams(item model.PipelineStage) pipelinesqlc.InsertPipelineStageTemplateParams {
-	return pipelinesqlc.InsertPipelineStageTemplateParams{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Version: nullInt(item.Version), Artifacts: nullString(item.Artifacts), CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
+	return pipelinesqlc.InsertPipelineStageTemplateParams{Id: item.Id, Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Version: nullInt(item.Version), Artifacts: nullString(item.Artifacts), CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
 }
 func applicationStageParams(item model.PipelineStage) pipelinesqlc.InsertApplicationPipelineStageParams {
-	return pipelinesqlc.InsertApplicationPipelineStageParams{Id: item.Id, ProjectId: item.ProjectId, PipelineId: nullString(item.PipelineId), Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, SourceTemplateStageId: nullString(item.SourceTemplateStageId), SourceTemplateStageName: nullString(item.SourceTemplateStageName), SourceTemplateStageVersion: nullInt(item.SourceTemplateStageVersion), SourceTemplateStageDescription: nullString(item.SourceTemplateStageDescription), Artifacts: nullString(item.Artifacts), DependsOn: nullString(item.DependsOn), SortOrder: nullInt(item.SortOrder), CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
+	return pipelinesqlc.InsertApplicationPipelineStageParams{Id: item.Id, ProjectId: nullString(&item.ProjectId), PipelineId: nullString(item.PipelineId), Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, SourceTemplateStageId: nullString(item.SourceTemplateStageId), SourceTemplateStageName: nullString(item.SourceTemplateStageName), SourceTemplateStageVersion: nullInt(item.SourceTemplateStageVersion), SourceTemplateStageDescription: nullString(item.SourceTemplateStageDescription), Artifacts: nullString(item.Artifacts), DependsOn: nullString(item.DependsOn), SortOrder: nullInt(item.SortOrder), CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
 }
 func referenceParams(item model.PipelineStageReference) pipelinesqlc.InsertTemplatePipelineStageReferenceParams {
 	return pipelinesqlc.InsertTemplatePipelineStageReferenceParams{Id: item.Id, PipelineId: item.PipelineId, SourceTemplateStageId: item.SourceTemplateStageId, SourceTemplateStageName: item.SourceTemplateStageName, SourceTemplateStageVersion: int64(item.SourceTemplateStageVersion), SourceTemplateStageDescription: item.SourceTemplateStageDescription, Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Artifacts: item.Artifacts, DependsOn: item.DependsOn, SortOrder: int64(item.SortOrder), CreatedAt: timeOrNow(item.CreatedAt), UpdatedAt: timeOrNow(item.UpdatedAt)}
@@ -199,8 +195,20 @@ func pipelineModel(item pipelinesqlc.Pipeline) model.Pipeline {
 	}
 	return result
 }
+func stageTemplateListModel(item pipelinesqlc.ListPipelineStageTemplatesRow) model.PipelineStage {
+	return stageModelFromValues(item.Id, item.ProjectId, item.Kind, item.PipelineId, item.Name, item.Image, item.Script, item.Description, item.Version, item.SourceTemplateStageId, item.SourceTemplateStageName, item.SourceTemplateStageVersion, item.SourceTemplateStageDescription, item.Artifacts, item.DependsOn, item.SortOrder, item.CreatedAt, item.UpdatedAt)
+}
+func stageTemplateByIdModel(item pipelinesqlc.PipelineStageTemplateByIdRow) model.PipelineStage {
+	return stageModelFromValues(item.Id, item.ProjectId, item.Kind, item.PipelineId, item.Name, item.Image, item.Script, item.Description, item.Version, item.SourceTemplateStageId, item.SourceTemplateStageName, item.SourceTemplateStageVersion, item.SourceTemplateStageDescription, item.Artifacts, item.DependsOn, item.SortOrder, item.CreatedAt, item.UpdatedAt)
+}
+func stageTemplateByNameModel(item pipelinesqlc.PipelineStageTemplateByNameRow) model.PipelineStage {
+	return stageModelFromValues(item.Id, item.ProjectId, item.Kind, item.PipelineId, item.Name, item.Image, item.Script, item.Description, item.Version, item.SourceTemplateStageId, item.SourceTemplateStageName, item.SourceTemplateStageVersion, item.SourceTemplateStageDescription, item.Artifacts, item.DependsOn, item.SortOrder, item.CreatedAt, item.UpdatedAt)
+}
 func stageModel(item pipelinesqlc.PipelineStage) model.PipelineStage {
-	return model.PipelineStage{Id: item.Id, ProjectId: item.ProjectId, Kind: item.Kind, PipelineId: dbmodel.StringPtr(item.PipelineId), Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Version: dbmodel.IntPtrFromNullInt64(item.Version), SourceTemplateStageId: dbmodel.StringPtr(item.SourceTemplateStageId), SourceTemplateStageName: dbmodel.StringPtr(item.SourceTemplateStageName), SourceTemplateStageVersion: dbmodel.IntPtrFromNullInt64(item.SourceTemplateStageVersion), SourceTemplateStageDescription: dbmodel.StringPtr(item.SourceTemplateStageDescription), Artifacts: dbmodel.StringPtr(item.Artifacts), DependsOn: dbmodel.StringPtr(item.DependsOn), SortOrder: dbmodel.IntPtrFromNullInt64(item.SortOrder), CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
+	return stageModelFromValues(item.Id, item.ProjectId.String, item.Kind, item.PipelineId, item.Name, item.Image, item.Script, item.Description, item.Version, item.SourceTemplateStageId, item.SourceTemplateStageName, item.SourceTemplateStageVersion, item.SourceTemplateStageDescription, item.Artifacts, item.DependsOn, item.SortOrder, item.CreatedAt, item.UpdatedAt)
+}
+func stageModelFromValues(id, projectId, kind string, pipelineId sql.NullString, name, image, script, description string, version sql.NullInt64, sourceTemplateStageId, sourceTemplateStageName sql.NullString, sourceTemplateStageVersion sql.NullInt64, sourceTemplateStageDescription, artifacts, dependsOn sql.NullString, sortOrder sql.NullInt64, createdAt, updatedAt time.Time) model.PipelineStage {
+	return model.PipelineStage{Id: id, ProjectId: projectId, Kind: kind, PipelineId: dbmodel.StringPtr(pipelineId), Name: name, Image: image, Script: script, Description: description, Version: dbmodel.IntPtrFromNullInt64(version), SourceTemplateStageId: dbmodel.StringPtr(sourceTemplateStageId), SourceTemplateStageName: dbmodel.StringPtr(sourceTemplateStageName), SourceTemplateStageVersion: dbmodel.IntPtrFromNullInt64(sourceTemplateStageVersion), SourceTemplateStageDescription: dbmodel.StringPtr(sourceTemplateStageDescription), Artifacts: dbmodel.StringPtr(artifacts), DependsOn: dbmodel.StringPtr(dependsOn), SortOrder: dbmodel.IntPtrFromNullInt64(sortOrder), CreatedAt: createdAt, UpdatedAt: updatedAt}
 }
 func referenceModel(item pipelinesqlc.PipelineStageReference) model.PipelineStageReference {
 	return model.PipelineStageReference{Id: item.Id, PipelineId: item.PipelineId, SourceTemplateStageId: item.SourceTemplateStageId, SourceTemplateStageName: item.SourceTemplateStageName, SourceTemplateStageVersion: int(item.SourceTemplateStageVersion), SourceTemplateStageDescription: item.SourceTemplateStageDescription, Name: item.Name, Image: item.Image, Script: item.Script, Description: item.Description, Artifacts: item.Artifacts, DependsOn: item.DependsOn, SortOrder: int(item.SortOrder), CreatedAt: item.CreatedAt, UpdatedAt: item.UpdatedAt}
@@ -209,7 +217,7 @@ func snapshotModel(item pipelinesqlc.PipelineSnapshot) model.PipelineSnapshot {
 	return model.PipelineSnapshot{Id: item.Id, ProjectId: dbmodel.StringPtr(item.ProjectId), PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int(item.PipelineVersion), SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int(item.SourceTemplateVersion), ApplicationId: dbmodel.StringPtr(item.ApplicationId), ApplicationName: dbmodel.StringPtr(item.ApplicationName), RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: dbmodel.StringPtr(item.VersionForkStrategy), FixedVersionId: dbmodel.StringPtr(item.FixedVersionId), FixedVersionLabel: dbmodel.StringPtr(item.FixedVersionLabel), StagesSnapshot: item.StagesSnapshot, VariablesSnapshot: item.VariablesSnapshot, CreatedAt: item.CreatedAt}
 }
 func nullString(value *string) sql.NullString {
-	if value == nil || strings.TrimSpace(*value) == "" {
+	if value == nil || *value == "" {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: *value, Valid: true}

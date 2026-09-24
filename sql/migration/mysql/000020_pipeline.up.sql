@@ -30,7 +30,7 @@ CREATE INDEX idx_pipeline_repository ON pipeline(repository_id);
 
 CREATE TABLE IF NOT EXISTS pipeline_stage (
     id VARCHAR(26) PRIMARY KEY,
-    project_id VARCHAR(26) NOT NULL,
+    project_id VARCHAR(26),
     kind VARCHAR(16) NOT NULL,
     pipeline_id VARCHAR(26),
     name VARCHAR(255) NOT NULL,

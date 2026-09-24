@@ -288,20 +288,20 @@ func TestEnsurePipelineNameAvailableScopesConflictsToProject(t *testing.T) {
 	store := &pipelineNameCheckStore{pipeline: model.Pipeline{Id: "pipeline-1"}}
 	service := Service{store: stores{pipeline: store}}
 
-	err := service.ensurePipelineNameAvailable(context.Background(), projectId, "Build", "")
+	err := service.ensurePipelineNameAvailable(context.Background(), projectId, model.PipelineKindApplication, "Build", "")
 	if err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("duplicate pipeline name error = %v, want conflict", err)
 	}
-	if store.projectId != projectId || store.name != "Build" {
-		t.Fatalf("name lookup scope = (%q, %q), want (%q, %q)", store.projectId, store.name, projectId, "Build")
+	if store.projectId != projectId || store.kind != model.PipelineKindApplication || store.name != "Build" {
+		t.Fatalf("name lookup scope = (%q, %q, %q), want (%q, %q, %q)", store.projectId, store.kind, store.name, projectId, model.PipelineKindApplication, "Build")
 	}
 
-	if err := service.ensurePipelineNameAvailable(context.Background(), projectId, "Build", "pipeline-1"); err != nil {
+	if err := service.ensurePipelineNameAvailable(context.Background(), projectId, model.PipelineKindApplication, "Build", "pipeline-1"); err != nil {
 		t.Fatalf("current pipeline name should be available: %v", err)
 	}
 
 	store.err = repository.ErrNotFound
-	if err := service.ensurePipelineNameAvailable(context.Background(), projectId, "New", ""); err != nil {
+	if err := service.ensurePipelineNameAvailable(context.Background(), projectId, model.PipelineKindApplication, "New", ""); err != nil {
 		t.Fatalf("unclaimed pipeline name should be available: %v", err)
 	}
 }
@@ -311,11 +311,12 @@ type pipelineNameCheckStore struct {
 	pipeline  model.Pipeline
 	err       error
 	projectId string
+	kind      string
 	name      string
 }
 
-func (s *pipelineNameCheckStore) PipelineByName(_ context.Context, projectId, name string) (model.Pipeline, error) {
-	s.projectId, s.name = projectId, name
+func (s *pipelineNameCheckStore) PipelineByName(_ context.Context, projectId, kind, name string) (model.Pipeline, error) {
+	s.projectId, s.kind, s.name = projectId, kind, name
 	return s.pipeline, s.err
 }
 

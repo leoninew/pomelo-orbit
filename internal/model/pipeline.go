@@ -40,8 +40,9 @@ type Pipeline struct {
 	UpdatedAt             time.Time `db:"updated_at"`
 }
 
-// PipelineStage is either a project-scoped reusable template or an application
-// pipeline's private executable node. Template pipelines use
+// PipelineStage is either a global reusable template or an application
+// pipeline's private executable node. Global template rows use an empty
+// ProjectId in the model and NULL in storage. Template pipelines use
 // PipelineStageReference for their DAG nodes instead of owning stages.
 type PipelineStage struct {
 	Id                             string    `db:"id"`

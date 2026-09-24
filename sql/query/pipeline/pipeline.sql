@@ -67,6 +67,25 @@ WHERE id = sqlc.arg(id)
     OR (kind = 'application' AND project_id = sqlc.arg(project_id))
   );
 
+-- name: UpdateApplicationPipelineIfVersion :execrows
+UPDATE pipeline
+SET source_template_name = sqlc.arg(source_template_name),
+    source_template_version = sqlc.arg(source_template_version),
+    name = sqlc.arg(name),
+    description = sqlc.arg(description),
+    variable_declarations = sqlc.arg(variable_declarations),
+    version = sqlc.arg(version),
+    application_id = sqlc.arg(application_id),
+    application_name = sqlc.arg(application_name),
+    version_fork_strategy = sqlc.arg(version_fork_strategy),
+    fixed_version_id = sqlc.arg(fixed_version_id),
+    fixed_version_label = sqlc.arg(fixed_version_label),
+    updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id)
+  AND kind = 'application'
+  AND version = sqlc.arg(expected_version);
+
 -- name: CountPipelineStageTemplates :one
 SELECT COUNT(*) FROM pipeline_stage
 WHERE project_id IS NULL
@@ -191,15 +210,22 @@ VALUES (?, ?, 'application', ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
 FROM pipeline_snapshot
 WHERE id = sqlc.arg(id)
-  AND project_id = sqlc.arg(project_id);
+  AND (project_id = sqlc.arg(project_id) OR project_id IS NULL);
 
 -- name: LatestPipelineSnapshot :one
 SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
 FROM pipeline_snapshot
 WHERE pipeline_id = sqlc.arg(pipeline_id)
-  AND project_id = sqlc.arg(project_id)
+  AND (project_id = sqlc.arg(project_id) OR project_id IS NULL)
 ORDER BY pipeline_version DESC, created_at DESC
 LIMIT 1;
+
+-- name: PipelineSnapshotAtVersion :one
+SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
+FROM pipeline_snapshot
+WHERE pipeline_id = sqlc.arg(pipeline_id)
+  AND pipeline_version = sqlc.arg(pipeline_version)
+  AND (project_id = sqlc.arg(project_id) OR project_id IS NULL);
 
 -- name: InsertPipelineSnapshot :exec
 INSERT INTO pipeline_snapshot (id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at)

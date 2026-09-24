@@ -576,6 +576,318 @@ func (x *PipelinePaginatedResp) GetPages() int32 {
 	return 0
 }
 
+type PipelineTemplateUpdatePreviewResp struct {
+	state                         protoimpl.MessageState                `protogen:"open.v1"`
+	Available                     bool                                  `protobuf:"varint,1,opt,name=available,proto3" json:"available,omitempty"`
+	ExpectedPipelineVersion       int32                                 `protobuf:"varint,2,opt,name=expected_pipeline_version,json=expectedPipelineVersion,proto3" json:"expected_pipeline_version,omitempty"`
+	ExpectedSourceTemplateVersion int32                                 `protobuf:"varint,3,opt,name=expected_source_template_version,json=expectedSourceTemplateVersion,proto3" json:"expected_source_template_version,omitempty"`
+	TargetSourceTemplateVersion   int32                                 `protobuf:"varint,4,opt,name=target_source_template_version,json=targetSourceTemplateVersion,proto3" json:"target_source_template_version,omitempty"`
+	SourceTemplateName            string                                `protobuf:"bytes,5,opt,name=source_template_name,json=sourceTemplateName,proto3" json:"source_template_name,omitempty"`
+	Stages                        []*PipelineTemplateStageUpdateResp    `protobuf:"bytes,6,rep,name=stages,proto3" json:"stages,omitempty"`
+	Variables                     []*PipelineTemplateVariableUpdateResp `protobuf:"bytes,7,rep,name=variables,proto3" json:"variables,omitempty"`
+	Conflicts                     []string                              `protobuf:"bytes,8,rep,name=conflicts,proto3" json:"conflicts,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) Reset() {
+	*x = PipelineTemplateUpdatePreviewResp{}
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PipelineTemplateUpdatePreviewResp) ProtoMessage() {}
+
+func (x *PipelineTemplateUpdatePreviewResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PipelineTemplateUpdatePreviewResp.ProtoReflect.Descriptor instead.
+func (*PipelineTemplateUpdatePreviewResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) GetAvailable() bool {
+	if x != nil {
+		return x.Available
+	}
+	return false
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) GetExpectedPipelineVersion() int32 {
+	if x != nil {
+		return x.ExpectedPipelineVersion
+	}
+	return 0
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) GetExpectedSourceTemplateVersion() int32 {
+	if x != nil {
+		return x.ExpectedSourceTemplateVersion
+	}
+	return 0
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) GetTargetSourceTemplateVersion() int32 {
+	if x != nil {
+		return x.TargetSourceTemplateVersion
+	}
+	return 0
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) GetSourceTemplateName() string {
+	if x != nil {
+		return x.SourceTemplateName
+	}
+	return ""
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) GetStages() []*PipelineTemplateStageUpdateResp {
+	if x != nil {
+		return x.Stages
+	}
+	return nil
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) GetVariables() []*PipelineTemplateVariableUpdateResp {
+	if x != nil {
+		return x.Variables
+	}
+	return nil
+}
+
+func (x *PipelineTemplateUpdatePreviewResp) GetConflicts() []string {
+	if x != nil {
+		return x.Conflicts
+	}
+	return nil
+}
+
+type PipelineTemplateStageUpdateResp struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	StageId               string                 `protobuf:"bytes,1,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	SourceTemplateStageId string                 `protobuf:"bytes,2,opt,name=source_template_stage_id,json=sourceTemplateStageId,proto3" json:"source_template_stage_id,omitempty"`
+	Status                string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	CurrentVersion        int32                  `protobuf:"varint,4,opt,name=current_version,json=currentVersion,proto3" json:"current_version,omitempty"`
+	TargetVersion         int32                  `protobuf:"varint,5,opt,name=target_version,json=targetVersion,proto3" json:"target_version,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *PipelineTemplateStageUpdateResp) Reset() {
+	*x = PipelineTemplateStageUpdateResp{}
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PipelineTemplateStageUpdateResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PipelineTemplateStageUpdateResp) ProtoMessage() {}
+
+func (x *PipelineTemplateStageUpdateResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PipelineTemplateStageUpdateResp.ProtoReflect.Descriptor instead.
+func (*PipelineTemplateStageUpdateResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *PipelineTemplateStageUpdateResp) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *PipelineTemplateStageUpdateResp) GetSourceTemplateStageId() string {
+	if x != nil {
+		return x.SourceTemplateStageId
+	}
+	return ""
+}
+
+func (x *PipelineTemplateStageUpdateResp) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *PipelineTemplateStageUpdateResp) GetCurrentVersion() int32 {
+	if x != nil {
+		return x.CurrentVersion
+	}
+	return 0
+}
+
+func (x *PipelineTemplateStageUpdateResp) GetTargetVersion() int32 {
+	if x != nil {
+		return x.TargetVersion
+	}
+	return 0
+}
+
+type PipelineTemplateVariableUpdateResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	StageId       string                 `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	Current       string                 `protobuf:"bytes,4,opt,name=current,proto3" json:"current,omitempty"`
+	Target        string                 `protobuf:"bytes,5,opt,name=target,proto3" json:"target,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PipelineTemplateVariableUpdateResp) Reset() {
+	*x = PipelineTemplateVariableUpdateResp{}
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PipelineTemplateVariableUpdateResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PipelineTemplateVariableUpdateResp) ProtoMessage() {}
+
+func (x *PipelineTemplateVariableUpdateResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PipelineTemplateVariableUpdateResp.ProtoReflect.Descriptor instead.
+func (*PipelineTemplateVariableUpdateResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *PipelineTemplateVariableUpdateResp) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PipelineTemplateVariableUpdateResp) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *PipelineTemplateVariableUpdateResp) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *PipelineTemplateVariableUpdateResp) GetCurrent() string {
+	if x != nil {
+		return x.Current
+	}
+	return ""
+}
+
+func (x *PipelineTemplateVariableUpdateResp) GetTarget() string {
+	if x != nil {
+		return x.Target
+	}
+	return ""
+}
+
+type PipelineTemplateUpdateReq struct {
+	state                         protoimpl.MessageState `protogen:"open.v1"`
+	ExpectedPipelineVersion       int32                  `protobuf:"varint,1,opt,name=expected_pipeline_version,json=expectedPipelineVersion,proto3" json:"expected_pipeline_version,omitempty"`
+	ExpectedSourceTemplateVersion int32                  `protobuf:"varint,2,opt,name=expected_source_template_version,json=expectedSourceTemplateVersion,proto3" json:"expected_source_template_version,omitempty"`
+	TargetSourceTemplateVersion   int32                  `protobuf:"varint,3,opt,name=target_source_template_version,json=targetSourceTemplateVersion,proto3" json:"target_source_template_version,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
+}
+
+func (x *PipelineTemplateUpdateReq) Reset() {
+	*x = PipelineTemplateUpdateReq{}
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PipelineTemplateUpdateReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PipelineTemplateUpdateReq) ProtoMessage() {}
+
+func (x *PipelineTemplateUpdateReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_pipeline_pipeline_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PipelineTemplateUpdateReq.ProtoReflect.Descriptor instead.
+func (*PipelineTemplateUpdateReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *PipelineTemplateUpdateReq) GetExpectedPipelineVersion() int32 {
+	if x != nil {
+		return x.ExpectedPipelineVersion
+	}
+	return 0
+}
+
+func (x *PipelineTemplateUpdateReq) GetExpectedSourceTemplateVersion() int32 {
+	if x != nil {
+		return x.ExpectedSourceTemplateVersion
+	}
+	return 0
+}
+
+func (x *PipelineTemplateUpdateReq) GetTargetSourceTemplateVersion() int32 {
+	if x != nil {
+		return x.TargetSourceTemplateVersion
+	}
+	return 0
+}
+
 var File_orbit_v1_pipeline_pipeline_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
@@ -652,7 +964,32 @@ const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
 	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x19\n" +
 	"\bper_page\x18\x04 \x01(\x05R\aperPage\x12\x14\n" +
-	"\x05pages\x18\x05 \x01(\x05R\x05pagesB\xd3\x01\n" +
+	"\x05pages\x18\x05 \x01(\x05R\x05pages\"\xfc\x03\n" +
+	"!PipelineTemplateUpdatePreviewResp\x12\x1c\n" +
+	"\tavailable\x18\x01 \x01(\bR\tavailable\x12:\n" +
+	"\x19expected_pipeline_version\x18\x02 \x01(\x05R\x17expectedPipelineVersion\x12G\n" +
+	" expected_source_template_version\x18\x03 \x01(\x05R\x1dexpectedSourceTemplateVersion\x12C\n" +
+	"\x1etarget_source_template_version\x18\x04 \x01(\x05R\x1btargetSourceTemplateVersion\x120\n" +
+	"\x14source_template_name\x18\x05 \x01(\tR\x12sourceTemplateName\x12J\n" +
+	"\x06stages\x18\x06 \x03(\v22.orbit.v1.pipeline.PipelineTemplateStageUpdateRespR\x06stages\x12S\n" +
+	"\tvariables\x18\a \x03(\v25.orbit.v1.pipeline.PipelineTemplateVariableUpdateRespR\tvariables\x12\x1c\n" +
+	"\tconflicts\x18\b \x03(\tR\tconflicts\"\xdd\x01\n" +
+	"\x1fPipelineTemplateStageUpdateResp\x12\x19\n" +
+	"\bstage_id\x18\x01 \x01(\tR\astageId\x127\n" +
+	"\x18source_template_stage_id\x18\x02 \x01(\tR\x15sourceTemplateStageId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12'\n" +
+	"\x0fcurrent_version\x18\x04 \x01(\x05R\x0ecurrentVersion\x12%\n" +
+	"\x0etarget_version\x18\x05 \x01(\x05R\rtargetVersion\"\x9d\x01\n" +
+	"\"PipelineTemplateVariableUpdateResp\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x19\n" +
+	"\bstage_id\x18\x02 \x01(\tR\astageId\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x18\n" +
+	"\acurrent\x18\x04 \x01(\tR\acurrent\x12\x16\n" +
+	"\x06target\x18\x05 \x01(\tR\x06target\"\xe5\x01\n" +
+	"\x19PipelineTemplateUpdateReq\x12:\n" +
+	"\x19expected_pipeline_version\x18\x01 \x01(\x05R\x17expectedPipelineVersion\x12G\n" +
+	" expected_source_template_version\x18\x02 \x01(\x05R\x1dexpectedSourceTemplateVersion\x12C\n" +
+	"\x1etarget_source_template_version\x18\x03 \x01(\x05R\x1btargetSourceTemplateVersionB\xd3\x01\n" +
 	"\x15com.orbit.v1.pipelineB\rPipelineProtoP\x01ZEgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/pipeline\xa2\x02\x03OVP\xaa\x02\x11Orbit.V1.Pipeline\xca\x02\x11Orbit\\V1\\Pipeline\xe2\x02\x1dOrbit\\V1\\Pipeline\\GPBMetadata\xea\x02\x13Orbit::V1::Pipelineb\x06proto3"
 
 var (
@@ -667,31 +1004,37 @@ func file_orbit_v1_pipeline_pipeline_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_pipeline_pipeline_proto_rawDescData
 }
 
-var file_orbit_v1_pipeline_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_orbit_v1_pipeline_pipeline_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_orbit_v1_pipeline_pipeline_proto_goTypes = []any{
-	(*PipelineResp)(nil),                      // 0: orbit.v1.pipeline.PipelineResp
-	(*PipelineCreateReq)(nil),                 // 1: orbit.v1.pipeline.PipelineCreateReq
-	(*PipelineUpdateReq)(nil),                 // 2: orbit.v1.pipeline.PipelineUpdateReq
-	(*PipelineInstantiateReq)(nil),            // 3: orbit.v1.pipeline.PipelineInstantiateReq
-	(*PipelineArtifactBindingReq)(nil),        // 4: orbit.v1.pipeline.PipelineArtifactBindingReq
-	(*PipelinePaginatedResp)(nil),             // 5: orbit.v1.pipeline.PipelinePaginatedResp
-	(*PipelineStageNodeResp)(nil),             // 6: orbit.v1.pipeline.PipelineStageNodeResp
-	(*common.VariableResp)(nil),               // 7: orbit.v1.common.VariableResp
-	(*common.VariableDeclarationReq)(nil),     // 8: orbit.v1.common.VariableDeclarationReq
-	(*common.VariableDeclarationListReq)(nil), // 9: orbit.v1.common.VariableDeclarationListReq
+	(*PipelineResp)(nil),                       // 0: orbit.v1.pipeline.PipelineResp
+	(*PipelineCreateReq)(nil),                  // 1: orbit.v1.pipeline.PipelineCreateReq
+	(*PipelineUpdateReq)(nil),                  // 2: orbit.v1.pipeline.PipelineUpdateReq
+	(*PipelineInstantiateReq)(nil),             // 3: orbit.v1.pipeline.PipelineInstantiateReq
+	(*PipelineArtifactBindingReq)(nil),         // 4: orbit.v1.pipeline.PipelineArtifactBindingReq
+	(*PipelinePaginatedResp)(nil),              // 5: orbit.v1.pipeline.PipelinePaginatedResp
+	(*PipelineTemplateUpdatePreviewResp)(nil),  // 6: orbit.v1.pipeline.PipelineTemplateUpdatePreviewResp
+	(*PipelineTemplateStageUpdateResp)(nil),    // 7: orbit.v1.pipeline.PipelineTemplateStageUpdateResp
+	(*PipelineTemplateVariableUpdateResp)(nil), // 8: orbit.v1.pipeline.PipelineTemplateVariableUpdateResp
+	(*PipelineTemplateUpdateReq)(nil),          // 9: orbit.v1.pipeline.PipelineTemplateUpdateReq
+	(*PipelineStageNodeResp)(nil),              // 10: orbit.v1.pipeline.PipelineStageNodeResp
+	(*common.VariableResp)(nil),                // 11: orbit.v1.common.VariableResp
+	(*common.VariableDeclarationReq)(nil),      // 12: orbit.v1.common.VariableDeclarationReq
+	(*common.VariableDeclarationListReq)(nil),  // 13: orbit.v1.common.VariableDeclarationListReq
 }
 var file_orbit_v1_pipeline_pipeline_proto_depIdxs = []int32{
-	6, // 0: orbit.v1.pipeline.PipelineResp.stage_nodes:type_name -> orbit.v1.pipeline.PipelineStageNodeResp
-	7, // 1: orbit.v1.pipeline.PipelineResp.variables:type_name -> orbit.v1.common.VariableResp
-	8, // 2: orbit.v1.pipeline.PipelineCreateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationReq
-	9, // 3: orbit.v1.pipeline.PipelineUpdateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationListReq
-	4, // 4: orbit.v1.pipeline.PipelineInstantiateReq.artifact_bindings:type_name -> orbit.v1.pipeline.PipelineArtifactBindingReq
-	0, // 5: orbit.v1.pipeline.PipelinePaginatedResp.items:type_name -> orbit.v1.pipeline.PipelineResp
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	10, // 0: orbit.v1.pipeline.PipelineResp.stage_nodes:type_name -> orbit.v1.pipeline.PipelineStageNodeResp
+	11, // 1: orbit.v1.pipeline.PipelineResp.variables:type_name -> orbit.v1.common.VariableResp
+	12, // 2: orbit.v1.pipeline.PipelineCreateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationReq
+	13, // 3: orbit.v1.pipeline.PipelineUpdateReq.variable_declarations:type_name -> orbit.v1.common.VariableDeclarationListReq
+	4,  // 4: orbit.v1.pipeline.PipelineInstantiateReq.artifact_bindings:type_name -> orbit.v1.pipeline.PipelineArtifactBindingReq
+	0,  // 5: orbit.v1.pipeline.PipelinePaginatedResp.items:type_name -> orbit.v1.pipeline.PipelineResp
+	7,  // 6: orbit.v1.pipeline.PipelineTemplateUpdatePreviewResp.stages:type_name -> orbit.v1.pipeline.PipelineTemplateStageUpdateResp
+	8,  // 7: orbit.v1.pipeline.PipelineTemplateUpdatePreviewResp.variables:type_name -> orbit.v1.pipeline.PipelineTemplateVariableUpdateResp
+	8,  // [8:8] is the sub-list for method output_type
+	8,  // [8:8] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_pipeline_pipeline_proto_init() }
@@ -709,7 +1052,7 @@ func file_orbit_v1_pipeline_pipeline_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_pipeline_pipeline_proto_rawDesc), len(file_orbit_v1_pipeline_pipeline_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

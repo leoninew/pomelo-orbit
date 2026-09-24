@@ -27,10 +27,12 @@ type Querier interface {
 	ListPipelines(ctx context.Context, arg ListPipelinesParams) ([]Pipeline, error)
 	PipelineById(ctx context.Context, arg PipelineByIdParams) (Pipeline, error)
 	PipelineByName(ctx context.Context, arg PipelineByNameParams) (Pipeline, error)
+	PipelineSnapshotAtVersion(ctx context.Context, arg PipelineSnapshotAtVersionParams) (PipelineSnapshot, error)
 	PipelineSnapshotById(ctx context.Context, arg PipelineSnapshotByIdParams) (PipelineSnapshot, error)
 	PipelineStageTemplateById(ctx context.Context, id string) (PipelineStageTemplateByIdRow, error)
 	PipelineStageTemplateByName(ctx context.Context, name string) (PipelineStageTemplateByNameRow, error)
 	TemplatePipelineStageReferences(ctx context.Context, pipelineID string) ([]PipelineStageReference, error)
+	UpdateApplicationPipelineIfVersion(ctx context.Context, arg UpdateApplicationPipelineIfVersionParams) (int64, error)
 	UpdatePipeline(ctx context.Context, arg UpdatePipelineParams) error
 	UpdatePipelineStageTemplate(ctx context.Context, arg UpdatePipelineStageTemplateParams) error
 }

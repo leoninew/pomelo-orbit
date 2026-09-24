@@ -576,6 +576,22 @@ func TestSQLiteSeedContainsExportedPipelineLibrary(t *testing.T) {
 			t.Fatalf("%s rows=%d, want %d", table, got, want)
 		}
 	}
+	for table := range map[string]struct{}{"pipeline": {}, "pipeline_stage": {}} {
+		var projectOwnedTemplates int
+		if err := database.QueryRow("SELECT COUNT(*) FROM " + table + " WHERE kind = 'template' AND project_id IS NOT NULL").Scan(&projectOwnedTemplates); err != nil {
+			t.Fatalf("count project-owned template %s rows: %v", table, err)
+		}
+		if projectOwnedTemplates != 0 {
+			t.Fatalf("project-owned template %s rows = %d, want 0", table, projectOwnedTemplates)
+		}
+	}
+	var applicationPipelineProjectId sql.NullString
+	if err := database.QueryRow("SELECT project_id FROM pipeline WHERE kind = 'application'").Scan(&applicationPipelineProjectId); err != nil {
+		t.Fatalf("read application pipeline project: %v", err)
+	}
+	if !applicationPipelineProjectId.Valid {
+		t.Fatal("application pipeline project_id is NULL")
+	}
 	for _, check := range []struct {
 		query string
 		want  int

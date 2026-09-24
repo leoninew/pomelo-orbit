@@ -28,9 +28,11 @@ type PipelineStore interface {
 	ApplicationPipelineStages(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStage, error)
 	UpdateTemplatePipelineWithReferences(ctx context.Context, projectId string, pipeline model.Pipeline, references []model.PipelineStageReference) error
 	UpdateApplicationPipelineWithStages(ctx context.Context, projectId string, pipeline model.Pipeline, stages []model.PipelineStage) error
+	UpdateApplicationPipelineWithStagesIfVersion(ctx context.Context, projectId string, pipeline model.Pipeline, stages []model.PipelineStage, expectedVersion int) error
 	CreateApplicationPipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error
 
 	LatestPipelineSnapshot(ctx context.Context, projectId string, pipelineId string) (model.PipelineSnapshot, error)
+	PipelineSnapshotAtVersion(ctx context.Context, projectId string, pipelineId string, pipelineVersion int) (model.PipelineSnapshot, error)
 	PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error)
 	CreatePipelineSnapshot(ctx context.Context, snapshot model.PipelineSnapshot) error
 	HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error)

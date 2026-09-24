@@ -62,13 +62,49 @@ func TestClonePipelineStageReferencesRemapsDependenciesAndVariableScopes(t *test
 	}
 }
 
-func TestGetOrCreatePipelineSnapshotRejectsTemplate(t *testing.T) {
+func TestGetOrCreatePipelineSnapshotSupportsTemplate(t *testing.T) {
 	t.Parallel()
 
-	_, err := GetOrCreatePipelineSnapshot(context.Background(), nil, "project-1", model.Pipeline{Kind: model.PipelineKindTemplate}, model.Repository{})
-	if err == nil || !strings.Contains(err.Error(), "template pipelines cannot create snapshots") {
-		t.Fatalf("expected template snapshot rejection, got %v", err)
+	store := &snapshotStoreStub{references: []model.PipelineStageReference{{
+		Id: "reference-1", PipelineId: "template-1", SourceTemplateStageId: "stage-template",
+		SourceTemplateStageName: "build", SourceTemplateStageVersion: 1, Name: "build", Image: "alpine",
+		Script: "echo build", Artifacts: "[]", DependsOn: "[]", SortOrder: 0,
+	}}}
+	snapshot, err := GetOrCreatePipelineSnapshot(context.Background(), store, "project-1", model.Pipeline{
+		Id: "template-1", Kind: model.PipelineKindTemplate, Name: "Build template", VariableDeclarations: "[]", Version: 1,
+	}, model.Repository{})
+	if err != nil {
+		t.Fatalf("create template snapshot: %v", err)
 	}
+	if snapshot.PipelineId != "template-1" || snapshot.PipelineVersion != 1 || len(store.created) != 1 {
+		t.Fatalf("template snapshot = %#v, created=%d", snapshot, len(store.created))
+	}
+}
+
+type snapshotStoreStub struct {
+	references []model.PipelineStageReference
+	created    []model.PipelineSnapshot
+}
+
+func (s *snapshotStoreStub) LatestPipelineSnapshot(context.Context, string, string) (model.PipelineSnapshot, error) {
+	return model.PipelineSnapshot{}, repository.ErrNotFound
+}
+
+func (s *snapshotStoreStub) PipelineSnapshot(context.Context, string, string) (model.PipelineSnapshot, error) {
+	return s.created[len(s.created)-1], nil
+}
+
+func (s *snapshotStoreStub) CreatePipelineSnapshot(_ context.Context, snapshot model.PipelineSnapshot) error {
+	s.created = append(s.created, snapshot)
+	return nil
+}
+
+func (s *snapshotStoreStub) ApplicationPipelineStages(context.Context, string, string) ([]model.PipelineStage, error) {
+	return nil, nil
+}
+
+func (s *snapshotStoreStub) TemplatePipelineStageReferences(context.Context, string, string) ([]model.PipelineStageReference, error) {
+	return s.references, nil
 }
 
 func TestValidatePipelineConfigurationAllowsApplicationPipelineWithoutApplicationBinding(t *testing.T) {

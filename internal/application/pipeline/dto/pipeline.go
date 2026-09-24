@@ -131,3 +131,38 @@ type PipelineSnapshotDetail struct {
 	StagesSnapshot []model.StageDefinition
 	Variables      []variableview.View
 }
+
+type PipelineTemplateUpdatePreview struct {
+	Available                     bool
+	ExpectedPipelineVersion       int
+	ExpectedSourceTemplateVersion int
+	TargetSourceTemplateVersion   int
+	SourceTemplateName            string
+	Stages                        []PipelineTemplateStageUpdate
+	Variables                     []PipelineTemplateVariableUpdate
+	Conflicts                     []string
+}
+
+type PipelineTemplateStageUpdate struct {
+	StageId               string
+	SourceTemplateStageId string
+	Status                string
+	CurrentVersion        int
+	TargetVersion         int
+	Node                  *PipelineStageNodeDetail
+	Differences           []PipelineStageTemplateFieldDifference
+}
+
+type PipelineTemplateVariableUpdate struct {
+	Name    string
+	StageId string
+	Status  string
+	Current string
+	Target  string
+}
+
+type PipelineTemplateApplyUpdateInput struct {
+	ExpectedPipelineVersion       int
+	ExpectedSourceTemplateVersion int
+	TargetSourceTemplateVersion   int
+}

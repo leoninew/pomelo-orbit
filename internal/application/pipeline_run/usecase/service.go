@@ -113,6 +113,9 @@ func (s stores) CreatePipelineSnapshot(ctx context.Context, snapshot model.Pipel
 func (s stores) ApplicationPipelineStages(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStage, error) {
 	return s.pipeline.ApplicationPipelineStages(ctx, projectId, pipelineId)
 }
+func (s stores) TemplatePipelineStageReferences(ctx context.Context, projectId string, pipelineId string) ([]model.PipelineStageReference, error) {
+	return s.pipeline.TemplatePipelineStageReferences(ctx, projectId, pipelineId)
+}
 func (s stores) Application(ctx context.Context, projectId, id string) (model.Application, error) {
 	return s.application.Application(ctx, projectId, id)
 }

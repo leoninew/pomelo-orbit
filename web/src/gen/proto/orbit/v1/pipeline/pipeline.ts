@@ -75,3 +75,36 @@ export interface PipelinePaginatedResp {
   per_page: number;
   pages: number;
 }
+
+export interface PipelineTemplateUpdatePreviewResp {
+  available: boolean;
+  expected_pipeline_version: number;
+  expected_source_template_version: number;
+  target_source_template_version: number;
+  source_template_name: string;
+  stages: PipelineTemplateStageUpdateResp[];
+  variables: PipelineTemplateVariableUpdateResp[];
+  conflicts: string[];
+}
+
+export interface PipelineTemplateStageUpdateResp {
+  stage_id: string;
+  source_template_stage_id: string;
+  status: string;
+  current_version: number;
+  target_version: number;
+}
+
+export interface PipelineTemplateVariableUpdateResp {
+  name: string;
+  stage_id: string;
+  status: string;
+  current: string;
+  target: string;
+}
+
+export interface PipelineTemplateUpdateReq {
+  expected_pipeline_version: number;
+  expected_source_template_version: number;
+  target_source_template_version: number;
+}

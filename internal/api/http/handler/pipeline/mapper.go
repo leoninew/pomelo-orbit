@@ -71,6 +71,18 @@ func pipelineSnapshotResponse(detail pipelinedto.PipelineSnapshotDetail) *pipeli
 	}
 	return &pipelinev1.PipelineSnapshotResp{Id: item.Id, PipelineId: item.PipelineId, PipelineName: item.PipelineName, PipelineVersion: int32(item.PipelineVersion), SourcePipelineId: item.SourcePipelineId, SourceTemplateName: item.SourceTemplateName, SourceTemplateVersion: int32(item.SourceTemplateVersion), ApplicationId: item.ApplicationId, ApplicationName: item.ApplicationName, RepositoryId: item.RepositoryId, RepositoryName: item.RepositoryName, VersionForkStrategy: item.VersionForkStrategy, FixedVersionId: item.FixedVersionId, FixedVersionLabel: item.FixedVersionLabel, StagesSnapshot: stages, Variables: variableResponses(detail.Variables), CreatedAt: transport.FormatTime(item.CreatedAt)}
 }
+
+func pipelineTemplateUpdatePreviewResponse(detail pipelinedto.PipelineTemplateUpdatePreview) *pipelinev1.PipelineTemplateUpdatePreviewResp {
+	stages := make([]*pipelinev1.PipelineTemplateStageUpdateResp, 0, len(detail.Stages))
+	for _, item := range detail.Stages {
+		stages = append(stages, &pipelinev1.PipelineTemplateStageUpdateResp{StageId: item.StageId, SourceTemplateStageId: item.SourceTemplateStageId, Status: item.Status, CurrentVersion: int32(item.CurrentVersion), TargetVersion: int32(item.TargetVersion)})
+	}
+	variables := make([]*pipelinev1.PipelineTemplateVariableUpdateResp, 0, len(detail.Variables))
+	for _, item := range detail.Variables {
+		variables = append(variables, &pipelinev1.PipelineTemplateVariableUpdateResp{Name: item.Name, StageId: item.StageId, Status: item.Status, Current: item.Current, Target: item.Target})
+	}
+	return &pipelinev1.PipelineTemplateUpdatePreviewResp{Available: detail.Available, ExpectedPipelineVersion: int32(detail.ExpectedPipelineVersion), ExpectedSourceTemplateVersion: int32(detail.ExpectedSourceTemplateVersion), TargetSourceTemplateVersion: int32(detail.TargetSourceTemplateVersion), SourceTemplateName: detail.SourceTemplateName, Stages: stages, Variables: variables, Conflicts: detail.Conflicts}
+}
 func serviceArtifacts(items []*pipelinev1.ArtifactConfigReq) []pipelinedto.ArtifactConfig {
 	result := make([]pipelinedto.ArtifactConfig, 0, len(items))
 	for _, item := range items {

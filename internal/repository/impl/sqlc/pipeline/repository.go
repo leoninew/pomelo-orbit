@@ -143,6 +143,32 @@ func (r Repository) UpdateApplicationPipelineWithStages(ctx context.Context, pro
 	return nil
 }
 
+func (r Repository) UpdateApplicationPipelineWithStagesIfVersion(ctx context.Context, projectId string, pipeline model.Pipeline, stages []model.PipelineStage, expectedVersion int) error {
+	rows, err := r.q(ctx).UpdateApplicationPipelineIfVersion(ctx, pipelinesqlc.UpdateApplicationPipelineIfVersionParams{
+		SourceTemplateName: nullString(pipeline.SourceTemplateName), SourceTemplateVersion: nullInt(pipeline.SourceTemplateVersion),
+		Name: pipeline.Name, Description: pipeline.Description, VariableDeclarations: pipeline.VariableDeclarations, Version: int64(pipeline.Version),
+		ApplicationId: nullString(pipeline.ApplicationId), ApplicationName: nullString(pipeline.ApplicationName), VersionForkStrategy: nullString(pipeline.VersionForkStrategy),
+		FixedVersionId: nullString(pipeline.FixedVersionId), FixedVersionLabel: nullString(pipeline.FixedVersionLabel), UpdatedAt: time.Now().UTC(),
+		Id: pipeline.Id, ProjectId: nullString(&projectId), ExpectedVersion: int64(expectedVersion),
+	})
+	if err != nil {
+		return translate(err)
+	}
+	if rows != 1 {
+		return repository.ErrStateConflict
+	}
+	q := r.q(ctx)
+	if err := translate(q.DeleteApplicationPipelineStages(ctx, pipelinesqlc.DeleteApplicationPipelineStagesParams{PipelineId: nullString(&pipeline.Id), ProjectId: nullString(&projectId)})); err != nil {
+		return err
+	}
+	for _, stage := range stages {
+		if err := translate(q.InsertApplicationPipelineStage(ctx, applicationStageParams(stage))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r Repository) UpdateTemplatePipelineWithReferences(ctx context.Context, projectId string, pipeline model.Pipeline, references []model.PipelineStageReference) error {
 	if err := r.UpdatePipeline(ctx, projectId, pipeline); err != nil {
 		return err
@@ -160,6 +186,10 @@ func (r Repository) UpdateTemplatePipelineWithReferences(ctx context.Context, pr
 }
 func (r Repository) LatestPipelineSnapshot(ctx context.Context, projectId string, pipelineId string) (model.PipelineSnapshot, error) {
 	item, err := r.q(ctx).LatestPipelineSnapshot(ctx, pipelinesqlc.LatestPipelineSnapshotParams{PipelineId: pipelineId, ProjectId: nullString(&projectId)})
+	return snapshotModel(item), translate(err)
+}
+func (r Repository) PipelineSnapshotAtVersion(ctx context.Context, projectId string, pipelineId string, pipelineVersion int) (model.PipelineSnapshot, error) {
+	item, err := r.q(ctx).PipelineSnapshotAtVersion(ctx, pipelinesqlc.PipelineSnapshotAtVersionParams{PipelineId: pipelineId, PipelineVersion: int64(pipelineVersion), ProjectId: nullString(&projectId)})
 	return snapshotModel(item), translate(err)
 }
 func (r Repository) PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error) {

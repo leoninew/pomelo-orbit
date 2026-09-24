@@ -51,7 +51,7 @@ Repository 的 `value/default` 是全局覆盖；Template 和 Application Pipeli
 
 ## Snapshot、Run 与 Version
 
-只有 `kind=application` 的 Pipeline 会在运行前按 Pipeline 版本创建或复用 Snapshot。Snapshot 冻结完整阶段定义、创建时可获得的 Repository/Pipeline/Stage 变量声明、来源 Template、Repository，以及可选的 Application 和 Version 策略，并保存 runtime/system 的声明元数据和阶段默认值来源。Snapshot 的变量声明仅用于历史展示与追溯；变量在每次 Run 和 Retry 时由当前 Repository、当前 Pipeline 配置及冻结阶段定义解析。全局有效值和带 `stage_id` 的 Stage 有效值分别保存到 Run，阶段默认值保留在变量元数据并由冻结 Stage 文本独立渲染，因此不存在多阶段同名变量被压缩为一个 Run 全局值的情况。手动运行会打开分支或标签弹窗，默认读取绑定 Repository 的 `repository_ref`，并允许用户在触发前修改。Template 有自己的 `version` 用于来源追溯，但不拥有 Snapshot。
+`pipeline_snapshot` 是所有 Pipeline 共用的不可变定义快照机制，不按 `kind` 拒绝快照。Template 快照冻结 `PipelineStageReference` 和变量声明；Application 快照冻结运行所需的应用阶段、Repository/Pipeline/Stage 变量声明、来源 Template、Repository，以及可选的 Application 和 Version 策略。普通模板编辑、独立阶段模板编辑和升级预览不自动创建快照；实例化实际采用模板、整体升级成功或 Application 运行前，才按明确的 Pipeline 版本创建或复用快照。Snapshot 的变量声明仅用于历史展示与追溯；变量在每次 Run 和 Retry 时由当前 Repository、当前 Pipeline 配置及冻结阶段定义解析。全局有效值和带 `stage_id` 的 Stage 有效值分别保存到 Run，阶段默认值保留在变量元数据并由冻结 Stage 文本独立渲染，因此不存在多阶段同名变量被压缩为一个 Run 全局值的情况。手动运行会打开分支或标签弹窗，默认读取绑定 Repository 的 `repository_ref`，并允许用户在触发前修改。
 
 ```text
 应用流水线
@@ -103,7 +103,7 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 | `POST /api/pipeline/:pipeline_id/stage` | 从阶段库引入节点 |
 | `PUT/DELETE /api/pipeline/:pipeline_id/stage/:stage_id` | 更新/删除 Pipeline 节点 |
 | `GET/POST /api/pipeline/:pipeline_id/stage/:stage_id/template-update-preview|template-update` | 预览并显式应用模板阶段更新 |
-| `GET /api/pipeline/snapshot/:snapshot_id` | Application Pipeline 的不可变快照 |
+| `GET /api/pipeline/snapshot/:snapshot_id` | Pipeline 的不可变定义快照 |
 | `POST /api/pipeline/:pipeline_id/trigger` | 运行 Application Pipeline |
 | `GET /api/pipeline-run` | 按 Repository 或 Pipeline 查询 Run |
 | `POST /api/pipeline-run/:run_id/retry` | 从历史 Run 重试 |

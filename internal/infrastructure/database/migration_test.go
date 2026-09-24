@@ -598,8 +598,8 @@ func TestSQLiteSeedContainsExportedPipelineLibrary(t *testing.T) {
 	}{
 		{"SELECT version FROM pipeline_stage WHERE id = '01M38WMQDCY38G5B09PD7JG1YW'", 2},
 		{"SELECT version FROM pipeline_stage WHERE id = '01M38WMQDCY38G5B09PF8M85XG'", 4},
-		{"SELECT version FROM pipeline WHERE id = '01M391JCSGN0210QR8GJEPCV4Q'", 13},
-		{"SELECT version FROM pipeline WHERE id = '01M391JCSGN0210QR8GJ0AHNKC'", 2},
+		{"SELECT version FROM pipeline WHERE id = '01M391Y93NTCXQ6J8H34VBMJJR'", 13},
+		{"SELECT version FROM pipeline WHERE id = '01M391Y93NTCXQ6J8H38DXEN8Q'", 2},
 		{"SELECT source_template_stage_version FROM pipeline_stage_reference WHERE id = '01M38WMQDCY38G5B09PTZ4KKAB'", 2},
 		{"SELECT source_template_stage_version FROM pipeline_stage_reference WHERE id = '01M38WMQDCY38G5B09PVB697C5'", 4},
 		{"SELECT sort_order FROM pipeline_stage WHERE id = '01M38WMQDCY38G5B09PD7JG1YW'", 1},

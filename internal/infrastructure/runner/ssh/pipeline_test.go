@@ -1,7 +1,10 @@
 package sshrunner
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"io"
 	"strings"
 	"testing"
 
@@ -9,6 +12,29 @@ import (
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+type failureAtEndReader struct{ *bytes.Reader }
+
+func (reader failureAtEndReader) Read(content []byte) (int, error) {
+	count, err := reader.Reader.Read(content)
+	if errors.Is(err, io.EOF) {
+		return count, errors.New("sftp: Failure")
+	}
+	return count, err
+}
+
+func TestRemoteStageLogStopsAtSnapshotEnd(t *testing.T) {
+	content := []byte("remote-stage-ready\n")
+	reader := failureAtEndReader{bytes.NewReader(content)}
+	logs, next, err := readRemoteStageLog(reader, int64(len(content)), 0)
+	if err != nil || !bytes.Equal(logs, content) || next != len(content) {
+		t.Fatalf("read remote log: logs=%q offset=%d err=%v", logs, next, err)
+	}
+	logs, next, err = readRemoteStageLog(reader, int64(len(content)), next)
+	if err != nil || len(logs) != 0 || next != len(content) {
+		t.Fatalf("read completed remote log: logs=%q offset=%d err=%v", logs, next, err)
+	}
+}
 
 func TestWindowsPipelineWorkspacePathsAndSafety(t *testing.T) {
 	workspace := &pipelineWorkspace{root: "D:/Orbit Workspace/pipeline"}

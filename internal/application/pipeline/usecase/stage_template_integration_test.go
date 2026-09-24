@@ -167,6 +167,42 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 	}
 }
 
+func TestDeletePipelineStageNodeRemovesScopedVariables(t *testing.T) {
+	cases := []struct {
+		name       string
+		pipelineId string
+		stageId    string
+	}{
+		{name: "template", pipelineId: "01M391Y93NTCXQ6J8H34VBMJJR", stageId: "01M38WMQDCY38G5B09PVB697C5"},
+		{name: "application", pipelineId: "01M391Y93NTCXQ6J8H38DXEN8Q", stageId: "01M38WMQDCY38G5B09PRXSWZXT"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			service, store, database := newPipelineTemplateUpdateService(t)
+			defer func() { _ = database.Close() }()
+			ctx := context.Background()
+
+			detail, err := service.DeletePipelineStageNode(ctx, pipelineTemplateUpdateUserId, pipelineTemplateUpdateProjectId, testCase.pipelineId, testCase.stageId)
+			if err != nil {
+				t.Fatalf("delete build stage: %v", err)
+			}
+			if len(detail.StageNodes) != 1 || detail.StageNodes[0].Node.Id == testCase.stageId {
+				t.Fatalf("remaining stages = %#v", detail.StageNodes)
+			}
+			if detail.Pipeline.VariableDeclarations != "[]" {
+				t.Fatalf("updated pipeline = %#v", detail.Pipeline)
+			}
+			stored, err := store.Pipeline(ctx, pipelineTemplateUpdateProjectId, testCase.pipelineId)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if stored.VariableDeclarations != "[]" {
+				t.Fatalf("stored pipeline = %#v", stored)
+			}
+		})
+	}
+}
+
 func newPipelineTemplateUpdateService(t *testing.T) (Service, repository.PipelineStore, *sql.DB) {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")

@@ -269,18 +269,6 @@ func TestApplicationStageDeletionDependencyFindsDependentStage(t *testing.T) {
 	}
 }
 
-func TestPipelineVariableScopedToStageBlocksDeletion(t *testing.T) {
-	t.Parallel()
-
-	variableName, err := pipelineVariableScopedToStage(`[{"name":"working_dir","stage_id":"frontend"}]`, "frontend")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if variableName != "working_dir" {
-		t.Fatalf("variable name = %q, want working_dir", variableName)
-	}
-}
-
 func TestValidatePipelineVariableScopesRejectsUnknownTemplateStage(t *testing.T) {
 	t.Parallel()
 

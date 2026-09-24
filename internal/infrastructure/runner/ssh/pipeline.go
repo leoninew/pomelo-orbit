@@ -202,6 +202,13 @@ func (logs *pipelineLogs) Writer(logPath string) (io.WriteCloser, error) {
 		closeClient()
 		return nil, fmt.Errorf("open remote stage log: %w", err)
 	}
+	if logs.workspace.target.Environment.SSH.Platform == model.EnvironmentPlatformWindows {
+		if err := file.Close(); err != nil {
+			closeClient()
+			return nil, fmt.Errorf("close remote stage log: %w", err)
+		}
+		return &remoteLogWriter{client: client, path: logPath, ctx: logs.workspace.ctx, closeClient: closeClient}, nil
+	}
 	return &remoteLogWriter{file: file, closeClient: closeClient}, nil
 }
 
@@ -214,24 +221,61 @@ func (logs *pipelineLogs) Read(logPath string, offset int) ([]byte, int, error) 
 		return nil, offset, err
 	}
 	defer closeClient()
-	file, err := client.Open(logPath)
+	file, err := openStageLogFile(logs.workspace.ctx, logs.workspace.target.Environment.SSH.Platform, func() (*sftp.File, error) {
+		return client.Open(logPath)
+	})
 	if os.IsNotExist(err) {
 		return nil, offset, nil
 	}
 	if err != nil {
-		return nil, offset, err
+		return nil, offset, fmt.Errorf("open remote stage log: %w", err)
 	}
 	defer func() { _ = file.Close() }()
-	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil {
-		return nil, offset, err
+	info, err := file.Stat()
+	if err != nil {
+		return nil, offset, fmt.Errorf("stat remote stage log: %w", err)
 	}
-	content, err := io.ReadAll(file)
-	return content, offset + len(content), err
+	return readRemoteStageLog(file, info.Size(), offset)
+}
+
+func openStageLogFile(ctx context.Context, platform string, open func() (*sftp.File, error)) (*sftp.File, error) {
+	file, err := open()
+	for attempts := 0; attempts < 40 && platform == model.EnvironmentPlatformWindows && isSFTPSharingFailure(err); attempts++ {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(50 * time.Millisecond):
+		}
+		file, err = open()
+	}
+	return file, err
+}
+
+func isSFTPSharingFailure(err error) bool {
+	var statusError *sftp.StatusError
+	return errors.As(err, &statusError) && statusError.FxCode() == sftp.ErrSSHFxFailure
+}
+
+func readRemoteStageLog(file io.ReadSeeker, size int64, offset int) ([]byte, int, error) {
+	if int64(offset) >= size {
+		return nil, offset, nil
+	}
+	if _, err := file.Seek(int64(offset), io.SeekStart); err != nil {
+		return nil, offset, fmt.Errorf("seek remote stage log: %w", err)
+	}
+	content, err := io.ReadAll(io.LimitReader(file, size-int64(offset)))
+	if err != nil {
+		return content, offset + len(content), fmt.Errorf("read remote stage log: %w", err)
+	}
+	return content, offset + len(content), nil
 }
 
 type remoteLogWriter struct {
 	mu          sync.Mutex
 	file        *sftp.File
+	client      *sftp.Client
+	path        string
+	ctx         context.Context
 	closeClient func()
 	closed      bool
 }
@@ -242,7 +286,27 @@ func (writer *remoteLogWriter) Write(content []byte) (int, error) {
 	if writer.closed {
 		return 0, os.ErrClosed
 	}
-	return writer.file.Write(content)
+	if writer.file != nil {
+		return writer.file.Write(content)
+	}
+	if len(content) == 0 {
+		return 0, nil
+	}
+	file, err := openStageLogFile(writer.ctx, model.EnvironmentPlatformWindows, func() (*sftp.File, error) {
+		return writer.client.OpenFile(writer.path, os.O_APPEND|os.O_WRONLY)
+	})
+	if err != nil {
+		return 0, fmt.Errorf("open remote stage log append: %w", err)
+	}
+	count, writeErr := file.Write(content)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return count, fmt.Errorf("write remote stage log: %w", errors.Join(writeErr, closeErr))
+	}
+	if closeErr != nil {
+		return count, fmt.Errorf("close remote stage log append: %w", closeErr)
+	}
+	return count, nil
 }
 
 func (writer *remoteLogWriter) Close() error {
@@ -252,7 +316,10 @@ func (writer *remoteLogWriter) Close() error {
 		return nil
 	}
 	writer.closed = true
-	err := writer.file.Close()
+	var err error
+	if writer.file != nil {
+		err = writer.file.Close()
+	}
 	writer.closeClient()
 	return err
 }

@@ -104,6 +104,13 @@ func testSSHPipelineRemoteEndToEnd(t *testing.T, targetName string, platform str
 		t.Fatal(err)
 	}
 	options.LogWriter = writer
+	if _, err := writer.Write([]byte("remote-stage-started\n")); err != nil {
+		t.Fatal(err)
+	}
+	initialContent, initialOffset, err := logs.Read(logPath, 0)
+	if err != nil || !bytes.Contains(initialContent, []byte("remote-stage-started")) || initialOffset != len(initialContent) {
+		t.Fatalf("read active remote stage log offset=%d err=%v", initialOffset, err)
+	}
 	exitCode, _, runErr := runner.Run(ctx, options)
 	if closeErr := writer.Close(); closeErr != nil {
 		t.Fatal(closeErr)

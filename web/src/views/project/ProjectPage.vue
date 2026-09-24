@@ -429,6 +429,8 @@
   import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
 
+  const projectCodePattern = /^[a-z][a-z0-9+.-]{0,31}$/;
+
   const router = useRouter();
   const route = useRoute();
   const { t } = useI18n();
@@ -508,7 +510,7 @@
     if (editingProject.value) {
       return !errors.name;
     }
-    errors.code = /^[a-z0-9_-]+$/.test(form.code) ? '' : t('project.codeInvalid');
+    errors.code = projectCodePattern.test(form.code) ? '' : t('project.codeInvalid');
     return !errors.name && !errors.code;
   }
 
@@ -678,7 +680,9 @@
     handoverErrors.file = handoverFile.value ? '' : t('project.handoverFileRequired');
     if (handoverMode.value === 'new') {
       handoverErrors.name = handoverForm.name.trim() ? '' : t('project.nameRequired');
-      handoverErrors.code = /^[a-z0-9_-]+$/.test(handoverForm.code) ? '' : t('project.codeInvalid');
+      handoverErrors.code = projectCodePattern.test(handoverForm.code)
+        ? ''
+        : t('project.codeInvalid');
       handoverErrors.targetProject = '';
     } else {
       handoverErrors.name = '';

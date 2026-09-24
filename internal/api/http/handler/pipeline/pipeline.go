@@ -184,3 +184,34 @@ func (h Handler) GetPipelineSnapshot(c *gin.Context) {
 	response := pipelineSnapshotResponse(detail)
 	transport.WriteProtoJSON(c, http.StatusOK, response)
 }
+
+func (h Handler) PreviewPipelineTemplateUpdate(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	detail, err := h.service.PipelineTemplateUpdatePreviewForUser(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("pipeline_id"))
+	if err != nil {
+		transport.WriteError(c, err)
+		return
+	}
+	transport.WriteProtoJSON(c, http.StatusOK, pipelineTemplateUpdatePreviewResponse(detail))
+}
+
+func (h Handler) ApplyPipelineTemplateUpdate(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req pipelinev1.PipelineTemplateUpdateReq
+	if transport.DecodeJSON(c, &req) != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	detail, err := h.service.ApplyPipelineTemplateUpdate(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("pipeline_id"), pipelinedto.PipelineTemplateApplyUpdateInput{ExpectedPipelineVersion: int(req.ExpectedPipelineVersion), ExpectedSourceTemplateVersion: int(req.ExpectedSourceTemplateVersion), TargetSourceTemplateVersion: int(req.TargetSourceTemplateVersion)})
+	if err != nil {
+		transport.WriteError(c, err)
+		return
+	}
+	transport.WriteProtoJSON(c, http.StatusOK, pipelineResponse(detail))
+}

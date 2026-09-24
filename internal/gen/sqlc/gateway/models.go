@@ -263,7 +263,7 @@ type PipelineSnapshot struct {
 
 type PipelineStage struct {
 	Id                             string         `db:"id"`
-	ProjectId                      string         `db:"project_id"`
+	ProjectId                      sql.NullString `db:"project_id"`
 	Kind                           string         `db:"kind"`
 	PipelineId                     sql.NullString `db:"pipeline_id"`
 	Name                           string         `db:"name"`

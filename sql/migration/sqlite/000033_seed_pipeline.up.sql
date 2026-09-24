@@ -6,28 +6,28 @@ INSERT INTO "repository" ("id", "project_id", "name", "code", "repository_type",
 
 -- pipeline: 3 row(s).
 INSERT INTO "pipeline" ("id", "project_id", "kind", "source_pipeline_id", "source_template_name", "source_template_version", "application_id", "application_name", "repository_id", "repository_name", "version_fork_strategy", "fixed_version_id", "fixed_version_label", "name", "description", "variable_declarations", "version") VALUES
-    ('01KNVEJPWVK757139NMNNNCEFE', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Go 构建流水线', '- test & lint
+    ('01KNVEJPWVK757139NMNNNCEFE', NULL, 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Go 构建流水线', '- test & lint
 - build', '[{"default":null,"editable":true,"name":"working_dir","secret":false,"source":"pipeline_custom","value":".","description":""}]', 12),
-    ('01KZG83K2MXG08EJ6G48SG38B3', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '镜像构建流水线', '适用于使用 Dockerfile 进制镜像构建的仓库', '[{"default":null,"editable":true,"name":"image_name","secret":false,"source":"pipeline_custom","stage_id":"01KZGBGDK1G249681EVBDA9035","value":"{{ repository_code }}","description":""}]', 13),
+    ('01KZG83K2MXG08EJ6G48SG38B3', NULL, 'template', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '镜像构建流水线', '适用于使用 Dockerfile 进制镜像构建的仓库', '[{"default":null,"editable":true,"name":"image_name","secret":false,"source":"pipeline_custom","stage_id":"01KZGBGDK1G249681EVBDA9035","value":"{{ repository_code }}","description":""}]', 13),
     ('01M346D2NDEEWF23EBGYRM695X', '01KRRKK0K3T519ZQZES3M4QA9Z', 'application', '01KZG83K2MXG08EJ6G48SG38B3', '镜像构建流水线', 13, NULL, NULL, '01M327332NTE0VY4S5YRWJ2HZR', 'Go Docker', NULL, NULL, NULL, '镜像构建流水线： Go Docker', '适用于使用 Dockerfile 进制镜像构建的仓库', '[{"default":null,"description":"","editable":true,"name":"image_name","secret":false,"source":"pipeline_custom","stage_id":"01M346D2NDEEWF23EBH1W6Y4D6","value":"{{ repository_code }}"}]', 2);
 
 -- pipeline_stage: 7 row(s).
 INSERT INTO "pipeline_stage" ("id", "project_id", "kind", "pipeline_id", "name", "image", "script", "description", "version", "source_template_stage_id", "source_template_stage_name", "source_template_stage_version", "source_template_stage_description", "artifacts", "depends_on", "sort_order") VALUES
-    ('01KNRANZDR4PASATAXKTBBTRX9', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'golang:1.25 test', 'golang:1.25-alpine', 'set -e
+    ('01KNRANZDR4PASATAXKTBBTRX9', NULL, 'template', NULL, 'golang:1.25 test', 'golang:1.25-alpine', 'set -e
 cd {{ working_dir }}
 go env -w GOPROXY=https://goproxy.cn,direct
 go test ./...', '运行 Go 单元测试', 4, NULL, NULL, NULL, NULL, '[]', NULL, NULL),
-    ('01KNRDSSJ7RNND7110175N4NR2', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'golang:1.25 build', 'golang:1.25-alpine', 'set -e
+    ('01KNRDSSJ7RNND7110175N4NR2', NULL, 'template', NULL, 'golang:1.25 build', 'golang:1.25-alpine', 'set -e
 cd {{ working_dir }}
 mkdir -p dist
 go env -w GOPROXY=https://goproxy.cn,direct
 go build -o dist/', '运行 Go 构建', 6, NULL, NULL, NULL, NULL, '[]', NULL, NULL),
-    ('01KNRKNAHG3EBS07VBK2YY5ZQN', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'golang:1.25 lint', 'golang:1.25-alpine', 'set -e
+    ('01KNRKNAHG3EBS07VBK2YY5ZQN', NULL, 'template', NULL, 'golang:1.25 lint', 'golang:1.25-alpine', 'set -e
 cd {{ working_dir }}
 go env -w GOPROXY=https://goproxy.cn,direct
 go install golang.org/x/lint/golint@latest
 golint ./...', '运行 Go 代码质量', 4, NULL, NULL, NULL, NULL, '[]', NULL, NULL),
-    ('01KRCWNJVA1DM02TJXZ4STJD01', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'git clone', 'alpine/git', 'set -e
+    ('01KRCWNJVA1DM02TJXZ4STJD01', NULL, 'template', NULL, 'git clone', 'alpine/git', 'set -e
 # 将目录所有权改为当前执行用户
 chown -R $(id -u):$(id -g) /workspace
 
@@ -44,7 +44,7 @@ git remote add origin {{ repository_url }}
 git fetch --depth=1 --force origin {{ repository_ref }}
 git clean -fd
 git checkout --force -B {{ repository_ref }} FETCH_HEAD', 'Clone source repository', 2, NULL, NULL, NULL, NULL, '[{"collector":"command","command":"git rev-parse HEAD","format":"git_object_id","name":"source_commit"}]', NULL, NULL),
-    ('01KRCWNJVA1DM02TJXZ4STJD06', '01KRRKK0K3T519ZQZES3M4QA9Z', 'template', NULL, 'docker build', 'docker:29.4', 'set -e
+    ('01KRCWNJVA1DM02TJXZ4STJD06', NULL, 'template', NULL, 'docker build', 'docker:29.4', 'set -e
 
 cd {{ working_dir | default: "." }}
 

@@ -723,6 +723,46 @@ func (q *Queries) PipelineByName(ctx context.Context, arg PipelineByNameParams) 
 	return i, err
 }
 
+const pipelineSnapshotAtVersion = `-- name: PipelineSnapshotAtVersion :one
+SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
+FROM pipeline_snapshot
+WHERE pipeline_id = ?
+  AND pipeline_version = ?
+  AND (project_id = ? OR project_id IS NULL)
+`
+
+type PipelineSnapshotAtVersionParams struct {
+	PipelineId      string         `db:"pipeline_id"`
+	PipelineVersion int64          `db:"pipeline_version"`
+	ProjectId       sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) PipelineSnapshotAtVersion(ctx context.Context, arg PipelineSnapshotAtVersionParams) (PipelineSnapshot, error) {
+	row := q.db.QueryRowContext(ctx, pipelineSnapshotAtVersion, arg.PipelineId, arg.PipelineVersion, arg.ProjectId)
+	var i PipelineSnapshot
+	err := row.Scan(
+		&i.Id,
+		&i.ProjectId,
+		&i.PipelineId,
+		&i.PipelineName,
+		&i.PipelineVersion,
+		&i.SourcePipelineId,
+		&i.SourceTemplateName,
+		&i.SourceTemplateVersion,
+		&i.ApplicationId,
+		&i.ApplicationName,
+		&i.RepositoryId,
+		&i.RepositoryName,
+		&i.VersionForkStrategy,
+		&i.FixedVersionId,
+		&i.FixedVersionLabel,
+		&i.StagesSnapshot,
+		&i.VariablesSnapshot,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const pipelineSnapshotById = `-- name: PipelineSnapshotById :one
 SELECT id, project_id, pipeline_id, pipeline_name, pipeline_version, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, stages_snapshot, variables_snapshot, created_at
 FROM pipeline_snapshot
@@ -930,6 +970,68 @@ func (q *Queries) TemplatePipelineStageReferences(ctx context.Context, pipelineI
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateApplicationPipelineIfVersion = `-- name: UpdateApplicationPipelineIfVersion :execrows
+UPDATE pipeline
+SET source_template_name = ?,
+    source_template_version = ?,
+    name = ?,
+    description = ?,
+    variable_declarations = ?,
+    version = ?,
+    application_id = ?,
+    application_name = ?,
+    version_fork_strategy = ?,
+    fixed_version_id = ?,
+    fixed_version_label = ?,
+    updated_at = ?
+WHERE id = ?
+  AND project_id = ?
+  AND kind = 'application'
+  AND version = ?
+`
+
+type UpdateApplicationPipelineIfVersionParams struct {
+	SourceTemplateName    sql.NullString `db:"source_template_name"`
+	SourceTemplateVersion sql.NullInt64  `db:"source_template_version"`
+	Name                  string         `db:"name"`
+	Description           string         `db:"description"`
+	VariableDeclarations  string         `db:"variable_declarations"`
+	Version               int64          `db:"version"`
+	ApplicationId         sql.NullString `db:"application_id"`
+	ApplicationName       sql.NullString `db:"application_name"`
+	VersionForkStrategy   sql.NullString `db:"version_fork_strategy"`
+	FixedVersionId        sql.NullString `db:"fixed_version_id"`
+	FixedVersionLabel     sql.NullString `db:"fixed_version_label"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+	Id                    string         `db:"id"`
+	ProjectId             sql.NullString `db:"project_id"`
+	ExpectedVersion       int64          `db:"expected_version"`
+}
+
+func (q *Queries) UpdateApplicationPipelineIfVersion(ctx context.Context, arg UpdateApplicationPipelineIfVersionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateApplicationPipelineIfVersion,
+		arg.SourceTemplateName,
+		arg.SourceTemplateVersion,
+		arg.Name,
+		arg.Description,
+		arg.VariableDeclarations,
+		arg.Version,
+		arg.ApplicationId,
+		arg.ApplicationName,
+		arg.VersionForkStrategy,
+		arg.FixedVersionId,
+		arg.FixedVersionLabel,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+		arg.ExpectedVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updatePipeline = `-- name: UpdatePipeline :exec

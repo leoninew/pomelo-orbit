@@ -31,7 +31,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 	templateVersion := 2
 	template := model.PipelineStage{
 		Id:          "template-stage-build",
-		ProjectId:   pipelineTemplateUpdateProjectId,
+		ProjectId:   "",
 		Kind:        model.PipelineStageKindTemplate,
 		Name:        "Build image",
 		Image:       "docker:27",
@@ -46,7 +46,7 @@ func TestApplyPipelineStageTemplateUpdateWritesLatestVersionToOwningPipeline(t *
 
 	templatePipeline := model.Pipeline{
 		Id:                   "template-pipeline-update",
-		ProjectId:            stringPointer(pipelineTemplateUpdateProjectId),
+		ProjectId:            nil,
 		Kind:                 model.PipelineKindTemplate,
 		Name:                 "Build template",
 		Description:          "",

@@ -611,10 +611,6 @@
   }
 
   async function loadStageTemplates() {
-    if (!pipeline.value?.project_id) {
-      stageTemplates.value = [];
-      return;
-    }
     const response = await pipelineStageApi.list(selectedProjectId(), {
       per_page: 100,
     });

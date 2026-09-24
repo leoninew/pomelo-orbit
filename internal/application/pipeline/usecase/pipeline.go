@@ -105,12 +105,20 @@ func (s stores) UpdateApplicationPipelineWithStages(ctx context.Context, project
 	return s.pipeline.UpdateApplicationPipelineWithStages(ctx, projectId, pipeline, stages)
 }
 
+func (s stores) UpdateApplicationPipelineWithStagesIfVersion(ctx context.Context, projectId string, pipeline model.Pipeline, stages []model.PipelineStage, expectedVersion int) error {
+	return s.pipeline.UpdateApplicationPipelineWithStagesIfVersion(ctx, projectId, pipeline, stages, expectedVersion)
+}
+
 func (s stores) CreateApplicationPipelineWithStages(ctx context.Context, pipeline model.Pipeline, stages []model.PipelineStage) error {
 	return s.pipeline.CreateApplicationPipelineWithStages(ctx, pipeline, stages)
 }
 
 func (s stores) LatestPipelineSnapshot(ctx context.Context, projectId string, pipelineId string) (model.PipelineSnapshot, error) {
 	return s.pipeline.LatestPipelineSnapshot(ctx, projectId, pipelineId)
+}
+
+func (s stores) PipelineSnapshotAtVersion(ctx context.Context, projectId string, pipelineId string, pipelineVersion int) (model.PipelineSnapshot, error) {
+	return s.pipeline.PipelineSnapshotAtVersion(ctx, projectId, pipelineId, pipelineVersion)
 }
 
 func (s stores) PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error) {
@@ -390,6 +398,9 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, project
 		return pipelinedto.PipelineDetail{}, err
 	}
 	if err := s.validatePipelineConfiguration(ctx, projectId, pipeline, stages); err != nil {
+		return pipelinedto.PipelineDetail{}, err
+	}
+	if _, err := GetOrCreatePipelineSnapshot(ctx, s.store, projectId, template, model.Repository{}); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
 	if err := s.store.CreateApplicationPipelineWithStages(ctx, pipeline, stages); err != nil {
@@ -964,7 +975,7 @@ func pipelineStageDefinitions(stages []model.PipelineStage) ([]model.StageDefini
 		if err != nil {
 			return nil, err
 		}
-		definitions = append(definitions, model.StageDefinition{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, DependsOn: dependsOn, SortOrder: *stage.SortOrder, Description: stage.Description, SourceTemplateStageId: *stage.SourceTemplateStageId, SourceTemplateStageName: *stage.SourceTemplateStageName, SourceTemplateStageVersion: *stage.SourceTemplateStageVersion})
+		definitions = append(definitions, model.StageDefinition{Id: stage.Id, Name: stage.Name, Image: stage.Image, Script: stage.Script, Artifacts: artifacts, DependsOn: dependsOn, SortOrder: *stage.SortOrder, Description: stage.Description, SourceTemplateStageId: *stage.SourceTemplateStageId, SourceTemplateStageName: *stage.SourceTemplateStageName, SourceTemplateStageVersion: *stage.SourceTemplateStageVersion, SourceTemplateStageDescription: *stage.SourceTemplateStageDescription})
 	}
 	return definitions, nil
 }

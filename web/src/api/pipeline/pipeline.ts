@@ -3,6 +3,8 @@ import type {
   PipelineInstantiateReq,
   PipelinePaginatedResp,
   PipelineResp,
+  PipelineTemplateUpdatePreviewResp,
+  PipelineTemplateUpdateReq,
   PipelineUpdateReq,
 } from '@/gen/proto/orbit/v1/pipeline/pipeline';
 import type {
@@ -45,6 +47,25 @@ export const pipelineApi = {
 
   instantiate(projectId: string, id: string, data: PipelineInstantiateReq): Promise<PipelineResp> {
     return request.post(`/api/pipeline/${id}/instantiate`, data, {
+      params: { project_id: projectId },
+    });
+  },
+
+  previewTemplateUpdate(
+    projectId: string,
+    pipelineId: string
+  ): Promise<PipelineTemplateUpdatePreviewResp> {
+    return request.get(`/api/pipeline/${pipelineId}/template-update-preview`, {
+      params: { project_id: projectId },
+    });
+  },
+
+  updateTemplate(
+    projectId: string,
+    pipelineId: string,
+    data: PipelineTemplateUpdateReq
+  ): Promise<PipelineResp> {
+    return request.post(`/api/pipeline/${pipelineId}/template-update`, data, {
       params: { project_id: projectId },
     });
   },

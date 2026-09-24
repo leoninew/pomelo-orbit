@@ -106,8 +106,8 @@ type PipelineStageNode struct {
 	UpdatedAt                      time.Time
 }
 
-// PipelineSnapshot is an immutable structural and historical snapshot for an
-// application pipeline. Run variable values are stored on PipelineRun.
+// PipelineSnapshot is an immutable definition snapshot for a pipeline. Run
+// variable values are stored on PipelineRun.
 type PipelineSnapshot struct {
 	Id                    string    `db:"id"`
 	ProjectId             *string   `db:"project_id"`
@@ -130,17 +130,18 @@ type PipelineSnapshot struct {
 }
 
 type StageDefinition struct {
-	Id                         string           `json:"id"`
-	Name                       string           `json:"name"`
-	Image                      string           `json:"image"`
-	DependsOn                  []string         `json:"depends_on"`
-	Script                     string           `json:"script"`
-	Artifacts                  []ArtifactConfig `json:"artifacts"`
-	SortOrder                  int              `json:"sort_order"`
-	Description                string           `json:"description"`
-	SourceTemplateStageId      string           `json:"source_template_stage_id"`
-	SourceTemplateStageName    string           `json:"source_template_stage_name"`
-	SourceTemplateStageVersion int              `json:"source_template_stage_version"`
+	Id                             string           `json:"id"`
+	Name                           string           `json:"name"`
+	Image                          string           `json:"image"`
+	DependsOn                      []string         `json:"depends_on"`
+	Script                         string           `json:"script"`
+	Artifacts                      []ArtifactConfig `json:"artifacts"`
+	SortOrder                      int              `json:"sort_order"`
+	Description                    string           `json:"description"`
+	SourceTemplateStageId          string           `json:"source_template_stage_id"`
+	SourceTemplateStageName        string           `json:"source_template_stage_name"`
+	SourceTemplateStageVersion     int              `json:"source_template_stage_version"`
+	SourceTemplateStageDescription string           `json:"source_template_stage_description"`
 }
 
 type ArtifactConfig struct {

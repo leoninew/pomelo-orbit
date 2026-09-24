@@ -15,6 +15,8 @@ func (r Router) registerPipeline(engine *gin.Engine) {
 	engine.PUT("/api/pipeline/:pipeline_id", handler.UpdatePipeline)
 	engine.DELETE("/api/pipeline/:pipeline_id", handler.DeletePipeline)
 	engine.POST("/api/pipeline/:pipeline_id/instantiate", handler.InstantiatePipeline)
+	engine.GET("/api/pipeline/:pipeline_id/template-update-preview", handler.PreviewPipelineTemplateUpdate)
+	engine.POST("/api/pipeline/:pipeline_id/template-update", handler.ApplyPipelineTemplateUpdate)
 	engine.POST("/api/pipeline/:pipeline_id/stage", handler.ImportPipelineStage)
 	engine.PUT("/api/pipeline/:pipeline_id/stage/:stage_id", handler.UpdatePipelineStageNode)
 	engine.DELETE("/api/pipeline/:pipeline_id/stage/:stage_id", handler.DeletePipelineStageNode)

@@ -66,3 +66,36 @@ message PipelinePaginatedResp {
   int32 per_page = 4;
   int32 pages = 5;
 }
+
+message PipelineTemplateUpdatePreviewResp {
+  bool available = 1;
+  int32 expected_pipeline_version = 2;
+  int32 expected_source_template_version = 3;
+  int32 target_source_template_version = 4;
+  string source_template_name = 5;
+  repeated PipelineTemplateStageUpdateResp stages = 6;
+  repeated PipelineTemplateVariableUpdateResp variables = 7;
+  repeated string conflicts = 8;
+}
+
+message PipelineTemplateStageUpdateResp {
+  string stage_id = 1;
+  string source_template_stage_id = 2;
+  string status = 3;
+  int32 current_version = 4;
+  int32 target_version = 5;
+}
+
+message PipelineTemplateVariableUpdateResp {
+  string name = 1;
+  string stage_id = 2;
+  string status = 3;
+  string current = 4;
+  string target = 5;
+}
+
+message PipelineTemplateUpdateReq {
+  int32 expected_pipeline_version = 1;
+  int32 expected_source_template_version = 2;
+  int32 target_source_template_version = 3;
+}

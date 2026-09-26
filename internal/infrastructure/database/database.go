@@ -122,6 +122,11 @@ func (c mysqlModeConnector) Connect(ctx context.Context) (driver.Conn, error) {
 		_ = connection.Close()
 		return nil, fmt.Errorf("enable mysql ANSI_QUOTES mode: %w", err)
 	}
+	// The pipeline lock must read runs committed by the transaction that held the lock first.
+	if _, err := executor.ExecContext(ctx, "SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED", nil); err != nil {
+		_ = connection.Close()
+		return nil, fmt.Errorf("set mysql transaction isolation: %w", err)
+	}
 	return connection, nil
 }
 
@@ -131,5 +136,7 @@ func mysqlDsn(dsn string) (string, error) {
 		return "", fmt.Errorf("parse mysql dsn: %w", err)
 	}
 	cfg.MultiStatements = true
+	// A no-op UPDATE is used to lock a pipeline, so rows affected must mean matched rows.
+	cfg.ClientFoundRows = true
 	return cfg.FormatDSN(), nil
 }

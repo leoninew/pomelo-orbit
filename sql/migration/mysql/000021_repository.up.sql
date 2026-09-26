@@ -17,7 +17,5 @@ CREATE TABLE IF NOT EXISTS repository (
 );
 
 CREATE INDEX idx_repository_name ON repository(name);
-CREATE INDEX idx_repository_code ON repository(code);
 CREATE INDEX idx_repository_credential ON repository(git_credential_id);
-CREATE INDEX idx_repository_project ON repository(project_id);
-CREATE UNIQUE INDEX uq_repository_project_code ON repository(project_id, code);
+CREATE UNIQUE INDEX uq_repository_code ON repository(code);

@@ -129,7 +129,7 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 		volumes = append(volumes, pipelinerunport.VolumeMount{HostPath: sourcePath, ContainerPath: "/source", Mode: "ro"})
 	}
 
-	script, environment, err := e.pipelineStageRunConfig(ctx, projectId, repo, runtime, stage)
+	script, environment, err := e.pipelineStageRunConfig(ctx, repo, runtime, stage)
 	if err != nil {
 		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
 	}
@@ -188,13 +188,13 @@ func (e Executor) executionErrorMessage(err error) string {
 	return fmt.Sprintf("pipeline execution canceled: %v", err)
 }
 
-func (e Executor) pipelineStageRunConfig(ctx context.Context, projectId string, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stage model.StageDefinition) (string, []string, error) {
+func (e Executor) pipelineStageRunConfig(ctx context.Context, repo model.Repository, runtime pipelinevariable.RuntimeVariables, stage model.StageDefinition) (string, []string, error) {
 	script := commandLines(stage.Script)
 	environment := envMap(runtime.ValuesForStage(stage))
 	if repo.RepositoryType == model.RepositoryTypeLocalDirectory || repo.GitCredentialId == nil || !stageUsesRepositoryUrl(stage.Script, repo.RepositoryUrl) {
 		return script, environment, nil
 	}
-	credential, err := e.store.Credential(ctx, projectId, *repo.GitCredentialId)
+	credential, err := e.store.Credential(ctx, *repo.GitCredentialId)
 	if err != nil {
 		return "", nil, fmt.Errorf("load git credential: %w", err)
 	}

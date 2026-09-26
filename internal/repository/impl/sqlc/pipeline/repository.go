@@ -59,6 +59,16 @@ func (r Repository) UpdatePipeline(ctx context.Context, projectId string, item m
 func (r Repository) DeletePipeline(ctx context.Context, projectId string, id string) error {
 	return translate(r.q(ctx).DeletePipeline(ctx, pipelinesqlc.DeletePipelineParams{Id: id, ProjectId: nullString(&projectId)}))
 }
+func (r Repository) LockApplicationPipeline(ctx context.Context, projectId string, id string) error {
+	rows, err := r.q(ctx).LockApplicationPipeline(ctx, pipelinesqlc.LockApplicationPipelineParams{Id: id, ProjectId: nullString(&projectId)})
+	if err != nil {
+		return translate(err)
+	}
+	if rows == 0 {
+		return repository.ErrNotFound
+	}
+	return nil
+}
 func (r Repository) ListPipelineStageTemplates(ctx context.Context, projectId string, page, perPage int, search string) (repository.Page[model.PipelineStage], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	searchPattern := sql.NullString{String: "%" + search + "%", Valid: search != ""}

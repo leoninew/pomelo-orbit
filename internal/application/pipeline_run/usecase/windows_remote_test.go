@@ -67,12 +67,14 @@ func (logs *remoteLogStub) Read(path string, offset int) ([]byte, int, error) {
 }
 
 type remoteRunnerStub struct {
-	stages   []string
-	exitCode int
+	stages      []string
+	environment []string
+	exitCode    int
 }
 
 func (runner *remoteRunnerStub) Run(_ context.Context, options pipelinerunport.RunOptions) (int, string, error) {
 	runner.stages = append(runner.stages, options.ContainerName)
+	runner.environment = append(runner.environment, options.Environment...)
 	_, _ = io.WriteString(options.LogWriter, "remote stage log\n")
 	return runner.exitCode, "", nil
 }

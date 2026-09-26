@@ -41,7 +41,6 @@
         :placeholder="t('route.placeholders.selectEndpoint')"
         :disabled="disabled || !componentName"
         :invalid="Boolean(endpointError)"
-        description-inline
         @update:model-value="handleEndpointChange"
       />
       <p v-if="endpointError" class="app-field-error text-xs">{{ endpointError }}</p>

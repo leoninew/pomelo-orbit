@@ -6,8 +6,9 @@ package orbit.v1.repository;
 import "orbit/v1/common/common.proto";
 
 message RepositoryResp {
+  reserved 2;
+  reserved "project_id";
   string id = 1;
-  optional string project_id = 2;
   string name = 3;
   string code = 4;
   string repository_type = 13;

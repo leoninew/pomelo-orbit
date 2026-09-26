@@ -126,7 +126,6 @@ func testPostgresOptionalQueryFilters(t *testing.T, database *sql.DB) {
 		t.Fatalf("count repositories without optional filters: %v", err)
 	}
 	if _, err := repositoryQueries.CountRepositories(ctx, repositoriessqlc.CountRepositoriesParams{
-		ProjectId:     sql.NullString{String: postgresProjectId, Valid: true},
 		SearchPattern: sql.NullString{String: "%gateway%", Valid: true},
 	}); err != nil {
 		t.Fatalf("count repositories with optional text filters: %v", err)

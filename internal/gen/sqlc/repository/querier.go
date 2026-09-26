@@ -10,15 +10,14 @@ import (
 )
 
 type Querier interface {
-	CountPipelinesByRepository(ctx context.Context, arg CountPipelinesByRepositoryParams) (int64, error)
+	CountPipelinesByRepository(ctx context.Context, repositoryID sql.NullString) (int64, error)
 	CountRepositories(ctx context.Context, arg CountRepositoriesParams) (int64, error)
-	CountRepositoriesByProject(ctx context.Context, projectID sql.NullString) (int64, error)
 	CreateRepository(ctx context.Context, arg CreateRepositoryParams) error
-	DeleteRepository(ctx context.Context, arg DeleteRepositoryParams) error
+	DeleteRepository(ctx context.Context, id string) error
 	ListRepositories(ctx context.Context, arg ListRepositoriesParams) ([]ListRepositoriesRow, error)
-	RepositoryByCode(ctx context.Context, arg RepositoryByCodeParams) (RepositoryByCodeRow, error)
-	RepositoryById(ctx context.Context, arg RepositoryByIdParams) (RepositoryByIdRow, error)
-	RepositoryReferencesCredential(ctx context.Context, arg RepositoryReferencesCredentialParams) (int64, error)
+	RepositoryByCode(ctx context.Context, code string) (RepositoryByCodeRow, error)
+	RepositoryById(ctx context.Context, id string) (RepositoryByIdRow, error)
+	RepositoryReferencesCredential(ctx context.Context, gitCredentialID sql.NullString) (int64, error)
 	UpdateRepository(ctx context.Context, arg UpdateRepositoryParams) error
 }
 

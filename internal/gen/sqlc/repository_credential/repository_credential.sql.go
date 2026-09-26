@@ -14,7 +14,7 @@ import (
 const countRepositoryCredentials = `-- name: CountRepositoryCredentials :one
 SELECT COUNT(*)
 FROM repository_credential
-WHERE project_id = ?
+WHERE project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
   AND (CAST(? AS CHAR) IS NULL
     OR name LIKE ?
@@ -22,41 +22,33 @@ WHERE project_id = ?
 `
 
 type CountRepositoryCredentialsParams struct {
-	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountRepositoryCredentials(ctx context.Context, arg CountRepositoryCredentialsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRepositoryCredentials,
-		arg.ProjectId,
-		arg.SearchPattern,
-		arg.SearchPattern,
-		arg.SearchPattern,
-	)
+	row := q.db.QueryRowContext(ctx, countRepositoryCredentials, arg.SearchPattern, arg.SearchPattern, arg.SearchPattern)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
 const createRepositoryCredential = `-- name: CreateRepositoryCredential :exec
-INSERT INTO repository_credential (id, project_id, name, type, encrypted_data, revision, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO repository_credential (id, name, type, encrypted_data, revision, created_at)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateRepositoryCredentialParams struct {
-	Id            string         `db:"id"`
-	ProjectId     sql.NullString `db:"project_id"`
-	Name          string         `db:"name"`
-	Type          string         `db:"type"`
-	EncryptedData string         `db:"encrypted_data"`
-	Revision      int64          `db:"revision"`
-	CreatedAt     time.Time      `db:"created_at"`
+	Id            string    `db:"id"`
+	Name          string    `db:"name"`
+	Type          string    `db:"type"`
+	EncryptedData string    `db:"encrypted_data"`
+	Revision      int64     `db:"revision"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
 func (q *Queries) CreateRepositoryCredential(ctx context.Context, arg CreateRepositoryCredentialParams) error {
 	_, err := q.db.ExecContext(ctx, createRepositoryCredential,
 		arg.Id,
-		arg.ProjectId,
 		arg.Name,
 		arg.Type,
 		arg.EncryptedData,
@@ -69,23 +61,19 @@ func (q *Queries) CreateRepositoryCredential(ctx context.Context, arg CreateRepo
 const deleteRepositoryCredential = `-- name: DeleteRepositoryCredential :exec
 DELETE FROM repository_credential
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
+  AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
 `
 
-type DeleteRepositoryCredentialParams struct {
-	Id        string         `db:"id"`
-	ProjectId sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) DeleteRepositoryCredential(ctx context.Context, arg DeleteRepositoryCredentialParams) error {
-	_, err := q.db.ExecContext(ctx, deleteRepositoryCredential, arg.Id, arg.ProjectId)
+func (q *Queries) DeleteRepositoryCredential(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteRepositoryCredential, id)
 	return err
 }
 
 const listRepositoryCredentials = `-- name: ListRepositoryCredentials :many
-SELECT id, project_id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at
 FROM repository_credential
-WHERE project_id = ?
+WHERE project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
   AND (CAST(? AS CHAR) IS NULL
     OR name LIKE ?
@@ -95,25 +83,22 @@ LIMIT ? OFFSET ?
 `
 
 type ListRepositoryCredentialsParams struct {
-	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Limit         int32          `db:"limit"`
 	Offset        int32          `db:"offset"`
 }
 
 type ListRepositoryCredentialsRow struct {
-	Id            string         `db:"id"`
-	ProjectId     sql.NullString `db:"project_id"`
-	Name          string         `db:"name"`
-	Type          string         `db:"type"`
-	EncryptedData string         `db:"encrypted_data"`
-	Revision      int64          `db:"revision"`
-	CreatedAt     time.Time      `db:"created_at"`
+	Id            string    `db:"id"`
+	Name          string    `db:"name"`
+	Type          string    `db:"type"`
+	EncryptedData string    `db:"encrypted_data"`
+	Revision      int64     `db:"revision"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
 func (q *Queries) ListRepositoryCredentials(ctx context.Context, arg ListRepositoryCredentialsParams) ([]ListRepositoryCredentialsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRepositoryCredentials,
-		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -129,7 +114,6 @@ func (q *Queries) ListRepositoryCredentials(ctx context.Context, arg ListReposit
 		var i ListRepositoryCredentialsRow
 		if err := rows.Scan(
 			&i.Id,
-			&i.ProjectId,
 			&i.Name,
 			&i.Type,
 			&i.EncryptedData,
@@ -150,33 +134,27 @@ func (q *Queries) ListRepositoryCredentials(ctx context.Context, arg ListReposit
 }
 
 const repositoryCredentialById = `-- name: RepositoryCredentialById :one
-SELECT id, project_id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at
 FROM repository_credential
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
+  AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
 `
 
-type RepositoryCredentialByIdParams struct {
-	Id        string         `db:"id"`
-	ProjectId sql.NullString `db:"project_id"`
-}
-
 type RepositoryCredentialByIdRow struct {
-	Id            string         `db:"id"`
-	ProjectId     sql.NullString `db:"project_id"`
-	Name          string         `db:"name"`
-	Type          string         `db:"type"`
-	EncryptedData string         `db:"encrypted_data"`
-	Revision      int64          `db:"revision"`
-	CreatedAt     time.Time      `db:"created_at"`
+	Id            string    `db:"id"`
+	Name          string    `db:"name"`
+	Type          string    `db:"type"`
+	EncryptedData string    `db:"encrypted_data"`
+	Revision      int64     `db:"revision"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
-func (q *Queries) RepositoryCredentialById(ctx context.Context, arg RepositoryCredentialByIdParams) (RepositoryCredentialByIdRow, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialById, arg.Id, arg.ProjectId)
+func (q *Queries) RepositoryCredentialById(ctx context.Context, id string) (RepositoryCredentialByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, repositoryCredentialById, id)
 	var i RepositoryCredentialByIdRow
 	err := row.Scan(
 		&i.Id,
-		&i.ProjectId,
 		&i.Name,
 		&i.Type,
 		&i.EncryptedData,
@@ -187,33 +165,27 @@ func (q *Queries) RepositoryCredentialById(ctx context.Context, arg RepositoryCr
 }
 
 const repositoryCredentialByName = `-- name: RepositoryCredentialByName :one
-SELECT id, project_id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at
 FROM repository_credential
-WHERE project_id = ?
+WHERE project_id IS NULL
+  AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
   AND name = ?
 `
 
-type RepositoryCredentialByNameParams struct {
-	ProjectId sql.NullString `db:"project_id"`
-	Name      string         `db:"name"`
-}
-
 type RepositoryCredentialByNameRow struct {
-	Id            string         `db:"id"`
-	ProjectId     sql.NullString `db:"project_id"`
-	Name          string         `db:"name"`
-	Type          string         `db:"type"`
-	EncryptedData string         `db:"encrypted_data"`
-	Revision      int64          `db:"revision"`
-	CreatedAt     time.Time      `db:"created_at"`
+	Id            string    `db:"id"`
+	Name          string    `db:"name"`
+	Type          string    `db:"type"`
+	EncryptedData string    `db:"encrypted_data"`
+	Revision      int64     `db:"revision"`
+	CreatedAt     time.Time `db:"created_at"`
 }
 
-func (q *Queries) RepositoryCredentialByName(ctx context.Context, arg RepositoryCredentialByNameParams) (RepositoryCredentialByNameRow, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialByName, arg.ProjectId, arg.Name)
+func (q *Queries) RepositoryCredentialByName(ctx context.Context, name string) (RepositoryCredentialByNameRow, error) {
+	row := q.db.QueryRowContext(ctx, repositoryCredentialByName, name)
 	var i RepositoryCredentialByNameRow
 	err := row.Scan(
 		&i.Id,
-		&i.ProjectId,
 		&i.Name,
 		&i.Type,
 		&i.EncryptedData,
@@ -227,16 +199,12 @@ const repositoryCredentialExists = `-- name: RepositoryCredentialExists :one
 SELECT COUNT(*)
 FROM repository_credential
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
+  AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
 `
 
-type RepositoryCredentialExistsParams struct {
-	Id        string         `db:"id"`
-	ProjectId sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) RepositoryCredentialExists(ctx context.Context, arg RepositoryCredentialExistsParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialExists, arg.Id, arg.ProjectId)
+func (q *Queries) RepositoryCredentialExists(ctx context.Context, id string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, repositoryCredentialExists, id)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -246,16 +214,12 @@ const repositoryCredentialName = `-- name: RepositoryCredentialName :one
 SELECT name
 FROM repository_credential
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
+  AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
 `
 
-type RepositoryCredentialNameParams struct {
-	Id        string         `db:"id"`
-	ProjectId sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) RepositoryCredentialName(ctx context.Context, arg RepositoryCredentialNameParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, repositoryCredentialName, arg.Id, arg.ProjectId)
+func (q *Queries) RepositoryCredentialName(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, repositoryCredentialName, id)
 	var name string
 	err := row.Scan(&name)
 	return name, err
@@ -265,15 +229,15 @@ const updateRepositoryCredential = `-- name: UpdateRepositoryCredential :exec
 UPDATE repository_credential
 SET name = ?, encrypted_data = ?, revision = ?
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
+  AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
 `
 
 type UpdateRepositoryCredentialParams struct {
-	Name          string         `db:"name"`
-	EncryptedData string         `db:"encrypted_data"`
-	Revision      int64          `db:"revision"`
-	Id            string         `db:"id"`
-	ProjectId     sql.NullString `db:"project_id"`
+	Name          string `db:"name"`
+	EncryptedData string `db:"encrypted_data"`
+	Revision      int64  `db:"revision"`
+	Id            string `db:"id"`
 }
 
 func (q *Queries) UpdateRepositoryCredential(ctx context.Context, arg UpdateRepositoryCredentialParams) error {
@@ -282,7 +246,6 @@ func (q *Queries) UpdateRepositoryCredential(ctx context.Context, arg UpdateRepo
 		arg.EncryptedData,
 		arg.Revision,
 		arg.Id,
-		arg.ProjectId,
 	)
 	return err
 }

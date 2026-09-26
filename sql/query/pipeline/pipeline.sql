@@ -67,6 +67,13 @@ WHERE id = sqlc.arg(id)
     OR (kind = 'application' AND project_id = sqlc.arg(project_id))
   );
 
+-- name: LockApplicationPipeline :execrows
+-- Serialize run creation and deletion; callers require one matched row.
+UPDATE pipeline SET updated_at = updated_at
+WHERE id = sqlc.arg(id)
+  AND project_id = sqlc.arg(project_id)
+  AND kind = 'application';
+
 -- name: UpdateApplicationPipelineIfVersion :execrows
 UPDATE pipeline
 SET source_template_name = sqlc.arg(source_template_name),

@@ -23,14 +23,15 @@ type Service struct {
 }
 
 type stores struct {
-	project     repository.ProjectReader
-	pipeline    repository.PipelineStore
-	application repository.ApplicationStore
-	repository  repository.RepositoryStore
+	project      repository.ProjectReader
+	pipeline     repository.PipelineStore
+	pipelineRuns repository.PipelineRunActivityReader
+	application  repository.ApplicationStore
+	repository   repository.RepositoryStore
 }
 
-func New(project repository.ProjectReader, pipeline repository.PipelineStore, application repository.ApplicationStore, repositories repository.RepositoryStore, logger *slog.Logger) Service {
-	return Service{store: stores{project: project, pipeline: pipeline, application: application, repository: repositories}, logger: logger}
+func New(project repository.ProjectReader, pipeline repository.PipelineStore, pipelineRuns repository.PipelineRunActivityReader, application repository.ApplicationStore, repositories repository.RepositoryStore, logger *slog.Logger) Service {
+	return Service{store: stores{project: project, pipeline: pipeline, pipelineRuns: pipelineRuns, application: application, repository: repositories}, logger: logger}
 }
 
 func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
@@ -63,6 +64,14 @@ func (s stores) UpdatePipeline(ctx context.Context, projectId string, pipeline m
 
 func (s stores) DeletePipeline(ctx context.Context, projectId string, id string) error {
 	return s.pipeline.DeletePipeline(ctx, projectId, id)
+}
+
+func (s stores) LockApplicationPipeline(ctx context.Context, projectId string, id string) error {
+	return s.pipeline.LockApplicationPipeline(ctx, projectId, id)
+}
+
+func (s stores) PipelineHasActiveRun(ctx context.Context, projectId string, id string) (bool, error) {
+	return s.pipelineRuns.PipelineHasActiveRun(ctx, projectId, id)
 }
 
 func (s stores) ListPipelineStageTemplates(ctx context.Context, projectId string, page, perPage int, search string) (repository.Page[model.PipelineStage], error) {
@@ -161,8 +170,8 @@ func (s stores) VersionComponentsByVersion(ctx context.Context, projectId string
 	return s.application.VersionComponentsByVersion(ctx, projectId, versionId)
 }
 
-func (s stores) Repository(ctx context.Context, projectId string, id string) (model.Repository, error) {
-	return s.repository.Repository(ctx, projectId, id)
+func (s stores) Repository(ctx context.Context, id string) (model.Repository, error) {
+	return s.repository.Repository(ctx, id)
 }
 
 func (s Service) ListPipelines(ctx context.Context, userId string, projectId string, kind string, page int, perPage int, search string) (repository.Page[pipelinedto.PipelineDetail], error) {
@@ -327,6 +336,21 @@ func (s Service) DeletePipeline(ctx context.Context, userId string, projectId st
 	if err != nil {
 		return err
 	}
+	if pipeline.Kind == model.PipelineKindApplication {
+		if err := s.store.LockApplicationPipeline(ctx, projectId, pipeline.Id); err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return apperror.New(apperror.KindNotFound, "Pipeline "+pipeline.Id+" not found")
+			}
+			return apperror.Wrap(apperror.KindInternal, "Failed to lock application pipeline", err)
+		}
+		active, err := s.store.PipelineHasActiveRun(ctx, projectId, pipeline.Id)
+		if err != nil {
+			return apperror.Wrap(apperror.KindInternal, "Failed to check active pipeline runs", err)
+		}
+		if active {
+			return apperror.New(apperror.KindConflict, "Application pipeline has unfinished runs. Wait for them to finish or cancel them before deleting it.")
+		}
+	}
 	if err := s.store.DeletePipeline(ctx, projectId, pipeline.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete pipeline", err)
 	}
@@ -348,7 +372,7 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, project
 	if err := s.ensurePipelineNameAvailable(ctx, projectId, model.PipelineKindApplication, name, ""); err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
-	repo, err := s.repositoryInProject(ctx, input.RepositoryId, projectId)
+	repo, err := s.globalRepository(ctx, input.RepositoryId)
 	if err != nil {
 		return pipelinedto.PipelineDetail{}, err
 	}
@@ -523,7 +547,7 @@ func (s Service) pipelineDetail(ctx context.Context, projectId string, pipeline 
 	}
 	var repo *model.Repository
 	if pipeline.Kind == model.PipelineKindApplication && pipeline.RepositoryId != nil {
-		item, err := s.repositoryInProject(ctx, *pipeline.RepositoryId, projectId)
+		item, err := s.globalRepository(ctx, *pipeline.RepositoryId)
 		if err != nil {
 			return pipelinedto.PipelineDetail{}, err
 		}
@@ -607,8 +631,8 @@ func (s Service) applicationInProject(ctx context.Context, applicationId string,
 	return app, nil
 }
 
-func (s Service) repositoryInProject(ctx context.Context, repositoryId string, projectId string) (model.Repository, error) {
-	repo, err := s.store.Repository(ctx, projectId, repositoryId)
+func (s Service) globalRepository(ctx context.Context, repositoryId string) (model.Repository, error) {
+	repo, err := s.store.Repository(ctx, repositoryId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 	}
@@ -839,7 +863,7 @@ func (s Service) validatePipelineConfiguration(ctx context.Context, projectId st
 	}
 	var repo *model.Repository
 	if s.store.repository != nil {
-		value, err := s.store.Repository(ctx, projectId, *pipeline.RepositoryId)
+		value, err := s.store.Repository(ctx, *pipeline.RepositoryId)
 		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return apperror.Wrap(apperror.KindInternal, "Failed to load pipeline repository", err)
 		}

@@ -137,11 +137,10 @@ CREATE TABLE IF NOT EXISTS repository_credential (
     encrypted_data TEXT NOT NULL,
     revision INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
-    project_id TEXT REFERENCES project(id)
+    project_id TEXT REFERENCES project(id),
+    CONSTRAINT uq_repository_credential_name UNIQUE (name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_repository_credential_name ON repository_credential(name);
-CREATE INDEX IF NOT EXISTS idx_repository_credential_project ON repository_credential(project_id);
 
 CREATE TABLE IF NOT EXISTS environment_credential (
     id TEXT PRIMARY KEY,
@@ -270,10 +269,8 @@ CREATE TABLE IF NOT EXISTS repository (
 );
 
 CREATE INDEX IF NOT EXISTS idx_repository_name ON repository(name);
-CREATE INDEX IF NOT EXISTS idx_repository_code ON repository(code);
 CREATE INDEX IF NOT EXISTS idx_repository_credential ON repository(git_credential_id);
-CREATE INDEX IF NOT EXISTS idx_repository_project ON repository(project_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_repository_project_code ON repository(project_id, code);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_repository_code ON repository(code);
 
 CREATE TABLE IF NOT EXISTS pipeline_run (
     id TEXT PRIMARY KEY,

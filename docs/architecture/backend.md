@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-09-17 10:55:15
+最后修改时间: 2026-09-26
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -63,7 +63,7 @@ cmd/server, cmd/migrate
 ## 数据与迁移
 
 - Schema 与 seed 均为普通编号迁移，统一位于 `sql/migration/{sqlite,mysql,postgres}/`，由 `MigrateUp` 按版本顺序执行和跟踪；不设独立 data migration 加载流程。
-- **不修改已执行的迁移文件**（项目约束）。开发期重建库可接受时，以当前迁移链终态为准。  
+- 默认**不修改已执行的迁移文件**（项目约束）。Repository/Repository Credential 全局共享任务按用户明确要求就地修订了既有迁移，这仅定义新库从头运行的终态；已执行这些版本的数据库不会自动变化，须另行审计并转换，或确认后重建。
 - 终态 CD 表见 `*_cd_schema*` 类迁移（application/version/component/expose/environment/gateway_config/service/deployment/route 等）；**无** 旧表 `application_config_file`、`application_service`、`application_route`、`environment_binding` 作为现行 schema。
 
 ## 运行形态

@@ -244,7 +244,7 @@ func (store *queuedRunStore) PipelineRun(context.Context, string, string) (model
 	return store.run, nil
 }
 
-func (store *queuedRunStore) Repository(context.Context, string, string) (model.Repository, error) {
+func (store *queuedRunStore) Repository(context.Context, string) (model.Repository, error) {
 	store.loadedRepository = true
 	return model.Repository{Id: "repo-1", RepositoryType: model.RepositoryTypeRemoteGit, RepositoryUrl: "https://git.example.test/repo.git"}, nil
 }

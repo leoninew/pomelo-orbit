@@ -8,7 +8,12 @@ import (
 )
 
 // PipelineRunStore persists immutable PipelineRun execution history.
+type PipelineRunActivityReader interface {
+	PipelineHasActiveRun(ctx context.Context, projectId string, pipelineId string) (bool, error)
+}
+
 type PipelineRunStore interface {
+	PipelineRunActivityReader
 	ListPipelineRuns(ctx context.Context, projectId string, repositoryId string, pipelineId string, dateFrom *time.Time, dateTo *time.Time, page int, perPage int) (Page[model.PipelineRun], error)
 	ListPipelineRunsByPipeline(ctx context.Context, projectId string, pipelineId string, page int, perPage int) (Page[model.PipelineRun], error)
 	PipelineRun(ctx context.Context, projectId string, id string) (model.PipelineRun, error)

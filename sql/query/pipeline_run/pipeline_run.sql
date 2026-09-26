@@ -105,6 +105,12 @@ WHERE project_id = sqlc.arg(project_id)
   AND repository_id = sqlc.arg(repository_id)
   AND status IN (sqlc.arg(waiting_status), sqlc.arg(running_status));
 
+-- name: CountActivePipelineRunsByPipeline :one
+SELECT COUNT(*) FROM pipeline_run
+WHERE project_id = sqlc.arg(project_id)
+  AND pipeline_id = sqlc.arg(pipeline_id)
+  AND status IN (sqlc.arg(waiting_status), sqlc.arg(running_status));
+
 -- name: CountCDConfigurationReferences :one
 SELECT COUNT(*)
 FROM pipeline_run_version_binding

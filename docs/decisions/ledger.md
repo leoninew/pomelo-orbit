@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-09-23 11:37:27
+最后修改时间: 2026-09-26
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -21,12 +21,13 @@ Doc role: living SoT
 | C-11 | instance_key 默认 default；产品约束以实现为准 | TCP 等路径曾钉死 default |
 | C-12 | 后端 Go + Gin + proto + migrate；前端 web/ Vue3 | 见 architecture |
 | C-13 | API 路径单数资源名 | `/api/ci/repository` |
-| C-14 | 不修改已执行迁移文件 | 活跃开发期可重建库 |
+| C-14 | 默认不修改已执行迁移文件 | 活跃开发期可重建库；Repository/Repository Credential 全局共享任务按用户明确要求就地修订既有迁移，已运行数据库须另行转换或重建 |
 | C-15 | 无兼容层 / 别名 / 新旧并存 | CLAUDE.md |
 | C-16 | 文档：活 SoT vs archive；过程库仅进行中任务 | 本整理任务 |
 | C-17 | Route 发布统一走全量同步 | 业务变更先写 Route 数据；列表/详情启停均为前端草稿。同步预览展示业务与全部 REST 路由的可读差异，确认后覆盖 Traefik REST；Gateway deploy/restart 成功后自动发布完整快照 |
 | C-18 | MCP 仅采用本地 stdio 与内部 actor 绑定 | Web Dialogue 为每 turn 建立固定 actor 的内存 Core；Grok/Codex stdio 用显式 MCP PAT `POMELO_ORBIT_MCP__ACCESS_TOKEN`，每次 tools/call 认证；无远程 /mcp |
 | C-19 | Project 环境/Gateway 初始化只走 Web Wizard；MCP 使用 connection-local 已就绪 Project scope | Project 创建和 identity seed 不预建 Environment/Gateway；`ProjectInitializationConfig` 只给 Wizard 初值；运行时只读库存；Grok/Codex 先 list/select，后续工具不再传 `project_id` |
+| C-20 | Repository 与 Repository Credential 全局共享，Project 只作成员校验上下文 | 仓库 `code`、凭据名称全局唯一；Application Pipeline、Run、Artifact 和 Environment 仍按 Project 归属；仓库删除检查所有现存应用流水线绑定，应用流水线删除检查其未结束 Run；历史 Run/Snapshot/Artifact 不直接阻止仓库删除 |
 
 ## 废止（Superseded）
 

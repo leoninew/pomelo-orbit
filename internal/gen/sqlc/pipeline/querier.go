@@ -25,6 +25,8 @@ type Querier interface {
 	LatestPipelineSnapshot(ctx context.Context, arg LatestPipelineSnapshotParams) (PipelineSnapshot, error)
 	ListPipelineStageTemplates(ctx context.Context, arg ListPipelineStageTemplatesParams) ([]ListPipelineStageTemplatesRow, error)
 	ListPipelines(ctx context.Context, arg ListPipelinesParams) ([]Pipeline, error)
+	// Serialize run creation and deletion; callers require one matched row.
+	LockApplicationPipeline(ctx context.Context, arg LockApplicationPipelineParams) (int64, error)
 	PipelineById(ctx context.Context, arg PipelineByIdParams) (Pipeline, error)
 	PipelineByName(ctx context.Context, arg PipelineByNameParams) (Pipeline, error)
 	PipelineSnapshotAtVersion(ctx context.Context, arg PipelineSnapshotAtVersionParams) (PipelineSnapshot, error)

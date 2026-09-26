@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-24 09:26:01
+最后修改时间: 2026-09-26
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -24,7 +24,9 @@ Pipeline(kind=application)                      可运行的交付单元
 
 阶段库是所有 Project 共享的全局资源，只定义通用执行步骤；`PipelineStage(kind=template)` 不保存 DAG、排序、Application、Component 或来源 Version 策略，但保存不带 `component_name` 的制品声明。Template Pipeline 通过 `PipelineStageReference` 保存阶段引入时的来源 ID/名称/版本/说明、镜像、脚本和制品声明快照，以及自己的节点名称、说明、DAG 和排序。访问、创建、更新和删除仍要求用户是当前 Project 成员，Project 只作为授权上下文，不作为模板资源归属。
 
-Application Pipeline 可以从全局 Template 创建。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，同时重映射带 `stage_id` 的变量配置，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
+Repository 与 Repository Credential 同样由所有 Project 共享。Repository `code`、仓库凭据名称分别在全局唯一；仓库可引用一份全局凭据，其变量与源码配置由使用该仓库的所有 Project 共用。仓库和凭据 API 仍使用 `project_id` 校验当前 Project 成员资格，凭据列表不返回明文，详情与导出沿用当前成员可访问的权限。Environment 与其中的部署 SSH 凭据继续按 Project 管理，不与仓库凭据混用。
+
+Application Pipeline 可以从全局 Template 创建，绑定任一当前可用的全局 Repository，Pipeline 本身仍归属当前 Project。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，同时重映射带 `stage_id` 的变量配置，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
 
 ## 阶段与制品
 
@@ -89,9 +91,11 @@ Retry 与手动触发共享 Run 创建路径。Retry 创建新 Run；`latest` �
 
 跨生命周期关系是逻辑外键：存稳定 ID，也存删除目标后仍需展示的名称、标签或版本。Template、Application、Repository、Version 与 Pipeline 允许物理删除；历史 Snapshot、Run、Artifact 和 Version Component 不需要回写或置空。
 
+Repository 删除只检查所有 Project 中现存 Application Pipeline 的绑定，任何一个仍绑定时都须先删除相应 Pipeline。删除 Application Pipeline 时，同一 Pipeline 的 `waiting_to_run`、`running` Run 视为未结束并阻止删除；等待其结束或取消后可删除 Pipeline。`ran_to_completion`、`faulted`、`canceled` Run 不阻止删除 Pipeline，其历史记录继续保留。Run、Snapshot 和 Artifact 对 Repository 的 ID 与冗余字段是历史引用，不直接阻止仓库删除；删除后的仓库不再出现在选择器中，历史列表继续使用保存的名称快照。仓库凭据只在没有任何 Repository 引用时可删除。
+
 删除 Template 或 Application Pipeline 的阶段节点时，连带删除该 Pipeline 中所有绑定此阶段 ID 的自定义变量；其他阶段和全局变量保留。若有其他阶段依赖该节点，仍拒绝删除。
 
-只有聚合内部组成关系使用物理外键：Template Pipeline -> PipelineStageReference、Application Pipeline -> PipelineStage、PipelineSnapshot -> PipelineRun，PipelineRun -> Artifact。阶段来源使用逻辑快照引用，允许删除模板阶段后继续使用已保存的引用快照。空库通过迁移链至 version 30 直接创建该模型；旧阶段配置由独立离线脚本处置，业务代码不保留兼容路径。
+Pipeline 到其 Stage/StageReference 使用带级联删除的物理外键；PipelineSnapshot、PipelineRun、Artifact 与 Repository/Pipeline 等跨生命周期对象通过 ID 和冗余展示字段保留历史，不以物理外键阻止源对象删除。Stage 来源使用逻辑快照引用，允许删除模板阶段后继续使用已保存的引用快照。空库通过迁移链至 version 30 直接创建该模型；旧阶段配置由独立离线脚本处置，业务代码不保留兼容路径。
 
 ## HTTP API
 

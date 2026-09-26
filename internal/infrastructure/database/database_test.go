@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	gomysql "github.com/go-sql-driver/mysql"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
@@ -42,15 +43,29 @@ func TestOpenSQLiteConfiguresPragmas(t *testing.T) {
 	}
 }
 
-func TestMySQLModeConnectorEnablesANSIQuotes(t *testing.T) {
+func TestMySQLModeConnectorConfiguresSession(t *testing.T) {
 	connection := &mysqlModeTestConnection{}
 	connector := mysqlModeConnector{Connector: mysqlModeTestConnector{connection: connection}}
 
 	if _, err := connector.Connect(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(connection.statement, "ANSI_QUOTES") {
-		t.Fatalf("expected ANSI_QUOTES session setup, got %q", connection.statement)
+	if len(connection.statements) != 2 || !strings.Contains(connection.statements[0], "ANSI_QUOTES") || !strings.Contains(connection.statements[1], "READ COMMITTED") {
+		t.Fatalf("unexpected MySQL session setup: %q", connection.statements)
+	}
+}
+
+func TestMySQLDsnCountsMatchedRows(t *testing.T) {
+	dsn, err := mysqlDsn("user:pass@tcp(localhost:3306)/orbit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := gomysql.ParseDSN(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ClientFoundRows {
+		t.Fatal("expected matched-row semantics for pipeline locking")
 	}
 }
 
@@ -67,7 +82,7 @@ func (mysqlModeTestConnector) Driver() driver.Driver {
 }
 
 type mysqlModeTestConnection struct {
-	statement string
+	statements []string
 }
 
 func (c *mysqlModeTestConnection) Prepare(string) (driver.Stmt, error) {
@@ -83,6 +98,6 @@ func (c *mysqlModeTestConnection) Begin() (driver.Tx, error) {
 }
 
 func (c *mysqlModeTestConnection) ExecContext(_ context.Context, statement string, _ []driver.NamedValue) (driver.Result, error) {
-	c.statement = statement
+	c.statements = append(c.statements, statement)
 	return driver.RowsAffected(0), nil
 }

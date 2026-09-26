@@ -10,6 +10,13 @@ Pomelo Orbit 是一个面向本地容器环境的轻量级 CI/CD 平台，提供
 
 ## 快速开始
 
+先安装 Go、Node.js 22、Yarn 1、uv 和 Task 3。Task CLI 可通过 Go 安装：
+
+```bash
+go install github.com/go-task/task/v3/cmd/task@v3.45.4
+export PATH="$(go env GOPATH)/bin:$PATH"
+```
+
 ```bash
 task deps
 task dev:webapi

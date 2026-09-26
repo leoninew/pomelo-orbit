@@ -119,7 +119,8 @@ CREATE TABLE IF NOT EXISTS repository_credential (
     encrypted_data TEXT NOT NULL,
     revision BIGINT NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    project_id TEXT REFERENCES project(id)
+    project_id TEXT REFERENCES project(id),
+    CONSTRAINT uq_repository_credential_name UNIQUE (name)
 );
 
 CREATE TABLE IF NOT EXISTS environment_credential (
@@ -241,7 +242,7 @@ CREATE TABLE IF NOT EXISTS repository (
     FOREIGN KEY (git_credential_id) REFERENCES repository_credential(id)
 );
 
-CREATE UNIQUE INDEX uq_repository_project_code ON repository(project_id, code);
+CREATE UNIQUE INDEX uq_repository_code ON repository(code);
 
 
 CREATE TABLE IF NOT EXISTS pipeline_run (

@@ -218,7 +218,7 @@
 
 <script setup lang="ts">
   import { Plus, Upload } from '@lucide/vue';
-  import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+  import { computed, nextTick, reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
   import AppBadge from '@/components/AppBadge.vue';
@@ -346,6 +346,9 @@
     try {
       await executeOp(async () => {
         const detail = await credentialApi.get(projectId, record.id);
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         isEditing.value = true;
         currentId.value = record.id;
         Object.assign(form, {
@@ -502,5 +505,22 @@
     }
   }
 
-  onMounted(fetchCredentials);
+  watch(
+    () => projectStore.activeProjectId,
+    () => {
+      showCredentialDialog.value = false;
+      showDeleteDialog.value = false;
+      showImportDialog.value = false;
+      currentId.value = '';
+      pendingDeleteId.value = '';
+      form.data = '';
+      importForm.data = '';
+      credentials.value = [];
+      searchText.value = '';
+      pagination.current = 1;
+      pagination.total = 0;
+      void fetchCredentials();
+    },
+    { immediate: true }
+  );
 </script>

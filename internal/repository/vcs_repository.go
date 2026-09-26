@@ -6,21 +6,15 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-// RepositoryProjectCounter provides Project lifecycle facts owned by the
-// Repository domain.
-type RepositoryProjectCounter interface {
-	CountRepositoriesByProject(ctx context.Context, projectId string) (int, error)
-}
-
 // RepositoryStore persists source repositories. Webhook delivery is not part of
 // the current CI model.
 type RepositoryStore interface {
-	ListRepositories(ctx context.Context, projectId string, page int, perPage int, search string) (Page[model.Repository], error)
-	Repository(ctx context.Context, projectId string, id string) (model.Repository, error)
-	RepositoryByCode(ctx context.Context, projectId string, code string) (model.Repository, error)
+	ListRepositories(ctx context.Context, page int, perPage int, search string) (Page[model.Repository], error)
+	Repository(ctx context.Context, id string) (model.Repository, error)
+	RepositoryByCode(ctx context.Context, code string) (model.Repository, error)
 	CreateRepository(ctx context.Context, repo model.Repository) error
-	UpdateRepository(ctx context.Context, projectId string, repo model.Repository) error
-	DeleteRepository(ctx context.Context, projectId string, id string) error
-	RepositoryHasBoundPipelines(ctx context.Context, projectId string, id string) (bool, error)
-	RepositoryReferencesCredential(ctx context.Context, projectId string, credentialId string) (bool, error)
+	UpdateRepository(ctx context.Context, repo model.Repository) error
+	DeleteRepository(ctx context.Context, id string) error
+	RepositoryHasBoundPipelines(ctx context.Context, id string) (bool, error)
+	RepositoryReferencesCredential(ctx context.Context, credentialId string) (bool, error)
 }

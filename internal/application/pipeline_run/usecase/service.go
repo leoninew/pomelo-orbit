@@ -49,8 +49,8 @@ type Service struct {
 type pipelineExecutionStore interface {
 	PipelineRun(ctx context.Context, projectId string, id string) (model.PipelineRun, error)
 	ListPipelineStageRuns(ctx context.Context, projectId string, runId string) ([]model.PipelineStageRun, error)
-	Repository(ctx context.Context, projectId string, id string) (model.Repository, error)
-	Credential(ctx context.Context, projectId string, id string) (model.Credential, error)
+	Repository(ctx context.Context, id string) (model.Repository, error)
+	Credential(ctx context.Context, id string) (model.Credential, error)
 	PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error)
 	BeginPipelineRun(ctx context.Context, projectId string, id string) (bool, error)
 	CompletePipelineRun(ctx context.Context, projectId string, id string, status string, message string) (bool, error)
@@ -92,14 +92,17 @@ func (s stores) Project(ctx context.Context, id string) (model.Project, error) {
 func (s stores) IsProjectMember(ctx context.Context, projectId, userId string) (bool, error) {
 	return s.project.IsProjectMember(ctx, projectId, userId)
 }
-func (s stores) Repository(ctx context.Context, projectId string, id string) (model.Repository, error) {
-	return s.repository.Repository(ctx, projectId, id)
+func (s stores) Repository(ctx context.Context, id string) (model.Repository, error) {
+	return s.repository.Repository(ctx, id)
 }
-func (s stores) Credential(ctx context.Context, projectId string, id string) (model.Credential, error) {
-	return s.credential.Credential(ctx, projectId, id)
+func (s stores) Credential(ctx context.Context, id string) (model.Credential, error) {
+	return s.credential.Credential(ctx, id)
 }
 func (s stores) Pipeline(ctx context.Context, projectId string, id string) (model.Pipeline, error) {
 	return s.pipeline.Pipeline(ctx, projectId, id)
+}
+func (s stores) LockApplicationPipeline(ctx context.Context, projectId string, id string) error {
+	return s.pipeline.LockApplicationPipeline(ctx, projectId, id)
 }
 func (s stores) PipelineSnapshot(ctx context.Context, projectId string, id string) (model.PipelineSnapshot, error) {
 	return s.pipeline.PipelineSnapshot(ctx, projectId, id)
@@ -257,10 +260,24 @@ func (s Service) RetryPipelineRun(ctx context.Context, userId string, projectId 
 }
 
 func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeline model.Pipeline, overrides pipelinevariable.RuntimeVariableOverrides, retryOf *string) (pipelinerundto.PipelineRunDetail, error) {
+	if err := s.store.LockApplicationPipeline(ctx, projectId, pipeline.Id); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Pipeline "+pipeline.Id+" not found")
+		}
+		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to lock application pipeline", err)
+	}
+	current, err := s.store.Pipeline(ctx, projectId, pipeline.Id)
+	if errors.Is(err, repository.ErrNotFound) {
+		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindNotFound, "Pipeline "+pipeline.Id+" not found")
+	}
+	if err != nil {
+		return pipelinerundto.PipelineRunDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline", err)
+	}
+	pipeline = current
 	if pipeline.RepositoryId == nil {
 		return pipelinerundto.PipelineRunDetail{}, apperror.New(apperror.KindValidation, "application pipeline identity is incomplete")
 	}
-	repo, err := s.repositoryForPipeline(ctx, projectId, pipeline)
+	repo, err := s.repositoryForPipeline(ctx, pipeline)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
@@ -340,7 +357,7 @@ func (s Service) ListPipelineRuns(ctx context.Context, userId string, input pipe
 	if err != nil {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, err
 	}
-	if err := s.ensureRunRepositoryFilter(ctx, projectId, input.RepositoryId); err != nil {
+	if err := s.ensureRunRepositoryFilter(ctx, input.RepositoryId); err != nil {
 		return repository.Page[pipelinerundto.PipelineRunDetail]{}, err
 	}
 	if err := s.ensureRunPipelineFilter(ctx, projectId, input.PipelineId); err != nil {
@@ -509,11 +526,11 @@ func (s Service) pipelineForUser(ctx context.Context, userId string, projectId s
 	return pipeline, nil
 }
 
-func (s Service) repositoryForPipeline(ctx context.Context, projectId string, pipeline model.Pipeline) (model.Repository, error) {
+func (s Service) repositoryForPipeline(ctx context.Context, pipeline model.Pipeline) (model.Repository, error) {
 	if pipeline.RepositoryId == nil {
 		return model.Repository{}, apperror.New(apperror.KindValidation, "application pipeline has no repository")
 	}
-	repo, err := s.store.Repository(ctx, projectId, *pipeline.RepositoryId)
+	repo, err := s.store.Repository(ctx, *pipeline.RepositoryId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Repository{}, apperror.New(apperror.KindNotFound, "Pipeline repository not found")
 	}
@@ -602,11 +619,11 @@ func pipelineStageRuns(runId, stagesSnapshot string) ([]model.PipelineStageRun, 
 	}
 	return runs, nil
 }
-func (s Service) ensureRunRepositoryFilter(ctx context.Context, projectId, repositoryId string) error {
+func (s Service) ensureRunRepositoryFilter(ctx context.Context, repositoryId string) error {
 	if repositoryId == "" {
 		return nil
 	}
-	_, err := s.store.Repository(ctx, projectId, repositoryId)
+	_, err := s.store.Repository(ctx, repositoryId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 	}

@@ -2,9 +2,9 @@
   <div class="space-y-6">
     <ToolbarRoot class="app-toolbar-scroll" aria-label="运行记录工具栏">
       <div class="app-toolbar-row">
-        <ComboboxSelect
+        <RepositorySelect
           v-model="repositoryId"
-          :options="repositoryOptions"
+          :project-id="projectStore.activeProjectId"
           placeholder="筛选代码仓库"
           width-class="app-toolbar-select"
           @update:model-value="searchRuns"
@@ -31,7 +31,6 @@
               <th>ID</th>
               <th>流水线</th>
               <th>仓库</th>
-              <th>配置版本</th>
               <th>Ref</th>
               <th>状态</th>
               <th>开始时间</th>
@@ -55,9 +54,6 @@
                 <router-link :to="`/repository/${run.repository_id}`" class="app-link">
                   {{ run.repository_name }}
                 </router-link>
-              </td>
-              <td>
-                <AppBadge>v{{ run.pipeline_version }}</AppBadge>
               </td>
               <td class="text-foreground">{{ run.repository_ref }}</td>
               <td>
@@ -118,23 +114,21 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { computed, reactive, ref, watch } from 'vue';
   import { ToolbarRoot } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
-  import { repositoryApi } from '@/api/repository/repository';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ComboboxSelect from '@/components/ComboboxSelect.vue';
+  import RepositorySelect from '@/components/RepositorySelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineRunResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
-  import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import { useProjectStore } from '@/stores/project';
   import { isComplete, statusTone } from '@/utils/status';
   import { formatDuration, formatTime } from '@/utils/time';
@@ -145,7 +139,6 @@
   const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const runs = ref<PipelineRunResp[]>([]);
-  const repositories = ref<RepositoryResp[]>([]);
   const repositoryId = ref('');
   const searchText = ref('');
   const appliedSearch = ref('');
@@ -154,12 +147,6 @@
   const deleteSubmitError = ref('');
   const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
-  const repositoryOptions = computed(() =>
-    repositories.value.map((repository) => ({
-      value: repository.id,
-      label: repository.name,
-    }))
-  );
   const filteredRuns = computed(() => {
     const keyword = appliedSearch.value.trim().toLowerCase();
     if (!keyword) {
@@ -195,16 +182,6 @@
       });
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : '加载运行记录失败');
-    }
-  }
-  async function loadRepositories() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      return;
-    }
-    const response = await repositoryApi.list(projectId, { per_page: 100 });
-    if (projectStore.activeProjectId === projectId) {
-      repositories.value = response.items;
     }
   }
   function searchRuns() {
@@ -257,12 +234,17 @@
         error instanceof Error ? error.message : t('pipelineRun.toast.deleteFailed');
     }
   }
-  onMounted(async () => {
-    try {
-      await loadRepositories();
-    } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : '加载仓库筛选项失败');
-    }
-    await fetchRuns();
-  });
+  watch(
+    () => projectStore.activeProjectId,
+    () => {
+      repositoryId.value = '';
+      searchText.value = '';
+      appliedSearch.value = '';
+      runs.value = [];
+      pagination.current = 1;
+      pagination.total = 0;
+      void fetchRuns();
+    },
+    { immediate: true }
+  );
 </script>

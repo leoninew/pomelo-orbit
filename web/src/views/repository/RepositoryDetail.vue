@@ -196,11 +196,11 @@
         </div>
         <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
           <label class="app-field-label block">Git 凭据</label>
-          <ComboboxSelect
+          <RepositoryCredentialSelect
             v-model="editForm.git_credential_id"
-            :options="gitCredentialOptions"
+            :project-id="projectStore.activeProjectId"
+            :selected-label="repository?.git_credential_name"
             placeholder="不使用凭据"
-            description-inline
           />
         </div>
         <p v-if="editFormError" class="app-field-error text-xs" role="alert">
@@ -332,21 +332,19 @@
 
 <script setup lang="ts">
   import { ArrowLeft, Plus, Trash2 } from '@lucide/vue';
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { computed, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
-  import { credentialApi } from '@/api/credential/credential';
   import { repositoryApi } from '@/api/repository/repository';
   import AppDialog from '@/components/AppDialog.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ComboboxSelect from '@/components/ComboboxSelect.vue';
+  import RepositoryCredentialSelect from '@/components/RepositoryCredentialSelect.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { CredentialResp } from '@/gen/proto/orbit/v1/credential/credential';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import type { VariableDeclarationReq, VariableResp } from '@/gen/proto/orbit/v1/common/common';
   import { formatTime } from '@/utils/time';
@@ -372,7 +370,6 @@
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
   const repository = ref<RepositoryResp>();
-  const credentials = ref<CredentialResp[]>([]);
 
   const isEditDialogOpen = ref(false);
   const editFormError = ref('');
@@ -407,22 +404,6 @@
   });
   const editingVariableName = ref('');
 
-  const gitCredentials = computed(() =>
-    credentials.value.filter(
-      (credential) =>
-        credential.type === 'git_ssh' ||
-        credential.type === 'github_token' ||
-        credential.type === 'gitee_token' ||
-        credential.type === 'gitea_token'
-    )
-  );
-  const gitCredentialOptions = computed(() =>
-    gitCredentials.value.map((credential) => ({
-      value: credential.id,
-      label: credential.name,
-      description: credential.type,
-    }))
-  );
   const repositoryTypeOptions = [
     { value: 'remote_git', label: '远程 Git' },
     { value: 'local_directory', label: '本地目录' },
@@ -535,32 +516,23 @@
     }
     try {
       await execute(async () => {
-        repository.value = await repositoryApi.get(projectId, repositoryId);
-        resetEditForm();
+        const result = await repositoryApi.get(projectId, repositoryId);
+        if (projectStore.activeProjectId === projectId) {
+          repository.value = result;
+          resetEditForm();
+        }
       });
     } catch {
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       toast.error('获取代码仓库信息失败');
       router.push('/repository');
     }
   }
 
-  async function fetchCredentials() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      toast.error('请先选择项目');
-      return;
-    }
-    try {
-      const res = await credentialApi.list(projectId, { per_page: 100 });
-      credentials.value = res.items;
-    } catch {
-      toast.error('获取凭据列表失败');
-    }
-  }
-
   async function openEditDialog() {
     resetEditForm();
-    await fetchCredentials();
     isEditDialogOpen.value = true;
   }
 
@@ -751,7 +723,14 @@
     return value.repository_url;
   }
 
-  onMounted(async () => {
-    await fetchRepository();
-  });
+  watch(
+    () => projectStore.activeProjectId,
+    () => {
+      isEditDialogOpen.value = false;
+      isDeleteDialogOpen.value = false;
+      repository.value = undefined;
+      void fetchRepository();
+    },
+    { immediate: true }
+  );
 </script>

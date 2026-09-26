@@ -56,8 +56,6 @@ const gateway: GatewayResp = {
   version_bindings: [],
 };
 
-const ProjectInitializationStub = { template: '<div>Project initialization</div>' };
-
 let mountedApp: App | undefined;
 let target: HTMLDivElement | undefined;
 let pinia: ReturnType<typeof createPinia> | undefined;
@@ -79,7 +77,7 @@ afterEach(() => {
 });
 
 describe('Gateway detail editing', () => {
-  it('keeps an unconfigured gateway page open until initialization is requested', async () => {
+  it('keeps an unconfigured gateway page open with the shared empty state', async () => {
     pinia = createPinia();
     setActivePinia(pinia);
     useProjectStore().setActiveProject('project-1');
@@ -92,14 +90,7 @@ describe('Gateway detail editing', () => {
     });
     const router = createRouter({
       history: createMemoryHistory(),
-      routes: [
-        { path: '/gateway', component: GatewayDetail },
-        {
-          path: '/project/:id/initialization',
-          name: 'ProjectInitialization',
-          component: ProjectInitializationStub,
-        },
-      ],
+      routes: [{ path: '/gateway', component: GatewayDetail }],
     });
 
     await router.push('/gateway');
@@ -113,20 +104,8 @@ describe('Gateway detail editing', () => {
     await flushRender();
 
     expect(router.currentRoute.value.path).toBe('/gateway');
-    expect(target.textContent).toContain(i18n.global.t('gateway.empty'));
-
-    const initializeButton = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent?.trim() === i18n.global.t('project.initialization.title')
-    );
-    expect(initializeButton).toBeDefined();
-    initializeButton?.click();
-
-    await vi.waitFor(() =>
-      expect(router.currentRoute.value).toMatchObject({
-        name: 'ProjectInitialization',
-        params: { id: 'project-1' },
-      })
-    );
+    expect(gatewayApi.list).toHaveBeenCalledWith('project-1');
+    expect(target.textContent).toContain(i18n.global.t('common.noData'));
   });
 
   it('saves control-plane fields in the detail dialog without a render error', async () => {

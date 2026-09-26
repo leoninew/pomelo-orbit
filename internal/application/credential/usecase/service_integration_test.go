@@ -17,7 +17,6 @@ import (
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	vcsrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
-	testseed "github.com/leoninew/pomelo-orbit/internal/testutil/seed"
 )
 
 const (
@@ -74,7 +73,7 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 		t.Fatalf("expected duplicate credential update conflict, got %v", err)
 	}
 
-	if _, err := database.ExecContext(ctx, `UPDATE repository SET git_credential_id = ? WHERE id = ?`, created.Id, "01KNNRBH52BQJYT9487B2H8N62"); err != nil {
+	if _, err := database.ExecContext(ctx, `UPDATE repository SET git_credential_id = ? WHERE id = ?`, created.Id, "01M327332NTE0VY4S5YRWJ2HZR"); err != nil {
 		t.Fatal(err)
 	}
 	if err := service.DeleteCredential(ctx, ciTestUserId, ciTestProjectId, created.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
@@ -112,6 +111,28 @@ func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
 	}
 }
 
+func TestNonRepositoryCredentialCannotBeReadOrBoundAsRepositoryCredential(t *testing.T) {
+	service, database := newCredentialIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	const credentialId = "legacy-deployment-credential"
+	if _, err := database.ExecContext(ctx, `INSERT INTO repository_credential (id, name, type, encrypted_data, revision) VALUES (?, ?, ?, ?, 1)`,
+		credentialId, "Legacy deployment key", "deployment_ssh_private_key", "legacy-secret"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := service.CredentialDetailForUser(ctx, ciTestUserId, ciTestProjectId, credentialId); !apperror.IsKind(err, apperror.KindNotFound) {
+		t.Fatalf("expected non-repository credential detail to be unavailable, got %v", err)
+	}
+	if _, err := service.ExportCredential(ctx, ciTestUserId, ciTestProjectId, credentialId); !apperror.IsKind(err, apperror.KindNotFound) {
+		t.Fatalf("expected non-repository credential export to be unavailable, got %v", err)
+	}
+	exists, err := credentialrepo.NewRepository(database).CredentialExists(ctx, credentialId)
+	if err != nil || exists {
+		t.Fatalf("expected non-repository credential to be unavailable for repository binding, exists=%t err=%v", exists, err)
+	}
+}
+
 func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	t.Helper()
 	database, err := sql.Open("sqlite", ":memory:")
@@ -122,7 +143,6 @@ func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	testseed.ApplySQLitePipelineDemo(t, database)
 	_ = slog.New(slog.NewTextHandler(io.Discard, nil))
 	service := New(
 		projectrepo.NewRepository(database),

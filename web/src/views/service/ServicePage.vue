@@ -223,7 +223,6 @@
             :options="deployVersionSelectOptions"
             :placeholder="t('service.deploy.selectVersion')"
             :invalid="Boolean(deployVersionError)"
-            description-inline
             width-class="w-full"
             @update:model-value="handleDeployVersionChange"
           />
@@ -315,7 +314,6 @@
             :placeholder="t('service.create.selectVersion')"
             :disabled="!createForm.application_id"
             :invalid="Boolean(createErrors.version_id)"
-            description-inline
             width-class="w-full"
             @update:model-value="
               createForm.version_id = String($event || '');

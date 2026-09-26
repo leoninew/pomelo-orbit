@@ -19,6 +19,7 @@ type Querier interface {
 	CompletePipelineRun(ctx context.Context, arg CompletePipelineRunParams) (int64, error)
 	CompletePipelineRunVersionBinding(ctx context.Context, arg CompletePipelineRunVersionBindingParams) error
 	CompletePipelineStageRun(ctx context.Context, arg CompletePipelineStageRunParams) (int64, error)
+	CountActivePipelineRunsByPipeline(ctx context.Context, arg CountActivePipelineRunsByPipelineParams) (int64, error)
 	CountActivePipelineRunsByRepository(ctx context.Context, arg CountActivePipelineRunsByRepositoryParams) (int64, error)
 	CountArtifacts(ctx context.Context, arg CountArtifactsParams) (int64, error)
 	CountCDConfigurationReferences(ctx context.Context, projectID sql.NullString) (int64, error)

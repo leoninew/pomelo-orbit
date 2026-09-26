@@ -367,6 +367,32 @@ func (q *Queries) CompletePipelineStageRun(ctx context.Context, arg CompletePipe
 	return result.RowsAffected()
 }
 
+const countActivePipelineRunsByPipeline = `-- name: CountActivePipelineRunsByPipeline :one
+SELECT COUNT(*) FROM pipeline_run
+WHERE project_id = ?
+  AND pipeline_id = ?
+  AND status IN (?, ?)
+`
+
+type CountActivePipelineRunsByPipelineParams struct {
+	ProjectId     sql.NullString `db:"project_id"`
+	PipelineId    string         `db:"pipeline_id"`
+	WaitingStatus string         `db:"waiting_status"`
+	RunningStatus string         `db:"running_status"`
+}
+
+func (q *Queries) CountActivePipelineRunsByPipeline(ctx context.Context, arg CountActivePipelineRunsByPipelineParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countActivePipelineRunsByPipeline,
+		arg.ProjectId,
+		arg.PipelineId,
+		arg.WaitingStatus,
+		arg.RunningStatus,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countActivePipelineRunsByRepository = `-- name: CountActivePipelineRunsByRepository :one
 SELECT COUNT(*) FROM pipeline_run
 WHERE project_id = ?

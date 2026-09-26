@@ -11,7 +11,6 @@ export const protobufPackage = "orbit.v1.repository";
 
 export interface RepositoryResp {
   id: string;
-  project_id?: string | undefined;
   name: string;
   code: string;
   repository_type: string;

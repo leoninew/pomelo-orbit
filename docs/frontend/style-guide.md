@@ -38,6 +38,7 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 
 - 文本输入使用 `app-input`，多行文本使用 `app-textarea`。
 - 普通下拉使用 `SelectControl`，可搜索选择使用 `ComboboxSelect`。
+- `ComboboxSelect` 只处理选项显示、搜索输入、翻页入口与选中事件；远端资源查询和结果映射放在 `RepositorySelect`、`RepositoryCredentialSelect` 等业务组件中。
 - 字段块使用 `space-y-1.5`，label 使用 `app-field-label block`。
 - 错误态：控件加 `app-input-error`，错误文本使用 `app-field-error text-xs`。
 - 字段级说明使用 `app-field-hint`；块状说明或导入摘要使用 `app-tip`。

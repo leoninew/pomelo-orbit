@@ -134,7 +134,6 @@
             :options="basicEditVersionSelectOptions"
             :placeholder="t('service.create.selectVersion')"
             :invalid="Boolean(basicEditErrors.version_id)"
-            description-inline
             width-class="w-full"
             @update:model-value="handleBasicEditVersionChange"
           />
@@ -175,7 +174,6 @@
             :options="deployVersionSelectOptions"
             :placeholder="t('service.deploy.selectVersion')"
             :invalid="Boolean(deployVersionError)"
-            description-inline
             width-class="w-full"
             @update:model-value="handleDeployVersionChange"
           />

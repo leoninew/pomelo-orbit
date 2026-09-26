@@ -16,7 +16,6 @@ import (
 	applicationrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/application"
 	environmentrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/environment"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
-	repositoryrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
 
@@ -142,7 +141,6 @@ func newProjectIntegrationService(t *testing.T) (Service, *sql.DB) {
 	return New(
 		projectStore,
 		userrepo.NewRepository(database),
-		repositoryrepo.NewRepository(database),
 		applicationrepo.NewRepository(database),
 	), database
 }

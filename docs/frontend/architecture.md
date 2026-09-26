@@ -72,10 +72,10 @@ web/
 - 负责数据获取、状态管理、业务逻辑编排
 - 使用共享组件构建 UI
 
-**共享组件 (Components)**
+**组件 (Components)**
 - 位于 `src/components/`
-- 封装 Reka UI 原语，提供项目级别的默认样式和行为
-- 可复用、无业务逻辑
+- `ComboboxSelect` 等通用组件封装 Reka UI 原语，提供项目级别的默认样式和行为，不查询业务资源
+- `RepositorySelect`、`RepositoryCredentialSelect` 等业务组件复用通用控件，负责各自的数据查询、结果映射和选中项回显
 
 **Reka UI 原语**
 - 通过 auto-import 自动导入

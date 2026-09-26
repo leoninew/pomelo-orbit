@@ -204,9 +204,9 @@
           代码仓库
           <span class="text-destructive">*</span>
         </label>
-        <ComboboxSelect
+        <RepositorySelect
           v-model="instantiateForm.repositoryId"
-          :options="repositoryOptions"
+          :project-id="projectStore.activeProjectId"
           :invalid="Boolean(instantiateErrors.repositoryId)"
           placeholder="选择仓库"
           @update:model-value="instantiateErrors.repositoryId = ''"
@@ -255,7 +255,6 @@
               v-model="instantiateForm.fixedVersionId"
               :options="versionOptions"
               :invalid="Boolean(instantiateErrors.fixedVersionId)"
-              description-inline
               placeholder="选择版本"
               @update:model-value="changeFixedVersion"
             />
@@ -325,13 +324,13 @@
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import { pipelineApi } from '@/api/pipeline/pipeline';
-  import { repositoryApi } from '@/api/repository/repository';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
+  import RepositorySelect from '@/components/RepositorySelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import RawValueSelect, { type RawValue } from '@/components/RawValueSelect.vue';
   import SearchControl from '@/components/SearchControl.vue';
@@ -341,7 +340,6 @@
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
-  import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import { useProjectStore } from '@/stores/project';
   import { formatTime, nowUnixTimestamp } from '@/utils/time';
 
@@ -353,7 +351,6 @@
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const pipelines = ref<PipelineResp[]>([]);
   const applications = ref<ApplicationResp[]>([]);
-  const repositories = ref<RepositoryResp[]>([]);
   const versions = ref<VersionResp[]>([]);
   const sourceVersion = ref<VersionResp>();
   const sourceVersionLoading = ref(false);
@@ -423,12 +420,6 @@
     }
     return options;
   });
-  const repositoryOptions = computed(() =>
-    repositories.value.map((repository) => ({
-      value: repository.id,
-      label: repository.name,
-    }))
-  );
   const versionOptions = computed(() =>
     versions.value.map((version) => ({
       value: version.id,
@@ -493,12 +484,11 @@
     if (!projectId) {
       return;
     }
-    const [applicationResponse, repositoryResponse] = await Promise.all([
-      applicationApi.list(projectId, { per_page: 100 }),
-      repositoryApi.list(projectId, { per_page: 100 }),
-    ]);
+    const applicationResponse = await applicationApi.list(projectId, { per_page: 100 });
+    if (projectStore.activeProjectId !== projectId) {
+      return;
+    }
     applications.value = applicationResponse.items;
-    repositories.value = repositoryResponse.items;
   }
 
   function searchPipelines() {
@@ -548,6 +538,9 @@
       }
       try {
         const page = await applicationApi.list(projectId, { per_page: 100 });
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         editApplications.value = page.items ?? [];
       } catch (reason) {
         toast.error(reason instanceof Error ? reason.message : '加载应用列表失败');
@@ -626,6 +619,9 @@
       return;
     }
     const detail = await pipelineApi.get(projectId, template.id);
+    if (projectStore.activeProjectId !== projectId) {
+      return;
+    }
     selectedTemplate.value = detail;
     Object.assign(instantiateForm, {
       name: `${detail.name} ${nowUnixTimestamp()}`,
@@ -647,6 +643,9 @@
     instantiateError.value = '';
     try {
       await loadInstantiationOptions();
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       instantiateOpen.value = true;
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : '加载应用或仓库失败');
@@ -870,6 +869,24 @@
     () => route.query.instantiate,
     (templateID) => {
       void openInstantiationFromQuery(templateID);
+    }
+  );
+
+  watch(
+    () => projectStore.activeProjectId,
+    (current, previous) => {
+      if (!previous || current === previous) {
+        return;
+      }
+      createOpen.value = false;
+      editOpen.value = false;
+      instantiateOpen.value = false;
+      deleteOpen.value = false;
+      pipelines.value = [];
+      applications.value = [];
+      pagination.current = 1;
+      pagination.total = 0;
+      void fetchPipelines();
     }
   );
 

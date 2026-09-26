@@ -95,9 +95,9 @@ func (h Handler) DeleteRepository(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 func repositoryListResponse(item model.Repository) repositoryv1.RepositoryResp {
-	return repositoryv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryType: item.RepositoryType, RepositoryUrl: item.RepositoryUrl, HasCredential: item.GitCredentialId != nil, GitCredentialId: transport.OptionalStringValue(item.GitCredentialId), DefaultBranch: item.DefaultBranch, CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
+	return repositoryv1.RepositoryResp{Id: item.Id, Name: item.Name, Code: item.Code, RepositoryType: item.RepositoryType, RepositoryUrl: item.RepositoryUrl, HasCredential: item.GitCredentialId != nil, GitCredentialId: transport.OptionalStringValue(item.GitCredentialId), DefaultBranch: item.DefaultBranch, CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
 }
 func repositoryDetailResponse(detail repositorydto.RepositoryDetail) repositoryv1.RepositoryResp {
 	item := detail.Repository
-	return repositoryv1.RepositoryResp{Id: item.Id, ProjectId: item.ProjectId, Name: item.Name, Code: item.Code, RepositoryType: item.RepositoryType, RepositoryUrl: item.RepositoryUrl, HasCredential: item.GitCredentialId != nil, GitCredentialId: transport.OptionalStringValue(item.GitCredentialId), GitCredentialName: detail.GitCredentialName, Variables: variableResponses(detail.Variables), DefaultBranch: item.DefaultBranch, CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
+	return repositoryv1.RepositoryResp{Id: item.Id, Name: item.Name, Code: item.Code, RepositoryType: item.RepositoryType, RepositoryUrl: item.RepositoryUrl, HasCredential: item.GitCredentialId != nil, GitCredentialId: transport.OptionalStringValue(item.GitCredentialId), GitCredentialName: detail.GitCredentialName, Variables: variableResponses(detail.Variables), DefaultBranch: item.DefaultBranch, CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt)}
 }

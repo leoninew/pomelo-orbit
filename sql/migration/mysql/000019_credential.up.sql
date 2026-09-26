@@ -8,8 +8,6 @@ CREATE TABLE IF NOT EXISTS credential (
     type VARCHAR(64) NOT NULL,
     encrypted_data LONGTEXT NOT NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    project_id VARCHAR(26)
+    project_id VARCHAR(26),
+    CONSTRAINT uq_repository_credential_name UNIQUE (name)
 );
-
-CREATE INDEX idx_credential_name ON credential(name);
-CREATE INDEX idx_credential_project ON credential(project_id);

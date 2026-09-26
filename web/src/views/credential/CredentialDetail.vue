@@ -138,7 +138,7 @@
 
 <script setup lang="ts">
   import { ArrowLeft, Download, Trash2 } from '@lucide/vue';
-  import { onMounted, reactive, ref } from 'vue';
+  import { reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
   import AppDialog from '@/components/AppDialog.vue';
@@ -170,18 +170,22 @@
 
   async function fetchCredential() {
     const projectId = projectStore.activeProjectId;
+    const credentialId = props.id;
     if (!projectId) {
       toast.error('请先选择项目');
       return;
     }
     try {
       await execute(async () => {
-        const item = await credentialApi.get(projectId, props.id);
-        if (projectStore.activeProjectId === projectId) {
+        const item = await credentialApi.get(projectId, credentialId);
+        if (projectStore.activeProjectId === projectId && props.id === credentialId) {
           credential.value = item;
         }
       });
     } catch {
+      if (projectStore.activeProjectId !== projectId || props.id !== credentialId) {
+        return;
+      }
       toast.error('获取凭据详情失败');
     }
   }
@@ -282,5 +286,15 @@
     return 'registry_token_here';
   }
 
-  onMounted(fetchCredential);
+  watch(
+    () => [projectStore.activeProjectId, props.id] as const,
+    () => {
+      credential.value = undefined;
+      isEditModalOpen.value = false;
+      isDeleteModalOpen.value = false;
+      form.data = '';
+      void fetchCredential();
+    },
+    { immediate: true }
+  );
 </script>

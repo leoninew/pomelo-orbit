@@ -25,7 +25,6 @@ const (
 type RepositoryResp struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ProjectId         *string                `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
 	Name              string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	Code              string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
 	RepositoryType    string                 `protobuf:"bytes,13,opt,name=repository_type,json=repositoryType,proto3" json:"repository_type,omitempty"`
@@ -74,13 +73,6 @@ func (*RepositoryResp) Descriptor() ([]byte, []int) {
 func (x *RepositoryResp) GetId() string {
 	if x != nil {
 		return x.Id
-	}
-	return ""
-}
-
-func (x *RepositoryResp) GetProjectId() string {
-	if x != nil && x.ProjectId != nil {
-		return *x.ProjectId
 	}
 	return ""
 }
@@ -418,27 +410,25 @@ var File_orbit_v1_repository_repository_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_repository_repository_proto_rawDesc = "" +
 	"\n" +
-	"$orbit/v1/repository/repository.proto\x12\x13orbit.v1.repository\x1a\x1corbit/v1/common/common.proto\"\x8d\x04\n" +
+	"$orbit/v1/repository/repository.proto\x12\x13orbit.v1.repository\x1a\x1corbit/v1/common/common.proto\"\xec\x03\n" +
 	"\x0eRepositoryResp\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
-	"\n" +
-	"project_id\x18\x02 \x01(\tH\x00R\tprojectId\x88\x01\x01\x12\x12\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x04 \x01(\tR\x04code\x12'\n" +
 	"\x0frepository_type\x18\r \x01(\tR\x0erepositoryType\x12%\n" +
 	"\x0erepository_url\x18\x05 \x01(\tR\rrepositoryUrl\x12%\n" +
 	"\x0ehas_credential\x18\x06 \x01(\bR\rhasCredential\x12*\n" +
 	"\x11git_credential_id\x18\a \x01(\tR\x0fgitCredentialId\x123\n" +
-	"\x13git_credential_name\x18\b \x01(\tH\x01R\x11gitCredentialName\x88\x01\x01\x12;\n" +
+	"\x13git_credential_name\x18\b \x01(\tH\x00R\x11gitCredentialName\x88\x01\x01\x12;\n" +
 	"\tvariables\x18\t \x03(\v2\x1d.orbit.v1.common.VariableRespR\tvariables\x12%\n" +
 	"\x0edefault_branch\x18\n" +
 	" \x01(\tR\rdefaultBranch\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\v \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\f \x01(\tR\tupdatedAtB\r\n" +
-	"\v_project_idB\x16\n" +
-	"\x14_git_credential_name\"\xd3\x02\n" +
+	"updated_at\x18\f \x01(\tR\tupdatedAtB\x16\n" +
+	"\x14_git_credential_nameJ\x04\b\x02\x10\x03R\n" +
+	"project_id\"\xd3\x02\n" +
 	"\x13RepositoryCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12'\n" +

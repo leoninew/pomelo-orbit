@@ -18,7 +18,7 @@ func (s Service) ListArtifacts(ctx context.Context, userId string, input pipelin
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repository.Page[model.Artifact]{}, err
 	}
-	if err := s.ensureRunRepositoryFilter(ctx, projectId, input.RepositoryId); err != nil {
+	if err := s.ensureRunRepositoryFilter(ctx, input.RepositoryId); err != nil {
 		return repository.Page[model.Artifact]{}, err
 	}
 	if err := s.ensureRunPipelineFilter(ctx, projectId, input.PipelineId); err != nil {

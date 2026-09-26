@@ -192,7 +192,6 @@
             :empty-text="t('project.noAvailableUsers')"
             :disabled="operating"
             :invalid="Boolean(memberErrors.userId)"
-            description-inline
             @update:model-value="memberErrors.userId = ''"
           />
           <p v-if="memberErrors.userId" class="app-field-error" role="alert">

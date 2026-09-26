@@ -16,6 +16,7 @@ type PipelineStore interface {
 	CreatePipeline(ctx context.Context, pipeline model.Pipeline) error
 	UpdatePipeline(ctx context.Context, projectId string, pipeline model.Pipeline) error
 	DeletePipeline(ctx context.Context, projectId string, id string) error
+	LockApplicationPipeline(ctx context.Context, projectId string, id string) error
 
 	ListPipelineStageTemplates(ctx context.Context, projectId string, page int, perPage int, search string) (Page[model.PipelineStage], error)
 	PipelineStageTemplate(ctx context.Context, projectId string, id string) (model.PipelineStage, error)

@@ -2,9 +2,9 @@
   <div class="space-y-6">
     <ToolbarRoot class="app-toolbar-scroll" aria-label="制品工具栏">
       <div class="app-toolbar-row">
-        <ComboboxSelect
+        <RepositorySelect
           :model-value="query.repository_id"
-          :options="repoSelectOptions"
+          :project-id="projectStore.activeProjectId"
           placeholder="筛选代码仓库"
           width-class="app-toolbar-select"
           @update:model-value="handleRepositoryChange"
@@ -101,21 +101,19 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { computed, reactive, ref, watch } from 'vue';
   import { ToolbarRoot } from 'reka-ui';
   import { artifactApi } from '@/api/pipeline_run/artifact';
-  import { repositoryApi } from '@/api/repository/repository';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ComboboxSelect from '@/components/ComboboxSelect.vue';
+  import RepositorySelect from '@/components/RepositorySelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
   import type { ArtifactResp } from '@/gen/proto/orbit/v1/pipeline_run/artifact';
-  import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import { formatTime } from '@/utils/time';
 
   const { status, error, execute } = useStatusAsync();
@@ -126,30 +124,6 @@
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
 
   const query = reactive({ search: '', repository_id: '' });
-
-  const repoOptions = ref<RepositoryResp[]>([]);
-
-  const repoSelectOptions = computed(() =>
-    repoOptions.value.map((repo) => ({
-      value: repo.id,
-      label: repo.name,
-    }))
-  );
-
-  async function loadRepos() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      return;
-    }
-    try {
-      const resp = await repositoryApi.list(projectId, { per_page: 100 });
-      if (projectStore.activeProjectId === projectId) {
-        repoOptions.value = resp.items;
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : '获取仓库列表失败');
-    }
-  }
 
   function handleRepositoryChange(value: string | number | boolean) {
     const nextValue = String(value || '');
@@ -200,8 +174,16 @@
     fetchArtifacts();
   }
 
-  onMounted(async () => {
-    await loadRepos();
-    fetchArtifacts();
-  });
+  watch(
+    () => projectStore.activeProjectId,
+    () => {
+      query.repository_id = '';
+      query.search = '';
+      artifacts.value = [];
+      pagination.current = 1;
+      pagination.total = 0;
+      void fetchArtifacts();
+    },
+    { immediate: true }
+  );
 </script>

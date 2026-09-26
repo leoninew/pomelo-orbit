@@ -9,7 +9,6 @@ const (
 
 type Repository struct {
 	Id                string    `db:"id"`
-	ProjectId         *string   `db:"project_id"`
 	Name              string    `db:"name"`
 	Code              string    `db:"code"`
 	RepositoryType    string    `db:"repository_type"`

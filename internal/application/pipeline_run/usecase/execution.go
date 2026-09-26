@@ -35,7 +35,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 	if err != nil {
 		return s.failRun(ctx, projectId, run.Id, err.Error())
 	}
-	repo, err := s.executionStore.Repository(ctx, projectId, run.RepositoryId)
+	repo, err := s.executionStore.Repository(ctx, run.RepositoryId)
 	if err != nil {
 		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Load repository failed: %v", err))
 	}

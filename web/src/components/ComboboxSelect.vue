@@ -2,6 +2,7 @@
   <ComboboxRoot
     :model-value="modelValue"
     :disabled="disabled"
+    :ignore-filter="!filterOptions"
     open-on-click
     @update:model-value="emit('update:modelValue', $event as ComboboxOptionValue)"
   >
@@ -18,6 +19,7 @@
         :placeholder="placeholder"
         :disabled="disabled"
         class="min-w-0 grow bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+        @update:model-value="emit('search', String($event))"
       />
       <button
         v-if="hasValue(modelValue)"
@@ -46,7 +48,7 @@
         class="app-popover-content w-[var(--reka-combobox-trigger-width)] overflow-y-auto"
         :side-offset="4"
       >
-        <ComboboxEmpty class="px-3 py-2 text-sm text-muted-foreground">
+        <ComboboxEmpty v-if="!loading" class="px-3 py-2 text-sm text-muted-foreground">
           {{ emptyText }}
         </ComboboxEmpty>
         <ComboboxItem
@@ -57,23 +59,30 @@
           :disabled="option.disabled"
           class="app-option-item"
         >
-          <span :class="descriptionInline ? 'flex min-w-0 items-center gap-2' : 'min-w-0'">
-            <span class="block truncate">{{ option.label }}</span>
+          <span class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+            <span class="min-w-0 truncate" :title="option.label">{{ option.label }}</span>
             <span
               v-if="option.description"
-              :class="
-                descriptionInline
-                  ? 'shrink-0 whitespace-nowrap text-xs text-muted-foreground'
-                  : 'block truncate text-xs text-muted-foreground'
-              "
+              class="max-w-[45%] shrink-0 truncate text-xs text-muted-foreground"
+              :title="option.description"
             >
               {{ option.description }}
             </span>
           </span>
           <ComboboxItemIndicator>
-            <Check class="size-4 text-primary" />
+            <Check class="size-4 shrink-0 text-primary" />
           </ComboboxItemIndicator>
         </ComboboxItem>
+        <div v-if="loading" class="px-3 py-2 text-sm text-muted-foreground">加载中...</div>
+        <button
+          v-if="hasMore && !loading"
+          type="button"
+          class="app-option-item w-full text-left text-sm"
+          @pointerdown.prevent
+          @click.stop="emit('load-more')"
+        >
+          加载更多
+        </button>
       </ComboboxContent>
     </ComboboxPortal>
   </ComboboxRoot>
@@ -113,7 +122,9 @@
       portal?: boolean;
       widthClass?: string;
       invalid?: boolean;
-      descriptionInline?: boolean;
+      filterOptions?: boolean;
+      loading?: boolean;
+      hasMore?: boolean;
     }>(),
     {
       placeholder: '请选择',
@@ -122,12 +133,16 @@
       portal: true,
       widthClass: 'w-full',
       invalid: false,
-      descriptionInline: false,
+      filterOptions: true,
+      loading: false,
+      hasMore: false,
     }
   );
 
   const emit = defineEmits<{
     'update:modelValue': [value: ComboboxOptionValue];
+    search: [value: string];
+    'load-more': [];
   }>();
 
   const selectableOptions = computed(() => props.options.filter((item) => item.value !== ''));

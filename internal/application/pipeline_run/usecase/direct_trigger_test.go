@@ -26,7 +26,7 @@ func TestTriggerPipelineRejectsMissingVariableBeforeCreatingSnapshot(t *testing.
 	pipelineStore := &directTriggerPipelineStore{pipeline: pipeline}
 	service := Service{store: stores{
 		project:     directTriggerProjectStore{},
-		repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, ProjectId: &projectId, DefaultBranch: "main"}},
+		repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, DefaultBranch: "main"}},
 		pipeline:    pipelineStore,
 		pipelineRun: &directTriggerPipelineRunStore{},
 	}}
@@ -54,7 +54,7 @@ func TestTriggerPipelineRejectsUnconfiguredWorkspaceBeforeCreatingSnapshot(t *te
 	service := Service{
 		store: stores{
 			project:     directTriggerProjectStore{},
-			repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, ProjectId: &projectId, DefaultBranch: "main"}},
+			repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, DefaultBranch: "main"}},
 			pipeline:    pipelineStore,
 			pipelineRun: runStore,
 		},
@@ -100,7 +100,7 @@ func TestRetryPipelineRunRejectsUnconfiguredWorkspaceBeforeCreatingSnapshot(t *t
 	service := Service{
 		store: stores{
 			project:     directTriggerProjectStore{},
-			repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, ProjectId: &projectId, DefaultBranch: "main"}},
+			repository:  directTriggerRepositoryStore{repository: model.Repository{Id: repositoryId, DefaultBranch: "main"}},
 			pipeline:    pipelineStore,
 			pipelineRun: runStore,
 		},
@@ -140,7 +140,7 @@ type directTriggerRepositoryStore struct {
 	repository model.Repository
 }
 
-func (s directTriggerRepositoryStore) Repository(context.Context, string, string) (model.Repository, error) {
+func (s directTriggerRepositoryStore) Repository(context.Context, string) (model.Repository, error) {
 	return s.repository, nil
 }
 
@@ -152,6 +152,10 @@ type directTriggerPipelineStore struct {
 
 func (s *directTriggerPipelineStore) Pipeline(context.Context, string, string) (model.Pipeline, error) {
 	return s.pipeline, nil
+}
+
+func (s *directTriggerPipelineStore) LockApplicationPipeline(context.Context, string, string) error {
+	return nil
 }
 
 func (s *directTriggerPipelineStore) ApplicationPipelineStages(context.Context, string, string) ([]model.PipelineStage, error) {

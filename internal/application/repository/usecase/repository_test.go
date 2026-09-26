@@ -13,7 +13,7 @@ import (
 func TestDeleteRepositoryRejectsBoundPipelinesWithValidation(t *testing.T) {
 	projectId := "project-1"
 	repositoryStore := &repositoryDeletionStore{
-		item:  model.Repository{Id: "repository-1", ProjectId: &projectId},
+		item:  model.Repository{Id: "repository-1"},
 		bound: true,
 	}
 	service := Service{store: stores{
@@ -42,7 +42,7 @@ func TestDeleteRepositoryRejectsBoundPipelinesWithValidation(t *testing.T) {
 func TestDeleteRepositoryAllowsDeletionWhenNoPipelineIsBound(t *testing.T) {
 	projectId := "project-1"
 	repositoryStore := &repositoryDeletionStore{
-		item: model.Repository{Id: "repository-1", ProjectId: &projectId},
+		item: model.Repository{Id: "repository-1"},
 	}
 	service := Service{store: stores{
 		project:    repositoryDeletionProjectStore{},
@@ -80,16 +80,16 @@ type repositoryDeletionStore struct {
 	deleted      bool
 }
 
-func (s *repositoryDeletionStore) Repository(context.Context, string, string) (model.Repository, error) {
+func (s *repositoryDeletionStore) Repository(context.Context, string) (model.Repository, error) {
 	return s.item, nil
 }
 
-func (s *repositoryDeletionStore) RepositoryHasBoundPipelines(context.Context, string, string) (bool, error) {
+func (s *repositoryDeletionStore) RepositoryHasBoundPipelines(context.Context, string) (bool, error) {
 	s.boundChecked = true
 	return s.bound, nil
 }
 
-func (s *repositoryDeletionStore) DeleteRepository(context.Context, string, string) error {
+func (s *repositoryDeletionStore) DeleteRepository(context.Context, string) error {
 	s.deleted = true
 	return nil
 }

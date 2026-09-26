@@ -5,14 +5,6 @@ version: '3'
 vars:
   VERSION:
     sh: cat VERSION
-  FIX_ENABLED: '{{if contains "--fix" .CLI_ARGS}}1{{end}}'
-  FIX_FORMAT_ARGS: '{{if eq .FIX_ENABLED "1"}}{{else}}--diff{{end}}'
-  FIX_LINT_ARGS: '{{if eq .FIX_ENABLED "1"}}--fix{{end}}'
-  WEB_LINT_TASK: '{{if eq .FIX_ENABLED "1"}}lint:fix{{else}}lint{{end}}'
-  WEB_FORMAT_TASK: '{{if eq .FIX_ENABLED "1"}}format:fix{{else}}format{{end}}'
-  COVER_ENABLED: '{{if contains "--cov" .CLI_ARGS}}1{{end}}'
-  COVER_ARGS: '{{if eq .COVER_ENABLED "1"}}-cover -coverprofile=coverage.out{{end}}'
-  WEB_TEST_TASK: '{{if eq .COVER_ENABLED "1"}}test:cov{{else}}test{{end}}'
 
 tasks:
   default:
@@ -25,6 +17,8 @@ tasks:
     env:
       CGO_ENABLED: '0'
       GOBIN: '{{.TASKFILE_DIR}}/bin'
+      GOPROXY: direct
+      GOTOOLCHAIN: local
       PATH: '{{.TASKFILE_DIR}}/bin:{{.PATH}}'
     cmds:
       - yarn --cwd web install --frozen-lockfile
@@ -65,6 +59,12 @@ tasks:
 
   check:
     desc: Check web and Go formatting, lint, and types; use -- --fix to apply fixes
+    vars:
+      FIX_ENABLED: '{{if contains "--fix" (default "" .CLI_ARGS)}}1{{end}}'
+      FIX_FORMAT_ARGS: '{{if eq .FIX_ENABLED "1"}}{{else}}--diff{{end}}'
+      FIX_LINT_ARGS: '{{if eq .FIX_ENABLED "1"}}--fix{{end}}'
+      WEB_LINT_TASK: '{{if eq .FIX_ENABLED "1"}}lint:fix{{else}}lint{{end}}'
+      WEB_FORMAT_TASK: '{{if eq .FIX_ENABLED "1"}}format:fix{{else}}format{{end}}'
     cmds:
       - yarn --cwd web typecheck
       - yarn --cwd web {{.WEB_LINT_TASK}}
@@ -83,6 +83,10 @@ tasks:
 
   test:
     desc: Run web and Go tests; use -- --cov to collect coverage
+    vars:
+      COVER_ENABLED: '{{if contains "--cov" (default "" .CLI_ARGS)}}1{{end}}'
+      COVER_ARGS: '{{if eq .COVER_ENABLED "1"}}-cover -coverprofile=coverage.out{{end}}'
+      WEB_TEST_TASK: '{{if eq .COVER_ENABLED "1"}}test:cov{{else}}test{{end}}'
     cmds:
       - yarn --cwd web {{.WEB_TEST_TASK}}
       - go test {{.COVER_ARGS}} ./cmd/... ./internal/... ./sql

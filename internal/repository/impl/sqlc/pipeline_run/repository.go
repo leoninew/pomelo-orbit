@@ -175,6 +175,14 @@ func (r Repository) RepositoryHasActivePipelineRun(ctx context.Context, projectI
 	return count > 0, translate(err)
 }
 
+func (r Repository) PipelineHasActiveRun(ctx context.Context, projectId, pipelineId string) (bool, error) {
+	count, err := r.q(ctx).CountActivePipelineRunsByPipeline(ctx, pipelinerunsqlc.CountActivePipelineRunsByPipelineParams{
+		ProjectId: requiredArgument(projectId), PipelineId: pipelineId,
+		WaitingStatus: status.WorkStatusWaitingToRun, RunningStatus: status.WorkStatusRunning,
+	})
+	return count > 0, translate(err)
+}
+
 func (r Repository) HasCDConfigurationReferences(ctx context.Context, projectId string) (bool, error) {
 	count, err := r.q(ctx).CountCDConfigurationReferences(ctx, requiredArgument(projectId))
 	return count > 0, translate(err)

@@ -1,5 +1,5 @@
 # 产品概览
-最后修改时间: 2026-09-24 09:26:01
+最后修改时间: 2026-09-26
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。
@@ -11,7 +11,7 @@ Pomelo Orbit 是自托管的 **CI + CD + 平台管理** 控制面：
 | 域 | 能力（现行） |
 |----|----------------|
 | **CD** | 应用版本化规格、服务运行绑定、部署流水、Gateway、平台 Route、本机或 SSH 目标上的 Docker Compose 部署 |
-| **CI** | 仓库、项目级可复用阶段、Template/Application Pipeline、运行、制品、凭据与变量 |
+| **CI** | 全局仓库与仓库凭据、全局可复用阶段、Template/Application Pipeline、运行、制品与变量 |
 | **平台** | 项目及其 CI/CD 共用 Environment、用户、角色权限、系统设置、后台任务队列 |
 
 Environment 是 Project 级共用执行目标：CI 支持 local、Windows SSH（native OpenSSH + WSL2 Docker Desktop）和 Linux SSH（OpenSSH + Docker）；CD 支持 local/SSH。Web 环境入口位于“系统管理”的独立页面（与 `/settings` 并列），CI/CD 操作前检查当前 Project 初始化状态并引导未就绪环境完成配置；CI 后端触发与重试同样要求当前修订 Probe 成功，SSH 还需受管凭据和固定 host key，不能绕过前端直接运行未就绪目标。
@@ -35,17 +35,18 @@ Environment 是 Project 级共用执行目标：CI 支持 local、Windows SSH（
 
 ## CI 模型
 
-Repository 的 `code` 在同一 Project 内唯一，不同 Project 可以使用相同 `code`。
+Repository 与 Repository Credential 是所有 Project 共用的资源；Repository `code` 和仓库凭据名称分别在全局唯一。当前 Project 用于成员资格校验，不是这两类资源的归属。Application Pipeline、Run、Artifact 和 Environment 仍归属各自 Project，多个 Project 可将同一 Repository 绑定到各自的 Application Pipeline。
 
 CI 的可复用性与可运行性分为两个显式对象：
 
 - `Pipeline(kind=template)` 是所有 Project 共享的通用编排来源，不能运行、不能绑定 Application 或 Repository；它在实际被 Application 采用时使用现有 `PipelineSnapshot` 保存不可变定义。
-- `Pipeline(kind=application)` 由一个全局 Template 物化，固定绑定所属 Project 的 Repository；Application 仅在需要将制品写入 Component Version 时绑定。运行时只提交 ref 与变量。
+- `Pipeline(kind=application)` 由一个全局 Template 物化，归属当前 Project，固定绑定一个全局 Repository；Application 仅在需要将制品写入 Component Version 时绑定。运行时只提交 ref 与变量。
 - `PipelineStage(kind=template)` 是所有 Project 共享的可复用执行定义，保存名称、镜像、脚本、无 `component_name` 的制品声明、说明与版本；不保存 DAG、排序或 Application/Component 绑定。
 - `PipelineStageReference` 是 Template Pipeline 内冻结的阶段引用，保存来源快照、制品声明和本地 DAG/排序；Application Pipeline 由引用快照物化独立的 `PipelineStage(kind=application)`。
 - Application Pipeline 仅在实例化时将 Docker 制品绑定到目标 Component；阶段模板、阶段引用和应用阶段不在运行时回读可变模板库。
 - `docker_image` 制品可以选择目标 Component。所有目标 Component 在同一 Pipeline 内唯一；一次成功 Run 将所有已映射镜像原子写入一个新 Version。
 - Template 和 Application 共用 `PipelineSnapshot` 保存不可变定义；普通编辑和预览不自动创建快照。Run、Artifact、Version Component 保存必要的显示快照，因而不依赖 Template、Application、Repository、Version 或 Pipeline 的物理存在。
+- 删除 Repository 前检查所有 Project 中现存 Application Pipeline 的绑定。删除 Application Pipeline 前检查其未结束 Run；`waiting_to_run`、`running` 阻止删除，终态 Run 不阻止。Run、Snapshot 和 Artifact 对 Repository 的历史引用不直接阻止仓库删除；被任何 Repository 引用的仓库凭据不可删除。
 
 CI 的详细模型、API 与变量语义见 [CI 流水线设计](../guides/ci-pipeline-design.md) 和 [CI 变量](../guides/ci-pipeline-vars-design.md)。
 

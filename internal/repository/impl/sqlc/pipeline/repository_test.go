@@ -3,11 +3,39 @@ package pipelinerepo
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
+
+func TestLockApplicationPipelineReportsDeletedRow(t *testing.T) {
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	database.SetMaxOpenConns(1)
+	if _, err := database.Exec(`CREATE TABLE pipeline (id TEXT PRIMARY KEY, project_id TEXT, kind TEXT, updated_at DATETIME)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`INSERT INTO pipeline (id, project_id, kind, updated_at) VALUES ('pipeline-1', 'project-1', 'application', CURRENT_TIMESTAMP)`); err != nil {
+		t.Fatal(err)
+	}
+	store := NewRepository(database)
+	if err := store.LockApplicationPipeline(context.Background(), "project-1", "pipeline-1"); err != nil {
+		t.Fatalf("lock existing application pipeline: %v", err)
+	}
+	if _, err := database.Exec(`DELETE FROM pipeline WHERE id = 'pipeline-1'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.LockApplicationPipeline(context.Background(), "project-1", "pipeline-1"); !errors.Is(err, repository.ErrNotFound) {
+		t.Fatalf("lock deleted application pipeline: got %v, want ErrNotFound", err)
+	}
+}
 
 func TestListPipelinesBindsNamedFilterAndPaginationParameters(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")

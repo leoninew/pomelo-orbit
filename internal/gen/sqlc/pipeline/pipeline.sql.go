@@ -638,6 +638,27 @@ func (q *Queries) ListPipelines(ctx context.Context, arg ListPipelinesParams) ([
 	return items, nil
 }
 
+const lockApplicationPipeline = `-- name: LockApplicationPipeline :execrows
+UPDATE pipeline SET updated_at = updated_at
+WHERE id = ?
+  AND project_id = ?
+  AND kind = 'application'
+`
+
+type LockApplicationPipelineParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+// Serialize run creation and deletion; callers require one matched row.
+func (q *Queries) LockApplicationPipeline(ctx context.Context, arg LockApplicationPipelineParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, lockApplicationPipeline, arg.Id, arg.ProjectId)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const pipelineById = `-- name: PipelineById :one
 SELECT id, project_id, kind, source_pipeline_id, source_template_name, source_template_version, application_id, application_name, repository_id, repository_name, version_fork_strategy, fixed_version_id, fixed_version_label, name, description, variable_declarations, version, created_at, updated_at
 FROM pipeline

@@ -81,9 +81,7 @@
   </div>
 
   <AppDialog :open="showCreateModal" title="创建仓库" @update:open="handleCreateModalOpenChange">
-    <AppLoadingState v-if="modalStatus === 'loading'" size="compact" />
-
-    <div v-else class="space-y-4">
+    <div class="space-y-4">
       <div class="space-y-1.5">
         <label for="create-repository-name" class="app-field-label block">
           名称
@@ -205,9 +203,9 @@
 
       <div v-if="form.repository_type === 'remote_git'" class="space-y-1.5">
         <label class="app-field-label block">Git 凭据</label>
-        <ComboboxSelect
+        <RepositoryCredentialSelect
           v-model="form.git_credential_id"
-          :options="gitCredentialOptions"
+          :project-id="projectStore.activeProjectId"
           placeholder="不使用凭据"
         />
       </div>
@@ -218,18 +216,12 @@
     </div>
 
     <template #footer>
-      <AppDialogActions
-        :busy="operating || modalStatus === 'loading'"
-        @cancel="closeCreateModal"
-        @confirm="handleCreateOk"
-      />
+      <AppDialogActions :busy="operating" @cancel="closeCreateModal" @confirm="handleCreateOk" />
     </template>
   </AppDialog>
 
   <AppDialog :open="showEditModal" title="编辑仓库" @update:open="handleEditModalOpenChange">
-    <AppLoadingState v-if="modalStatus === 'loading'" size="compact" />
-
-    <form v-else class="space-y-4" novalidate @submit.prevent="handleEditOk">
+    <form class="space-y-4" novalidate @submit.prevent="handleEditOk">
       <div class="space-y-1.5">
         <label for="edit-repository-name" class="app-field-label block">
           名称
@@ -335,9 +327,10 @@
 
       <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
         <label class="app-field-label block">Git 凭据</label>
-        <ComboboxSelect
+        <RepositoryCredentialSelect
           v-model="editForm.git_credential_id"
-          :options="gitCredentialOptions"
+          :project-id="projectStore.activeProjectId"
+          :selected-label="editingRepository?.git_credential_name"
           placeholder="不使用凭据"
         />
       </div>
@@ -348,11 +341,7 @@
     </form>
 
     <template #footer>
-      <AppDialogActions
-        :busy="operating || modalStatus === 'loading'"
-        @cancel="closeEditModal"
-        @confirm="handleEditOk"
-      />
+      <AppDialogActions :busy="operating" @cancel="closeEditModal" @confirm="handleEditOk" />
     </template>
   </AppDialog>
 
@@ -388,22 +377,20 @@
 
 <script setup lang="ts">
   import { Plus } from '@lucide/vue';
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { computed, reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
-  import { credentialApi } from '@/api/credential/credential';
   import { repositoryApi } from '@/api/repository/repository';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ComboboxSelect from '@/components/ComboboxSelect.vue';
+  import RepositoryCredentialSelect from '@/components/RepositoryCredentialSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import type { CredentialResp } from '@/gen/proto/orbit/v1/credential/credential';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
   import { formatTime } from '@/utils/time';
   import {
@@ -419,25 +406,8 @@
   const projectStore = useProjectStore();
   const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
-  const { status: modalStatus, execute: executeModal } = useStatusAsync();
 
   const repositories = ref<RepositoryResp[]>([]);
-  const credentials = ref<CredentialResp[]>([]);
-  const gitCredentials = computed(() =>
-    credentials.value.filter(
-      (c) =>
-        c.type === 'git_ssh' ||
-        c.type === 'github_token' ||
-        c.type === 'gitee_token' ||
-        c.type === 'gitea_token'
-    )
-  );
-  const gitCredentialOptions = computed(() =>
-    gitCredentials.value.map((cred) => ({
-      value: cred.id,
-      label: cred.name,
-    }))
-  );
   const repositoryTypeOptions = [
     { value: 'remote_git', label: '远程 Git' },
     { value: 'local_directory', label: '本地目录' },
@@ -618,6 +588,9 @@
           per_page: pagination.pageSize,
           search: searchText.value || undefined,
         });
+        if (projectStore.activeProjectId !== projectId) {
+          return;
+        }
         repositories.value = res.items;
         pagination.total = res.total;
       });
@@ -661,16 +634,6 @@
     });
     resetCreateFormFeedback();
     showCreateModal.value = true;
-    try {
-      await executeModal(async () => {
-        const credRes = await credentialApi.list(projectId, {
-          per_page: 100,
-        });
-        credentials.value = credRes.items;
-      });
-    } catch {
-      toast.error('加载表单数据失败');
-    }
   }
 
   async function openEditModal(repository: RepositoryResp) {
@@ -682,16 +645,6 @@
     editingRepository.value = repository;
     resetEditForm();
     showEditModal.value = true;
-    try {
-      await executeModal(async () => {
-        const credRes = await credentialApi.list(projectId, {
-          per_page: 100,
-        });
-        credentials.value = credRes.items;
-      });
-    } catch {
-      toast.error('加载表单数据失败');
-    }
   }
 
   async function handleCreateOk() {
@@ -802,5 +755,19 @@
     return repository.repository_url;
   }
 
-  onMounted(fetchProjects);
+  watch(
+    () => projectStore.activeProjectId,
+    () => {
+      showCreateModal.value = false;
+      showEditModal.value = false;
+      showDeleteDialog.value = false;
+      editingRepository.value = undefined;
+      repositories.value = [];
+      searchText.value = '';
+      pagination.current = 1;
+      pagination.total = 0;
+      void fetchProjects();
+    },
+    { immediate: true }
+  );
 </script>

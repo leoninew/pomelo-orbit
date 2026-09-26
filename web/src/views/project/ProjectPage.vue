@@ -365,7 +365,6 @@
             :placeholder="t('project.handoverTargetProject')"
             :disabled="operating"
             :invalid="Boolean(handoverErrors.targetProject)"
-            description-inline
             @update:model-value="handoverErrors.targetProject = ''"
           />
           <p v-if="handoverErrors.targetProject" class="app-field-error text-xs" role="alert">

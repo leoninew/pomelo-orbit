@@ -110,7 +110,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	localRuntime, runtime := newDeploymentRuntime(dockerPathResolver)
 	localDisplay := localEnvironmentDisplay()
 	environmentService := environmentsvc.New(stores.environment, stores.project, stores.environmentCredential, cfg.Jwt.SecretKey, environmentrunner.NewProber(localRuntime, sshrunner.NewEnvironmentProber()), logger).WithLocalDisplay(localDisplay)
-	projectService := projectsvc.New(stores.project, stores.user, stores.repository, stores.application)
+	projectService := projectsvc.New(stores.project, stores.user, stores.application)
 	pipelineWorkspace := newPipelineWorkspace(cfg, stores, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, stores.environmentCredential, cfg.Jwt.SecretKey)
@@ -145,7 +145,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		gatewayCore,
 	)
 	gatewayService := gatewayCore
-	pipelineService := pipelinesvc.New(stores.project, stores.pipeline, stores.application, stores.repository, logger)
+	pipelineService := pipelinesvc.New(stores.project, stores.pipeline, stores.pipelineRun, stores.application, stores.repository, logger)
 	pipelineRunService := pipelinerunsvc.New(
 		stores.project,
 		stores.credential,

@@ -26,7 +26,7 @@ func (s Service) ListRepositories(ctx context.Context, userId string, projectId 
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return repository.Page[model.Repository]{}, err
 	}
-	items, err := s.store.ListRepositories(ctx, projectId, page, perPage, search)
+	items, err := s.store.ListRepositories(ctx, page, perPage, search)
 	if err != nil {
 		return repository.Page[model.Repository]{}, apperror.Wrap(apperror.KindInternal, "Failed to list repositories", err)
 	}
@@ -50,28 +50,28 @@ func (s Service) CreateRepository(ctx context.Context, userId string, input repo
 			return repositorydto.RepositoryDetail{}, err
 		}
 	}
-	if err := s.ensureRepositoryCodeAvailable(ctx, projectId, code); err != nil {
+	if err := s.ensureRepositoryCodeAvailable(ctx, code); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	if err := s.ensureCredential(ctx, projectId, credentialId); err != nil {
+	if err := s.ensureCredential(ctx, credentialId); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
 	variables, err := marshalVariableOverrides(sanitizeRepositoryVariables(input.VariableOverrides))
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	item := model.Repository{Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, RepositoryType: sourceType, RepositoryUrl: sourceUrl, GitCredentialId: credentialId, VariableOverrides: variables, DefaultBranch: branch}
+	item := model.Repository{Id: idutil.NewId(), Name: name, Code: code, RepositoryType: sourceType, RepositoryUrl: sourceUrl, GitCredentialId: credentialId, VariableOverrides: variables, DefaultBranch: branch}
 	if err := s.store.CreateRepository(ctx, item); err != nil {
 		return repositorydto.RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create repository", err)
 	}
-	return s.repositoryDetail(ctx, projectId, item)
+	return s.repositoryDetail(ctx, item)
 }
 func (s Service) RepositoryForUser(ctx context.Context, userId string, projectId string, repositoryId string) (repositorydto.RepositoryDetail, error) {
 	item, err := s.loadRepositoryForUser(ctx, userId, projectId, repositoryId)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	return s.repositoryDetail(ctx, projectId, item)
+	return s.repositoryDetail(ctx, item)
 }
 func (s Service) UpdateRepository(ctx context.Context, userId string, projectId string, repositoryId string, input repositorydto.RepositoryUpdateInput) (repositorydto.RepositoryDetail, error) {
 	item, err := s.loadRepositoryForUser(ctx, userId, projectId, repositoryId)
@@ -89,7 +89,7 @@ func (s Service) UpdateRepository(ctx context.Context, userId string, projectId 
 	}
 	if input.GitCredentialId != nil {
 		item.GitCredentialId = normalizeOptionalString(input.GitCredentialId)
-		if err := s.ensureCredential(ctx, projectId, item.GitCredentialId); err != nil {
+		if err := s.ensureCredential(ctx, item.GitCredentialId); err != nil {
 			return repositorydto.RepositoryDetail{}, err
 		}
 	}
@@ -109,10 +109,10 @@ func (s Service) UpdateRepository(ctx context.Context, userId string, projectId 
 	if err := s.normalizeRepositorySource(ctx, &item); err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
-	if err := s.store.UpdateRepository(ctx, projectId, item); err != nil {
+	if err := s.store.UpdateRepository(ctx, item); err != nil {
 		return repositorydto.RepositoryDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to update repository", err)
 	}
-	return s.repositoryDetail(ctx, projectId, item)
+	return s.repositoryDetail(ctx, item)
 }
 func (s Service) DeleteRepository(ctx context.Context, userId string, projectId string, repositoryId string) error {
 	item, err := s.loadRepositoryForUser(ctx, userId, projectId, repositoryId)
@@ -120,14 +120,14 @@ func (s Service) DeleteRepository(ctx context.Context, userId string, projectId 
 		return err
 	}
 
-	bound, err := s.store.RepositoryHasBoundPipelines(ctx, projectId, item.Id)
+	bound, err := s.store.RepositoryHasBoundPipelines(ctx, item.Id)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check repository pipeline bindings", err)
 	}
 	if bound {
 		return apperror.New(apperror.KindValidation, "Repository is bound to pipelines. Delete the bound pipelines before deleting it.")
 	}
-	if err := s.store.DeleteRepository(ctx, projectId, item.Id); err != nil {
+	if err := s.store.DeleteRepository(ctx, item.Id); err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete repository", err)
 	}
 	return nil
@@ -139,7 +139,7 @@ func (s Service) loadRepositoryForUser(ctx context.Context, userId string, proje
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return model.Repository{}, err
 	}
-	item, err := s.store.Repository(ctx, projectId, repositoryId)
+	item, err := s.store.Repository(ctx, repositoryId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Repository{}, apperror.New(apperror.KindNotFound, "Repository "+repositoryId+" not found")
 	}
@@ -164,8 +164,8 @@ func (s Service) ensureProjectMembership(ctx context.Context, projectId, userId 
 	}
 	return nil
 }
-func (s Service) ensureRepositoryCodeAvailable(ctx context.Context, projectId string, code string) error {
-	existing, err := s.store.RepositoryByCode(ctx, projectId, code)
+func (s Service) ensureRepositoryCodeAvailable(ctx context.Context, code string) error {
+	existing, err := s.store.RepositoryByCode(ctx, code)
 	if err == nil {
 		return apperror.New(apperror.KindConflict, "Repository code '"+existing.Code+"' already exists")
 	}
@@ -174,11 +174,11 @@ func (s Service) ensureRepositoryCodeAvailable(ctx context.Context, projectId st
 	}
 	return nil
 }
-func (s Service) ensureCredential(ctx context.Context, projectId string, credentialId *string) error {
+func (s Service) ensureCredential(ctx context.Context, credentialId *string) error {
 	if credentialId == nil {
 		return nil
 	}
-	exists, err := s.store.CredentialExists(ctx, projectId, *credentialId)
+	exists, err := s.store.CredentialExists(ctx, *credentialId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check credential", err)
 	}
@@ -187,8 +187,8 @@ func (s Service) ensureCredential(ctx context.Context, projectId string, credent
 	}
 	return nil
 }
-func (s Service) repositoryDetail(ctx context.Context, projectId string, item model.Repository) (repositorydto.RepositoryDetail, error) {
-	name, err := s.repositoryCredentialName(ctx, projectId, item.GitCredentialId)
+func (s Service) repositoryDetail(ctx context.Context, item model.Repository) (repositorydto.RepositoryDetail, error) {
+	name, err := s.repositoryCredentialName(ctx, item.GitCredentialId)
 	if err != nil {
 		return repositorydto.RepositoryDetail{}, err
 	}
@@ -198,11 +198,11 @@ func (s Service) repositoryDetail(ctx context.Context, projectId string, item mo
 	}
 	return repositorydto.RepositoryDetail{Repository: item, GitCredentialName: name, Variables: variables}, nil
 }
-func (s Service) repositoryCredentialName(ctx context.Context, projectId string, credentialId *string) (*string, error) {
+func (s Service) repositoryCredentialName(ctx context.Context, credentialId *string) (*string, error) {
 	if credentialId == nil {
 		return nil, nil
 	}
-	value, err := s.store.CredentialName(ctx, projectId, *credentialId)
+	value, err := s.store.CredentialName(ctx, *credentialId)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load repository credential", err)
 	}

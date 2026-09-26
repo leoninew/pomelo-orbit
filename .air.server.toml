@@ -1,9 +1,9 @@
 root = "."
-tmp_dir = "bin/air/api"
+tmp_dir = "bin/air-api"
 
 [build]
-cmd = "go build -o ./bin/air/api/pomelo-orbit.exe ./cmd/server"
-entrypoint = "./bin/air/api/pomelo-orbit.exe"
+cmd = "go build -o ./bin/air-api/pomelo-orbit.exe ./cmd/server"
+entrypoint = "./bin/air-api/pomelo-orbit.exe"
 args_bin = ["serve"]
 include_dir = ["internal"]
 include_ext = ["go"]

@@ -14,17 +14,12 @@ import (
 const countPipelinesByRepository = `-- name: CountPipelinesByRepository :one
 SELECT COUNT(*)
 FROM pipeline
-WHERE project_id = ?
+WHERE kind = 'application'
   AND repository_id = ?
 `
 
-type CountPipelinesByRepositoryParams struct {
-	ProjectId    sql.NullString `db:"project_id"`
-	RepositoryId sql.NullString `db:"repository_id"`
-}
-
-func (q *Queries) CountPipelinesByRepository(ctx context.Context, arg CountPipelinesByRepositoryParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countPipelinesByRepository, arg.ProjectId, arg.RepositoryId)
+func (q *Queries) CountPipelinesByRepository(ctx context.Context, repositoryID sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countPipelinesByRepository, repositoryID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -33,7 +28,7 @@ func (q *Queries) CountPipelinesByRepository(ctx context.Context, arg CountPipel
 const countRepositories = `-- name: CountRepositories :one
 SELECT COUNT(*)
 FROM repository
-WHERE project_id = ?
+WHERE project_id IS NULL
   AND (
     CAST(? AS CHAR) IS NULL
     OR name LIKE ?
@@ -43,13 +38,11 @@ WHERE project_id = ?
 `
 
 type CountRepositoriesParams struct {
-	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 }
 
 func (q *Queries) CountRepositories(ctx context.Context, arg CountRepositoriesParams) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countRepositories,
-		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -60,27 +53,13 @@ func (q *Queries) CountRepositories(ctx context.Context, arg CountRepositoriesPa
 	return count, err
 }
 
-const countRepositoriesByProject = `-- name: CountRepositoriesByProject :one
-SELECT COUNT(*)
-FROM repository
-WHERE project_id = ?
-`
-
-func (q *Queries) CountRepositoriesByProject(ctx context.Context, projectID sql.NullString) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countRepositoriesByProject, projectID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const createRepository = `-- name: CreateRepository :exec
-INSERT INTO repository (id, project_id, name, code, repository_type, repository_url, git_credential_id, variable_overrides, default_branch, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO repository (id, name, code, repository_type, repository_url, git_credential_id, variable_overrides, default_branch, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRepositoryParams struct {
 	Id                string         `db:"id"`
-	ProjectId         sql.NullString `db:"project_id"`
 	Name              string         `db:"name"`
 	Code              string         `db:"code"`
 	RepositoryType    string         `db:"repository_type"`
@@ -95,7 +74,6 @@ type CreateRepositoryParams struct {
 func (q *Queries) CreateRepository(ctx context.Context, arg CreateRepositoryParams) error {
 	_, err := q.db.ExecContext(ctx, createRepository,
 		arg.Id,
-		arg.ProjectId,
 		arg.Name,
 		arg.Code,
 		arg.RepositoryType,
@@ -112,24 +90,19 @@ func (q *Queries) CreateRepository(ctx context.Context, arg CreateRepositoryPara
 const deleteRepository = `-- name: DeleteRepository :exec
 DELETE FROM repository
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
 `
 
-type DeleteRepositoryParams struct {
-	Id        string         `db:"id"`
-	ProjectId sql.NullString `db:"project_id"`
-}
-
-func (q *Queries) DeleteRepository(ctx context.Context, arg DeleteRepositoryParams) error {
-	_, err := q.db.ExecContext(ctx, deleteRepository, arg.Id, arg.ProjectId)
+func (q *Queries) DeleteRepository(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteRepository, id)
 	return err
 }
 
 const listRepositories = `-- name: ListRepositories :many
-SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
+SELECT id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
-WHERE project_id = ?
+WHERE project_id IS NULL
   AND (
     CAST(? AS CHAR) IS NULL
     OR name LIKE ?
@@ -141,7 +114,6 @@ LIMIT ? OFFSET ?
 `
 
 type ListRepositoriesParams struct {
-	ProjectId     sql.NullString `db:"project_id"`
 	SearchPattern sql.NullString `db:"search_pattern"`
 	Limit         int32          `db:"limit"`
 	Offset        int32          `db:"offset"`
@@ -149,7 +121,6 @@ type ListRepositoriesParams struct {
 
 type ListRepositoriesRow struct {
 	Id                string         `db:"id"`
-	ProjectId         sql.NullString `db:"project_id"`
 	Name              string         `db:"name"`
 	Code              string         `db:"code"`
 	RepositoryType    string         `db:"repository_type"`
@@ -163,7 +134,6 @@ type ListRepositoriesRow struct {
 
 func (q *Queries) ListRepositories(ctx context.Context, arg ListRepositoriesParams) ([]ListRepositoriesRow, error) {
 	rows, err := q.db.QueryContext(ctx, listRepositories,
-		arg.ProjectId,
 		arg.SearchPattern,
 		arg.SearchPattern,
 		arg.SearchPattern,
@@ -180,7 +150,6 @@ func (q *Queries) ListRepositories(ctx context.Context, arg ListRepositoriesPara
 		var i ListRepositoriesRow
 		if err := rows.Scan(
 			&i.Id,
-			&i.ProjectId,
 			&i.Name,
 			&i.Code,
 			&i.RepositoryType,
@@ -205,21 +174,15 @@ func (q *Queries) ListRepositories(ctx context.Context, arg ListRepositoriesPara
 }
 
 const repositoryByCode = `-- name: RepositoryByCode :one
-SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
+SELECT id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
 WHERE code = ?
-  AND project_id = ?
+  AND project_id IS NULL
 `
-
-type RepositoryByCodeParams struct {
-	Code      string         `db:"code"`
-	ProjectId sql.NullString `db:"project_id"`
-}
 
 type RepositoryByCodeRow struct {
 	Id                string         `db:"id"`
-	ProjectId         sql.NullString `db:"project_id"`
 	Name              string         `db:"name"`
 	Code              string         `db:"code"`
 	RepositoryType    string         `db:"repository_type"`
@@ -231,12 +194,11 @@ type RepositoryByCodeRow struct {
 	UpdatedAt         time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) RepositoryByCode(ctx context.Context, arg RepositoryByCodeParams) (RepositoryByCodeRow, error) {
-	row := q.db.QueryRowContext(ctx, repositoryByCode, arg.Code, arg.ProjectId)
+func (q *Queries) RepositoryByCode(ctx context.Context, code string) (RepositoryByCodeRow, error) {
+	row := q.db.QueryRowContext(ctx, repositoryByCode, code)
 	var i RepositoryByCodeRow
 	err := row.Scan(
 		&i.Id,
-		&i.ProjectId,
 		&i.Name,
 		&i.Code,
 		&i.RepositoryType,
@@ -251,21 +213,15 @@ func (q *Queries) RepositoryByCode(ctx context.Context, arg RepositoryByCodePara
 }
 
 const repositoryById = `-- name: RepositoryById :one
-SELECT id, project_id, name, code, repository_type, repository_url, git_credential_id,
+SELECT id, name, code, repository_type, repository_url, git_credential_id,
        variable_overrides, default_branch, created_at, updated_at
 FROM repository
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
 `
-
-type RepositoryByIdParams struct {
-	Id        string         `db:"id"`
-	ProjectId sql.NullString `db:"project_id"`
-}
 
 type RepositoryByIdRow struct {
 	Id                string         `db:"id"`
-	ProjectId         sql.NullString `db:"project_id"`
 	Name              string         `db:"name"`
 	Code              string         `db:"code"`
 	RepositoryType    string         `db:"repository_type"`
@@ -277,12 +233,11 @@ type RepositoryByIdRow struct {
 	UpdatedAt         time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) RepositoryById(ctx context.Context, arg RepositoryByIdParams) (RepositoryByIdRow, error) {
-	row := q.db.QueryRowContext(ctx, repositoryById, arg.Id, arg.ProjectId)
+func (q *Queries) RepositoryById(ctx context.Context, id string) (RepositoryByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, repositoryById, id)
 	var i RepositoryByIdRow
 	err := row.Scan(
 		&i.Id,
-		&i.ProjectId,
 		&i.Name,
 		&i.Code,
 		&i.RepositoryType,
@@ -299,17 +254,12 @@ func (q *Queries) RepositoryById(ctx context.Context, arg RepositoryByIdParams) 
 const repositoryReferencesCredential = `-- name: RepositoryReferencesCredential :one
 SELECT COUNT(*)
 FROM repository
-WHERE project_id = ?
+WHERE project_id IS NULL
   AND git_credential_id = ?
 `
 
-type RepositoryReferencesCredentialParams struct {
-	ProjectId       sql.NullString `db:"project_id"`
-	GitCredentialId sql.NullString `db:"git_credential_id"`
-}
-
-func (q *Queries) RepositoryReferencesCredential(ctx context.Context, arg RepositoryReferencesCredentialParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, repositoryReferencesCredential, arg.ProjectId, arg.GitCredentialId)
+func (q *Queries) RepositoryReferencesCredential(ctx context.Context, gitCredentialID sql.NullString) (int64, error) {
+	row := q.db.QueryRowContext(ctx, repositoryReferencesCredential, gitCredentialID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -325,7 +275,7 @@ SET name = ?,
     default_branch = ?,
     updated_at = ?
 WHERE id = ?
-  AND project_id = ?
+  AND project_id IS NULL
 `
 
 type UpdateRepositoryParams struct {
@@ -337,7 +287,6 @@ type UpdateRepositoryParams struct {
 	DefaultBranch     string         `db:"default_branch"`
 	UpdatedAt         time.Time      `db:"updated_at"`
 	Id                string         `db:"id"`
-	ProjectId         sql.NullString `db:"project_id"`
 }
 
 func (q *Queries) UpdateRepository(ctx context.Context, arg UpdateRepositoryParams) error {
@@ -350,7 +299,6 @@ func (q *Queries) UpdateRepository(ctx context.Context, arg UpdateRepositoryPara
 		arg.DefaultBranch,
 		arg.UpdatedAt,
 		arg.Id,
-		arg.ProjectId,
 	)
 	return err
 }

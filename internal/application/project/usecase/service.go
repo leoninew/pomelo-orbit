@@ -20,17 +20,15 @@ var projectCodePattern = regexp.MustCompile(`^[a-z][a-z0-9+.-]*$`)
 type Service struct {
 	repo         repository.ProjectStore
 	users        repository.UserStore
-	repositories repository.RepositoryProjectCounter
 	applications repository.ApplicationProjectCounter
 }
 
 func New(
 	repo repository.ProjectStore,
 	users repository.UserStore,
-	repositories repository.RepositoryProjectCounter,
 	applications repository.ApplicationProjectCounter,
 ) Service {
-	return Service{repo: repo, users: users, repositories: repositories, applications: applications}
+	return Service{repo: repo, users: users, applications: applications}
 }
 
 func (s Service) ListByMember(ctx context.Context, userId string) ([]model.Project, error) {
@@ -112,13 +110,6 @@ func (s Service) Deprecate(ctx context.Context, project model.Project, userId st
 	}
 	if len(activeProjects) <= 1 {
 		return apperror.New(apperror.KindValidation, "Cannot deprecate the last active project")
-	}
-	repoCount, err := s.repositories.CountRepositoriesByProject(ctx, project.Id)
-	if err != nil {
-		return fmt.Errorf("count project repositories %s: %w", project.Id, err)
-	}
-	if repoCount > 0 {
-		return apperror.New(apperror.KindValidation, fmt.Sprintf("Cannot deprecate project with %d repositories", repoCount))
 	}
 	appCount, err := s.applications.CountApplicationsByProject(ctx, project.Id)
 	if err != nil {

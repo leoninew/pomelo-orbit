@@ -123,7 +123,8 @@ export default {
     deployments: 'Deployments',
     environment: 'Environment',
     deploymentDialogue: 'Dialogue',
-    routes: 'Routes',
+    routes: 'Custom Routes',
+    traefikRoutes: 'Traefik Routes',
     repositories: 'Repository',
     buildStages: 'Stages',
     pipelines: 'Pipelines',
@@ -1159,7 +1160,6 @@ export default {
   traefikRoute: {
     toolbar: 'Traefik toolbar',
     searchPlaceholder: 'Search name/rule/service/provider',
-    openDashboard: 'Open Dashboard',
     serviceCheckHint: 'Check whether the Traefik service is running normally',
     retry: 'Retry',
     run: 'Run',
@@ -1172,9 +1172,7 @@ export default {
       protocol: 'Protocol',
     },
     toast: {
-      selectProjectRequired: 'Please select a project first',
       loadFailed: 'Failed to load routes',
-      openDashboardFailed: 'Failed to open Dashboard',
     },
   },
   pipelineTemplate: {

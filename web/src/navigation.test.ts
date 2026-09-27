@@ -73,6 +73,7 @@ describe('domain navigation declarations', () => {
         children: [
           expect.objectContaining({ key: 'gateway', path: '/gateway' }),
           expect.objectContaining({ key: 'route', path: '/routes' }),
+          expect.objectContaining({ key: 'traefikroutes', path: '/route/traefik' }),
         ],
       }),
     ]);

@@ -166,17 +166,19 @@ const router = createRouter({
       path: '/routes',
       name: 'Route',
       component: () => import('@/views/route/RoutePage.vue'),
-      meta: { title: '路由', menuKey: 'route' },
+      meta: { title: '自定义路由', menuKey: 'route' },
+    },
+    {
+      path: '/route/traefik',
+      name: 'TraefikRoutes',
+      component: () => import('@/views/route/TraefikRoutePage.vue'),
+      meta: { title: 'Traefik 路由', menuKey: 'traefikroutes' },
     },
     {
       path: '/route/:id',
       name: 'RouteDetail',
       component: () => import('@/views/route/RouteDetail.vue'),
       meta: { title: '路由详情', menuKey: 'route' },
-    },
-    {
-      path: '/route/traefik',
-      redirect: '/routes',
     },
     // credential / repository / pipeline / pipeline_run
     {

@@ -3,16 +3,23 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createApp, nextTick, type App } from 'vue';
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { projectInitializationApi } from '@/api/project/initialization';
 import { routeApi } from '@/api/route/route';
 import { serviceApi } from '@/api/service/service';
 import i18n from '@/i18n';
 import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
 import { useProjectStore } from '@/stores/project';
 import RouteDetail from './RouteDetail.vue';
+import RoutePage from './RoutePage.vue';
+
+vi.mock('@/api/project/initialization', () => ({
+  projectInitializationApi: { getStatus: vi.fn() },
+}));
 
 vi.mock('@/api/route/route', () => ({
   routeApi: {
     get: vi.fn(),
+    list: vi.fn(),
     update: vi.fn(),
     previewSync: vi.fn(),
     confirmSync: vi.fn(),
@@ -59,7 +66,9 @@ beforeEach(() => {
   pinia = createPinia();
   setActivePinia(pinia);
   useProjectStore().setActiveProject('project-1');
+  vi.mocked(projectInitializationApi.getStatus).mockResolvedValue({ status: 'ready' } as never);
   vi.mocked(routeApi.get).mockResolvedValue(route);
+  vi.mocked(routeApi.list).mockResolvedValue({ items: [route], total: 1 } as never);
   vi.mocked(routeApi.update).mockResolvedValue({ ...route, name: 'api-route-edited' });
   vi.mocked(routeApi.previewSync).mockResolvedValue({
     business_hash: 'business-hash',
@@ -79,7 +88,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('Route detail synchronization', () => {
+describe('Route synchronization', () => {
   it('marks an edit as pending and only confirms after manual sync', async () => {
     const router = createRouter({
       history: createMemoryHistory(),
@@ -127,6 +136,7 @@ describe('Route detail synchronization', () => {
         name: 'api-route-edited',
       })
     );
+    expect(routeApi.previewSync).not.toHaveBeenCalled();
     expect(routeApi.confirmSync).not.toHaveBeenCalled();
     expect(target.textContent).toContain(i18n.global.t('route.syncPending', { count: 1 }));
 
@@ -149,6 +159,64 @@ describe('Route detail synchronization', () => {
     await vi.waitFor(() =>
       expect(routeApi.confirmSync).toHaveBeenCalledWith('project-1', {
         changes: [],
+        business_hash: 'business-hash',
+        traefik_hash: 'traefik-hash',
+      })
+    );
+  });
+
+  it('keeps list changes pending until the user opens and confirms sync', async () => {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/routes', component: RoutePage }],
+    });
+    await router.push('/routes?pending_sync=1');
+    await router.isReady();
+
+    target = document.createElement('div');
+    document.body.append(target);
+    mountedApp = createApp(RouterView);
+    mountedApp.use(pinia);
+    mountedApp.use(router);
+    mountedApp.use(i18n);
+    mountedApp.mount(target);
+    await vi.waitFor(() => expect(routeApi.list).toHaveBeenCalled());
+    await flushRender();
+
+    expect(routeApi.previewSync).not.toHaveBeenCalled();
+    expect(routeApi.confirmSync).not.toHaveBeenCalled();
+
+    const disableButton = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === i18n.global.t('route.status.disabled')
+    );
+    expect(disableButton).toBeDefined();
+    disableButton?.click();
+    await flushRender();
+
+    expect(routeApi.previewSync).not.toHaveBeenCalled();
+    expect(routeApi.confirmSync).not.toHaveBeenCalled();
+
+    const syncButton = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === i18n.global.t('route.syncPending', { count: 2 })
+    );
+    expect(syncButton).toBeDefined();
+    syncButton?.click();
+    await vi.waitFor(() =>
+      expect(routeApi.previewSync).toHaveBeenCalledWith('project-1', {
+        changes: [{ route_id: route.id, enabled: false }],
+      })
+    );
+    expect(routeApi.confirmSync).not.toHaveBeenCalled();
+
+    const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === i18n.global.t('common.confirm')
+    );
+    expect(confirmButton).toBeDefined();
+    await vi.waitFor(() => expect(confirmButton?.disabled).toBe(false));
+    confirmButton?.click();
+    await vi.waitFor(() =>
+      expect(routeApi.confirmSync).toHaveBeenCalledWith('project-1', {
+        changes: [{ route_id: route.id, enabled: false }],
         business_hash: 'business-hash',
         traefik_hash: 'traefik-hash',
       })

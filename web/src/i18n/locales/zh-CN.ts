@@ -122,7 +122,8 @@ export default {
     deployments: '部署',
     environment: '环境',
     deploymentDialogue: '对话',
-    routes: '路由',
+    routes: '自定义路由',
+    traefikRoutes: 'Traefik 路由',
     repositories: '仓库',
     buildStages: '阶段',
     pipelines: '流水线',
@@ -1137,7 +1138,6 @@ export default {
   traefikRoute: {
     toolbar: 'Traefik 工具栏',
     searchPlaceholder: '搜索名称/规则/服务/提供者',
-    openDashboard: '打开 Dashboard',
     serviceCheckHint: '请检查 Traefik 服务是否正常运行',
     retry: '重试',
     run: '运行',
@@ -1150,9 +1150,7 @@ export default {
       protocol: '协议',
     },
     toast: {
-      selectProjectRequired: '请先选择项目',
       loadFailed: '获取路由失败',
-      openDashboardFailed: '打开 Dashboard 失败',
     },
   },
   pipelineTemplate: {

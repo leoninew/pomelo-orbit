@@ -590,7 +590,7 @@
     if (!current || !current.service_id) {
       return undefined;
     }
-    return runtimeTargetForService(current, current.service_id, current.service_code);
+    return runtimeTargetForService(current, current.service_id);
   });
 
   const isStopDialogOpen = ref(false);
@@ -865,7 +865,6 @@
         runtimeLogTarget.value = runtimeTargetForService(
           current,
           current.service_id,
-          current.service_code,
           result.deployment_id
         );
       });
@@ -882,7 +881,6 @@
   function runtimeTargetForService(
     current: GatewayResp,
     serviceId: string,
-    serviceCode: string,
     deploymentId?: string
   ): RuntimeContainerLogTarget {
     return {
@@ -890,11 +888,7 @@
       serviceId,
       component: MANAGED_GATEWAY_COMPONENT_NAME,
       deploymentId,
-      title: t('service.logs.titleWithComponent', {
-        app: current.name,
-        code: serviceCode,
-        component: MANAGED_GATEWAY_COMPONENT_NAME,
-      }),
+      title: t('gateway.actions.logs'),
     };
   }
 

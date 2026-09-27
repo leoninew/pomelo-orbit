@@ -166,9 +166,15 @@ const deploymentNavigation: NavigationBranch[] = [
       },
       {
         key: 'route',
-        label: '路由',
+        label: '自定义路由',
         labelKey: 'nav.routes',
         path: '/routes',
+      },
+      {
+        key: 'traefikroutes',
+        label: 'Traefik 路由',
+        labelKey: 'nav.traefikRoutes',
+        path: '/route/traefik',
       },
     ],
   },

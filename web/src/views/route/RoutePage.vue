@@ -21,167 +21,56 @@
       </div>
     </AppEmptyState>
   </div>
-  <div v-else class="flex flex-col gap-4">
-    <DetailInfoCard :title="t('route.sections.traefikRouters')" actions-class="flex-nowrap">
-      <template #actions>
-        <ToolbarRoot
-          class="flex min-w-0 flex-1 items-center justify-end gap-3"
-          :aria-label="t('traefikRoute.toolbar')"
+  <div v-else class="space-y-6">
+    <ToolbarRoot class="app-toolbar-simple" :aria-label="t('route.toolbar')">
+      <SearchControl
+        v-model="routeSearchText"
+        :placeholder="t('route.searchPlaceholder')"
+        :loading="routeStatus === 'loading'"
+        class="shrink-0"
+        @search="handleRouteSearch"
+      />
+      <div class="ml-auto flex flex-wrap items-center gap-2">
+        <router-link to="/route/traefik" class="app-button h-10 px-3">
+          <Network class="size-4" />
+          {{ t('route.sections.traefikRouters') }}
+        </router-link>
+        <button
+          class="h-10 px-3"
+          :class="hasPendingChanges ? 'app-button-warning' : 'app-button'"
+          :disabled="routeOperating || isSyncDialogOpen"
+          @click="openSyncModal"
         >
-          <SearchControl
-            v-model="traefikSearchText"
-            class="min-w-0 flex-1"
-            :placeholder="t('traefikRoute.searchPlaceholder')"
-            :loading="traefikStatus === 'loading'"
-            @search="handleTraefikSearch"
-          />
-          <div class="flex shrink-0 items-center gap-2">
-            <button class="app-button-primary h-9 px-3" @click="openDashboard">
-              <ExternalLink class="size-4" />
-              {{ t('traefikRoute.openDashboard') }}
-            </button>
-          </div>
-        </ToolbarRoot>
-      </template>
-
-      <AppLoadingState v-if="traefikStatus === 'loading'" />
-      <div v-else-if="traefikStatus === 'error'" class="py-16 text-center">
-        <p class="text-sm text-destructive">
-          {{ traefikError || t('traefikRoute.toast.loadFailed') }}
-        </p>
-        <p class="mt-1 text-xs text-muted-foreground">{{ t('traefikRoute.serviceCheckHint') }}</p>
-        <button class="app-link mx-auto mt-3 block text-sm" @click="fetchTraefikRoutes">
-          {{ t('traefikRoute.retry') }}
+          <RefreshCw class="size-4" :class="{ 'animate-spin': routeOperating }" />
+          {{
+            hasPendingChanges
+              ? t('route.syncPending', { count: pendingChangeCount })
+              : t('route.syncAll')
+          }}
+        </button>
+        <button
+          class="app-button-primary h-10 px-3"
+          :disabled="routeOperating"
+          @click="openCreateModal"
+        >
+          <Plus class="size-4" />
+          {{ t('route.addRoute') }}
         </button>
       </div>
-      <AppEmptyState v-else-if="filteredTraefikRoutes.length === 0" />
-      <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[1080px]">
-          <colgroup>
-            <col class="w-[20%]" />
-            <col class="w-[10%]" />
-            <col class="w-[8%]" />
-            <col class="w-[30%]" />
-            <col class="w-[18%]" />
-            <col class="w-[10%]" />
-            <col class="w-[4%]" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>{{ t('traefikRoute.fields.name') }}</th>
-              <th>{{ t('traefikRoute.fields.provider') }}</th>
-              <th>{{ t('common.status') }}</th>
-              <th>{{ t('traefikRoute.fields.rule') }}</th>
-              <th>{{ t('traefikRoute.fields.service') }}</th>
-              <th>{{ t('traefikRoute.fields.entrypoints') }}</th>
-              <th>{{ t('traefikRoute.fields.protocol') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="traefikRoute in filteredTraefikRoutes" :key="traefikRoute.name">
-              <td class="max-w-0 truncate text-foreground" :title="traefikRoute.name">
-                {{ traefikRoute.name }}
-              </td>
-              <td class="whitespace-nowrap text-foreground">{{ traefikRoute.provider }}</td>
-              <td>
-                <AppBadge
-                  variant="status"
-                  :tone="traefikRoute.status === 'enabled' ? 'success' : 'default'"
-                >
-                  {{ traefikRoute.status }}
-                </AppBadge>
-              </td>
-              <td class="max-w-0" :title="traefikRoute.rule">
-                <a
-                  v-if="
-                    !isTCPRouter(traefikRoute) && buildRouteUrl(traefikRoute.rule, traefikRoute.tls)
-                  "
-                  :href="buildRouteUrl(traefikRoute.rule, traefikRoute.tls)!"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="app-link flex items-center gap-1"
-                >
-                  <span class="truncate">{{ traefikRoute.rule }}</span>
-                  <ExternalLink class="size-3 shrink-0" />
-                </a>
-                <span v-else class="block truncate text-foreground">{{ traefikRoute.rule }}</span>
-              </td>
-              <td class="max-w-0 truncate text-foreground" :title="traefikRoute.service">
-                {{ traefikRoute.service }}
-              </td>
-              <td class="max-w-0" :title="traefikRoute.entrypoints.join(', ')">
-                <div class="flex flex-nowrap gap-1 overflow-hidden">
-                  <AppBadge
-                    v-for="entrypoint in traefikRoute.entrypoints"
-                    :key="entrypoint"
-                    variant="pill"
-                  >
-                    {{ entrypoint }}
-                  </AppBadge>
-                </div>
-              </td>
-              <td class="whitespace-nowrap">
-                <AppBadge
-                  variant="status"
-                  :tone="
-                    isTCPRouter(traefikRoute) ? 'warning' : traefikRoute.tls ? 'info' : 'default'
-                  "
-                >
-                  {{ isTCPRouter(traefikRoute) ? 'TCP' : traefikRoute.tls ? 'HTTPS' : 'HTTP' }}
-                </AppBadge>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </DetailInfoCard>
+    </ToolbarRoot>
 
-    <DetailInfoCard :title="t('route.sections.customConfiguration')" actions-class="flex-nowrap">
-      <template #actions>
-        <ToolbarRoot
-          class="flex min-w-0 flex-1 items-center justify-end gap-3"
-          :aria-label="t('route.toolbar')"
-        >
-          <SearchControl
-            v-model="routeSearchText"
-            class="min-w-0 flex-1"
-            :placeholder="t('route.searchPlaceholder')"
-            :loading="routeStatus === 'loading'"
-            @search="handleRouteSearch"
-          />
-          <div class="flex shrink-0 items-center gap-2">
-            <button
-              class="app-button-primary h-9 px-3"
-              :disabled="routeOperating"
-              @click="openCreateModal"
-            >
-              <Plus class="size-4" />
-              {{ t('route.addRoute') }}
-            </button>
-            <button
-              class="h-9 px-3"
-              :class="hasPendingChanges ? 'app-button-warning' : 'app-button'"
-              :disabled="routeOperating || isSyncDialogOpen"
-              @click="openSyncModal"
-            >
-              <RefreshCw class="size-4" :class="{ 'animate-spin': routeOperating }" />
-              {{
-                hasPendingChanges
-                  ? t('route.syncPending', { count: pendingChangeCount })
-                  : t('route.syncAll')
-              }}
-            </button>
-          </div>
-        </ToolbarRoot>
-      </template>
-
-      <AppLoadingState v-if="routeStatus === 'loading'" />
-      <div v-else-if="routeStatus === 'error'" class="py-16 text-center text-destructive">
+    <div v-if="routeStatus === 'loading'" class="app-surface">
+      <AppLoadingState />
+    </div>
+    <div v-else-if="routeStatus === 'error'" class="app-surface">
+      <div class="py-16 text-center text-destructive">
         <p class="text-sm">{{ routeError || t('route.toast.loadFailed') }}</p>
       </div>
-      <AppEmptyState v-else-if="routes.length === 0" />
+    </div>
+    <div v-else class="app-surface">
+      <AppEmptyState v-if="routes.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[1200px]">
+        <table class="app-data-table table-fixed min-w-[1200px]">
           <colgroup>
             <col class="w-[14%]" />
             <col class="w-[16%]" />
@@ -281,7 +170,7 @@
         @change-page="goPage"
         @change-page-size="handlePageSizeChange"
       />
-    </DetailInfoCard>
+    </div>
   </div>
 
   <RouteSyncDialog
@@ -616,7 +505,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ExternalLink, Plus, RefreshCw } from '@lucide/vue';
+  import { ExternalLink, Network, Plus, RefreshCw } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -628,7 +517,6 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
@@ -638,7 +526,6 @@
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
-  import type { TraefikRouterResp } from '@/gen/proto/orbit/v1/route/traefik';
   import { useProjectStore } from '@/stores/project';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
@@ -654,7 +541,6 @@
   const projectReadinessError = ref('');
   const { status: routeStatus, error: routeError, execute: executeRoutes } = useStatusAsync();
   const { loading: routeOperating, execute: executeRouteOperation } = useStatusAsync();
-  const { status: traefikStatus, error: traefikError, execute: executeTraefik } = useStatusAsync();
   const { services: targetServices, load: loadTargetServices } = useRouteTargetServices();
   const protocolOptions = [
     { value: 'http', label: 'HTTP' },
@@ -662,10 +548,7 @@
   ];
 
   const routes = ref<RouteResp[]>([]);
-  const traefikRoutes = ref<TraefikRouterResp[]>([]);
   const routeSearchText = ref('');
-  const traefikSearchText = ref('');
-  const appliedTraefikSearch = ref('');
   const isCreateDialogOpen = ref(false);
   const isEditDialogOpen = ref(false);
   const isSyncDialogOpen = ref(false);
@@ -687,20 +570,6 @@
       enabled,
     }))
   );
-
-  const filteredTraefikRoutes = computed(() => {
-    if (!appliedTraefikSearch.value.trim()) {
-      return traefikRoutes.value;
-    }
-    const search = appliedTraefikSearch.value.toLowerCase();
-    return traefikRoutes.value.filter(
-      (router) =>
-        router.name.toLowerCase().includes(search) ||
-        router.rule.toLowerCase().includes(search) ||
-        router.service.toLowerCase().includes(search) ||
-        router.provider.toLowerCase().includes(search)
-    );
-  });
 
   const form = reactive({
     name: '',
@@ -886,32 +755,9 @@
     }
   }
 
-  async function fetchTraefikRoutes() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      toast.error(t('traefikRoute.toast.selectProjectRequired'));
-      return;
-    }
-    try {
-      await executeTraefik(async () => {
-        const data = await traefikRouteApi.list(projectId);
-        if (projectStore.activeProjectId === projectId) {
-          traefikRoutes.value = data.items;
-        }
-      });
-    } catch {
-      // The card renders the error state from useStatusAsync.
-    }
-  }
-
   function handleRouteSearch() {
     pagination.current = 1;
     fetchRoutes();
-  }
-
-  function handleTraefikSearch() {
-    appliedTraefikSearch.value = traefikSearchText.value;
-    void fetchTraefikRoutes();
   }
 
   function goPage(page: number) {
@@ -1128,7 +974,6 @@
         toast.success(t('route.toast.updateSuccess'));
         closeEditModal();
         await fetchRoutes();
-        await fetchTraefikRoutes();
       });
     } catch (error) {
       editSubmitError.value =
@@ -1142,40 +987,11 @@
 
   async function handleSyncComplete() {
     clearPendingChanges();
-    await Promise.all([fetchRoutes(), fetchTraefikRoutes()]);
-  }
-
-  function buildRouteUrl(rule: string, tls: boolean): string | null {
-    const match = rule.match(/Host\(`([^`]+)`\)/);
-    if (!match) {
-      return null;
-    }
-    return `${tls ? 'https' : 'http'}://${match[1]}`;
-  }
-
-  function isTCPRouter(router: TraefikRouterResp): boolean {
-    return router.rule.startsWith('HostSNI(');
+    await fetchRoutes();
   }
 
   function routeTarget(route: RouteResp): string {
     return route.target_url;
-  }
-
-  async function openDashboard() {
-    const projectId = projectStore.activeProjectId;
-    if (!projectId) {
-      toast.error(t('traefikRoute.toast.selectProjectRequired'));
-      return;
-    }
-    try {
-      const config = await traefikRouteApi.getConfig(projectId);
-      window.open(
-        `${config.https_enabled ? 'https' : 'http'}://${config.dashboard_domain}/dashboard/`,
-        '_blank'
-      );
-    } catch {
-      toast.error(t('traefikRoute.toast.openDashboardFailed'));
-    }
   }
 
   async function loadProjectData(projectId: string | null) {
@@ -1204,7 +1020,6 @@
       return;
     }
     projectReady.value = true;
-    void fetchTraefikRoutes();
     void fetchRoutes();
   }
 

@@ -5,6 +5,8 @@ Doc role: living guide
 
 Orbit 通过 Gateway 的 Traefik `providers.rest` 管理自定义 Route。Route 创建、编辑、证书和启停变更先写入业务数据；列表页和详情页的启停都先保留在前端草稿中。同步入口比较业务 Route 与全部 REST router/service：自定义 Route 使用域名、路径、目标地址、协议和 TCP 监听端口，未受管 REST 配置以可读规则和上游展示；不读取或比较证书、证书解析器及其他 Traefik 内部配置。确认后再通过一次完整 PUT 覆盖 `providers.rest` snapshot。Gateway 部署完成后 worker 也会重新发布完整 snapshot。Component `endpoint.mode=gateway` 仍是独立的 Docker label 路由，默认 entrypoint/TLS 由 GatewayConfig 控制。
 
+前端 `/routes` 以自定义 Route 为主列表，提供创建、编辑、启停草稿和同步入口；`/route/traefik` 单独展示 Traefik 当前路由，可从主列表进入并返回。Traefik 页面展示运行时路由，不提供 Dashboard 跳转。
+
 HTTP Route 可使用手工 PEM、mkcert 或 Let's Encrypt。HTTP-01 需要 Gateway `http` 或 `http-dns` profile；DNS-01 需要 `dns` 或 `http-dns` profile 和 Gateway 中保存的 Cloudflare token。DNS-01 仍要求可注册的真实域名。
 
 配置 DNS-01：

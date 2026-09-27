@@ -662,7 +662,7 @@
     }
     return [
       {
-        label: `${currentService.application_name} · ${currentService.code}`,
+        label: currentService.application_name,
         to: `/service/${currentService.id}`,
       },
     ];

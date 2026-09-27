@@ -11,10 +11,17 @@ describe('domain routes', () => {
     ['/application/42', 'ApplicationDetail'],
     ['/gateway', 'Gateway'],
     ['/routes', 'Route'],
+    ['/route/traefik', 'TraefikRoutes'],
+    ['/route/42', 'RouteDetail'],
     ['/environment', 'Environment'],
     ['/project/abc/initialization', 'ProjectInitialization'],
   ])('resolves %s to %s', (path, name) => {
     expect(router.resolve(path).name).toBe(name);
+  });
+
+  it('selects the matching sidebar entry for each route list', () => {
+    expect(router.resolve('/routes').meta.menuKey).toBe('route');
+    expect(router.resolve('/route/traefik').meta.menuKey).toBe('traefikroutes');
   });
 
   it('places environment in the system management navigation scope', () => {

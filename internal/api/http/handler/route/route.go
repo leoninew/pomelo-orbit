@@ -138,7 +138,12 @@ func (h Handler) PreviewRouteSync(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	preview, err := h.service.PreviewRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routeSyncChanges(req.Changes))
+	changes, err := routeSyncChanges(req.Changes)
+	if err != nil {
+		transport.WriteError(c, err)
+		return
+	}
+	preview, err := h.service.PreviewRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), changes)
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -157,8 +162,13 @@ func (h Handler) ConfirmRouteSync(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
+	changes, err := routeSyncChanges(req.Changes)
+	if err != nil {
+		transport.WriteError(c, err)
+		return
+	}
 	if err := h.service.ConfirmRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routedto.RouteSyncConfirmInput{
-		Changes:      routeSyncChanges(req.Changes),
+		Changes:      changes,
 		BusinessHash: req.BusinessHash,
 		TraefikHash:  req.TraefikHash,
 	}); err != nil {

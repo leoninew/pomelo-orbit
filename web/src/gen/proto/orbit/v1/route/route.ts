@@ -68,7 +68,14 @@ export interface RouteDisableReq {
 
 export interface RouteSyncChange {
   route_id: string;
-  enabled: boolean;
+  enabled?: boolean | undefined;
+  certificate?: RouteSyncCertificateChange | undefined;
+}
+
+export interface RouteSyncCertificateChange {
+  mode: string;
+  challenge: string;
+  pem: string;
 }
 
 export interface RouteSyncPreviewReq {
@@ -83,11 +90,19 @@ export interface RouteSyncDiffResp {
   traefik_value: string;
 }
 
+export interface RouteSyncPendingResp {
+  route_name: string;
+  mode: string;
+  publishes_now: boolean;
+  challenge: string;
+}
+
 export interface RouteSyncPreviewResp {
   business_hash: string;
   traefik_hash: string;
   matched: boolean;
   differences: RouteSyncDiffResp[];
+  pending: RouteSyncPendingResp[];
 }
 
 export interface RouteSyncConfirmReq {

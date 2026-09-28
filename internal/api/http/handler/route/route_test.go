@@ -4,7 +4,25 @@ import (
 	"testing"
 
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	routev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route"
 )
+
+func TestRouteSyncChangesParsesManualCertificate(t *testing.T) {
+	pem := "-----BEGIN CERTIFICATE-----\nYQ==\n-----END CERTIFICATE-----\n-----BEGIN PRIVATE KEY-----\nYg==\n-----END PRIVATE KEY-----\n"
+	changes, err := routeSyncChanges([]*routev1.RouteSyncChange{{
+		RouteId: "route-1", Certificate: &routev1.RouteSyncCertificateChange{Mode: "manual", Pem: pem},
+	}})
+	if err != nil || len(changes) != 1 || changes[0].Enabled != nil || changes[0].Certificate == nil || changes[0].Certificate.CertPEM == "" || changes[0].Certificate.CertKey == "" {
+		t.Fatalf("mapped changes = %+v, err=%v", changes, err)
+	}
+	_, err = routeSyncChanges([]*routev1.RouteSyncChange{{
+		RouteId: "route-1", Certificate: &routev1.RouteSyncCertificateChange{Mode: "manual", Pem: "invalid"},
+	}})
+	if !apperror.IsKind(err, apperror.KindValidation) {
+		t.Fatalf("invalid PEM error = %v", err)
+	}
+}
 
 func TestTraefikRouteListResponseMapsPortView(t *testing.T) {
 	entrypoints := []string{"websecure"}

@@ -570,11 +570,14 @@
       applicationId: current.application_id,
       serviceId: current.id,
       component: component.trim(),
-      title: t('service.logs.titleWithComponent', {
-        app: current.application_name,
-        code: current.code,
-        component: component.trim(),
-      }),
+      title:
+        current.application_kind === 'gateway'
+          ? t('gateway.actions.logs')
+          : t('service.logs.titleWithComponent', {
+              app: current.application_name,
+              code: current.code,
+              component: component.trim(),
+            }),
     };
     logsDrawerOpen.value = true;
   }

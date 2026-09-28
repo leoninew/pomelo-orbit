@@ -74,6 +74,7 @@ beforeEach(() => {
     business_hash: 'business-hash',
     traefik_hash: 'traefik-hash',
     matched: false,
+    pending: [],
     differences: [],
   });
   vi.mocked(routeApi.confirmSync).mockResolvedValue({ message: 'Routes synced successfully' });
@@ -151,7 +152,7 @@ describe('Route synchronization', () => {
     );
 
     const syncConfirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent?.trim() === i18n.global.t('common.confirm')
+      (button) => button.textContent?.trim() === i18n.global.t('route.syncAll')
     );
     expect(syncConfirmButton).toBeDefined();
     await vi.waitFor(() => expect(syncConfirmButton?.disabled).toBe(false));
@@ -209,7 +210,7 @@ describe('Route synchronization', () => {
     expect(routeApi.confirmSync).not.toHaveBeenCalled();
 
     const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent?.trim() === i18n.global.t('common.confirm')
+      (button) => button.textContent?.trim() === i18n.global.t('route.syncAll')
     );
     expect(confirmButton).toBeDefined();
     await vi.waitFor(() => expect(confirmButton?.disabled).toBe(false));

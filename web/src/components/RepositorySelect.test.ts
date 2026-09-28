@@ -1,9 +1,11 @@
 // @vitest-environment happy-dom
-import { createApp, h, nextTick, ref, type App } from 'vue';
+/* eslint-disable vue/one-component-per-file -- The test mounts the subject and a lightweight child double. */
+import { createApp, h, nextTick, ref, type App, type PropType } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { repositoryApi } from '@/api/repository/repository';
 import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
 import RepositorySelect from '@/components/RepositorySelect.vue';
+import type { ComboboxOption } from '@/components/ComboboxSelect.vue';
 
 vi.mock('@/api/repository/repository', () => ({
   repositoryApi: { list: vi.fn(), get: vi.fn() },
@@ -12,7 +14,10 @@ vi.mock('@/components/ComboboxSelect.vue', async () => {
   const { defineComponent, h } = await import('vue');
   return {
     default: defineComponent({
-      props: ['options', 'filterOptions'],
+      props: {
+        options: { type: Array as PropType<ComboboxOption[]>, required: true },
+        filterOptions: { type: Boolean, required: true },
+      },
       emits: ['search', 'load-more', 'update:modelValue'],
       setup(props, { emit }) {
         return () =>
@@ -55,6 +60,13 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+function getTarget() {
+  if (!target) {
+    throw new Error('Test mount target is not initialized');
+  }
+  return target;
+}
+
 describe('RepositorySelect', () => {
   it('searches beyond the first page and keeps a selected repository visible', async () => {
     vi.mocked(repositoryApi.get).mockResolvedValue(repository('selected', '已选仓库'));
@@ -72,7 +84,7 @@ describe('RepositorySelect', () => {
       modelValue: 'selected',
       projectId: 'project-a',
     });
-    app.mount(target!);
+    app.mount(getTarget());
     await vi.waitFor(() => expect(target?.textContent).toContain('已选仓库'));
     expect(
       target?.querySelector('[data-filter-options]')?.getAttribute('data-filter-options')
@@ -109,7 +121,7 @@ describe('RepositorySelect', () => {
           projectId: projectId.value,
         }),
     });
-    app.mount(target!);
+    app.mount(getTarget());
     await vi.waitFor(() => expect(finishOld).toBeDefined());
     projectId.value = 'project-b';
     await nextTick();

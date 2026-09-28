@@ -4,6 +4,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	routev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -114,15 +115,29 @@ func traefikRouterResponse(router routeport.TraefikRouter) routev1.TraefikRouter
 	}
 }
 
-func routeSyncChanges(items []*routev1.RouteSyncChange) []routedto.RouteSyncChange {
+func routeSyncChanges(items []*routev1.RouteSyncChange) ([]routedto.RouteSyncChange, error) {
 	changes := make([]routedto.RouteSyncChange, 0, len(items))
 	for _, item := range items {
 		if item == nil {
 			continue
 		}
-		changes = append(changes, routedto.RouteSyncChange{RouteId: item.RouteId, Enabled: item.Enabled})
+		change := routedto.RouteSyncChange{RouteId: item.RouteId, Enabled: item.Enabled}
+		if item.Certificate != nil {
+			certificate := &routedto.RouteSyncCertificateChange{
+				Mode: item.Certificate.Mode, Challenge: item.Certificate.Challenge,
+			}
+			if item.Certificate.Pem != "" {
+				certPEM, certKey, ok := splitPEM([]byte(item.Certificate.Pem))
+				if !ok {
+					return nil, apperror.New(apperror.KindValidation, "Invalid PEM certificate")
+				}
+				certificate.CertPEM, certificate.CertKey = certPEM, certKey
+			}
+			change.Certificate = certificate
+		}
+		changes = append(changes, change)
 	}
-	return changes
+	return changes, nil
 }
 
 func routeSyncPreviewResponse(preview routedto.RouteSyncPreview) routev1.RouteSyncPreviewResp {
@@ -136,10 +151,17 @@ func routeSyncPreviewResponse(preview routedto.RouteSyncPreview) routev1.RouteSy
 			TraefikValue:  difference.TraefikValue,
 		})
 	}
+	pending := make([]*routev1.RouteSyncPendingResp, 0, len(preview.Pending))
+	for _, item := range preview.Pending {
+		pending = append(pending, &routev1.RouteSyncPendingResp{
+			RouteName: item.RouteName, Mode: item.Mode, Challenge: item.Challenge, PublishesNow: item.PublishesNow,
+		})
+	}
 	return routev1.RouteSyncPreviewResp{
 		BusinessHash: preview.BusinessHash,
 		TraefikHash:  preview.TraefikHash,
 		Matched:      preview.Matched,
 		Differences:  differences,
+		Pending:      pending,
 	}
 }

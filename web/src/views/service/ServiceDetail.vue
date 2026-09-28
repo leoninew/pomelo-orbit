@@ -566,18 +566,15 @@
     if (!current) {
       return;
     }
+    const componentName = component.trim();
     runtimeLogTarget.value = {
       applicationId: current.application_id,
       serviceId: current.id,
-      component: component.trim(),
+      component: componentName,
       title:
         current.application_kind === 'gateway'
           ? t('gateway.actions.logs')
-          : t('service.logs.titleWithComponent', {
-              app: current.application_name,
-              code: current.code,
-              component: component.trim(),
-            }),
+          : t('service.logs.titleWithComponent', { component: componentName }),
     };
     logsDrawerOpen.value = true;
   }

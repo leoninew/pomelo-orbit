@@ -172,9 +172,9 @@
             class="min-w-0 flex-1"
             @search="handleStageSearch"
           />
-          <ViewModeToggle v-model="stagesView" />
         </template>
 
+        <ViewModeTabs v-if="snapshot?.stages_snapshot.length" v-model="stagesView" />
         <AppLoadingState v-if="run.snapshot_id && !snapshot" size="compact" />
         <AppEmptyState v-else-if="!snapshot || filteredStages.length === 0" size="compact" />
 
@@ -210,10 +210,15 @@
                     <AppBadge
                       variant="pill"
                       :tone="stageStatusTone(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
-                      :title="stageRunMap[stage.id]?.error_message || undefined"
                     >
                       {{ stageRunMap[stage.id]?.status ?? 'waiting_to_run' }}
                     </AppBadge>
+                    <p
+                      v-if="stageRunMap[stage.id]?.error_message"
+                      class="mt-1 max-w-80 whitespace-pre-wrap break-words text-xs text-destructive"
+                    >
+                      {{ stageRunMap[stage.id]?.error_message }}
+                    </p>
                   </td>
                   <td>
                     <button
@@ -231,19 +236,15 @@
         </div>
 
         <!-- DAG View -->
-        <div v-else-if="stagesView === 'dag'" class="p-6">
+        <div v-else class="p-6">
           <div class="h-[500px]">
             <StageDAGView
-              :stages="snapshot.stages_snapshot"
+              :stages="filteredStages"
               :stage-runs="stageRuns"
               :animated="true"
               @view-stage="openLogDrawer"
             />
           </div>
-        </div>
-        <!-- Invalid State -->
-        <div v-else class="p-6 text-center text-destructive">
-          {{ t('pipelineRun.invalidViewMode') }}
         </div>
       </DetailInfoCard>
 
@@ -298,12 +299,24 @@
 
     <AppDrawer
       :open="showLogsDrawer"
-      :title="`${currentStageRunResp?.stage_name ?? ''} - ${t('pipelineRun.log')}`"
+      :title="`${currentStageRun?.stage_name ?? ''} - ${t('pipelineRun.log')}`"
       width-class="w-[min(960px,100vw)]"
       body-class="min-h-0 flex-1 overflow-hidden p-0"
       @update:open="handleLogDrawerOpenChange"
     >
       <div class="flex h-full flex-col gap-3 p-6">
+        <div
+          v-if="currentStageRun?.error_message"
+          class="border-l-2 border-destructive px-3 py-1"
+          role="alert"
+        >
+          <p class="text-xs font-medium text-destructive">
+            {{ t('pipelineRun.fields.errorMessage') }}
+          </p>
+          <p class="whitespace-pre-wrap break-words text-sm text-destructive">
+            {{ currentStageRun.error_message }}
+          </p>
+        </div>
         <div v-if="logsText" class="min-h-0 flex-1">
           <MonacoEditor
             :model-value="logsText"
@@ -395,7 +408,7 @@
   import AppSpinner from '@/components/AppSpinner.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
-  import ViewModeToggle from '@/components/ViewModeToggle.vue';
+  import ViewModeTabs from '@/components/ViewModeTabs.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -453,6 +466,11 @@
 
   const runVariables = computed(() => run.value?.variables ?? []);
   const stageRuns = computed(() => run.value?.pipeline_stage_runs ?? []);
+  const currentStageRun = computed(
+    () =>
+      stageRuns.value.find((stageRun) => stageRun.id === currentStageRunResp.value?.id) ??
+      currentStageRunResp.value
+  );
   const stageRunMap = computed<Record<string, PipelineStageRunResp>>(() => {
     const map: Record<string, PipelineStageRunResp> = {};
     for (const sr of stageRuns.value) {

@@ -806,8 +806,7 @@ export default {
     },
     logs: {
       title: '容器日志',
-      titleWithTarget: '{app} · {code} · 容器日志',
-      titleWithComponent: '{app} · {code} · {component}',
+      titleWithComponent: '{component} · 容器日志',
       description: '展示该服务最近的容器日志（compose logs --tail)。',
       loading: '加载容器日志中...',
       streaming: '容器日志刷新中...',

@@ -140,11 +140,11 @@
           </div>
           <button
             class="app-button h-9 px-3"
-            :disabled="operating || isSyncDialogOpen"
-            @click="openSyncModal"
+            :disabled="operating || isSyncDialogOpen || isCertificateDialogOpen"
+            @click="isCertificateDialogOpen = true"
           >
-            <RefreshCw class="size-4" />
-            {{ t('route.configureAndSync') }}
+            <ShieldCheck class="size-4" />
+            {{ t('route.configureCertificate') }}
           </button>
         </div>
       </DetailInfoCard>
@@ -323,10 +323,15 @@
     <RouteSyncDialog
       v-model:open="isSyncDialogOpen"
       :changes="syncChanges"
-      :route="routeData"
-      :saved-changes="hasPendingRouteChanges"
+      :certificate-pending="hasPendingCertificateChanges"
       @synced="handleSyncComplete"
       @saved="handleSyncSaved"
+    />
+    <RouteCertificateDialog
+      v-if="routeData?.protocol === 'http'"
+      v-model:open="isCertificateDialogOpen"
+      :route="routeData"
+      @saved="handleCertificateSaved"
     />
   </div>
 </template>
@@ -360,6 +365,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
   import RouteSyncDialog from '@/components/RouteSyncDialog.vue';
+  import RouteCertificateDialog from '@/components/RouteCertificateDialog.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useProjectStore } from '@/stores/project';
@@ -389,10 +395,14 @@
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
   const isSyncDialogOpen = ref(false);
+  const isCertificateDialogOpen = ref(false);
   const pendingEnabled = ref<boolean>();
   const hasPendingRouteChanges = ref(currentRoute.query.pending_sync === '1');
-  if (hasPendingRouteChanges.value) {
-    void router.replace({ query: { ...currentRoute.query, pending_sync: undefined } });
+  const hasPendingCertificateChanges = ref(currentRoute.query.pending_certificate === '1');
+  if (hasPendingRouteChanges.value || hasPendingCertificateChanges.value) {
+    void router.replace({
+      query: { ...currentRoute.query, pending_sync: undefined, pending_certificate: undefined },
+    });
   }
   const gatewayForLogs = ref<GatewayResp>();
   const isGatewayLogsDrawerOpen = ref(false);
@@ -436,10 +446,15 @@
     () => routeData.value !== undefined && pendingEnabled.value !== undefined
   );
   const hasPendingChanges = computed(
-    () => hasPendingRouteChanges.value || hasPendingEnabledChange.value
+    () =>
+      hasPendingRouteChanges.value ||
+      hasPendingCertificateChanges.value ||
+      hasPendingEnabledChange.value
   );
   const pendingChangeCount = computed(
-    () => Number(hasPendingRouteChanges.value) + Number(hasPendingEnabledChange.value)
+    () =>
+      Number(hasPendingRouteChanges.value || hasPendingCertificateChanges.value) +
+      Number(hasPendingEnabledChange.value)
   );
   const syncChanges = computed(() => {
     if (!routeData.value || pendingEnabled.value === undefined) {
@@ -612,7 +627,7 @@
               : undefined,
         });
         routeData.value = updated;
-        hasPendingRouteChanges.value = true;
+        hasPendingRouteChanges.value ||= updated.enabled;
         toast.success(t('route.toast.updateSuccess'));
         isEditDialogOpen.value = false;
         await fetchRoute();
@@ -676,9 +691,15 @@
     try {
       await executeOp(async () => {
         await routeApi.delete(selectedProjectId(), routeId);
-        hasPendingRouteChanges.value = true;
+        hasPendingRouteChanges.value ||= Boolean(routeData.value?.enabled);
         toast.success(t('route.toast.deleteSuccess'));
-        router.push({ path: '/routes', query: { pending_sync: '1' } });
+        router.push({
+          path: '/routes',
+          query: {
+            pending_sync: hasPendingRouteChanges.value ? '1' : undefined,
+            pending_certificate: hasPendingCertificateChanges.value ? '1' : undefined,
+          },
+        });
       });
     } catch (error) {
       deleteSubmitError.value =
@@ -707,8 +728,14 @@
   }
 
   function goToRoutes() {
-    if (hasPendingRouteChanges.value) {
-      void router.push({ path: '/routes', query: { pending_sync: '1' } });
+    if (hasPendingRouteChanges.value || hasPendingCertificateChanges.value) {
+      void router.push({
+        path: '/routes',
+        query: {
+          pending_sync: hasPendingRouteChanges.value ? '1' : undefined,
+          pending_certificate: hasPendingCertificateChanges.value ? '1' : undefined,
+        },
+      });
       return;
     }
     void router.push('/routes');
@@ -717,12 +744,23 @@
   async function handleSyncComplete() {
     pendingEnabled.value = undefined;
     hasPendingRouteChanges.value = false;
+    hasPendingCertificateChanges.value = false;
     await fetchRoute();
   }
 
   async function handleSyncSaved() {
     pendingEnabled.value = undefined;
     hasPendingRouteChanges.value = true;
+    await fetchRoute();
+  }
+
+  async function handleCertificateSaved(updated: RouteResp) {
+    routeData.value = updated;
+    if (updated.enabled) {
+      hasPendingRouteChanges.value = true;
+      hasPendingCertificateChanges.value = true;
+    }
+    toast.success(t('route.configurationSaved'));
     await fetchRoute();
   }
 

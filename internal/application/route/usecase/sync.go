@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,9 +20,11 @@ import (
 )
 
 const (
-	routeSyncPreviewExpiredCode   = "route_sync_preview_expired"
-	routeSyncPublishFailedCode    = "route_sync_publish_failed"
-	routeSyncPublishFailedMessage = "Route changes were saved, but publication could not be completed. Retry sync."
+	routeSyncPreviewExpiredCode      = "route_sync_preview_expired"
+	routeSyncPublishFailedCode       = "route_sync_publish_failed"
+	routeSyncPublishFailedMessage    = "Route changes were saved, but publication could not be completed. Retry sync."
+	routeSyncPermissionDeniedCode    = "route_sync_publish_permission_denied"
+	routeSyncPermissionDeniedMessage = "Route changes were saved, but the Gateway remote workspace rejected a file update (permission denied). Retry sync or check the remote workspace permissions."
 )
 
 type syncRouter struct {
@@ -62,8 +66,8 @@ func (s Service) PreviewRouteSync(ctx context.Context, userId string, projectId 
 	return previewSyncPlan(plan, traefikRouters, traefikServices), nil
 }
 
-// ConfirmRouteSync applies the requested business state and then replaces the
-// complete Traefik REST snapshot. The database transaction intentionally ends
+// ConfirmRouteSync applies the requested business state and publishes the
+// complete Traefik REST snapshot when needed. The database transaction ends
 // before the external PUT starts.
 func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId string, input routedto.RouteSyncConfirmInput) error {
 	if strings.TrimSpace(input.BusinessHash) == "" || strings.TrimSpace(input.TraefikHash) == "" {
@@ -84,21 +88,19 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 	if s.transactionRunner == nil {
 		return apperror.New(apperror.KindInternal, "route sync transaction is not configured")
 	}
-	if err := s.materializeSyncCertificates(ctx, &plan); err != nil {
-		return err
-	}
-
 	if err := s.transactionRunner.RunInTransaction(ctx, func(txCtx context.Context) error {
 		return s.applyRouteSyncChanges(txCtx, projectId, plan)
 	}); err != nil {
 		return err
 	}
-
 	updatedRoutes, err := s.listEnabledRoutesForPublish(ctx, projectId)
 	if err != nil {
 		return apperror.WrapWithCode(apperror.KindUnavailable, routeSyncPublishFailedCode, routeSyncPublishFailedMessage, err)
 	}
 	if err := s.applyRouteSnapshot(ctx, projectId, updatedRoutes, false); err != nil {
+		if errors.Is(err, os.ErrPermission) {
+			return apperror.WrapWithCode(apperror.KindUnavailable, routeSyncPermissionDeniedCode, routeSyncPermissionDeniedMessage, err)
+		}
 		return apperror.WrapWithCode(apperror.KindUnavailable, routeSyncPublishFailedCode, routeSyncPublishFailedMessage, err)
 	}
 	return nil
@@ -141,10 +143,8 @@ func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, plan *
 			if err := s.validateRoute(ctx, projectId, route, route.Id, true); err != nil {
 				return err
 			}
-			if _, pendingGeneration := plan.mkcert[route.Id]; !pendingGeneration {
-				if err := s.validateRouteCertificateConfiguration(ctx, *route); err != nil {
-					return err
-				}
+			if err := s.validateRouteCertificateConfiguration(ctx, *route); err != nil {
+				return err
 			}
 			continue
 		}
@@ -390,25 +390,16 @@ func syncDifferences(business syncSnapshot, traefik syncSnapshot) []routedto.Rou
 		switch {
 		case inBusiness && !inTraefik:
 			differences = append(differences, routedto.RouteSyncDiff{
-				Action:        "added",
-				RouteName:     name,
-				Field:         "route",
-				BusinessValue: syncRouteValue(businessRoute),
+				Action: "added", RouteName: name, Field: "route", Business: syncRouteRule(businessRoute),
 			})
 		case !inBusiness && inTraefik:
 			differences = append(differences, routedto.RouteSyncDiff{
-				Action:       "removed",
-				RouteName:    name,
-				Field:        "route",
-				TraefikValue: syncRouteValue(traefikRoute),
+				Action: "removed", RouteName: name, Field: "route", Traefik: syncRouteRule(traefikRoute),
 			})
 		case !syncRouteStatesEqual(businessRoute, traefikRoute):
 			differences = append(differences, routedto.RouteSyncDiff{
-				Action:        "modified",
-				RouteName:     name,
-				Field:         "route",
-				BusinessValue: syncRouteValue(businessRoute),
-				TraefikValue:  syncRouteValue(traefikRoute),
+				Action: "modified", RouteName: name, Field: "route",
+				Business: syncRouteRule(businessRoute), Traefik: syncRouteRule(traefikRoute),
 			})
 		}
 	}
@@ -498,22 +489,15 @@ func syncServiceField(service syncService) string {
 	return strings.Join(service.Servers, ", ")
 }
 
-func syncRouteValue(state syncRouteState) string {
-	value := ""
+func syncRouteRule(state syncRouteState) *routedto.RouteSyncRule {
+	rule := &routedto.RouteSyncRule{}
 	if state.HasRouter {
-		value = syncRouterValue(state.Router)
+		rule.Match = syncRouterValue(state.Router)
 	}
-	if !state.HasService {
-		return value
+	if state.HasService {
+		rule.Target = syncServiceField(state.Service)
 	}
-	serviceValue := syncServiceField(state.Service)
-	if value == "" {
-		return serviceValue
-	}
-	if serviceValue == "" {
-		return value
-	}
-	return value + " -> " + serviceValue
+	return rule
 }
 
 func syncRouterRouteName(name string) string {

@@ -20,8 +20,6 @@ type syncPlan struct {
 	originals []model.Route
 	updates   []model.Route
 	changes   []routedto.RouteSyncChange
-	pending   []routedto.RouteSyncPending
-	mkcert    map[string]struct{}
 }
 
 func (s Service) buildSyncPlan(ctx context.Context, projectId string, changes []routedto.RouteSyncChange) (syncPlan, error) {
@@ -33,11 +31,11 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, changes []
 	for _, route := range enabledRoutes {
 		byId[route.Id] = route
 	}
-	plan := syncPlan{changes: changes, mkcert: make(map[string]struct{})}
+	plan := syncPlan{changes: changes}
 	seen := make(map[string]struct{}, len(changes))
 	for _, change := range changes {
-		if change.RouteId == "" || change.Enabled == nil && change.Certificate == nil {
-			return syncPlan{}, apperror.New(apperror.KindValidation, "route sync change requires route_id and an operation")
+		if change.RouteId == "" || change.Enabled == nil {
+			return syncPlan{}, apperror.New(apperror.KindValidation, "route sync change requires route_id and enabled")
 		}
 		if _, duplicate := seen[change.RouteId]; duplicate {
 			return syncPlan{}, apperror.New(apperror.KindValidation, "a route can only appear once in sync changes")
@@ -53,17 +51,6 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, changes []
 		desired := original
 		if change.Enabled != nil {
 			desired.Enabled = *change.Enabled
-		}
-		if change.Certificate != nil {
-			if err := s.setSyncCertificate(ctx, &desired, *change.Certificate); err != nil {
-				return syncPlan{}, err
-			}
-			if change.Certificate.Mode == certTypeMkcert {
-				plan.mkcert[desired.Id] = struct{}{}
-			}
-			plan.pending = append(plan.pending, routedto.RouteSyncPending{
-				RouteName: desired.Name, Mode: change.Certificate.Mode, Challenge: change.Certificate.Challenge, PublishesNow: desired.Enabled,
-			})
 		}
 		plan.originals = append(plan.originals, original)
 		plan.updates = append(plan.updates, desired)
@@ -81,46 +68,8 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, changes []
 	return plan, nil
 }
 
-func (s Service) setSyncCertificate(ctx context.Context, route *model.Route, change routedto.RouteSyncCertificateChange) error {
-	if err := requireHTTPRoute(*route); err != nil {
-		return err
-	}
-	switch change.Mode {
-	case "http":
-		if change.Challenge != "" || change.CertPEM != "" || change.CertKey != "" {
-			return apperror.New(apperror.KindValidation, "HTTP mode cannot include certificate fields")
-		}
-		route.HTTPSEnabled, route.CertPEM, route.CertKey = false, nil, nil
-		route.CertType, route.AcmeChallenge = certTypeManual, acmeChallengeHTTP
-	case certTypeLetsEncrypt:
-		if change.CertPEM != "" || change.CertKey != "" || change.Challenge != acmeChallengeHTTP && change.Challenge != acmeChallengeDNS {
-			return apperror.New(apperror.KindValidation, "Invalid Let's Encrypt certificate change")
-		}
-		route.HTTPSEnabled, route.CertPEM, route.CertKey = true, nil, nil
-		route.CertType, route.AcmeChallenge = certTypeLetsEncrypt, change.Challenge
-	case certTypeManual:
-		if change.Challenge != "" || change.CertPEM == "" || change.CertKey == "" {
-			return apperror.New(apperror.KindValidation, "A PEM certificate and key are required")
-		}
-		certPEM, certKey := change.CertPEM, change.CertKey
-		route.HTTPSEnabled, route.CertPEM, route.CertKey = true, &certPEM, &certKey
-		route.CertType, route.AcmeChallenge = certTypeManual, acmeChallengeHTTP
-	case certTypeMkcert:
-		if change.Challenge != "" || change.CertPEM != "" || change.CertKey != "" {
-			return apperror.New(apperror.KindValidation, "mkcert mode cannot include certificate fields")
-		}
-		route.HTTPSEnabled, route.CertPEM, route.CertKey = true, nil, nil
-		route.CertType, route.AcmeChallenge = certTypeMkcert, acmeChallengeHTTP
-		return nil
-	default:
-		return apperror.New(apperror.KindValidation, "Invalid route certificate mode")
-	}
-	return s.validateRouteCertificateConfiguration(ctx, *route)
-}
-
 func previewSyncPlan(plan syncPlan, routers []routeport.TraefikRouter, services []routeport.TraefikService) routedto.RouteSyncPreview {
 	preview := compareSyncState(plan.routes, routers, services)
-	preview.Pending = plan.pending
 	if len(plan.changes) != 0 {
 		preview.BusinessHash = hashSyncValue(struct {
 			Snapshot  string
@@ -135,24 +84,6 @@ func hashSyncValue(value any) string {
 	encoded, _ := json.Marshal(value)
 	digest := sha256.Sum256(encoded)
 	return hex.EncodeToString(digest[:])
-}
-
-func (s Service) materializeSyncCertificates(ctx context.Context, plan *syncPlan) error {
-	for index, change := range plan.changes {
-		if change.Certificate == nil || change.Certificate.Mode != certTypeMkcert {
-			continue
-		}
-		desired := &plan.updates[index]
-		certPEM, certKey, err := s.certificateGenerator.Generate(ctx, desired.Domain)
-		if err != nil {
-			return err
-		}
-		desired.CertPEM, desired.CertKey = &certPEM, &certKey
-		if err := s.validateRouteCertificateConfiguration(ctx, *desired); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s Service) applyRouteSyncChanges(ctx context.Context, projectId string, plan syncPlan) error {

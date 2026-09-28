@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -157,6 +158,10 @@ func TestRouteServiceRequiresTokenAndGatewayCapabilityForDNSLetsEncrypt(t *testi
 	if len(publisher.snapshots) != 0 {
 		t.Fatalf("expected no snapshot publication after certificate change, got %+v", publisher.snapshots)
 	}
+	switched, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, route.Id, acmeChallengeHTTP)
+	if err != nil || switched.AcmeChallenge != acmeChallengeHTTP {
+		t.Fatalf("switch Let's Encrypt challenge = %+v, err=%v", switched, err)
+	}
 }
 
 func TestRouteServiceMutationsDoNotPublishWhenTraefikHasUnmanagedRestRoute(t *testing.T) {
@@ -239,7 +244,8 @@ func TestRouteServiceSyncAppliesPendingEnableChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if preview.Matched || len(preview.Differences) != 1 || preview.Differences[0].Action != "added" || preview.Differences[0].Field != "route" || preview.Differences[0].BusinessValue != "HTTP Host(`pending.example.test`) -> http://host.docker.internal:8091" || preview.Differences[0].TraefikValue != "" {
+	if preview.Matched || len(preview.Differences) != 1 || preview.Differences[0].Action != "added" || preview.Differences[0].Field != "route" ||
+		preview.Differences[0].Business == nil || preview.Differences[0].Business.Match != "HTTP Host(`pending.example.test`)" || preview.Differences[0].Business.Target != "http://host.docker.internal:8091" || preview.Differences[0].Traefik != nil {
 		t.Fatalf("pending enable preview = %+v", preview)
 	}
 	if stored, err := service.route.Route(ctx, routeTestProjectId, route.Id); err != nil || stored.Enabled {
@@ -261,7 +267,46 @@ func TestRouteServiceSyncAppliesPendingEnableChange(t *testing.T) {
 	}
 }
 
-func TestRouteServiceSyncEnablesRouteWithCertificate(t *testing.T) {
+func TestEnabledRouteCertificateChangePublishesOnlyOnSync(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "live-route", Protocol: "http", Domain: "live.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8093", Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		BusinessHash: initial.BusinessHash, TraefikHash: initial.TraefikHash,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.EnableRouteMkcert(ctx, routeTestUserId, routeTestProjectId, route.Id); err != nil {
+		t.Fatal(err)
+	}
+	if len(publisher.snapshots) != 1 {
+		t.Fatalf("certificate save published route: %+v", publisher.snapshots)
+	}
+	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		BusinessHash: preview.BusinessHash, TraefikHash: preview.TraefikHash,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(publisher.snapshots) != 2 || len(publisher.snapshots[1]) != 1 || !publisher.snapshots[1][0].HTTPSEnabled {
+		t.Fatalf("updated certificate was not published: %+v", publisher.snapshots)
+	}
+}
+
+func TestRouteServiceSyncEnablesRouteWithSavedCertificate(t *testing.T) {
 	service, publisher, _, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
@@ -272,16 +317,19 @@ func TestRouteServiceSyncEnablesRouteWithCertificate(t *testing.T) {
 		t.Fatal(err)
 	}
 	enabled := true
-	changes := []routedto.RouteSyncChange{{RouteId: route.Id, Enabled: &enabled, Certificate: &routedto.RouteSyncCertificateChange{Mode: certTypeMkcert}}}
+	if _, err := service.EnableRouteMkcert(ctx, routeTestUserId, routeTestProjectId, route.Id); err != nil {
+		t.Fatal(err)
+	}
+	changes := []routedto.RouteSyncChange{{RouteId: route.Id, Enabled: &enabled}}
 	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, changes)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(preview.Pending) != 1 || !preview.Pending[0].PublishesNow || len(preview.Differences) != 1 {
+	if len(preview.Differences) != 1 {
 		t.Fatalf("preview = %+v", preview)
 	}
 	stored, err := service.route.Route(ctx, routeTestProjectId, route.Id)
-	if err != nil || stored.Enabled || stored.HTTPSEnabled || len(publisher.snapshots) != 0 {
+	if err != nil || stored.Enabled || !stored.HTTPSEnabled || len(publisher.snapshots) != 0 {
 		t.Fatalf("preview changed state: route=%+v snapshots=%+v err=%v", stored, publisher.snapshots, err)
 	}
 	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
@@ -308,29 +356,47 @@ func TestRouteServiceSyncSavesDisabledCertificateWithoutPublishingRoute(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	changes := []routedto.RouteSyncChange{{RouteId: route.Id, Certificate: &routedto.RouteSyncCertificateChange{Mode: certTypeLetsEncrypt, Challenge: acmeChallengeHTTP}}}
-	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, changes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !preview.Matched || len(preview.Pending) != 1 || preview.Pending[0].PublishesNow {
-		t.Fatalf("disabled route preview = %+v", preview)
-	}
-	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
-		Changes: changes, BusinessHash: preview.BusinessHash, TraefikHash: preview.TraefikHash,
-	}); err != nil {
+	if _, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, route.Id, acmeChallengeHTTP); err != nil {
 		t.Fatal(err)
 	}
 	stored, err := service.route.Route(ctx, routeTestProjectId, route.Id)
 	if err != nil || stored.Enabled || !stored.HTTPSEnabled || stored.CertType != certTypeLetsEncrypt {
 		t.Fatalf("disabled route = %+v, err=%v", stored, err)
 	}
-	if len(publisher.snapshots) != 1 || len(publisher.snapshots[0]) != 0 {
-		t.Fatalf("disabled route was published: %+v", publisher.snapshots)
+	if len(publisher.snapshots) != 0 {
+		t.Fatalf("disabled certificate change published a snapshot: %+v", publisher.snapshots)
 	}
 }
 
-func TestRouteServiceRejectsCertificateChangeAfterPreviewExpires(t *testing.T) {
+func TestRouteServiceSyncPublishesWhenDisabledCertificateHasRuntimeDrift(t *testing.T) {
+	service, publisher, client, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
+		Name: "offline-route", Protocol: "http", Domain: "offline.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8094", Enabled: false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.routers = []routeport.TraefikRouter{{Name: "legacy-route@rest", Provider: "rest", Status: "enabled"}}
+	if _, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, route.Id, acmeChallengeHTTP); err != nil {
+		t.Fatal(err)
+	}
+	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
+	if err != nil || preview.Matched {
+		t.Fatalf("expected runtime drift in preview: %+v, err=%v", preview, err)
+	}
+	if err := service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		BusinessHash: preview.BusinessHash, TraefikHash: preview.TraefikHash,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(publisher.snapshots) != 1 || len(publisher.snapshots[0]) != 0 {
+		t.Fatalf("runtime drift was not replaced: %+v", publisher.snapshots)
+	}
+}
+
+func TestRouteServiceRejectsSyncAfterCertificateChangeExpiresPreview(t *testing.T) {
 	service, publisher, _, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
@@ -340,8 +406,7 @@ func TestRouteServiceRejectsCertificateChangeAfterPreviewExpires(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	changes := []routedto.RouteSyncChange{{RouteId: route.Id, Certificate: &routedto.RouteSyncCertificateChange{Mode: certTypeMkcert}}}
-	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, changes)
+	preview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,7 +414,7 @@ func TestRouteServiceRejectsCertificateChangeAfterPreviewExpires(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
-		Changes: changes, BusinessHash: preview.BusinessHash, TraefikHash: preview.TraefikHash,
+		BusinessHash: preview.BusinessHash, TraefikHash: preview.TraefikHash,
 	})
 	if err == nil || apperror.Classify(err).Code != routeSyncPreviewExpiredCode || len(publisher.snapshots) != 0 {
 		t.Fatalf("expired preview result = %v, snapshots=%+v", err, publisher.snapshots)
@@ -383,8 +448,19 @@ func TestRouteServiceReportsSavedStateWhenPublishFails(t *testing.T) {
 	if err != nil || !stored.Enabled {
 		t.Fatalf("route was not saved before publish failure: %+v, err=%v", stored, err)
 	}
-	publisher.err = nil
+	publisher.err = os.ErrPermission
 	retryPreview, err := service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = service.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
+		BusinessHash: retryPreview.BusinessHash, TraefikHash: retryPreview.TraefikHash,
+	})
+	if err == nil || apperror.Classify(err).Code != routeSyncPermissionDeniedCode || !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("permission-denied publish error = %v", err)
+	}
+	publisher.err = nil
+	retryPreview, err = service.PreviewRouteSync(ctx, routeTestUserId, routeTestProjectId, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

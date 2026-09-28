@@ -62,13 +62,6 @@ message RouteDisableReq {}
 message RouteSyncChange {
   string route_id = 1;
   optional bool enabled = 2;
-  optional RouteSyncCertificateChange certificate = 3;
-}
-
-message RouteSyncCertificateChange {
-  string mode = 1;
-  string challenge = 2;
-  string pem = 3;
 }
 
 message RouteSyncPreviewReq {
@@ -79,15 +72,13 @@ message RouteSyncDiffResp {
   string action = 1;
   string route_name = 2;
   string field = 3;
-  string business_value = 4;
-  string traefik_value = 5;
+  RouteSyncRuleResp business = 4;
+  RouteSyncRuleResp traefik = 5;
 }
 
-message RouteSyncPendingResp {
-  string route_name = 1;
-  string mode = 2;
-  bool publishes_now = 3;
-  string challenge = 4;
+message RouteSyncRuleResp {
+  string match = 1;
+  string target = 2;
 }
 
 message RouteSyncPreviewResp {
@@ -95,7 +86,6 @@ message RouteSyncPreviewResp {
   string traefik_hash = 2;
   bool matched = 3;
   repeated RouteSyncDiffResp differences = 4;
-  repeated RouteSyncPendingResp pending = 5;
 }
 
 message RouteSyncConfirmReq {

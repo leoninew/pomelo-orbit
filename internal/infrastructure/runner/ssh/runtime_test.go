@@ -2,12 +2,74 @@ package sshrunner
 
 import (
 	"encoding/base64"
+	"errors"
+	"os"
 	"strings"
 	"testing"
 	"unicode/utf16"
 
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+type workspaceRenamerStub struct {
+	files       map[string]bool
+	failInstall bool
+	posixCalls  int
+}
+
+func (stub *workspaceRenamerStub) Rename(oldPath, newPath string) error {
+	if !stub.files[oldPath] {
+		return os.ErrNotExist
+	}
+	if stub.files[newPath] || stub.failInstall && oldPath == "staged" && newPath == "current" {
+		return os.ErrPermission
+	}
+	delete(stub.files, oldPath)
+	stub.files[newPath] = true
+	return nil
+}
+
+func (stub *workspaceRenamerStub) PosixRename(oldPath, newPath string) error {
+	stub.posixCalls++
+	delete(stub.files, oldPath)
+	stub.files[newPath] = true
+	return nil
+}
+
+func (stub *workspaceRenamerStub) Remove(filePath string) error {
+	delete(stub.files, filePath)
+	return nil
+}
+
+func TestCommitWorkspaceFileReplacesExistingWindowsFile(t *testing.T) {
+	stub := &workspaceRenamerStub{files: map[string]bool{"staged": true, "current": true}}
+	if err := commitWorkspaceFile(stub, model.EnvironmentPlatformWindows, "staged", "current"); err != nil {
+		t.Fatalf("replace Windows file: %v", err)
+	}
+	if !stub.files["current"] || stub.files["staged"] || len(stub.files) != 1 || stub.posixCalls != 0 {
+		t.Fatalf("unexpected files after replacement: %+v", stub.files)
+	}
+}
+
+func TestCommitWorkspaceFileRestoresWindowsFileWhenReplacementFails(t *testing.T) {
+	stub := &workspaceRenamerStub{files: map[string]bool{"staged": true, "current": true}, failInstall: true}
+	if err := commitWorkspaceFile(stub, model.EnvironmentPlatformWindows, "staged", "current"); !errors.Is(err, os.ErrPermission) {
+		t.Fatalf("expected replacement permission error, got %v", err)
+	}
+	if !stub.files["current"] || !stub.files["staged"] || len(stub.files) != 2 {
+		t.Fatalf("previous file was not restored: %+v", stub.files)
+	}
+}
+
+func TestCommitWorkspaceFileKeepsAtomicRenameOnLinux(t *testing.T) {
+	stub := &workspaceRenamerStub{files: map[string]bool{"staged": true, "current": true}}
+	if err := commitWorkspaceFile(stub, model.EnvironmentPlatformLinux, "staged", "current"); err != nil {
+		t.Fatalf("replace Linux file: %v", err)
+	}
+	if stub.posixCalls != 1 || !stub.files["current"] || stub.files["staged"] {
+		t.Fatalf("Linux replacement did not use POSIX rename: %+v", stub)
+	}
+}
 
 func TestNormalizeSFTPHomePathForWindowsAndLinux(t *testing.T) {
 	for _, testCase := range []struct {

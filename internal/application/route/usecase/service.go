@@ -405,9 +405,6 @@ func (s Service) EnableRouteLetsEncrypt(ctx context.Context, userId, projectId, 
 	if challenge != acmeChallengeHTTP && challenge != acmeChallengeDNS {
 		return model.Route{}, apperror.New(apperror.KindValidation, "challenge must be http or dns")
 	}
-	if route.HTTPSEnabled && route.CertType == certTypeLetsEncrypt {
-		return model.Route{}, apperror.New(apperror.KindValidation, "Let's Encrypt 证书已启用")
-	}
 	if err := validatePublicACMEDomain(route.Domain); err != nil {
 		return model.Route{}, err
 	}

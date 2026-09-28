@@ -18,6 +18,7 @@ import (
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/pkg/sftp"
@@ -319,9 +320,40 @@ func writeWorkspaceFile(client *sftp.Client, platform string, filePath string, c
 			return fmt.Errorf("set remote file mode: %w", err)
 		}
 	}
-	if err := client.PosixRename(tempPath, filePath); err != nil {
+	if err := commitWorkspaceFile(client, platform, tempPath, filePath); err != nil {
 		_ = client.Remove(tempPath)
 		return fmt.Errorf("commit remote staged file: %w", err)
+	}
+	return nil
+}
+
+type workspaceFileRenamer interface {
+	Rename(string, string) error
+	PosixRename(string, string) error
+	Remove(string) error
+}
+
+func commitWorkspaceFile(client workspaceFileRenamer, platform, tempPath, filePath string) error {
+	if platform != model.EnvironmentPlatformWindows {
+		return client.PosixRename(tempPath, filePath)
+	}
+	if err := client.Rename(tempPath, filePath); err == nil {
+		return nil
+	}
+
+	// Windows OpenSSH SFTP cannot reliably rename over an existing file.
+	backupPath := tempPath + ".previous-" + idutil.NewId()
+	if err := client.Rename(filePath, backupPath); err != nil {
+		return fmt.Errorf("back up remote file before replacement: %w", err)
+	}
+	if err := client.Rename(tempPath, filePath); err != nil {
+		if restoreErr := client.Rename(backupPath, filePath); restoreErr != nil {
+			return errors.Join(fmt.Errorf("replace remote file: %w", err), fmt.Errorf("restore remote file: %w", restoreErr))
+		}
+		return fmt.Errorf("replace remote file: %w", err)
+	}
+	if err := client.Remove(backupPath); err != nil {
+		return fmt.Errorf("remove remote file backup: %w", err)
 	}
 	return nil
 }

@@ -38,6 +38,28 @@ export const routeApi = {
     return request.delete(`/api/route/${id}`, { params: { project_id: projectId } });
   },
 
+  uploadCert(projectId: string, id: string, file: File): Promise<RouteResp> {
+    const data = new FormData();
+    data.append('pem', file);
+    return request.post(`/api/route/${id}/cert`, data, { params: { project_id: projectId } });
+  },
+
+  disableHTTPS(projectId: string, id: string): Promise<RouteResp> {
+    return request.delete(`/api/route/${id}/https`, { params: { project_id: projectId } });
+  },
+
+  enableLetsEncrypt(projectId: string, id: string, challenge: 'http' | 'dns'): Promise<RouteResp> {
+    return request.post(
+      `/api/route/${id}/letsencrypt`,
+      { challenge },
+      { params: { project_id: projectId } }
+    );
+  },
+
+  enableMkcert(projectId: string, id: string): Promise<RouteResp> {
+    return request.post(`/api/route/${id}/mkcert`, {}, { params: { project_id: projectId } });
+  },
+
   previewSync(projectId: string, data: RouteSyncPreviewReq): Promise<RouteSyncPreviewResp> {
     return request.post(
       '/api/route/sync/preview',

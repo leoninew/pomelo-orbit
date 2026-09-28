@@ -96,7 +96,16 @@
           <tbody>
             <tr v-for="route in routes" :key="route.id">
               <td>
-                <router-link :to="`/route/${route.id}`" class="app-link whitespace-nowrap">
+                <router-link
+                  :to="{
+                    path: `/route/${route.id}`,
+                    query: {
+                      pending_sync: hasPendingRouteChanges ? '1' : undefined,
+                      pending_certificate: hasPendingCertificateChanges ? '1' : undefined,
+                    },
+                  }"
+                  class="app-link whitespace-nowrap"
+                >
                   {{ route.name }}
                 </router-link>
               </td>
@@ -176,7 +185,7 @@
   <RouteSyncDialog
     v-model:open="isSyncDialogOpen"
     :changes="syncChanges"
-    :saved-changes="hasPendingRouteChanges"
+    :certificate-pending="hasPendingCertificateChanges"
     @synced="handleSyncComplete"
     @saved="handleSyncSaved"
   />
@@ -557,13 +566,18 @@
   const editingRoute = ref<RouteResp>();
   const pendingEnabled = reactive<Record<string, boolean>>({});
   const hasPendingRouteChanges = ref(currentRoute.query.pending_sync === '1');
-  if (hasPendingRouteChanges.value) {
-    void router.replace({ query: { ...currentRoute.query, pending_sync: undefined } });
+  const hasPendingCertificateChanges = ref(currentRoute.query.pending_certificate === '1');
+  if (hasPendingRouteChanges.value || hasPendingCertificateChanges.value) {
+    void router.replace({
+      query: { ...currentRoute.query, pending_sync: undefined, pending_certificate: undefined },
+    });
   }
   const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize));
   const pendingChangeCount = computed(
-    () => Object.keys(pendingEnabled).length + (hasPendingRouteChanges.value ? 1 : 0)
+    () =>
+      Object.keys(pendingEnabled).length +
+      (hasPendingRouteChanges.value || hasPendingCertificateChanges.value ? 1 : 0)
   );
   const hasPendingChanges = computed(() => pendingChangeCount.value > 0);
   const syncChanges = computed(() =>
@@ -732,6 +746,7 @@
       delete pendingEnabled[routeId];
     }
     hasPendingRouteChanges.value = false;
+    hasPendingCertificateChanges.value = false;
   }
 
   async function fetchRoutes() {
@@ -923,12 +938,15 @@
               : undefined,
           enabled: false,
         });
-        hasPendingRouteChanges.value = true;
+        hasPendingRouteChanges.value ||= created.enabled;
         toast.success(t('route.toast.addSuccess'));
         isCreateDialogOpen.value = false;
         await router.push({
           path: `/route/${created.id}`,
-          query: { pending_sync: '1' },
+          query: {
+            pending_sync: hasPendingRouteChanges.value ? '1' : undefined,
+            pending_certificate: hasPendingCertificateChanges.value ? '1' : undefined,
+          },
         });
       });
     } catch (error) {
@@ -972,7 +990,7 @@
         });
         routes.value = routes.value.map((item) => (item.id === updated.id ? updated : item));
         editingRoute.value = updated;
-        hasPendingRouteChanges.value = true;
+        hasPendingRouteChanges.value ||= updated.enabled;
         toast.success(t('route.toast.updateSuccess'));
         closeEditModal();
         await fetchRoutes();
@@ -993,8 +1011,10 @@
   }
 
   async function handleSyncSaved() {
+    const certificatePending = hasPendingCertificateChanges.value;
     clearPendingChanges();
     hasPendingRouteChanges.value = true;
+    hasPendingCertificateChanges.value = certificatePending;
     await fetchRoutes();
   }
 

@@ -33,6 +33,7 @@ type PipelineUpdateInput struct {
 
 type PipelineInstantiateInput struct {
 	Name                string
+	Description         string
 	ApplicationId       *string
 	RepositoryId        string
 	VersionForkStrategy *string

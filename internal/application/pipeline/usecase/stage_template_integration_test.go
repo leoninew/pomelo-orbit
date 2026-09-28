@@ -70,13 +70,16 @@ func TestSharedRepositoryAndCredentialInstantiateInAnotherProject(t *testing.T) 
 		t.Fatalf("read shared repository in second project: %+v, %v", visibleRepository, err)
 	}
 	instance, err := pipelineService.InstantiatePipeline(ctx, pipelineTemplateUpdateUserId, otherProjectId, "01M391Y93PEYM4CNTGM5EBRS40", pipelinedto.PipelineInstantiateInput{
-		Name: "Other project build", RepositoryId: repository.Repository.Id,
+		Name: "Other project build", Description: "Project-specific build", RepositoryId: repository.Repository.Id,
 	})
 	if err != nil {
 		t.Fatalf("instantiate with shared repository: %v", err)
 	}
 	if instance.Pipeline.ProjectId == nil || *instance.Pipeline.ProjectId != otherProjectId || instance.Pipeline.RepositoryId == nil || *instance.Pipeline.RepositoryId != repository.Repository.Id {
 		t.Fatalf("instantiated pipeline has wrong project or repository: %+v", instance.Pipeline)
+	}
+	if instance.Pipeline.Description != "Project-specific build" {
+		t.Fatalf("instantiated pipeline description = %q", instance.Pipeline.Description)
 	}
 }
 

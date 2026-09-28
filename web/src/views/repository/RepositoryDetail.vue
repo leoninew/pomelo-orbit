@@ -5,6 +5,23 @@
       <div class="flex flex-wrap items-center gap-2">
         <button
           v-if="repository"
+          class="app-button-primary h-9 px-3"
+          :disabled="operating"
+          @click="openEditDialog"
+        >
+          <Pencil class="size-4" />
+          编辑
+        </button>
+        <router-link
+          v-if="repository"
+          :to="{ path: '/pipeline-run', query: { repository_id: repository.id } }"
+          class="app-button h-9 px-3"
+        >
+          <History class="size-4" />
+          运行记录
+        </router-link>
+        <button
+          v-if="repository"
           class="app-button-danger h-9 px-3"
           :disabled="operating"
           @click="openDeleteDialog"
@@ -22,7 +39,7 @@
     <AppLoadingState v-if="status === 'loading'" size="section" />
 
     <template v-else-if="repository">
-      <DetailInfoCard title="基本信息" editable :disabled="operating" @edit="openEditDialog">
+      <DetailInfoCard title="基本信息">
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>名称</dt>
@@ -32,18 +49,31 @@
             <dt>编码</dt>
             <dd class="min-w-0 text-foreground">{{ repository.code }}</dd>
           </div>
-          <div class="flex gap-2 sm:col-span-2">
-            <dt>
-              {{ repository.repository_type === 'local_directory' ? '本地目录' : '仓库地址' }}
-            </dt>
-            <dd class="min-w-0 truncate text-foreground" :title="repositoryLocation(repository)">
-              {{ repositoryLocation(repository) }}
-            </dd>
-          </div>
           <div class="flex gap-2">
             <dt>仓库类型</dt>
             <dd class="text-foreground">
               {{ repository.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>创建时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(repository.created_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>更新时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(repository.updated_at) }}</dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard title="连接配置">
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2 sm:col-span-2">
+            <dt>
+              {{ repository.repository_type === 'local_directory' ? '本地目录' : '仓库地址' }}
+            </dt>
+            <dd class="min-w-0 break-all text-foreground">
+              {{ repositoryLocation(repository) }}
             </dd>
           </div>
           <div class="flex gap-2">
@@ -62,22 +92,6 @@
               </router-link>
               <span v-else class="text-muted-foreground">未配置</span>
             </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>创建时间</dt>
-            <dd class="text-muted-foreground">{{ formatTime(repository.created_at) }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>流水线记录</dt>
-            <dd>
-              <router-link :to="`/pipeline-run?repository_id=${repository.id}`" class="app-link">
-                查看所有记录
-              </router-link>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>更新时间</dt>
-            <dd class="text-muted-foreground">{{ formatTime(repository.updated_at) }}</dd>
           </div>
         </dl>
       </DetailInfoCard>
@@ -331,7 +345,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Plus, Trash2 } from '@lucide/vue';
+  import { ArrowLeft, History, Pencil, Plus, Trash2 } from '@lucide/vue';
   import { computed, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { repositoryApi } from '@/api/repository/repository';

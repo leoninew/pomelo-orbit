@@ -1238,7 +1238,6 @@ export default {
     refreshPaused: '暂停刷新',
     basicInfo: '基本信息',
     stageOrchestration: '阶段编排',
-    remoteStorageNote: '日志和文件制品保留在远端环境',
     stage: '阶段',
     dependency: '依赖',
     artifact: '制品',
@@ -1258,7 +1257,7 @@ export default {
     deleteConfirm: '确定要删除流水线运行「{id}」及其关联文件吗？此操作不可恢复。',
     fields: {
       runId: '运行 ID',
-      executionTarget: '执行目标',
+      executionEnvironment: '执行环境',
       repository: '仓库',
       template: '模板',
       version: '版本',

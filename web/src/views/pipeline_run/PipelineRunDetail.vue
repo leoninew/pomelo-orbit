@@ -46,17 +46,14 @@
       </div>
     </div>
 
-    <!-- Loading State -->
     <AppLoadingState v-if="loading" size="section" />
 
-    <!-- Content -->
     <div v-else-if="run" class="flex flex-col gap-4">
-      <!-- Basic Info Card -->
       <DetailInfoCard :title="t('pipelineRun.basicInfo')">
         <dl class="app-detail-info-grid">
-          <div v-if="run.snapshot_id" class="flex gap-2">
+          <div class="flex gap-2">
             <dt>{{ t('pipelineRun.fields.runId') }}</dt>
-            <dd class="min-w-0 text-foreground">{{ runId }}</dd>
+            <dd class="min-w-0 break-all font-mono text-xs text-foreground">{{ run.id }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>流水线</dt>
@@ -75,12 +72,6 @@
             </dd>
           </div>
           <div class="flex gap-2">
-            <dt>配置版本</dt>
-            <dd>
-              <AppBadge>v{{ run.pipeline_version }}</AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
             <dt>{{ t('pipelineRun.fields.triggerBranch') }}</dt>
             <dd class="text-foreground">{{ run.repository_ref }}</dd>
           </div>
@@ -93,70 +84,76 @@
             </dd>
           </div>
           <div class="flex gap-2">
+            <dt>配置版本</dt>
+            <dd>
+              <AppBadge>v{{ run.pipeline_version }}</AppBadge>
+            </dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard title="执行配置">
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.triggerType') }}</dt>
+            <dd>
+              <AppBadge variant="pill">{{ run.trigger }}</AppBadge>
+            </dd>
+          </div>
+          <div v-if="run.environment_id" class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.executionEnvironment') }}</dt>
+            <dd class="min-w-0">
+              <router-link to="/environment" class="app-link">
+                {{ t('nav.environment') }}
+              </router-link>
+              <span v-if="run.environment_target_type" class="text-muted-foreground">
+                · {{ t(`project.environment.targetTypes.${run.environment_target_type}`) }}
+              </span>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.snapshot') }}</dt>
+            <dd class="min-w-0">
+              <router-link :to="`/pipeline/snapshot/${run.snapshot_id}`" class="app-link break-all">
+                {{ run.snapshot_id }}
+              </router-link>
+            </dd>
+          </div>
+          <div v-if="run.retry_of" class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.retryOf') }}</dt>
+            <dd class="min-w-0">
+              <router-link :to="`/pipeline-run/${run.retry_of}`" class="app-link break-all">
+                {{ run.retry_of }}
+              </router-link>
+            </dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard title="时间与结果">
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt>{{ t('common.createdAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
+          </div>
+          <div v-if="run.started_at" class="flex gap-2">
             <dt>{{ t('pipelineRun.fields.startTime') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(run.started_at) }}</dd>
           </div>
-          <div class="flex gap-2">
+          <div v-if="run.finished_at" class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.endTime') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(run.finished_at) }}</dd>
+          </div>
+          <div v-if="run.started_at && run.finished_at" class="flex gap-2">
             <dt>耗时</dt>
             <dd class="text-muted-foreground">
               {{ formatDuration(run.started_at, run.finished_at) }}
             </dd>
           </div>
-          <div v-if="run.environment_target_type" class="flex gap-2">
-            <dt>{{ t('pipelineRun.fields.executionTarget') }}</dt>
-            <dd class="text-foreground">
-              {{ t(`project.environment.targetTypes.${run.environment_target_type}`) }}
-              <span v-if="run.environment_target_type === 'ssh'" class="text-muted-foreground">
-                · {{ t('pipelineRun.remoteStorageNote') }}
-              </span>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>{{ t('pipelineRun.fields.triggerType') }}</dt>
-            <dd>
-              <AppBadge variant="pill">
-                {{ run.trigger }}
-              </AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>
-              {{ t('pipelineRun.fields.snapshot') }}
-            </dt>
-            <dd>
-              <router-link :to="`/pipeline/snapshot/${run.snapshot_id}`" class="app-link">
-                {{ t('application.view') }}
-              </router-link>
-            </dd>
-          </div>
-          <div v-if="run.started_at" class="flex gap-2">
-            <dt>{{ t('common.createdAt') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
-          </div>
-          <div v-if="run.retry_of" class="flex gap-2">
-            <dt>
-              {{ t('pipelineRun.fields.retryOf') }}
-            </dt>
-            <dd>
-              <router-link :to="`/pipeline-run/${run.retry_of}`" class="app-link">
-                {{ t('application.view') }}
-              </router-link>
-            </dd>
-          </div>
-          <div v-if="run.finished_at" class="flex gap-2">
-            <dt>
-              {{ t('pipelineRun.fields.endTime') }}
-            </dt>
-            <dd class="text-muted-foreground">{{ formatTime(run.finished_at) }}</dd>
-          </div>
           <div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
-            <dt>
-              {{ t('pipelineRun.fields.errorMessage') }}
-            </dt>
-            <dd class="min-w-0 text-destructive">
-              <span class="block truncate" :title="run.error_message">
-                {{ run.error_message }}
-              </span>
+            <dt>{{ t('pipelineRun.fields.errorMessage') }}</dt>
+            <dd class="min-w-0 whitespace-pre-wrap break-words text-destructive">
+              {{ run.error_message }}
             </dd>
           </div>
         </dl>
@@ -186,7 +183,7 @@
                 <tr>
                   <th>#</th>
                   <th>{{ t('pipelineRun.stage') }}</th>
-                  <th>{{ t('pipelineRun.fields.version') }}</th>
+                  <th>执行镜像</th>
                   <th>{{ t('pipelineRun.dependency') }}</th>
                   <th>{{ t('common.status') }}</th>
                   <th>{{ t('common.operation') }}</th>
@@ -269,7 +266,7 @@
             <thead>
               <tr>
                 <th>{{ t('pipelineRun.stage') }}</th>
-                <th>Collector</th>
+                <th>收集器</th>
                 <th>{{ t('common.name') }}</th>
                 <th>{{ t('common.createdAt') }}</th>
               </tr>

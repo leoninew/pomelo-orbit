@@ -39,6 +39,14 @@
             <dt>名称</dt>
             <dd class="text-foreground">{{ pipeline.name }}</dd>
           </div>
+          <div class="flex gap-2">
+            <dt>类型</dt>
+            <dd>
+              <AppBadge :tone="isTemplate ? 'info' : 'success'" variant="status">
+                {{ isTemplate ? '模板' : '应用流水线' }}
+              </AppBadge>
+            </dd>
+          </div>
           <template v-if="!isTemplate">
             <div class="flex gap-2">
               <dt>代码仓库</dt>
@@ -70,20 +78,31 @@
             <dt>说明</dt>
             <dd class="text-foreground">{{ pipeline.description || '未填写' }}</dd>
           </div>
-          <template v-if="!isTemplate">
-            <div class="flex gap-2">
-              <dt>来源模板</dt>
-              <dd>
-                <router-link :to="`/pipeline/${pipeline.source_pipeline_id}`" class="app-link">
-                  {{ pipeline.source_template_name }} v{{ pipeline.source_template_version }}
-                </router-link>
-              </dd>
-            </div>
-            <div v-if="hasApplicationBinding" class="flex gap-2">
-              <dt>来源版本</dt>
-              <dd class="text-foreground">{{ versionStrategyLabel }}</dd>
-            </div>
-          </template>
+          <div class="flex gap-2">
+            <dt>创建时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(pipeline.created_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>更新时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(pipeline.updated_at) }}</dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard v-if="!isTemplate" title="来源与版本">
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt>来源模板</dt>
+            <dd>
+              <router-link :to="`/pipeline/${pipeline.source_pipeline_id}`" class="app-link">
+                {{ pipeline.source_template_name }} v{{ pipeline.source_template_version }}
+              </router-link>
+            </dd>
+          </div>
+          <div v-if="hasApplicationBinding" class="flex gap-2">
+            <dt>来源版本</dt>
+            <dd class="text-foreground">{{ versionStrategyLabel }}</dd>
+          </div>
         </dl>
       </DetailInfoCard>
 
@@ -457,6 +476,7 @@
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
+  import { formatTime } from '@/utils/time';
   import type { VariableDeclarationReq, VariableResp } from '@/gen/proto/orbit/v1/common/common';
   import type {
     PipelineStageNodeResp,

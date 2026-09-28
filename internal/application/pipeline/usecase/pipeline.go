@@ -410,7 +410,7 @@ func (s Service) InstantiatePipeline(ctx context.Context, userId string, project
 		Id: pipelineId, ProjectId: &projectId, Kind: model.PipelineKindApplication,
 		SourcePipelineId: &templateIdCopy, SourceTemplateName: &templateName, SourceTemplateVersion: &templateVersion,
 		ApplicationId: applicationId, ApplicationName: applicationName, RepositoryId: &repositoryId, RepositoryName: &repositoryName,
-		Name: name, Description: template.Description, VariableDeclarations: variables, Version: 1,
+		Name: name, Description: input.Description, VariableDeclarations: variables, Version: 1,
 	}
 	if len(input.ArtifactBindings) > 0 && applicationId == nil {
 		return pipelinedto.PipelineDetail{}, apperror.New(apperror.KindValidation, "artifact bindings require an application")

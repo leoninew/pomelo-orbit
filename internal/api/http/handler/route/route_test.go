@@ -3,24 +3,19 @@ package routehandler
 import (
 	"testing"
 
+	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
-	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
-	routev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route"
 )
 
-func TestRouteSyncChangesParsesManualCertificate(t *testing.T) {
-	pem := "-----BEGIN CERTIFICATE-----\nYQ==\n-----END CERTIFICATE-----\n-----BEGIN PRIVATE KEY-----\nYg==\n-----END PRIVATE KEY-----\n"
-	changes, err := routeSyncChanges([]*routev1.RouteSyncChange{{
-		RouteId: "route-1", Certificate: &routev1.RouteSyncCertificateChange{Mode: "manual", Pem: pem},
-	}})
-	if err != nil || len(changes) != 1 || changes[0].Enabled != nil || changes[0].Certificate == nil || changes[0].Certificate.CertPEM == "" || changes[0].Certificate.CertKey == "" {
-		t.Fatalf("mapped changes = %+v, err=%v", changes, err)
-	}
-	_, err = routeSyncChanges([]*routev1.RouteSyncChange{{
-		RouteId: "route-1", Certificate: &routev1.RouteSyncCertificateChange{Mode: "manual", Pem: "invalid"},
-	}})
-	if !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("invalid PEM error = %v", err)
+func TestRouteSyncPreviewResponseKeepsRulePartsSeparate(t *testing.T) {
+	response := routeSyncPreviewResponse(routedto.RouteSyncPreview{Differences: []routedto.RouteSyncDiff{{
+		Action: "added", RouteName: "api", Field: "route",
+		Business: &routedto.RouteSyncRule{Match: "HTTPS Host(`api.example.test`)", Target: "http://api:8080"},
+	}}})
+	if len(response.Differences) != 1 || response.Differences[0].Business == nil ||
+		response.Differences[0].Business.Match != "HTTPS Host(`api.example.test`)" ||
+		response.Differences[0].Business.Target != "http://api:8080" || response.Differences[0].Traefik != nil {
+		t.Fatalf("preview response = %+v", response.Differences)
 	}
 }
 

@@ -194,7 +194,7 @@ func (s *routeToolService) PreviewRouteSync(_ context.Context, userId, projectId
 		BusinessHash: "business-hash",
 		TraefikHash:  "traefik-hash",
 		Differences: []routedto.RouteSyncDiff{{
-			Action: "added", RouteName: "api-route", Field: "route", BusinessValue: "HTTP Host(`api.example.test`) -> https://origin.example.test:8443",
+			Action: "added", RouteName: "api-route", Field: "route", Business: &routedto.RouteSyncRule{Match: "HTTP Host(`api.example.test`)", Target: "https://origin.example.test:8443"},
 		}},
 	}, nil
 }

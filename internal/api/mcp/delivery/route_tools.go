@@ -185,18 +185,11 @@ func routeSyncPreviewOutput(projectId string, preview routedto.RouteSyncPreview)
 	for _, difference := range preview.Differences {
 		differences = append(differences, map[string]any{
 			"action": difference.Action, "route_name": difference.RouteName, "field": difference.Field,
-			"business_value": difference.BusinessValue, "traefik_value": difference.TraefikValue,
-		})
-	}
-	pending := make([]map[string]any, 0, len(preview.Pending))
-	for _, item := range preview.Pending {
-		pending = append(pending, map[string]any{
-			"route_name": item.RouteName, "mode": item.Mode, "challenge": item.Challenge,
-			"publishes_now": item.PublishesNow,
+			"business": difference.Business, "traefik": difference.Traefik,
 		})
 	}
 	return map[string]any{
 		"project_id": projectId, "business_hash": preview.BusinessHash, "traefik_hash": preview.TraefikHash,
-		"matched": preview.Matched, "differences": differences, "pending": pending,
+		"matched": preview.Matched, "differences": differences,
 	}
 }

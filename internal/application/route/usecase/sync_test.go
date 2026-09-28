@@ -1,8 +1,10 @@
 package routesvc
 
 import (
+	"reflect"
 	"testing"
 
+	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -28,7 +30,9 @@ func TestCompareSyncStateIncludesCustomRouteFields(t *testing.T) {
 		t.Fatalf("differences = %+v, want one route difference", preview.Differences)
 	}
 	difference := preview.Differences[0]
-	if difference.Action != "modified" || difference.RouteName != "api" || difference.Field != "route" || difference.BusinessValue != "HTTPS Host(`api.example.test`) -> http://api:8080" || difference.TraefikValue != "HTTP Host(`api.example.test`) -> http://old-api:8080" {
+	if difference.Action != "modified" || difference.RouteName != "api" || difference.Field != "route" ||
+		!reflect.DeepEqual(difference.Business, &routedto.RouteSyncRule{Match: "HTTPS Host(`api.example.test`)", Target: "http://api:8080"}) ||
+		!reflect.DeepEqual(difference.Traefik, &routedto.RouteSyncRule{Match: "HTTP Host(`api.example.test`)", Target: "http://old-api:8080"}) {
 		t.Fatalf("difference = %+v, want one readable route difference", difference)
 	}
 
@@ -68,7 +72,8 @@ func TestCompareSyncStateIgnoresRouteCertificatesAndIncludesUnmanagedTraefikEntr
 		t.Fatalf("preview = %+v, want one unmanaged route difference", preview)
 	}
 	difference := preview.Differences[0]
-	if difference.Action != "removed" || difference.RouteName != "external" || difference.Field != "route" || difference.BusinessValue != "" || difference.TraefikValue != "HTTPS Host(`external.example.test`) -> http://external:8080" {
+	if difference.Action != "removed" || difference.RouteName != "external" || difference.Field != "route" || difference.Business != nil ||
+		!reflect.DeepEqual(difference.Traefik, &routedto.RouteSyncRule{Match: "HTTPS Host(`external.example.test`)", Target: "http://external:8080"}) {
 		t.Fatalf("difference = %+v, want one readable unmanaged route difference", difference)
 	}
 }
@@ -88,7 +93,9 @@ func TestCompareSyncStateIncludesTCPListenPort(t *testing.T) {
 	}}
 
 	preview := compareSyncState(routes, routers, services)
-	if preview.Matched || len(preview.Differences) != 1 || preview.Differences[0].Action != "modified" || preview.Differences[0].Field != "route" || preview.Differences[0].BusinessValue != "TCP :16379 -> redis:6379" || preview.Differences[0].TraefikValue != "TCP :16380 -> redis:6379" {
+	if preview.Matched || len(preview.Differences) != 1 || preview.Differences[0].Action != "modified" || preview.Differences[0].Field != "route" ||
+		!reflect.DeepEqual(preview.Differences[0].Business, &routedto.RouteSyncRule{Match: "TCP :16379", Target: "redis:6379"}) ||
+		!reflect.DeepEqual(preview.Differences[0].Traefik, &routedto.RouteSyncRule{Match: "TCP :16380", Target: "redis:6379"}) {
 		t.Fatalf("TCP listen-port preview = %+v", preview)
 	}
 }
@@ -103,7 +110,8 @@ func TestCompareSyncStateShowsAddedRouteWithBusinessDataOnly(t *testing.T) {
 		t.Fatalf("preview = %+v, want one added route difference", preview)
 	}
 	difference := preview.Differences[0]
-	if difference.Action != "added" || difference.RouteName != "api" || difference.Field != "route" || difference.BusinessValue != "HTTP Host(`api.example.test`) -> http://api:8080" || difference.TraefikValue != "" {
+	if difference.Action != "added" || difference.RouteName != "api" || difference.Field != "route" ||
+		!reflect.DeepEqual(difference.Business, &routedto.RouteSyncRule{Match: "HTTP Host(`api.example.test`)", Target: "http://api:8080"}) || difference.Traefik != nil {
 		t.Fatalf("difference = %+v, want business route data only", difference)
 	}
 }

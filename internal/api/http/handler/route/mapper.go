@@ -4,7 +4,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
-	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	routev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/route"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -121,21 +120,7 @@ func routeSyncChanges(items []*routev1.RouteSyncChange) ([]routedto.RouteSyncCha
 		if item == nil {
 			continue
 		}
-		change := routedto.RouteSyncChange{RouteId: item.RouteId, Enabled: item.Enabled}
-		if item.Certificate != nil {
-			certificate := &routedto.RouteSyncCertificateChange{
-				Mode: item.Certificate.Mode, Challenge: item.Certificate.Challenge,
-			}
-			if item.Certificate.Pem != "" {
-				certPEM, certKey, ok := splitPEM([]byte(item.Certificate.Pem))
-				if !ok {
-					return nil, apperror.New(apperror.KindValidation, "Invalid PEM certificate")
-				}
-				certificate.CertPEM, certificate.CertKey = certPEM, certKey
-			}
-			change.Certificate = certificate
-		}
-		changes = append(changes, change)
+		changes = append(changes, routedto.RouteSyncChange{RouteId: item.RouteId, Enabled: item.Enabled})
 	}
 	return changes, nil
 }
@@ -144,17 +129,9 @@ func routeSyncPreviewResponse(preview routedto.RouteSyncPreview) routev1.RouteSy
 	differences := make([]*routev1.RouteSyncDiffResp, 0, len(preview.Differences))
 	for _, difference := range preview.Differences {
 		differences = append(differences, &routev1.RouteSyncDiffResp{
-			Action:        difference.Action,
-			RouteName:     difference.RouteName,
-			Field:         difference.Field,
-			BusinessValue: difference.BusinessValue,
-			TraefikValue:  difference.TraefikValue,
-		})
-	}
-	pending := make([]*routev1.RouteSyncPendingResp, 0, len(preview.Pending))
-	for _, item := range preview.Pending {
-		pending = append(pending, &routev1.RouteSyncPendingResp{
-			RouteName: item.RouteName, Mode: item.Mode, Challenge: item.Challenge, PublishesNow: item.PublishesNow,
+			Action: difference.Action, RouteName: difference.RouteName, Field: difference.Field,
+			Business: routeSyncRuleResponse(difference.Business),
+			Traefik:  routeSyncRuleResponse(difference.Traefik),
 		})
 	}
 	return routev1.RouteSyncPreviewResp{
@@ -162,6 +139,12 @@ func routeSyncPreviewResponse(preview routedto.RouteSyncPreview) routev1.RouteSy
 		TraefikHash:  preview.TraefikHash,
 		Matched:      preview.Matched,
 		Differences:  differences,
-		Pending:      pending,
 	}
+}
+
+func routeSyncRuleResponse(rule *routedto.RouteSyncRule) *routev1.RouteSyncRuleResp {
+	if rule == nil {
+		return nil
+	}
+	return &routev1.RouteSyncRuleResp{Match: rule.Match, Target: rule.Target}
 }

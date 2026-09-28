@@ -74,7 +74,6 @@ beforeEach(() => {
     business_hash: 'business-hash',
     traefik_hash: 'traefik-hash',
     matched: false,
-    pending: [],
     differences: [],
   });
   vi.mocked(routeApi.confirmSync).mockResolvedValue({ message: 'Routes synced successfully' });

@@ -37,16 +37,8 @@ type RouteUpdateInput struct {
 }
 
 type RouteSyncChange struct {
-	RouteId     string
-	Enabled     *bool
-	Certificate *RouteSyncCertificateChange
-}
-
-type RouteSyncCertificateChange struct {
-	Mode      string
-	Challenge string
-	CertPEM   string
-	CertKey   string
+	RouteId string
+	Enabled *bool
 }
 
 type RouteSyncConfirmInput struct {
@@ -56,11 +48,16 @@ type RouteSyncConfirmInput struct {
 }
 
 type RouteSyncDiff struct {
-	Action        string
-	RouteName     string
-	Field         string
-	BusinessValue string
-	TraefikValue  string
+	Action    string
+	RouteName string
+	Field     string
+	Business  *RouteSyncRule
+	Traefik   *RouteSyncRule
+}
+
+type RouteSyncRule struct {
+	Match  string `json:"match"`
+	Target string `json:"target"`
 }
 
 type RouteSyncPreview struct {
@@ -68,14 +65,6 @@ type RouteSyncPreview struct {
 	TraefikHash  string
 	Matched      bool
 	Differences  []RouteSyncDiff
-	Pending      []RouteSyncPending
-}
-
-type RouteSyncPending struct {
-	RouteName    string
-	Mode         string
-	Challenge    string
-	PublishesNow bool
 }
 
 // TraefikConfigView is the application-layer dashboard route state (not an API DTO).

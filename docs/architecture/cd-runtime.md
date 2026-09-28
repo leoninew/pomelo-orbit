@@ -49,10 +49,10 @@ worker 对有效计划仅作窄范围处理：
 
 ## Route 发布
 
-自定义 HTTP/TCP Route 继续通过 Traefik `providers.rest` 全量发布。普通 Route 创建、编辑、删除先写入业务数据；列表页和详情页启停均为前端草稿，详情页的 HTTP/HTTPS 与证书方式在同步弹窗内选择，确认前不保存。同步预览和确认共用期望状态校验；前者比较业务 Route 与全部 REST router/service，自定义 Route 按域名、路径、目标地址、协议和 TCP 监听端口对比，未受管 REST 配置以可读规则和上游展示。证书配置作为单独的待提交项展示并参与预览过期校验；Traefik API 不提供可靠的证书内容对比，故不把证书差异伪装成运行时路由差异。
+自定义 HTTP/TCP Route 继续通过 Traefik `providers.rest` 全量发布。普通 Route 创建、编辑、删除先写入业务数据；列表页和详情页启停均为前端草稿。详情页的 HTTP/HTTPS 与证书方式通过证书接口直接保存，不触发发布。同步预览和确认共用期望状态校验；前者比较业务 Route 与全部 REST router/service，自定义 Route 按域名、路径、目标地址、协议和 TCP 监听端口对比，未受管 REST 配置以可读规则和上游展示。已保存的证书配置参与预览过期校验；Traefik API 不提供可靠的证书内容对比，故不把证书差异伪装成运行时路由差异。
 
 Route snapshot 与端口冲突检查始终限定在当前 Project。确认同步或 Gateway deploy/restart 成功后，通过当前 Environment target runtime 调用该 Gateway 的 Traefik REST API 发布完整快照。HTTP-01 仅在 `http`/`http-dns` 可用；DNS-01 仅在 `dns`/`http-dns` 且 Gateway token 非空时可用。手工 PEM、mkcert 与 ACME account data 使用 Version 已声明的 cert/acme mount。
 
-同步确认先在数据库事务内保存启停和证书配置，再执行外部 Traefik 发布。若发布失败，业务配置已保存，API 返回 `route_sync_publish_failed`，前端重新预览并保留同步提示供重试；不承诺跨数据库和 Traefik 的原子提交。未启用 Route 的证书配置可以在同步时保存，但不进入发布快照。
+同步确认先在数据库事务内保存启停草稿，再执行外部 Traefik 发布。若发布失败，业务配置已保存，API 返回 `route_sync_publish_failed`，前端重新预览并保留同步提示供重试；不承诺跨数据库和 Traefik 的原子提交。证书接口只保存证书配置；已启用 Route 的证书更新在下一次显式同步时随完整快照发布，未启用 Route 的证书配置在启用并同步后发布。
 
 TCP Route 的 entrypoint/host port 由选中 Gateway Version 的 Component endpoint 声明。Route 不创建 Gateway listener，也不改变 Gateway Version。

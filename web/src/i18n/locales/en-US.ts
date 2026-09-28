@@ -824,8 +824,7 @@ export default {
     },
     logs: {
       title: 'Container logs',
-      titleWithTarget: '{app} · {code} · Container logs',
-      titleWithComponent: '{app} · {code} · {component}',
+      titleWithComponent: '{component} · Container logs',
       description: 'Recent container logs for this service (compose logs --tail).',
       loading: 'Loading container logs...',
       streaming: 'Refreshing container logs...',

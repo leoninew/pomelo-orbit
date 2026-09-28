@@ -102,12 +102,12 @@
                 : '更新'
             }}
           </button>
-          <ViewModeToggle v-if="pipeline.stage_nodes.length > 0" v-model="stagesView" />
           <button class="app-button-primary h-9 px-3" @click="openStageDialog()">
             <Plus class="size-4" />
             引入阶段
           </button>
         </template>
+        <ViewModeTabs v-if="pipeline.stage_nodes.length > 0" v-model="stagesView" />
         <AppEmptyState v-if="pipeline.stage_nodes.length === 0" size="compact" />
         <div v-else-if="stagesView === 'list'" class="overflow-x-auto">
           <table class="app-data-table min-w-[920px]">
@@ -453,7 +453,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ViewModeToggle from '@/components/ViewModeToggle.vue';
+  import ViewModeTabs from '@/components/ViewModeTabs.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

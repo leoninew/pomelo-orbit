@@ -58,9 +58,7 @@
         </dl>
       </DetailInfoCard>
       <DetailInfoCard title="阶段快照">
-        <template #actions>
-          <ViewModeToggle v-if="snapshot.stages_snapshot.length > 0" v-model="stagesView" />
-        </template>
+        <ViewModeTabs v-if="snapshot.stages_snapshot.length > 0" v-model="stagesView" />
         <AppEmptyState v-if="snapshot.stages_snapshot.length === 0" size="compact" />
         <div v-else-if="stagesView === 'list'" class="overflow-x-auto">
           <table class="app-data-table min-w-[760px]">
@@ -113,7 +111,7 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ViewModeToggle from '@/components/ViewModeToggle.vue';
+  import ViewModeTabs from '@/components/ViewModeTabs.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineSnapshotResp } from '@/gen/proto/orbit/v1/pipeline/snapshot';

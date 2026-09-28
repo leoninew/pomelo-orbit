@@ -48,10 +48,13 @@
 
   function buildLayoutedNodes(stages: DAGStage[]): Node[] {
     const g = new graphlib.Graph();
+    const stageIds = new Set(stages.map((stage) => stage.id));
     g.setDefaultEdgeLabel(() => ({}));
     g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60 });
     stages.forEach((s) => g.setNode(s.id, { width: 160, height: 80 }));
-    stages.forEach((s) => s.depends_on.forEach((dep) => g.setEdge(dep, s.id)));
+    stages.forEach((s) =>
+      s.depends_on.filter((dep) => stageIds.has(dep)).forEach((dep) => g.setEdge(dep, s.id))
+    );
     layout(g);
     return stages
       .filter((s) => s.id && s.name)
@@ -69,6 +72,7 @@
   const initialNodes = ref<Node[]>([]);
 
   const edges = computed<Edge[]>(() => {
+    const stageIds = new Set(props.stages.map((stage) => stage.id));
     const stageRunMap = new Map<string, PipelineStageRunResp>();
     for (const sr of props.stageRuns ?? []) {
       stageRunMap.set(sr.stage_id, sr);
@@ -77,6 +81,9 @@
     const result: Edge[] = [];
     for (const stage of props.stages) {
       for (const dep of stage.depends_on) {
+        if (!stageIds.has(dep)) {
+          continue;
+        }
         const targetStatus =
           props.stageRuns !== undefined
             ? (stageRunMap.get(stage.id)?.status ?? 'waiting_to_run')

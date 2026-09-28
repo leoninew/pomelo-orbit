@@ -60,6 +60,7 @@ export interface PipelineInstantiateReq {
   version_fork_strategy?: string | undefined;
   fixed_version_id?: string | undefined;
   artifact_bindings: PipelineArtifactBindingReq[];
+  description: string;
 }
 
 export interface PipelineArtifactBindingReq {

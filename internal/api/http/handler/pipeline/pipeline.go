@@ -109,7 +109,7 @@ func (h Handler) InstantiatePipeline(c *gin.Context) {
 			bindings = append(bindings, pipelinedto.PipelineArtifactBinding{StageId: item.StageId, ArtifactName: item.ArtifactName, ComponentName: item.ComponentName})
 		}
 	}
-	detail, err := h.service.InstantiatePipeline(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("pipeline_id"), pipelinedto.PipelineInstantiateInput{Name: req.Name, ApplicationId: req.ApplicationId, RepositoryId: req.RepositoryId, VersionForkStrategy: req.VersionForkStrategy, FixedVersionId: req.FixedVersionId, ArtifactBindings: bindings})
+	detail, err := h.service.InstantiatePipeline(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("pipeline_id"), pipelinedto.PipelineInstantiateInput{Name: req.Name, Description: req.Description, ApplicationId: req.ApplicationId, RepositoryId: req.RepositoryId, VersionForkStrategy: req.VersionForkStrategy, FixedVersionId: req.FixedVersionId, ArtifactBindings: bindings})
 	if err != nil {
 		transport.WriteError(c, err)
 		return

@@ -28,17 +28,14 @@
       </div>
     </div>
 
-    <!-- 加载状态 -->
     <AppLoadingState v-if="status === 'loading'" size="section" />
 
-    <!-- 内容 -->
     <div v-else-if="deployment" class="flex min-h-0 flex-1 flex-col gap-4">
-      <!-- 基本信息卡片 -->
-      <DetailInfoCard class="shrink-0" title="基本信息">
+      <DetailInfoCard class="shrink-0" title="部署概况">
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>部署 ID</dt>
-            <dd class="min-w-0 break-all text-foreground">{{ deploymentId }}</dd>
+            <dd class="min-w-0 break-all font-mono text-xs text-foreground">{{ deploymentId }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('deployment.fields.service') }}</dt>
@@ -49,6 +46,19 @@
             </dd>
             <dd v-else class="text-muted-foreground">-</dd>
           </div>
+          <div class="flex gap-2">
+            <dt>状态</dt>
+            <dd>
+              <AppBadge variant="pill" :tone="deploymentStatusTone">
+                {{ deployment.status }}
+              </AppBadge>
+            </dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard class="shrink-0" title="执行配置">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>操作类型</dt>
             <dd>
@@ -61,37 +71,34 @@
               <AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge>
             </dd>
           </div>
-          <div class="flex gap-2">
-            <dt>状态</dt>
-            <dd>
-              <AppBadge variant="pill" :tone="deploymentStatusTone">
-                {{ deployment.status }}
-              </AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>开始时间</dt>
-            <dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>耗时</dt>
-            <dd class="text-muted-foreground">
-              {{ formatDuration(deployment.started_at, deployment.finished_at) }}
-            </dd>
-          </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt>执行命令</dt>
             <dd class="min-w-0 break-all text-xs text-foreground">
               {{ deployment.command_text || '未记录' }}
             </dd>
           </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard class="shrink-0" title="时间与结果">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>创建时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(deployment.created_at) }}</dd>
           </div>
-          <div class="flex gap-2">
+          <div v-if="deployment.started_at" class="flex gap-2">
+            <dt>开始时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(deployment.started_at) }}</dd>
+          </div>
+          <div v-if="deployment.finished_at" class="flex gap-2">
             <dt>完成时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(deployment.finished_at) }}</dd>
+          </div>
+          <div v-if="deployment.started_at && deployment.finished_at" class="flex gap-2">
+            <dt>耗时</dt>
+            <dd class="text-muted-foreground">
+              {{ formatDuration(deployment.started_at, deployment.finished_at) }}
+            </dd>
           </div>
           <div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
             <dt>错误信息</dt>

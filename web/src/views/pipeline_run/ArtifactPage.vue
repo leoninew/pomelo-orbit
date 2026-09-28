@@ -40,8 +40,8 @@
             <tr>
               <th>ID</th>
               <th>名称</th>
-              <th>Collector</th>
-              <th>Stage</th>
+              <th>收集器</th>
+              <th>构建阶段</th>
               <th>仓库</th>
               <th>创建时间</th>
             </tr>

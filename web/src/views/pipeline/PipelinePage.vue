@@ -200,6 +200,10 @@
         </p>
       </div>
       <div class="space-y-1.5">
+        <label class="app-field-label block">说明</label>
+        <input v-model="instantiateForm.description" class="app-input" />
+      </div>
+      <div class="space-y-1.5">
         <label class="app-field-label block">
           代码仓库
           <span class="text-destructive">*</span>
@@ -375,6 +379,7 @@
   const editApplications = ref<ApplicationResp[]>([]);
   const instantiateForm = reactive({
     name: '',
+    description: '',
     applicationId: '',
     repositoryId: '',
     versionForkStrategy: 'latest',
@@ -625,6 +630,7 @@
     selectedTemplate.value = detail;
     Object.assign(instantiateForm, {
       name: `${detail.name} ${nowUnixTimestamp()}`,
+      description: detail.description,
       applicationId: '',
       repositoryId: '',
       versionForkStrategy: 'latest',
@@ -815,6 +821,7 @@
       await executeOperation(async () => {
         const pipeline = await pipelineApi.instantiate(projectId, template.id, {
           name: instantiateForm.name.trim(),
+          description: instantiateForm.description,
           application_id: instantiateForm.applicationId || undefined,
           repository_id: instantiateForm.repositoryId,
           version_fork_strategy: needsVersionBinding

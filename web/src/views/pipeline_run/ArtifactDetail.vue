@@ -13,18 +13,18 @@
     <AppLoadingState v-if="loading" size="section" />
 
     <template v-else-if="artifact">
-      <DetailInfoCard title="制品信息">
+      <DetailInfoCard title="基本信息">
         <dl class="app-detail-info-grid">
           <div class="flex gap-2 sm:col-span-2">
             <dt>ID</dt>
-            <dd class="min-w-0 break-all text-foreground">{{ artifact.id }}</dd>
+            <dd class="min-w-0 break-all font-mono text-xs text-foreground">{{ artifact.id }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>名称</dt>
             <dd class="text-foreground">{{ artifact.name }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>Collector</dt>
+            <dt>收集器</dt>
             <dd>
               <AppBadge variant="pill">{{ artifact.collector }}</AppBadge>
             </dd>
@@ -45,11 +45,19 @@
             <dt>创建时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(artifact.created_at) }}</dd>
           </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard title="流水线来源">
+        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>流水线运行</dt>
             <dd class="min-w-0">
-              <router-link :to="`/pipeline-run/${artifact.pipeline_run_id}`" class="app-link">
-                查看运行
+              <router-link
+                :to="`/pipeline-run/${artifact.pipeline_run_id}`"
+                class="app-link break-all"
+              >
+                {{ artifact.pipeline_run_id }}
               </router-link>
             </dd>
           </div>
@@ -85,7 +93,7 @@
         </dl>
       </DetailInfoCard>
 
-      <DetailInfoCard v-if="hasLineage" title="关联">
+      <DetailInfoCard v-if="hasVersionLineage" title="版本关联">
         <dl class="app-detail-info-grid">
           <div v-if="artifact.application_id && artifact.application_name" class="flex gap-2">
             <dt>应用</dt>
@@ -104,22 +112,6 @@
               <router-link :to="`/version/${artifact.source_version_id}`" class="app-link">
                 {{ artifact.source_version_label }}
               </router-link>
-            </dd>
-          </div>
-          <div v-if="artifact.image_ref !== undefined" class="flex gap-2 sm:col-span-2">
-            <dt>镜像引用</dt>
-            <dd class="min-w-0 break-all text-foreground">{{ artifact.image_ref }}</dd>
-          </div>
-          <div v-if="artifact.local_image_sha256 !== undefined" class="flex gap-2 sm:col-span-2">
-            <dt>本地镜像 SHA256</dt>
-            <dd class="min-w-0 break-all text-foreground">
-              {{ artifact.local_image_sha256 }}
-            </dd>
-          </div>
-          <div v-if="artifact.source_commit_sha !== undefined" class="flex gap-2 sm:col-span-2">
-            <dt>源码提交 SHA</dt>
-            <dd class="min-w-0 break-all text-foreground">
-              {{ artifact.source_commit_sha }}
             </dd>
           </div>
           <div
@@ -149,6 +141,27 @@
               >
                 {{ artifact.version_component_name }}
               </router-link>
+            </dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard v-if="hasImageMetadata" title="镜像与源码">
+        <dl class="app-detail-info-grid">
+          <div v-if="artifact.image_ref !== undefined" class="flex gap-2 sm:col-span-2">
+            <dt>镜像引用</dt>
+            <dd class="min-w-0 break-all text-foreground">{{ artifact.image_ref }}</dd>
+          </div>
+          <div v-if="artifact.local_image_sha256 !== undefined" class="flex gap-2 sm:col-span-2">
+            <dt>本地镜像 SHA256</dt>
+            <dd class="min-w-0 break-all text-foreground">
+              {{ artifact.local_image_sha256 }}
+            </dd>
+          </div>
+          <div v-if="artifact.source_commit_sha !== undefined" class="flex gap-2 sm:col-span-2">
+            <dt>源码提交 SHA</dt>
+            <dd class="min-w-0 break-all text-foreground">
+              {{ artifact.source_commit_sha }}
             </dd>
           </div>
         </dl>
@@ -186,14 +199,22 @@
       artifact.value?.value !== undefined ||
       artifact.value?.value_format !== undefined
   );
-  const hasLineage = computed(
+  const hasVersionLineage = computed(
+    () =>
+      Boolean(artifact.value?.application_id && artifact.value.application_name) ||
+      Boolean(artifact.value?.source_version_id && artifact.value.source_version_label) ||
+      Boolean(artifact.value?.generated_version_id && artifact.value.generated_version_label) ||
+      Boolean(
+        artifact.value?.generated_version_id &&
+        artifact.value.version_component_id &&
+        artifact.value.version_component_name
+      )
+  );
+  const hasImageMetadata = computed(
     () =>
       artifact.value?.image_ref !== undefined ||
       artifact.value?.local_image_sha256 !== undefined ||
-      artifact.value?.source_commit_sha !== undefined ||
-      artifact.value?.application_id !== undefined ||
-      artifact.value?.source_version_id !== undefined ||
-      artifact.value?.generated_version_id !== undefined
+      artifact.value?.source_commit_sha !== undefined
   );
 
   async function fetchArtifact() {

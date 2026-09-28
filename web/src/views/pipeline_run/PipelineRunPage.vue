@@ -3,11 +3,11 @@
     <ToolbarRoot class="app-toolbar-scroll" aria-label="运行记录工具栏">
       <div class="app-toolbar-row">
         <RepositorySelect
-          v-model="repositoryId"
+          :model-value="repositoryId"
           :project-id="projectStore.activeProjectId"
           placeholder="筛选代码仓库"
           width-class="app-toolbar-select"
-          @update:model-value="searchRuns"
+          @update:model-value="updateRepositoryId"
         />
         <SearchControl
           v-model="searchText"
@@ -117,6 +117,7 @@
   import { computed, reactive, ref, watch } from 'vue';
   import { ToolbarRoot } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
+  import { useRoute, useRouter } from 'vue-router';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
@@ -134,6 +135,8 @@
   import { formatDuration, formatTime } from '@/utils/time';
 
   const projectStore = useProjectStore();
+  const route = useRoute();
+  const router = useRouter();
   const toast = useToast();
   const { t } = useI18n();
   const { status, error, execute } = useStatusAsync();
@@ -188,6 +191,13 @@
     pagination.current = 1;
     void fetchRuns();
   }
+  function updateRepositoryId(value: string | number | boolean) {
+    const nextId = String(value || '');
+    if (nextId === repositoryId.value) {
+      return;
+    }
+    void router.replace({ query: { ...route.query, repository_id: nextId || undefined } });
+  }
   function handleSearch() {
     appliedSearch.value = searchText.value;
     pagination.current = 1;
@@ -235,16 +245,26 @@
     }
   }
   watch(
+    () => route.query.repository_id,
+    (value) => {
+      repositoryId.value = typeof value === 'string' ? value : '';
+      searchRuns();
+    },
+    { immediate: true }
+  );
+  watch(
     () => projectStore.activeProjectId,
     () => {
-      repositoryId.value = '';
       searchText.value = '';
       appliedSearch.value = '';
       runs.value = [];
       pagination.current = 1;
       pagination.total = 0;
-      void fetchRuns();
-    },
-    { immediate: true }
+      if (route.query.repository_id) {
+        void router.replace({ query: { ...route.query, repository_id: undefined } });
+      } else {
+        void fetchRuns();
+      }
+    }
   );
 </script>

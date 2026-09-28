@@ -364,6 +364,7 @@ type PipelineInstantiateReq struct {
 	VersionForkStrategy *string                       `protobuf:"bytes,4,opt,name=version_fork_strategy,json=versionForkStrategy,proto3,oneof" json:"version_fork_strategy,omitempty"`
 	FixedVersionId      *string                       `protobuf:"bytes,5,opt,name=fixed_version_id,json=fixedVersionId,proto3,oneof" json:"fixed_version_id,omitempty"`
 	ArtifactBindings    []*PipelineArtifactBindingReq `protobuf:"bytes,6,rep,name=artifact_bindings,json=artifactBindings,proto3" json:"artifact_bindings,omitempty"`
+	Description         string                        `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -438,6 +439,13 @@ func (x *PipelineInstantiateReq) GetArtifactBindings() []*PipelineArtifactBindin
 		return x.ArtifactBindings
 	}
 	return nil
+}
+
+func (x *PipelineInstantiateReq) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
 }
 
 type PipelineArtifactBindingReq struct {
@@ -944,14 +952,15 @@ const file_orbit_v1_pipeline_pipeline_proto_rawDesc = "" +
 	"\x05_nameB\x0e\n" +
 	"\f_descriptionB\x18\n" +
 	"\x16_variable_declarationsB\x11\n" +
-	"\x0f_application_id\"\x83\x03\n" +
+	"\x0f_application_id\"\xa5\x03\n" +
 	"\x16PipelineInstantiateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12*\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tH\x00R\rapplicationId\x88\x01\x01\x12#\n" +
 	"\rrepository_id\x18\x03 \x01(\tR\frepositoryId\x127\n" +
 	"\x15version_fork_strategy\x18\x04 \x01(\tH\x01R\x13versionForkStrategy\x88\x01\x01\x12-\n" +
 	"\x10fixed_version_id\x18\x05 \x01(\tH\x02R\x0efixedVersionId\x88\x01\x01\x12Z\n" +
-	"\x11artifact_bindings\x18\x06 \x03(\v2-.orbit.v1.pipeline.PipelineArtifactBindingReqR\x10artifactBindingsB\x11\n" +
+	"\x11artifact_bindings\x18\x06 \x03(\v2-.orbit.v1.pipeline.PipelineArtifactBindingReqR\x10artifactBindings\x12 \n" +
+	"\vdescription\x18\a \x01(\tR\vdescriptionB\x11\n" +
 	"\x0f_application_idB\x18\n" +
 	"\x16_version_fork_strategyB\x13\n" +
 	"\x11_fixed_version_id\"\x83\x01\n" +

@@ -51,6 +51,7 @@ message PipelineInstantiateReq {
   optional string version_fork_strategy = 4;
   optional string fixed_version_id = 5;
   repeated PipelineArtifactBindingReq artifact_bindings = 6;
+  string description = 7;
 }
 
 message PipelineArtifactBindingReq {

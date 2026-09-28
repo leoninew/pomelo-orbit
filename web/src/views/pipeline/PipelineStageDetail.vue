@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <DetailPageHeader :items="[]" :title="stage?.name || '阶段详情'" />
       <div class="flex flex-wrap items-center gap-2">
@@ -34,17 +34,17 @@
             <dt>版本</dt>
             <dd class="text-foreground">v{{ stage.version }}</dd>
           </div>
-          <div v-if="stage.description" class="flex gap-2 sm:col-span-2">
+          <div class="flex gap-2 sm:col-span-2">
             <dt>说明</dt>
-            <dd class="whitespace-pre-wrap text-foreground">{{ stage.description }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>更新时间</dt>
-            <dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
+            <dd class="whitespace-pre-wrap text-foreground">{{ stage.description || '未填写' }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>创建时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(stage.created_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>更新时间</dt>
+            <dd class="text-muted-foreground">{{ formatTime(stage.updated_at) }}</dd>
           </div>
         </dl>
       </DetailInfoCard>

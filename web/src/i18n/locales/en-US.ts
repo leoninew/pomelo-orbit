@@ -1262,7 +1262,6 @@ export default {
     refreshPaused: 'Refresh paused',
     basicInfo: 'Basic Info',
     stageOrchestration: 'Stage Orchestration',
-    remoteStorageNote: 'Logs and file artifacts stay on the remote target',
     stage: 'Stage',
     dependency: 'Dependency',
     artifact: 'Artifact',
@@ -1282,7 +1281,7 @@ export default {
     deleteConfirm: 'Delete pipeline run "{id}" and its related files? This cannot be undone.',
     fields: {
       runId: 'Run ID',
-      executionTarget: 'Execution Target',
+      executionEnvironment: 'Execution Environment',
       repository: 'Repository',
       template: 'Template',
       version: 'Version',

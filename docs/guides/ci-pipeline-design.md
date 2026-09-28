@@ -26,7 +26,7 @@ Pipeline(kind=application)                      可运行的交付单元
 
 Repository 与 Repository Credential 同样由所有 Project 共享。Repository `code`、仓库凭据名称分别在全局唯一；仓库可引用一份全局凭据，其变量与源码配置由使用该仓库的所有 Project 共用。仓库和凭据 API 仍使用 `project_id` 校验当前 Project 成员资格，凭据列表不返回明文，详情与导出沿用当前成员可访问的权限。Environment 与其中的部署 SSH 凭据继续按 Project 管理，不与仓库凭据混用。
 
-Application Pipeline 可以从全局 Template 创建，绑定任一当前可用的全局 Repository，Pipeline 本身仍归属当前 Project。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，同时重映射带 `stage_id` 的变量配置，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
+Application Pipeline 可以从全局 Template 创建，绑定任一当前可用的全局 Repository，Pipeline 本身仍归属当前 Project。复用时名称和说明由用户填写，说明初始显示模板说明。实例化只读取 Template Pipeline 已关联的引用快照，重映射引用节点 ID 到新的应用阶段 ID，同时重映射带 `stage_id` 的变量配置，复制制品声明。Application 可不绑定，此时 Docker 制品照常收集但不写入 Version；选择 Application 后，必须在同一请求中选择来源 Version 策略，并把每个 Docker 制品绑定到唯一的 Component。它不会重新读取可变阶段库。Template 或阶段模板后续变更、删除都不会影响已创建的 Application Pipeline。
 
 ## 阶段与制品
 

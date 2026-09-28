@@ -1,11 +1,5 @@
 import type {
   RouteCreateReq,
-  RouteDisableReq,
-  RouteDisableResp,
-  RouteEnableReq,
-  RouteEnableResp,
-  RouteLetsEncryptEnableReq,
-  RouteMkcertEnableReq,
   RoutePaginatedResp,
   RouteResp,
   RouteSyncConfirmReq,
@@ -44,14 +38,6 @@ export const routeApi = {
     return request.delete(`/api/route/${id}`, { params: { project_id: projectId } });
   },
 
-  enable(projectId: string, id: string, data: RouteEnableReq): Promise<RouteEnableResp> {
-    return request.post(`/api/route/${id}/enable`, data, { params: { project_id: projectId } });
-  },
-
-  disable(projectId: string, id: string, data: RouteDisableReq): Promise<RouteDisableResp> {
-    return request.post(`/api/route/${id}/disable`, data, { params: { project_id: projectId } });
-  },
-
   previewSync(projectId: string, data: RouteSyncPreviewReq): Promise<RouteSyncPreviewResp> {
     return request.post(
       '/api/route/sync/preview',
@@ -70,32 +56,5 @@ export const routeApi = {
         params: { project_id: projectId },
       })
     );
-  },
-
-  uploadCert(projectId: string, id: string, certFile: File): Promise<RouteResp> {
-    const formData = new FormData();
-    formData.append('pem', certFile);
-    return request.post(`/api/route/${id}/cert`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      params: { project_id: projectId },
-    });
-  },
-
-  disableHttps(projectId: string, id: string): Promise<RouteResp> {
-    return request.delete(`/api/route/${id}/https`, { params: { project_id: projectId } });
-  },
-
-  enableLetsencrypt(
-    projectId: string,
-    id: string,
-    data: RouteLetsEncryptEnableReq
-  ): Promise<RouteResp> {
-    return request.post(`/api/route/${id}/letsencrypt`, data, {
-      params: { project_id: projectId },
-    });
-  },
-
-  enableMkcert(projectId: string, id: string, data: RouteMkcertEnableReq): Promise<RouteResp> {
-    return request.post(`/api/route/${id}/mkcert`, data, { params: { project_id: projectId } });
   },
 };

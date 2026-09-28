@@ -176,7 +176,9 @@
   <RouteSyncDialog
     v-model:open="isSyncDialogOpen"
     :changes="syncChanges"
+    :saved-changes="hasPendingRouteChanges"
     @synced="handleSyncComplete"
+    @saved="handleSyncSaved"
   />
 
   <AppDialog v-model:open="isCreateDialogOpen" title="创建路由">
@@ -987,6 +989,12 @@
 
   async function handleSyncComplete() {
     clearPendingChanges();
+    await fetchRoutes();
+  }
+
+  async function handleSyncSaved() {
+    clearPendingChanges();
+    hasPendingRouteChanges.value = true;
     await fetchRoutes();
   }
 

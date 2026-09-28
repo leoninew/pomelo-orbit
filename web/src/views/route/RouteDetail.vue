@@ -128,128 +128,24 @@
         </dl>
       </DetailInfoCard>
 
-      <!-- HTTPS Config Card -->
       <DetailInfoCard v-if="routeData.protocol === 'http'" :title="t('route.httpsConfig')">
-        <div class="space-y-5 p-5 sm:p-6">
-          <div
-            class="flex flex-wrap items-center justify-between gap-4 rounded-md border border-border bg-muted/20 px-4 py-3"
-          >
-            <div class="flex min-w-0 items-center gap-3">
-              <span
-                class="flex size-9 shrink-0 items-center justify-center rounded-md"
-                :class="
-                  routeData.https_enabled
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-muted text-muted-foreground'
-                "
-              >
-                <ShieldCheck v-if="routeData.https_enabled" class="size-5" />
-                <ShieldOff v-else class="size-5" />
-              </span>
-              <div>
-                <p class="text-sm font-medium text-foreground">{{ t('route.currentStatus') }}</p>
-                <p class="text-sm text-muted-foreground">
-                  {{ routeData.https_enabled ? t('route.httpsEnabled') : t('route.httpsDisabled') }}
-                </p>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <AppBadge variant="status" :tone="routeData.https_enabled ? 'info' : 'default'">
-                {{ routeData.https_enabled ? 'HTTPS' : 'HTTP' }}
-              </AppBadge>
-              <button
-                v-if="routeData.https_enabled"
-                class="app-button-danger h-9 px-3"
-                :disabled="operating"
-                @click="handleDisableHttps"
-              >
-                <X class="size-4" />
-                {{ t('route.disableHttps') }}
-              </button>
+        <div class="flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6">
+          <div class="flex items-center gap-3">
+            <ShieldCheck v-if="routeData.https_enabled" class="size-5 text-primary" />
+            <ShieldOff v-else class="size-5 text-muted-foreground" />
+            <div>
+              <p class="text-sm font-medium text-foreground">{{ t('route.savedConfig') }}</p>
+              <p class="text-sm text-muted-foreground">{{ savedCertificateLabel }}</p>
             </div>
           </div>
-
-          <div
-            v-if="!routeData.https_enabled"
-            class="grid gap-3"
-            :class="canUseLetsencrypt ? 'lg:grid-cols-3' : 'md:grid-cols-2'"
+          <button
+            class="app-button h-9 px-3"
+            :disabled="operating || isSyncDialogOpen"
+            @click="openSyncModal"
           >
-            <button
-              v-if="canUseLetsencrypt"
-              class="app-action-item flex min-h-28 items-start gap-3 p-4"
-              :disabled="operating"
-              @click="openLetsEncryptDialog"
-            >
-              <span
-                class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
-              >
-                <ShieldCheck class="size-5" />
-              </span>
-              <span class="min-w-0 flex-1 text-left">
-                <span class="block font-medium text-foreground">
-                  {{ t('route.enableLetsencrypt') }}
-                </span>
-                <span class="mt-1 block text-muted-foreground">
-                  {{ t('route.letsencryptHint') }}
-                </span>
-              </span>
-              <ChevronRight class="mt-1 size-4 shrink-0 text-muted-foreground" />
-            </button>
-            <button
-              class="app-action-item flex min-h-28 items-start gap-3 p-4"
-              :disabled="operating"
-              @click="handleEnableMkcert"
-            >
-              <span
-                class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
-              >
-                <Key class="size-5" />
-              </span>
-              <span class="min-w-0 flex-1 text-left">
-                <span class="block font-medium text-foreground">{{ t('route.enableMkcert') }}</span>
-                <span class="mt-1 block text-muted-foreground">{{ t('route.mkcertHint') }}</span>
-              </span>
-              <ChevronRight class="mt-1 size-4 shrink-0 text-muted-foreground" />
-            </button>
-            <div
-              class="flex min-h-28 flex-col justify-between gap-3 rounded-md border border-border bg-muted/20 p-4"
-            >
-              <div class="flex items-start gap-3">
-                <span
-                  class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
-                >
-                  <Upload class="size-5" />
-                </span>
-                <div class="min-w-0">
-                  <p class="font-medium text-foreground">{{ t('route.uploadCustomCert') }}</p>
-                  <p class="mt-1 text-sm text-muted-foreground">
-                    {{ t('route.uploadCustomCertHint') }}
-                  </p>
-                </div>
-              </div>
-              <div
-                class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center"
-              >
-                <p class="min-w-0 text-xs text-muted-foreground">{{ t('route.pemFileHint') }}</p>
-                <button
-                  type="button"
-                  class="app-button h-9 shrink-0 px-3"
-                  :disabled="operating"
-                  @click="selectCertFile"
-                >
-                  <Upload class="size-4" />
-                  {{ t('route.selectPemFile') }}
-                </button>
-              </div>
-              <input
-                ref="certFileInput"
-                type="file"
-                accept=".pem"
-                class="hidden"
-                @change="handleCertUpload"
-              />
-            </div>
-          </div>
+            <RefreshCw class="size-4" />
+            {{ t('route.configureAndSync') }}
+          </button>
         </div>
       </DetailInfoCard>
       <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
@@ -418,43 +314,6 @@
       </template>
     </AppDialog>
 
-    <AppDialog
-      v-model:open="isLetsEncryptDialogOpen"
-      :title="t('route.chooseLetsencryptChallenge')"
-      width-class="w-[min(460px,calc(100vw-32px))]"
-    >
-      <div class="space-y-4">
-        <div>
-          <p class="app-field-hint mb-2">{{ t('route.letsencryptChallengeHint') }}</p>
-          <SelectControl
-            id="route-letsencrypt-challenge"
-            :model-value="letsEncryptChallenge"
-            :options="letsEncryptChallengeOptions"
-            :disabled="!hasAvailableLetsEncryptChallenge"
-            :invalid="Boolean(letsEncryptChallengeError)"
-            @update:model-value="updateLetsEncryptChallenge"
-          />
-          <p v-if="letsEncryptChallengeError" class="app-field-error mt-1" role="alert">
-            {{ letsEncryptChallengeError }}
-          </p>
-        </div>
-        <p v-if="routeData?.acme_challenge_hint" class="text-sm text-muted-foreground">
-          {{ routeData.acme_challenge_hint }}
-        </p>
-        <p v-if="letsEncryptSubmitError" class="app-field-error" role="alert">
-          {{ letsEncryptSubmitError }}
-        </p>
-      </div>
-      <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          :confirm-disabled="!hasAvailableLetsEncryptChallenge"
-          @cancel="closeLetsEncryptDialog"
-          @confirm="handleEnableLetsencrypt"
-        />
-      </template>
-    </AppDialog>
-
     <RuntimeContainerLogsDrawer
       v-if="gatewayRuntimeLogTarget"
       v-model:open="isGatewayLogsDrawerOpen"
@@ -464,7 +323,10 @@
     <RouteSyncDialog
       v-model:open="isSyncDialogOpen"
       :changes="syncChanges"
+      :route="routeData"
+      :saved-changes="hasPendingRouteChanges"
       @synced="handleSyncComplete"
+      @saved="handleSyncSaved"
     />
   </div>
 </template>
@@ -472,9 +334,7 @@
 <script setup lang="ts">
   import {
     ArrowLeft,
-    ChevronRight,
     ExternalLink,
-    Key,
     Play,
     PowerOff,
     RefreshCw,
@@ -482,8 +342,6 @@
     ShieldCheck,
     ShieldOff,
     Trash2,
-    Upload,
-    X,
   } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { SwitchRoot, SwitchThumb } from 'reka-ui';
@@ -530,17 +388,12 @@
   const routeData = ref<RouteResp>();
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
-  const isLetsEncryptDialogOpen = ref(false);
   const isSyncDialogOpen = ref(false);
   const pendingEnabled = ref<boolean>();
   const hasPendingRouteChanges = ref(currentRoute.query.pending_sync === '1');
   if (hasPendingRouteChanges.value) {
     void router.replace({ query: { ...currentRoute.query, pending_sync: undefined } });
   }
-  const letsEncryptChallenge = ref<'http' | 'dns'>('http');
-  const letsEncryptChallengeError = ref('');
-  const letsEncryptSubmitError = ref('');
-  const certFileInput = ref<HTMLInputElement>();
   const gatewayForLogs = ref<GatewayResp>();
   const isGatewayLogsDrawerOpen = ref(false);
 
@@ -595,33 +448,16 @@
     return [{ route_id: routeData.value.id, enabled: pendingEnabled.value }];
   });
 
-  const canUseLetsencrypt = computed(() => {
-    if (!routeData.value) {
-      return false;
+  const savedCertificateLabel = computed(() => {
+    const route = routeData.value;
+    if (!route?.https_enabled) {
+      return 'HTTP';
     }
-    const d = routeData.value.domain;
-    return (
-      d !== 'localhost' &&
-      !d.endsWith('.localhost') &&
-      !d.endsWith('.lvh.me') &&
-      !/^\d+\.\d+\.\d+\.\d+$/.test(d)
-    );
+    if (route.cert_type === 'letsencrypt') {
+      return `HTTPS · Let's Encrypt · ${route.acme_challenge.toUpperCase()}-01`;
+    }
+    return route.cert_type === 'mkcert' ? 'HTTPS · mkcert' : 'HTTPS · PEM';
   });
-  const letsEncryptChallengeOptions = computed(() => [
-    {
-      value: 'http',
-      label: t('route.letsencryptHttpChallenge'),
-      disabled: !routeData.value?.http01_available,
-    },
-    {
-      value: 'dns',
-      label: t('route.letsencryptDnsChallenge'),
-      disabled: !routeData.value?.dns01_available,
-    },
-  ]);
-  const hasAvailableLetsEncryptChallenge = computed(() =>
-    Boolean(routeData.value?.http01_available || routeData.value?.dns01_available)
-  );
   const gatewayRuntimeLogTarget = computed<RuntimeContainerLogTarget | undefined>(() => {
     const current = gatewayForLogs.value;
     if (!current || !current.service_id) {
@@ -631,11 +467,7 @@
       applicationId: current.id,
       serviceId: current.service_id,
       component: MANAGED_GATEWAY_COMPONENT_NAME,
-      title: t('service.logs.titleWithComponent', {
-        app: current.name,
-        code: current.service_code,
-        component: MANAGED_GATEWAY_COMPONENT_NAME,
-      }),
+      title: t('route.actions.logs'),
     };
   });
 
@@ -784,7 +616,6 @@
         toast.success(t('route.toast.updateSuccess'));
         isEditDialogOpen.value = false;
         await fetchRoute();
-        await openGatewayLogs();
       });
     } catch (error) {
       editSubmitError.value =
@@ -889,71 +720,10 @@
     await fetchRoute();
   }
 
-  async function handleCertUpload(event: Event) {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) {
-      return;
-    }
-    try {
-      await executeOp(async () => {
-        await routeApi.uploadCert(selectedProjectId(), routeId, file);
-        hasPendingRouteChanges.value = true;
-        toast.success(t('route.toast.certUploadSuccess'));
-        await fetchRoute();
-        await openGatewayLogs();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.certUploadFailed'));
-    } finally {
-      (event.target as HTMLInputElement).value = '';
-    }
-  }
-
-  function selectCertFile() {
-    certFileInput.value?.click();
-  }
-
-  async function handleDisableHttps() {
-    try {
-      await executeOp(async () => {
-        await routeApi.disableHttps(selectedProjectId(), routeId);
-        hasPendingRouteChanges.value = true;
-        toast.success(t('route.toast.httpsDisabled'));
-        await fetchRoute();
-        await openGatewayLogs();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.operationFailed'));
-    }
-  }
-
-  function openLetsEncryptDialog() {
-    const current = routeData.value;
-    if (current?.acme_challenge === 'dns' && current.dns01_available) {
-      letsEncryptChallenge.value = 'dns';
-    } else if (current?.http01_available) {
-      letsEncryptChallenge.value = 'http';
-    } else if (current?.dns01_available) {
-      letsEncryptChallenge.value = 'dns';
-    }
-    letsEncryptChallengeError.value = '';
-    letsEncryptSubmitError.value = '';
-    isLetsEncryptDialogOpen.value = true;
-  }
-
-  function closeLetsEncryptDialog() {
-    letsEncryptChallengeError.value = '';
-    letsEncryptSubmitError.value = '';
-    isLetsEncryptDialogOpen.value = false;
-  }
-
-  function updateLetsEncryptChallenge(value: string | number) {
-    if (value !== 'http' && value !== 'dns') {
-      return;
-    }
-    letsEncryptChallenge.value = value;
-    letsEncryptChallengeError.value = '';
-    letsEncryptSubmitError.value = '';
+  async function handleSyncSaved() {
+    pendingEnabled.value = undefined;
+    hasPendingRouteChanges.value = true;
+    await fetchRoute();
   }
 
   async function openGatewayLogs() {
@@ -961,43 +731,6 @@
       return;
     }
     isGatewayLogsDrawerOpen.value = true;
-  }
-
-  async function handleEnableLetsencrypt() {
-    letsEncryptSubmitError.value = '';
-    if (!hasAvailableLetsEncryptChallenge.value) {
-      letsEncryptChallengeError.value = t('route.validation.letsencryptChallengeUnavailable');
-      return;
-    }
-    try {
-      await executeOp(async () => {
-        await routeApi.enableLetsencrypt(selectedProjectId(), routeId, {
-          challenge: letsEncryptChallenge.value,
-        });
-        hasPendingRouteChanges.value = true;
-        toast.success(t('route.toast.letsencryptEnabled'));
-        closeLetsEncryptDialog();
-        await fetchRoute();
-        await openGatewayLogs();
-      });
-    } catch (error) {
-      letsEncryptSubmitError.value =
-        error instanceof Error ? error.message : t('route.toast.operationFailed');
-    }
-  }
-
-  async function handleEnableMkcert() {
-    try {
-      await executeOp(async () => {
-        await routeApi.enableMkcert(selectedProjectId(), routeId, {});
-        hasPendingRouteChanges.value = true;
-        toast.success(t('route.toast.mkcertEnabled'));
-        await fetchRoute();
-        await openGatewayLogs();
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('route.toast.operationFailed'));
-    }
   }
 
   onMounted(fetchRoute);

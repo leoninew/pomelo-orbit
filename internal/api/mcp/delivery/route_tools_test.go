@@ -98,7 +98,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("CallTool(preview route sync) returned tool error: %#v", result.Content)
 	}
-	if routeService.previewUserId != "actor" || routeService.previewProjectId != "project-1" || len(routeService.previewChanges) != 1 || routeService.previewChanges[0] != (routedto.RouteSyncChange{RouteId: "route-1", Enabled: true}) {
+	if routeService.previewUserId != "actor" || routeService.previewProjectId != "project-1" || len(routeService.previewChanges) != 1 || routeService.previewChanges[0].RouteId != "route-1" || routeService.previewChanges[0].Enabled == nil || !*routeService.previewChanges[0].Enabled {
 		t.Fatalf("preview input = %q/%q/%#v", routeService.previewUserId, routeService.previewProjectId, routeService.previewChanges)
 	}
 	previewOutput := structuredOutput(t, result)
@@ -115,7 +115,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("CallTool(confirm route sync) returned tool error: %#v", result.Content)
 	}
-	if routeService.confirmUserId != "actor" || routeService.confirmProjectId != "project-1" || routeService.confirmInput.BusinessHash != "business-hash" || routeService.confirmInput.TraefikHash != "traefik-hash" || len(routeService.confirmInput.Changes) != 1 || routeService.confirmInput.Changes[0] != (routedto.RouteSyncChange{RouteId: "route-1", Enabled: true}) {
+	if routeService.confirmUserId != "actor" || routeService.confirmProjectId != "project-1" || routeService.confirmInput.BusinessHash != "business-hash" || routeService.confirmInput.TraefikHash != "traefik-hash" || len(routeService.confirmInput.Changes) != 1 || routeService.confirmInput.Changes[0].RouteId != "route-1" || routeService.confirmInput.Changes[0].Enabled == nil || !*routeService.confirmInput.Changes[0].Enabled {
 		t.Fatalf("confirm input = %q/%q/%#v", routeService.confirmUserId, routeService.confirmProjectId, routeService.confirmInput)
 	}
 

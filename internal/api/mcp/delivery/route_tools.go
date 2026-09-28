@@ -169,7 +169,7 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 
 type routeSyncChangeInput struct {
 	RouteId string `json:"route_id" jsonschema:"required"`
-	Enabled bool   `json:"enabled"`
+	Enabled *bool  `json:"enabled" jsonschema:"required"`
 }
 
 func routeSyncChangesInput(items []routeSyncChangeInput) []routedto.RouteSyncChange {
@@ -188,8 +188,15 @@ func routeSyncPreviewOutput(projectId string, preview routedto.RouteSyncPreview)
 			"business_value": difference.BusinessValue, "traefik_value": difference.TraefikValue,
 		})
 	}
+	pending := make([]map[string]any, 0, len(preview.Pending))
+	for _, item := range preview.Pending {
+		pending = append(pending, map[string]any{
+			"route_name": item.RouteName, "mode": item.Mode, "challenge": item.Challenge,
+			"publishes_now": item.PublishesNow,
+		})
+	}
 	return map[string]any{
 		"project_id": projectId, "business_hash": preview.BusinessHash, "traefik_hash": preview.TraefikHash,
-		"matched": preview.Matched, "differences": differences,
+		"matched": preview.Matched, "differences": differences, "pending": pending,
 	}
 }

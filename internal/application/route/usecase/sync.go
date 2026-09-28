@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -16,10 +15,13 @@ import (
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
-	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-const routeSyncPreviewExpiredCode = "route_sync_preview_expired"
+const (
+	routeSyncPreviewExpiredCode   = "route_sync_preview_expired"
+	routeSyncPublishFailedCode    = "route_sync_publish_failed"
+	routeSyncPublishFailedMessage = "Route changes were saved, but publication could not be completed. Retry sync."
+)
 
 type syncRouter struct {
 	Name       string `json:"name"`
@@ -53,11 +55,11 @@ type syncRouteState struct {
 // PreviewRouteSync compares the requested business snapshot with Traefik
 // without changing either side.
 func (s Service) PreviewRouteSync(ctx context.Context, userId string, projectId string, changes []routedto.RouteSyncChange) (routedto.RouteSyncPreview, error) {
-	routes, traefikRouters, traefikServices, err := s.loadSyncState(ctx, userId, projectId, changes)
+	plan, traefikRouters, traefikServices, err := s.loadSyncState(ctx, userId, projectId, changes)
 	if err != nil {
 		return routedto.RouteSyncPreview{}, err
 	}
-	return compareSyncState(routes, traefikRouters, traefikServices), nil
+	return previewSyncPlan(plan, traefikRouters, traefikServices), nil
 }
 
 // ConfirmRouteSync applies the requested business state and then replaces the
@@ -67,11 +69,11 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 	if strings.TrimSpace(input.BusinessHash) == "" || strings.TrimSpace(input.TraefikHash) == "" {
 		return apperror.New(apperror.KindValidation, "business_hash and traefik_hash are required")
 	}
-	routes, traefikRouters, traefikServices, err := s.loadSyncState(ctx, userId, projectId, input.Changes)
+	plan, traefikRouters, traefikServices, err := s.loadSyncState(ctx, userId, projectId, input.Changes)
 	if err != nil {
 		return err
 	}
-	preview := compareSyncState(routes, traefikRouters, traefikServices)
+	preview := previewSyncPlan(plan, traefikRouters, traefikServices)
 	if preview.BusinessHash != input.BusinessHash || preview.TraefikHash != input.TraefikHash {
 		return apperror.NewWithCode(
 			apperror.KindConflict,
@@ -82,99 +84,67 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 	if s.transactionRunner == nil {
 		return apperror.New(apperror.KindInternal, "route sync transaction is not configured")
 	}
+	if err := s.materializeSyncCertificates(ctx, &plan); err != nil {
+		return err
+	}
 
 	if err := s.transactionRunner.RunInTransaction(ctx, func(txCtx context.Context) error {
-		return s.applyRouteSyncChanges(txCtx, projectId, input.Changes)
+		return s.applyRouteSyncChanges(txCtx, projectId, plan)
 	}); err != nil {
 		return err
 	}
 
 	updatedRoutes, err := s.listEnabledRoutesForPublish(ctx, projectId)
 	if err != nil {
-		return err
+		return apperror.WrapWithCode(apperror.KindUnavailable, routeSyncPublishFailedCode, routeSyncPublishFailedMessage, err)
 	}
-	return s.applyRouteSnapshot(ctx, projectId, updatedRoutes, false)
+	if err := s.applyRouteSnapshot(ctx, projectId, updatedRoutes, false); err != nil {
+		return apperror.WrapWithCode(apperror.KindUnavailable, routeSyncPublishFailedCode, routeSyncPublishFailedMessage, err)
+	}
+	return nil
 }
 
-func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, changes []routedto.RouteSyncChange) ([]model.Route, []routeport.TraefikRouter, []routeport.TraefikService, error) {
+func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, changes []routedto.RouteSyncChange) (syncPlan, []routeport.TraefikRouter, []routeport.TraefikService, error) {
 	if projectId == "" {
-		return nil, nil, nil, apperror.New(apperror.KindValidation, "project_id is required")
+		return syncPlan{}, nil, nil, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return nil, nil, nil, err
+		return syncPlan{}, nil, nil, err
 	}
-	routes, err := s.syncCandidateRoutes(ctx, projectId, changes)
+	plan, err := s.buildSyncPlan(ctx, projectId, changes)
 	if err != nil {
-		return nil, nil, nil, err
+		return syncPlan{}, nil, nil, err
 	}
-	if err := s.prepareSyncRoutes(ctx, projectId, routes); err != nil {
-		return nil, nil, nil, err
+	if err := s.prepareSyncRoutes(ctx, projectId, &plan); err != nil {
+		return syncPlan{}, nil, nil, err
 	}
 	gateway, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
-		return nil, nil, nil, err
+		return syncPlan{}, nil, nil, err
 	}
 	items, err := s.traefikRouterClient.ListRouters(ctx, projectId, *gateway)
 	if err != nil {
-		return nil, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik routers")
+		return syncPlan{}, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik routers")
 	}
 	services, err := s.traefikRouterClient.ListServices(ctx, projectId, *gateway)
 	if err != nil {
-		return nil, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik services")
+		return syncPlan{}, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik services")
 	}
-	return routes, items, services, nil
+	return plan, items, services, nil
 }
 
-func (s Service) syncCandidateRoutes(ctx context.Context, projectId string, changes []routedto.RouteSyncChange) ([]model.Route, error) {
-	enabledRoutes, err := s.route.ListEnabledRoutesByProject(ctx, projectId)
-	if err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
-	}
-	byId := make(map[string]model.Route, len(enabledRoutes)+len(changes))
-	for _, route := range enabledRoutes {
-		byId[route.Id] = route
-	}
-	requested := make(map[string]bool, len(changes))
-	for _, change := range changes {
-		routeId := change.RouteId
-		if routeId == "" {
-			return nil, apperror.New(apperror.KindValidation, "route_id is required")
-		}
-		if previous, found := requested[routeId]; found && previous != change.Enabled {
-			return nil, apperror.New(apperror.KindValidation, "a route cannot have conflicting sync changes")
-		}
-		requested[routeId] = change.Enabled
-
-		route, err := s.route.Route(ctx, projectId, routeId)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return nil, apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
-			}
-			return nil, apperror.Wrap(apperror.KindInternal, "Failed to load route for sync", err)
-		}
-		route.Enabled = change.Enabled
-		if change.Enabled {
-			byId[route.Id] = route
-		} else {
-			delete(byId, route.Id)
-		}
-	}
-
-	routes := make([]model.Route, 0, len(byId))
-	for _, route := range byId {
-		routes = append(routes, route)
-	}
-	sort.Slice(routes, func(i, j int) bool { return routes[i].Id < routes[j].Id })
-	return routes, nil
-}
-
-func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, routes []model.Route) error {
+func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, plan *syncPlan) error {
 	tcpPorts := make(map[int]string)
-	for index := range routes {
-		route := &routes[index]
+	for index := range plan.routes {
+		route := &plan.routes[index]
 		if route.Protocol != routeProtocolTCP {
 			if err := s.validateRoute(ctx, projectId, route, route.Id, true); err != nil {
 				return err
+			}
+			if _, pendingGeneration := plan.mkcert[route.Id]; !pendingGeneration {
+				if err := s.validateRouteCertificateConfiguration(ctx, *route); err != nil {
+					return err
+				}
 			}
 			continue
 		}
@@ -200,24 +170,6 @@ func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, routes
 	return nil
 }
 
-func (s Service) applyRouteSyncChanges(ctx context.Context, projectId string, changes []routedto.RouteSyncChange) error {
-	for _, change := range changes {
-		routeId := change.RouteId
-		route, err := s.route.Route(ctx, projectId, routeId)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return apperror.New(apperror.KindNotFound, "Route "+routeId+" not found")
-			}
-			return apperror.Wrap(apperror.KindInternal, "Failed to load route for sync", err)
-		}
-		route.Enabled = change.Enabled
-		if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to update route sync state", err)
-		}
-	}
-	return nil
-}
-
 func compareSyncState(routes []model.Route, traefikRouters []routeport.TraefikRouter, traefikServices []routeport.TraefikService) routedto.RouteSyncPreview {
 	business := syncSnapshot{
 		Routers:  expectedSyncRouters(routes),
@@ -227,7 +179,24 @@ func compareSyncState(routes []model.Route, traefikRouters []routeport.TraefikRo
 		Routers:  actualSyncRouters(traefikRouters),
 		Services: actualSyncServices(traefikServices),
 	}
-	businessHash := hashSyncSnapshot(business)
+	certificateVersions := make([]string, 0, len(routes))
+	for _, route := range routes {
+		if route.Enabled && route.Protocol == routeProtocolHTTP {
+			certificateVersions = append(certificateVersions, hashSyncValue(struct {
+				Id            string
+				HTTPSEnabled  bool
+				CertType      string
+				AcmeChallenge string
+				CertPEM       *string
+				CertKey       *string
+			}{route.Id, route.HTTPSEnabled, route.CertType, route.AcmeChallenge, route.CertPEM, route.CertKey}))
+		}
+	}
+	sort.Strings(certificateVersions)
+	businessHash := hashSyncValue(struct {
+		Snapshot     syncSnapshot
+		Certificates []string
+	}{business, certificateVersions})
 	traefikHash := hashSyncSnapshot(traefik)
 	differences := syncDifferences(business, traefik)
 	return routedto.RouteSyncPreview{

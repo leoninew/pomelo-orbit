@@ -19,6 +19,7 @@ import (
 
 	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
 	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 const (
@@ -149,7 +150,8 @@ type ProjectInitializationGatewayConfig struct {
 	Image             string        `mapstructure:"image" yaml:"image"`
 	RestApiUrl        string        `mapstructure:"rest_api_url" yaml:"rest_api_url"`
 	RestApiHostUrl    string        `mapstructure:"rest_api_host_url" yaml:"rest_api_host_url"`
-	BaseDomain        string        `mapstructure:"base_domain" yaml:"base_domain"`
+	InternalDomain    string        `mapstructure:"internal_domain" yaml:"internal_domain"`
+	ExternalDomain    string        `mapstructure:"external_domain" yaml:"external_domain"`
 	RestReadyTimeout  time.Duration `mapstructure:"rest_ready_timeout" yaml:"rest_ready_timeout"`
 	DefaultEntrypoint string        `mapstructure:"default_entrypoint" yaml:"default_entrypoint"`
 	TLSMode           string        `mapstructure:"tls_mode" yaml:"tls_mode"`
@@ -353,7 +355,8 @@ func bindEnv(loader *viper.Viper) {
 		"project_initialization.environment.local_workspace_root",
 		"project_initialization.gateway.image",
 		"project_initialization.gateway.rest_api_url",
-		"project_initialization.gateway.base_domain",
+		"project_initialization.gateway.internal_domain",
+		"project_initialization.gateway.external_domain",
 		"project_initialization.gateway.rest_ready_timeout",
 		"project_initialization.gateway.default_entrypoint",
 		"project_initialization.gateway.tls_mode",
@@ -470,7 +473,8 @@ func normalizeProjectInitializationConfig(cfg *ProjectInitializationConfig) erro
 	cfg.Gateway.Image = strings.TrimSpace(cfg.Gateway.Image)
 	cfg.Gateway.RestApiUrl = strings.TrimRight(strings.TrimSpace(cfg.Gateway.RestApiUrl), "/")
 	cfg.Gateway.RestApiHostUrl = strings.TrimRight(strings.TrimSpace(cfg.Gateway.RestApiHostUrl), "/")
-	cfg.Gateway.BaseDomain = strings.ToLower(strings.TrimSpace(cfg.Gateway.BaseDomain))
+	cfg.Gateway.InternalDomain = strings.ToLower(strings.TrimSpace(cfg.Gateway.InternalDomain))
+	cfg.Gateway.ExternalDomain = strings.ToLower(strings.TrimSpace(cfg.Gateway.ExternalDomain))
 	cfg.Gateway.DefaultEntrypoint = strings.TrimSpace(cfg.Gateway.DefaultEntrypoint)
 	cfg.Gateway.TLSMode = strings.ToLower(strings.TrimSpace(cfg.Gateway.TLSMode))
 	cfg.Gateway.AcmeProfile = strings.TrimSpace(cfg.Gateway.AcmeProfile)
@@ -515,11 +519,14 @@ func validateProjectInitializationConfig(cfg ProjectInitializationConfig) error 
 	if err := validateHTTPUrl("project_initialization.gateway.rest_api_host_url", cfg.Gateway.RestApiHostUrl, false); err != nil {
 		return err
 	}
-	if cfg.Gateway.BaseDomain == "" {
-		return errors.New("project_initialization.gateway.base_domain is required")
+	if cfg.Gateway.InternalDomain == "" {
+		return errors.New("project_initialization.gateway.internal_domain is required")
 	}
-	if strings.Contains(cfg.Gateway.BaseDomain, "://") || strings.Contains(cfg.Gateway.BaseDomain, "/") || strings.Contains(cfg.Gateway.BaseDomain, " ") {
-		return errors.New("project_initialization.gateway.base_domain must be a bare domain (e.g. lvh.me)")
+	if strings.Contains(cfg.Gateway.InternalDomain, "://") || strings.Contains(cfg.Gateway.InternalDomain, "/") || strings.Contains(cfg.Gateway.InternalDomain, " ") {
+		return errors.New("project_initialization.gateway.internal_domain must be a bare domain (e.g. lvh.me)")
+	}
+	if cfg.Gateway.ExternalDomain != "" && !model.IsExternalDomainSuffix(cfg.Gateway.ExternalDomain) {
+		return errors.New("project_initialization.gateway.external_domain must be a valid domain suffix")
 	}
 	if cfg.Gateway.RestReadyTimeout <= 0 {
 		return errors.New("project_initialization.gateway.rest_ready_timeout must be positive")

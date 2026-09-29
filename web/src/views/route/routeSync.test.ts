@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { projectInitializationApi } from '@/api/project/initialization';
 import { routeApi } from '@/api/route/route';
+import { traefikRouteApi } from '@/api/route/traefik';
 import { serviceApi } from '@/api/service/service';
 import i18n from '@/i18n';
 import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
@@ -24,6 +25,10 @@ vi.mock('@/api/route/route', () => ({
     previewSync: vi.fn(),
     confirmSync: vi.fn(),
   },
+}));
+
+vi.mock('@/api/route/traefik', () => ({
+  traefikRouteApi: { getConfig: vi.fn() },
 }));
 
 vi.mock('@/api/service/service', () => ({
@@ -68,6 +73,12 @@ beforeEach(() => {
   useProjectStore().setActiveProject('project-1');
   vi.mocked(projectInitializationApi.getStatus).mockResolvedValue({ status: 'ready' } as never);
   vi.mocked(routeApi.get).mockResolvedValue(route);
+  vi.mocked(traefikRouteApi.getConfig).mockResolvedValue({
+    dashboard_domain: '',
+    https_enabled: false,
+    internal_domain: 'internal.example.test',
+    external_domain: '',
+  });
   vi.mocked(routeApi.list).mockResolvedValue({ items: [route], total: 1 } as never);
   vi.mocked(routeApi.update).mockResolvedValue({ ...route, name: 'api-route-edited' });
   vi.mocked(routeApi.previewSync).mockResolvedValue({

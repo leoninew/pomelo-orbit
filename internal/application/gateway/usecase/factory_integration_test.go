@@ -37,7 +37,9 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	service, applications, services, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
 
-	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput())
+	input := managedGatewayCreateInput()
+	input.ExternalDomain = "public.example.test"
+	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,6 +98,9 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	}
 	if gatewayConfig.RestApiUrl != model.GatewayRestApiContainerUrl || gatewayConfig.RestApiHostUrl != model.GatewayRestApiHostUrl {
 		t.Fatalf("gateway REST endpoints = container:%q host:%q", gatewayConfig.RestApiUrl, gatewayConfig.RestApiHostUrl)
+	}
+	if gatewayConfig.InternalDomain != "example.test" || gatewayConfig.ExternalDomain != "public.example.test" {
+		t.Fatalf("gateway domains = internal:%q external:%q", gatewayConfig.InternalDomain, gatewayConfig.ExternalDomain)
 	}
 	var staticConfig string
 	for _, mount := range components[0].Mounts {
@@ -350,7 +355,7 @@ func managedGatewayCreateInput() gatewaydto.GatewayCreateInput {
 		RestApiUrl:              model.GatewayRestApiContainerUrl,
 		RestApiHostUrl:          model.GatewayRestApiHostUrl,
 		RestReadyTimeoutSeconds: &timeout,
-		BaseDomain:              "example.test",
+		InternalDomain:          "example.test",
 		InitialComponentImage:   &image,
 		DefaultEntrypoint:       &entrypoint,
 		TLSMode:                 &tlsMode,

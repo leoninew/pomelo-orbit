@@ -111,7 +111,10 @@ const (
 	acmeChallengeDNS    = "dns"
 )
 
-var routeNamePattern = regexp.MustCompile(`^[a-z][a-z0-9._-]*$`)
+func validRouteCode(name string) bool {
+	return len(name) <= 32 && model.IsDNSLabel(name) && name[0] >= 'a' && name[0] <= 'z'
+}
+
 var routeTargetUrlPattern = regexp.MustCompile(`^https?://[a-zA-Z0-9.-]+(?::\d+)?$`)
 
 // ListRoutes returns routes visible to the user.
@@ -545,8 +548,8 @@ func (s Service) TraefikRouteConfig(ctx context.Context, userId string, projectI
 	if err != nil {
 		return routedto.TraefikConfigView{}, err
 	}
-	dashboardDomain := fmt.Sprintf("traefik.%s", gw.BaseDomain)
-	configView := routedto.TraefikConfigView{DashboardDomain: dashboardDomain, HTTPSEnabled: false, BaseDomain: gw.BaseDomain}
+	dashboardDomain := fmt.Sprintf("traefik.%s", gw.InternalDomain)
+	configView := routedto.TraefikConfigView{DashboardDomain: dashboardDomain, HTTPSEnabled: false, InternalDomain: gw.InternalDomain, ExternalDomain: gw.ExternalDomain}
 	route, err := s.route.RouteByProjectAndDomain(ctx, projectId, dashboardDomain)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -699,7 +702,7 @@ func (s Service) applyRouteSnapshot(ctx context.Context, projectId string, route
 }
 
 func validRouteIdentity(name string, domain string, pathPrefix string) bool {
-	return routeNamePattern.MatchString(name) && domain != "" && strings.HasPrefix(pathPrefix, "/")
+	return validRouteCode(name) && domain != "" && strings.HasPrefix(pathPrefix, "/")
 }
 
 func requireHTTPRoute(route model.Route) error {

@@ -211,13 +211,13 @@ func appendStrings(service map[string]any, key string, values []string) {
 }
 
 func deriveHost(gateway *model.GatewayConfig, appCode string) (string, error) {
-	if gateway == nil || gateway.BaseDomain == "" {
-		return "", fmt.Errorf("gateway base_domain is required")
+	if gateway == nil || gateway.InternalDomain == "" {
+		return "", fmt.Errorf("gateway internal_domain is required")
 	}
 	if appCode == "" {
 		return "", fmt.Errorf("application code is required")
 	}
-	host := appCode + "." + gateway.BaseDomain
+	host := appCode + "." + gateway.InternalDomain
 	if !validDeploymentRouteDomain(host) {
 		return "", fmt.Errorf("invalid derived host %q", host)
 	}

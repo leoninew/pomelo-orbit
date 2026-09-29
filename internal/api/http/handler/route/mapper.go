@@ -91,7 +91,7 @@ func optionalInt32(value *int) *int32 {
 }
 
 func traefikConfigResponse(config routedto.TraefikConfigView) routev1.TraefikConfigResp {
-	return routev1.TraefikConfigResp{DashboardDomain: config.DashboardDomain, HttpsEnabled: config.HTTPSEnabled, BaseDomain: config.BaseDomain}
+	return routev1.TraefikConfigResp{DashboardDomain: config.DashboardDomain, HttpsEnabled: config.HTTPSEnabled, InternalDomain: config.InternalDomain, ExternalDomain: config.ExternalDomain}
 }
 
 func traefikRouteListResponse(items []routeport.TraefikRouter) routev1.TraefikRouteListResp {

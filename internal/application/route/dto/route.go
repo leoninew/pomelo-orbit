@@ -71,5 +71,6 @@ type RouteSyncPreview struct {
 type TraefikConfigView struct {
 	DashboardDomain string
 	HTTPSEnabled    bool
-	BaseDomain      string
+	InternalDomain  string
+	ExternalDomain  string
 }

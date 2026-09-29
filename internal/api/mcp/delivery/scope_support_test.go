@@ -56,6 +56,7 @@ type readyGatewayService struct {
 	GatewayService
 	gateway   gatewaydto.GatewayView
 	provision gatewaydto.ProvisionGatewayResult
+	update    gatewaydto.GatewayUpdateInput
 }
 
 func (s *readyGatewayService) view() gatewaydto.GatewayView {
@@ -73,6 +74,19 @@ func (s *readyGatewayService) ListGateways(context.Context, string, string, int,
 func (s *readyGatewayService) GatewayForUser(_ context.Context, _, _ string, gatewayId string) (gatewaydto.GatewayView, error) {
 	view := s.view()
 	view.Application.Id = gatewayId
+	return view, nil
+}
+
+func (s *readyGatewayService) UpdateGateway(_ context.Context, _, _, _ string, input gatewaydto.GatewayUpdateInput) (gatewaydto.GatewayView, error) {
+	s.update = input
+	view := s.view()
+	if input.InternalDomain != nil {
+		view.Config.InternalDomain = *input.InternalDomain
+	}
+	if input.ExternalDomain != nil {
+		view.Config.ExternalDomain = *input.ExternalDomain
+	}
+	s.gateway = view
 	return view, nil
 }
 

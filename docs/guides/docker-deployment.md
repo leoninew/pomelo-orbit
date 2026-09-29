@@ -1,5 +1,5 @@
 # Docker 部署与服务器首次部署指南
-最后修改时间: 2026-09-23 19:59:36
+最后修改时间: 2026-09-29 09:28:22
 
 Doc role: living guide（运维向）。与代码冲突时以代码为准；领域模型见 [CD 模型](../product/cd-model.md)。
 
@@ -122,7 +122,7 @@ docker compose logs -f --tail=50
 
 Wizard 的 local 默认工作目录是 `~/.pomelo-orbit`，配置和界面原样展示，使用时才展开为容器内进程用户的主目录。若工作区需要落在其他已挂载路径上，应在 Wizard 中填写容器内绝对路径，并保证该路径同时对 Orbit 容器和 Docker daemon 可见；不要只挂载 Docker socket。
 
-Traefik 控制面 URL 与业务域名后缀在 CD Gateway config 中配置（`rest_api_url`、`base_domain`）。创建或编辑 Gateway 时选择 ACME profile；DNS-01 token 在 Gateway 配置中填写，部署 DNS profile 时由 Orbit 作为 `CF_DNS_API_TOKEN` 写入 Traefik Compose environment，无需为 Orbit 配置全局 Cloudflare token。
+Traefik 控制面 URL 与内网域名在 CD Gateway config 中配置（`rest_api_url`、`internal_domain`）。现有 gateway mode Docker labels 继续使用内网域名。可选的 `external_domain` 仅辅助自定义 Route 表单生成完整域名；相应 DNS 记录和网络入口由部署者维护。创建或编辑 Gateway 时选择 ACME profile；DNS-01 token 在 Gateway 配置中填写，部署 DNS profile 时由 Orbit 作为 `CF_DNS_API_TOKEN` 写入 Traefik Compose environment，无需为 Orbit 配置全局 Cloudflare token。
 
 ## 7. 更新镜像
 

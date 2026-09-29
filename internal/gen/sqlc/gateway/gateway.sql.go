@@ -48,7 +48,7 @@ func (q *Queries) GatewayBindingByProjectId(ctx context.Context, projectID strin
 
 const gatewayConfigByApplication = `-- name: GatewayConfigByApplication :one
 SELECT application_id, rest_api_url, rest_api_host_url, rest_ready_timeout_seconds,
-       base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
+       internal_domain, external_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
        dns_api_token, created_at, updated_at
 FROM gateway_config
 WHERE application_id = ?
@@ -62,7 +62,8 @@ func (q *Queries) GatewayConfigByApplication(ctx context.Context, applicationID 
 		&i.RestApiUrl,
 		&i.RestApiHostUrl,
 		&i.RestReadyTimeoutSeconds,
-		&i.BaseDomain,
+		&i.InternalDomain,
+		&i.ExternalDomain,
 		&i.DefaultEntrypoint,
 		&i.TlsMode,
 		&i.AcmeProfile,
@@ -130,10 +131,10 @@ func (q *Queries) GatewayVersionBindingsByApplication(ctx context.Context, appli
 const insertGatewayConfig = `-- name: InsertGatewayConfig :exec
 INSERT INTO gateway_config (
   application_id, rest_api_url, rest_api_host_url, rest_ready_timeout_seconds,
-  base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
+  internal_domain, external_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
   dns_api_token, created_at, updated_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertGatewayConfigParams struct {
@@ -141,7 +142,8 @@ type InsertGatewayConfigParams struct {
 	RestApiUrl              string    `db:"rest_api_url"`
 	RestApiHostUrl          string    `db:"rest_api_host_url"`
 	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
-	BaseDomain              string    `db:"base_domain"`
+	InternalDomain          string    `db:"internal_domain"`
+	ExternalDomain          string    `db:"external_domain"`
 	DefaultEntrypoint       string    `db:"default_entrypoint"`
 	TlsMode                 string    `db:"tls_mode"`
 	AcmeProfile             string    `db:"acme_profile"`
@@ -157,7 +159,8 @@ func (q *Queries) InsertGatewayConfig(ctx context.Context, arg InsertGatewayConf
 		arg.RestApiUrl,
 		arg.RestApiHostUrl,
 		arg.RestReadyTimeoutSeconds,
-		arg.BaseDomain,
+		arg.InternalDomain,
+		arg.ExternalDomain,
 		arg.DefaultEntrypoint,
 		arg.TlsMode,
 		arg.AcmeProfile,
@@ -237,7 +240,7 @@ func (q *Queries) ListGatewayApplications(ctx context.Context, projectID sql.Nul
 const updateGatewayConfig = `-- name: UpdateGatewayConfig :exec
 UPDATE gateway_config
 SET rest_api_url = ?, rest_api_host_url = ?, rest_ready_timeout_seconds = ?,
-    base_domain = ?, default_entrypoint = ?, tls_mode = ?, acme_profile = ?, acme_email = ?,
+    internal_domain = ?, external_domain = ?, default_entrypoint = ?, tls_mode = ?, acme_profile = ?, acme_email = ?,
     dns_api_token = ?, updated_at = ?
 WHERE application_id = ?
 `
@@ -246,7 +249,8 @@ type UpdateGatewayConfigParams struct {
 	RestApiUrl              string    `db:"rest_api_url"`
 	RestApiHostUrl          string    `db:"rest_api_host_url"`
 	RestReadyTimeoutSeconds int64     `db:"rest_ready_timeout_seconds"`
-	BaseDomain              string    `db:"base_domain"`
+	InternalDomain          string    `db:"internal_domain"`
+	ExternalDomain          string    `db:"external_domain"`
 	DefaultEntrypoint       string    `db:"default_entrypoint"`
 	TlsMode                 string    `db:"tls_mode"`
 	AcmeProfile             string    `db:"acme_profile"`
@@ -261,7 +265,8 @@ func (q *Queries) UpdateGatewayConfig(ctx context.Context, arg UpdateGatewayConf
 		arg.RestApiUrl,
 		arg.RestApiHostUrl,
 		arg.RestReadyTimeoutSeconds,
-		arg.BaseDomain,
+		arg.InternalDomain,
+		arg.ExternalDomain,
 		arg.DefaultEntrypoint,
 		arg.TlsMode,
 		arg.AcmeProfile,

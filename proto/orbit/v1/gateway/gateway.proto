@@ -12,7 +12,7 @@ message GatewayCreateReq {
   string code = 2;
   string name = 3;
   string rest_api_url = 4;
-  string base_domain = 5;
+  string internal_domain = 5;
   optional string initial_component_image = 6;
   string initial_component_pull_policy = 7;
   // Traefik entryPoints name: web|websecure (default web when empty on create)
@@ -24,12 +24,13 @@ message GatewayCreateReq {
   optional string acme_email = 13;
   optional string dns_api_token = 14;
   string rest_api_host_url = 15;
+  string external_domain = 16;
 }
 
 message GatewayUpdateReq {
   optional string name = 1;
   optional string rest_api_url = 2;
-  optional string base_domain = 3;
+  optional string internal_domain = 3;
   optional string default_entrypoint = 4;
   optional string tls_mode = 5;
   optional int32 rest_ready_timeout_seconds = 7;
@@ -37,6 +38,7 @@ message GatewayUpdateReq {
   optional string acme_email = 9;
   optional string dns_api_token = 10;
   optional string rest_api_host_url = 11;
+  optional string external_domain = 12;
 }
 
 // Read-only active exit / cluster DNS row (not a CRUD resource).
@@ -60,7 +62,7 @@ message GatewayResp {
   string name = 4;
   string kind = 5;
   string rest_api_url = 6;
-  string base_domain = 7;
+  string internal_domain = 7;
   string created_at = 8;
   string updated_at = 9;
   string config_updated_at = 10;
@@ -77,6 +79,7 @@ message GatewayResp {
   string dns_api_token = 22;
   repeated GatewayVersionBinding version_bindings = 23;
   string rest_api_host_url = 24;
+  string external_domain = 25;
 }
 
 message GatewayPaginatedResp {

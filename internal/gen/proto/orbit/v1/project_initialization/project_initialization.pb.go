@@ -28,7 +28,7 @@ type ProjectInitializationDefaults struct {
 	Image                   string                 `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 	RestApiUrl              string                 `protobuf:"bytes,3,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
 	RestReadyTimeoutSeconds int32                  `protobuf:"varint,4,opt,name=rest_ready_timeout_seconds,json=restReadyTimeoutSeconds,proto3" json:"rest_ready_timeout_seconds,omitempty"`
-	BaseDomain              string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	InternalDomain          string                 `protobuf:"bytes,5,opt,name=internal_domain,json=internalDomain,proto3" json:"internal_domain,omitempty"`
 	DefaultEntrypoint       string                 `protobuf:"bytes,6,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
 	TlsMode                 string                 `protobuf:"bytes,7,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
 	AcmeProfile             string                 `protobuf:"bytes,8,opt,name=acme_profile,json=acmeProfile,proto3" json:"acme_profile,omitempty"`
@@ -38,6 +38,7 @@ type ProjectInitializationDefaults struct {
 	LocalHost               string                 `protobuf:"bytes,12,opt,name=local_host,json=localHost,proto3" json:"local_host,omitempty"`
 	LocalUsername           string                 `protobuf:"bytes,13,opt,name=local_username,json=localUsername,proto3" json:"local_username,omitempty"`
 	RestApiHostUrl          string                 `protobuf:"bytes,14,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
+	ExternalDomain          string                 `protobuf:"bytes,15,opt,name=external_domain,json=externalDomain,proto3" json:"external_domain,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -100,9 +101,9 @@ func (x *ProjectInitializationDefaults) GetRestReadyTimeoutSeconds() int32 {
 	return 0
 }
 
-func (x *ProjectInitializationDefaults) GetBaseDomain() string {
+func (x *ProjectInitializationDefaults) GetInternalDomain() string {
 	if x != nil {
-		return x.BaseDomain
+		return x.InternalDomain
 	}
 	return ""
 }
@@ -166,6 +167,13 @@ func (x *ProjectInitializationDefaults) GetLocalUsername() string {
 func (x *ProjectInitializationDefaults) GetRestApiHostUrl() string {
 	if x != nil {
 		return x.RestApiHostUrl
+	}
+	return ""
+}
+
+func (x *ProjectInitializationDefaults) GetExternalDomain() string {
+	if x != nil {
+		return x.ExternalDomain
 	}
 	return ""
 }
@@ -292,9 +300,10 @@ type ProjectInitializationGatewaySnapshot struct {
 	Code           string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
 	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	RestApiUrl     string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain     string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	InternalDomain string                 `protobuf:"bytes,5,opt,name=internal_domain,json=internalDomain,proto3" json:"internal_domain,omitempty"`
 	ServiceStatus  string                 `protobuf:"bytes,6,opt,name=service_status,json=serviceStatus,proto3" json:"service_status,omitempty"`
 	RestApiHostUrl string                 `protobuf:"bytes,7,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
+	ExternalDomain string                 `protobuf:"bytes,8,opt,name=external_domain,json=externalDomain,proto3" json:"external_domain,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -357,9 +366,9 @@ func (x *ProjectInitializationGatewaySnapshot) GetRestApiUrl() string {
 	return ""
 }
 
-func (x *ProjectInitializationGatewaySnapshot) GetBaseDomain() string {
+func (x *ProjectInitializationGatewaySnapshot) GetInternalDomain() string {
 	if x != nil {
-		return x.BaseDomain
+		return x.InternalDomain
 	}
 	return ""
 }
@@ -374,6 +383,13 @@ func (x *ProjectInitializationGatewaySnapshot) GetServiceStatus() string {
 func (x *ProjectInitializationGatewaySnapshot) GetRestApiHostUrl() string {
 	if x != nil {
 		return x.RestApiHostUrl
+	}
+	return ""
+}
+
+func (x *ProjectInitializationGatewaySnapshot) GetExternalDomain() string {
+	if x != nil {
+		return x.ExternalDomain
 	}
 	return ""
 }
@@ -563,13 +579,14 @@ type ProjectInitializationGatewayReq struct {
 	Image                   string                 `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
 	RestApiUrl              string                 `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
 	RestReadyTimeoutSeconds int32                  `protobuf:"varint,3,opt,name=rest_ready_timeout_seconds,json=restReadyTimeoutSeconds,proto3" json:"rest_ready_timeout_seconds,omitempty"`
-	BaseDomain              string                 `protobuf:"bytes,4,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	InternalDomain          string                 `protobuf:"bytes,4,opt,name=internal_domain,json=internalDomain,proto3" json:"internal_domain,omitempty"`
 	DefaultEntrypoint       string                 `protobuf:"bytes,5,opt,name=default_entrypoint,json=defaultEntrypoint,proto3" json:"default_entrypoint,omitempty"`
 	TlsMode                 string                 `protobuf:"bytes,6,opt,name=tls_mode,json=tlsMode,proto3" json:"tls_mode,omitempty"`
 	AcmeProfile             string                 `protobuf:"bytes,7,opt,name=acme_profile,json=acmeProfile,proto3" json:"acme_profile,omitempty"`
 	AcmeEmail               string                 `protobuf:"bytes,8,opt,name=acme_email,json=acmeEmail,proto3" json:"acme_email,omitempty"`
 	DnsApiToken             string                 `protobuf:"bytes,9,opt,name=dns_api_token,json=dnsApiToken,proto3" json:"dns_api_token,omitempty"`
 	RestApiHostUrl          string                 `protobuf:"bytes,10,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
+	ExternalDomain          string                 `protobuf:"bytes,11,opt,name=external_domain,json=externalDomain,proto3" json:"external_domain,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -625,9 +642,9 @@ func (x *ProjectInitializationGatewayReq) GetRestReadyTimeoutSeconds() int32 {
 	return 0
 }
 
-func (x *ProjectInitializationGatewayReq) GetBaseDomain() string {
+func (x *ProjectInitializationGatewayReq) GetInternalDomain() string {
 	if x != nil {
-		return x.BaseDomain
+		return x.InternalDomain
 	}
 	return ""
 }
@@ -674,19 +691,25 @@ func (x *ProjectInitializationGatewayReq) GetRestApiHostUrl() string {
 	return ""
 }
 
+func (x *ProjectInitializationGatewayReq) GetExternalDomain() string {
+	if x != nil {
+		return x.ExternalDomain
+	}
+	return ""
+}
+
 var File_orbit_v1_project_initialization_project_initialization_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc = "" +
 	"\n" +
-	"<orbit/v1/project_initialization/project_initialization.proto\x12\x1forbit.v1.project_initialization\x1a&orbit/v1/environment/environment.proto\"\xaf\x04\n" +
+	"<orbit/v1/project_initialization/project_initialization.proto\x12\x1forbit.v1.project_initialization\x1a&orbit/v1/environment/environment.proto\"\xe0\x04\n" +
 	"\x1dProjectInitializationDefaults\x120\n" +
 	"\x14local_workspace_root\x18\x01 \x01(\tR\x12localWorkspaceRoot\x12\x14\n" +
 	"\x05image\x18\x02 \x01(\tR\x05image\x12 \n" +
 	"\frest_api_url\x18\x03 \x01(\tR\n" +
 	"restApiUrl\x12;\n" +
-	"\x1arest_ready_timeout_seconds\x18\x04 \x01(\x05R\x17restReadyTimeoutSeconds\x12\x1f\n" +
-	"\vbase_domain\x18\x05 \x01(\tR\n" +
-	"baseDomain\x12-\n" +
+	"\x1arest_ready_timeout_seconds\x18\x04 \x01(\x05R\x17restReadyTimeoutSeconds\x12'\n" +
+	"\x0finternal_domain\x18\x05 \x01(\tR\x0einternalDomain\x12-\n" +
 	"\x12default_entrypoint\x18\x06 \x01(\tR\x11defaultEntrypoint\x12\x19\n" +
 	"\btls_mode\x18\a \x01(\tR\atlsMode\x12!\n" +
 	"\facme_profile\x18\b \x01(\tR\vacmeProfile\x12\x1d\n" +
@@ -698,7 +721,8 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\n" +
 	"local_host\x18\f \x01(\tR\tlocalHost\x12%\n" +
 	"\x0elocal_username\x18\r \x01(\tR\rlocalUsername\x12)\n" +
-	"\x11rest_api_host_url\x18\x0e \x01(\tR\x0erestApiHostUrl\"\xd7\x04\n" +
+	"\x11rest_api_host_url\x18\x0e \x01(\tR\x0erestApiHostUrl\x12'\n" +
+	"\x0fexternal_domain\x18\x0f \x01(\tR\x0eexternalDomain\"\xd7\x04\n" +
 	"(ProjectInitializationEnvironmentSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vtarget_type\x18\x02 \x01(\tR\n" +
@@ -715,17 +739,17 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x14_last_probe_revisionB\x14\n" +
 	"\x12_last_probe_statusB\x10\n" +
 	"\x0e_last_probe_atB\x18\n" +
-	"\x16_last_probe_diagnostic\"\xf3\x01\n" +
+	"\x16_last_probe_diagnostic\"\xa4\x02\n" +
 	"$ProjectInitializationGatewaySnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
 	"\frest_api_url\x18\x04 \x01(\tR\n" +
-	"restApiUrl\x12\x1f\n" +
-	"\vbase_domain\x18\x05 \x01(\tR\n" +
-	"baseDomain\x12%\n" +
+	"restApiUrl\x12'\n" +
+	"\x0finternal_domain\x18\x05 \x01(\tR\x0einternalDomain\x12%\n" +
 	"\x0eservice_status\x18\x06 \x01(\tR\rserviceStatus\x12)\n" +
-	"\x11rest_api_host_url\x18\a \x01(\tR\x0erestApiHostUrl\"\xe3\x02\n" +
+	"\x11rest_api_host_url\x18\a \x01(\tR\x0erestApiHostUrl\x12'\n" +
+	"\x0fexternal_domain\x18\b \x01(\tR\x0eexternalDomain\"\xe3\x02\n" +
 	"\x1fProjectInitializationStatusResp\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12Z\n" +
 	"\bdefaults\x18\x02 \x01(\v2>.orbit.v1.project_initialization.ProjectInitializationDefaultsR\bdefaults\x12k\n" +
@@ -741,14 +765,13 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"#ProjectInitializationSSHCommandResp\x12X\n" +
 	"\x06status\x18\x01 \x01(\v2@.orbit.v1.project_initialization.ProjectInitializationStatusRespR\x06status\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x02 \x01(\tR\tpublicKey\"\x92\x03\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKey\"\xc3\x03\n" +
 	"\x1fProjectInitializationGatewayReq\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12 \n" +
 	"\frest_api_url\x18\x02 \x01(\tR\n" +
 	"restApiUrl\x12;\n" +
-	"\x1arest_ready_timeout_seconds\x18\x03 \x01(\x05R\x17restReadyTimeoutSeconds\x12\x1f\n" +
-	"\vbase_domain\x18\x04 \x01(\tR\n" +
-	"baseDomain\x12-\n" +
+	"\x1arest_ready_timeout_seconds\x18\x03 \x01(\x05R\x17restReadyTimeoutSeconds\x12'\n" +
+	"\x0finternal_domain\x18\x04 \x01(\tR\x0einternalDomain\x12-\n" +
 	"\x12default_entrypoint\x18\x05 \x01(\tR\x11defaultEntrypoint\x12\x19\n" +
 	"\btls_mode\x18\x06 \x01(\tR\atlsMode\x12!\n" +
 	"\facme_profile\x18\a \x01(\tR\vacmeProfile\x12\x1d\n" +
@@ -756,7 +779,8 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"acme_email\x18\b \x01(\tR\tacmeEmail\x12\"\n" +
 	"\rdns_api_token\x18\t \x01(\tR\vdnsApiToken\x12)\n" +
 	"\x11rest_api_host_url\x18\n" +
-	" \x01(\tR\x0erestApiHostUrlB\xb0\x02\n" +
+	" \x01(\tR\x0erestApiHostUrl\x12'\n" +
+	"\x0fexternal_domain\x18\v \x01(\tR\x0eexternalDomainB\xb0\x02\n" +
 	"#com.orbit.v1.project_initializationB\x1aProjectInitializationProtoP\x01ZSgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/project_initialization\xa2\x02\x03OVP\xaa\x02\x1eOrbit.V1.ProjectInitialization\xca\x02\x1eOrbit\\V1\\ProjectInitialization\xe2\x02*Orbit\\V1\\ProjectInitialization\\GPBMetadata\xea\x02 Orbit::V1::ProjectInitializationb\x06proto3"
 
 var (

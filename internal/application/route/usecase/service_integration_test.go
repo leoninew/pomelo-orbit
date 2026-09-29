@@ -90,11 +90,20 @@ func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
 	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Protocol: "http", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual", AcmeChallenge: acmeChallengeHTTP}); err != nil {
 		t.Fatal(err)
 	}
+	gwRepo := gatewayrepo.NewRepository(database)
+	gw, err := gwRepo.GatewayConfigByProject(ctx, routeTestProjectId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gw.ExternalDomain = "public.example.test"
+	if err := gwRepo.UpsertGatewayConfig(ctx, gw); err != nil {
+		t.Fatal(err)
+	}
 	cfg, err := service.TraefikRouteConfig(ctx, routeTestUserId, routeTestProjectId)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.DashboardDomain != "traefik.lvh.me" || !cfg.HTTPSEnabled {
+	if cfg.DashboardDomain != "traefik.lvh.me" || !cfg.HTTPSEnabled || cfg.ExternalDomain != "public.example.test" {
 		t.Fatalf("unexpected traefik config: %+v", cfg)
 	}
 	client.routers = []routeport.TraefikRouter{{Name: "api@docker", Provider: "docker", Status: "enabled", Rule: "Host(`api.lvh.me`)", Service: "api-service", Entrypoints: []string{"websecure"}, TLS: true}}
@@ -589,6 +598,9 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 }
 
 func TestRouteValidationSeparatesIdentityFromCustomTargetUrl(t *testing.T) {
+	if !validRouteCode("a"+strings.Repeat("b", 31)) || !validRouteCode("api1") || validRouteCode("1-api") || validRouteCode("123") || validRouteCode(strings.Repeat("a", 33)) || validRouteCode("bad_name") || validRouteCode("bad.name") || validRouteCode("bad-") {
+		t.Fatal("route code DNS label validation is inconsistent")
+	}
 	validTargets := []string{
 		"http://host",
 		"https://host",
@@ -880,7 +892,7 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	if err := gwRepo.UpsertGatewayConfig(ctx, model.GatewayConfig{
 		ApplicationId: app.Id,
 		RestApiUrl:    model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, RestReadyTimeoutSeconds: 20,
-		BaseDomain: "lvh.me", DefaultEntrypoint: "websecure", TLSMode: "none",
+		InternalDomain: "lvh.me", DefaultEntrypoint: "websecure", TLSMode: "none",
 		AcmeProfile: "http-dns", AcmeEmail: "admin@example.test",
 	}); err != nil {
 		t.Fatalf("seed gateway config: %v", err)

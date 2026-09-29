@@ -117,7 +117,8 @@ type TraefikConfigResp struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	DashboardDomain string                 `protobuf:"bytes,1,opt,name=dashboard_domain,json=dashboardDomain,proto3" json:"dashboard_domain,omitempty"`
 	HttpsEnabled    bool                   `protobuf:"varint,2,opt,name=https_enabled,json=httpsEnabled,proto3" json:"https_enabled,omitempty"`
-	BaseDomain      string                 `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	InternalDomain  string                 `protobuf:"bytes,3,opt,name=internal_domain,json=internalDomain,proto3" json:"internal_domain,omitempty"`
+	ExternalDomain  string                 `protobuf:"bytes,4,opt,name=external_domain,json=externalDomain,proto3" json:"external_domain,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -166,9 +167,16 @@ func (x *TraefikConfigResp) GetHttpsEnabled() bool {
 	return false
 }
 
-func (x *TraefikConfigResp) GetBaseDomain() string {
+func (x *TraefikConfigResp) GetInternalDomain() string {
 	if x != nil {
-		return x.BaseDomain
+		return x.InternalDomain
+	}
+	return ""
+}
+
+func (x *TraefikConfigResp) GetExternalDomain() string {
+	if x != nil {
+		return x.ExternalDomain
 	}
 	return ""
 }
@@ -237,12 +245,12 @@ const file_orbit_v1_route_traefik_proto_rawDesc = "" +
 	"\x04rule\x18\x04 \x01(\tR\x04rule\x12\x18\n" +
 	"\aservice\x18\x05 \x01(\tR\aservice\x12 \n" +
 	"\ventrypoints\x18\x06 \x03(\tR\ventrypoints\x12\x10\n" +
-	"\x03tls\x18\a \x01(\bR\x03tls\"\x84\x01\n" +
+	"\x03tls\x18\a \x01(\bR\x03tls\"\xb5\x01\n" +
 	"\x11TraefikConfigResp\x12)\n" +
 	"\x10dashboard_domain\x18\x01 \x01(\tR\x0fdashboardDomain\x12#\n" +
-	"\rhttps_enabled\x18\x02 \x01(\bR\fhttpsEnabled\x12\x1f\n" +
-	"\vbase_domain\x18\x03 \x01(\tR\n" +
-	"baseDomain\"e\n" +
+	"\rhttps_enabled\x18\x02 \x01(\bR\fhttpsEnabled\x12'\n" +
+	"\x0finternal_domain\x18\x03 \x01(\tR\x0einternalDomain\x12'\n" +
+	"\x0fexternal_domain\x18\x04 \x01(\tR\x0eexternalDomain\"e\n" +
 	"\x14TraefikRouteListResp\x127\n" +
 	"\x05items\x18\x01 \x03(\v2!.orbit.v1.route.TraefikRouterRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05totalB\xc0\x01\n" +

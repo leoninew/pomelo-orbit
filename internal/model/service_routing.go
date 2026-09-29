@@ -53,17 +53,17 @@ func DeriveServiceComponentHost(gateway *GatewayConfig, service Service, compone
 	if !IsDNSLabel(componentName) {
 		return "", fmt.Errorf("component name %q is not a valid DNS label", componentName)
 	}
-	if !isDNSName(gateway.BaseDomain) {
-		return "", fmt.Errorf("gateway base_domain %q is invalid", gateway.BaseDomain)
+	if !IsDNSName(gateway.InternalDomain) {
+		return "", fmt.Errorf("gateway internal_domain %q is invalid", gateway.InternalDomain)
 	}
-	host := componentName + "." + service.Code + "." + gateway.BaseDomain
+	host := componentName + "." + service.Code + "." + gateway.InternalDomain
 	if len(host) > 253 {
 		return "", fmt.Errorf("derived host %q is too long", host)
 	}
 	return host, nil
 }
 
-func isDNSName(value string) bool {
+func IsDNSName(value string) bool {
 	if value == "" || len(value) > 253 {
 		return false
 	}
@@ -73,4 +73,9 @@ func isDNSName(value string) bool {
 		}
 	}
 	return true
+}
+
+func IsExternalDomainSuffix(value string) bool {
+	lastDot := strings.LastIndexByte(value, '.')
+	return lastDot > 0 && len(value) <= 220 && IsDNSName(value) && strings.ContainsAny(value[lastDot+1:], "abcdefghijklmnopqrstuvwxyz")
 }

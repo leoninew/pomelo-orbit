@@ -2,6 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { emptyGatewayConfigForm, validateGatewayConfigForm } from './gatewayConfigForm';
 
 describe('gatewayConfigForm', () => {
+  it('accepts external subdomains with a nonnumeric final label', () => {
+    const form = emptyGatewayConfigForm();
+    form.external_domain = '123.sub.example.com';
+    expect(validateGatewayConfigForm(form, 'initialize').external_domain).toBeUndefined();
+
+    form.external_domain = 'example.123';
+    expect(validateGatewayConfigForm(form, 'initialize').external_domain).toBe(
+      'externalDomainInvalid'
+    );
+  });
+
   it('requires an email for a selected ACME profile', () => {
     const form = emptyGatewayConfigForm();
     form.acme_profile = 'http';

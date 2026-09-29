@@ -163,11 +163,12 @@
           <input
             v-model="form.name"
             type="text"
+            maxlength="32"
             class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
             :placeholder="t('route.hints.name')"
             :aria-invalid="errors.name ? 'true' : undefined"
-            @input="errors.name = ''"
+            @input="handleCodeInput(($event.target as HTMLInputElement).value)"
           />
           <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
         </div>
@@ -356,6 +357,7 @@
   import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import { routeApi } from '@/api/route/route';
+  import { traefikRouteApi } from '@/api/route/traefik';
   import AppBadge from '@/components/AppBadge.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
@@ -374,6 +376,7 @@
   import { formatTime } from '@/utils/time';
   import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
   import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
+  import { domainAfterCodeChange, isValidRouteCode } from './routeDomain';
 
   const currentRoute = useRoute();
   const router = useRouter();
@@ -392,6 +395,8 @@
   ];
 
   const routeData = ref<RouteResp>();
+  const externalDomain = ref('');
+  const previousCode = ref('');
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
   const isSyncDialogOpen = ref(false);
@@ -534,7 +539,9 @@
       return;
     }
     try {
+      const config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
+      externalDomain.value = config.external_domain;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.loadDetailFailed'));
       return;
@@ -552,6 +559,7 @@
       endpoint_protocol: routeData.value.endpoint_protocol ?? '',
       endpoint_container_port: routeData.value.endpoint_container_port,
     });
+    previousCode.value = routeData.value.name;
     Object.assign(errors, {
       name: '',
       domain: '',
@@ -571,9 +579,21 @@
     isDeleteDialogOpen.value = true;
   }
 
+  function handleCodeInput(code: string) {
+    errors.name = '';
+    form.domain = domainAfterCodeChange(
+      previousCode.value,
+      code,
+      form.domain,
+      externalDomain.value
+    );
+    previousCode.value = code;
+    errors.domain = '';
+  }
+
   async function handleSave() {
     editSubmitError.value = '';
-    errors.name = /^[a-z][a-z0-9._-]*$/.test(form.name) ? '' : t('route.validation.nameInvalid');
+    errors.name = isValidRouteCode(form.name) ? '' : t('route.validation.nameInvalid');
     errors.domain = form.domain.trim() ? '' : t('route.validation.domainRequired');
     errors.target_url = '';
     errors.listen_port = '';

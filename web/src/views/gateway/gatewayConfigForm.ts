@@ -13,7 +13,8 @@ export interface GatewayConfigForm {
   rest_api_url: string;
   rest_api_host_url: string;
   rest_ready_timeout_seconds: string;
-  base_domain: string;
+  internal_domain: string;
+  external_domain: string;
   initial_component_image: string;
   default_entrypoint: string;
   tls_mode: string;
@@ -31,7 +32,8 @@ export function emptyGatewayConfigForm(): GatewayConfigForm {
     rest_api_url: '',
     rest_api_host_url: '',
     rest_ready_timeout_seconds: '20',
-    base_domain: '',
+    internal_domain: '',
+    external_domain: '',
     initial_component_image: '',
     default_entrypoint: 'web',
     tls_mode: 'none',
@@ -48,7 +50,8 @@ export function gatewayConfigFormFromResponse(value: GatewayResp): GatewayConfig
     rest_api_url: value.rest_api_url,
     rest_api_host_url: value.rest_api_host_url,
     rest_ready_timeout_seconds: String(value.rest_ready_timeout_seconds),
-    base_domain: value.base_domain,
+    internal_domain: value.internal_domain,
+    external_domain: value.external_domain,
     initial_component_image: '',
     default_entrypoint: value.default_entrypoint,
     tls_mode: value.tls_mode,
@@ -66,7 +69,8 @@ export function gatewayConfigFormFromDefaults(
     rest_api_url: defaults.rest_api_url,
     rest_api_host_url: defaults.rest_api_host_url,
     rest_ready_timeout_seconds: String(defaults.rest_ready_timeout_seconds),
-    base_domain: defaults.base_domain,
+    internal_domain: defaults.internal_domain,
+    external_domain: defaults.external_domain,
     initial_component_image: defaults.image,
     default_entrypoint: defaults.default_entrypoint,
     tls_mode: defaults.tls_mode,
@@ -101,10 +105,15 @@ function isValidURL(value: string): boolean {
   }
 }
 
-function isValidBaseDomain(value: string): boolean {
+function isValidInternalDomain(value: string): boolean {
   return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i.test(
     value
   );
+}
+
+function isValidExternalDomain(value: string): boolean {
+  const finalLabel = value.slice(value.lastIndexOf('.') + 1);
+  return value.length <= 220 && isValidInternalDomain(value) && /[a-z]/i.test(finalLabel);
 }
 
 function isValidEmail(value: string): boolean {
@@ -133,8 +142,11 @@ export function validateGatewayConfigForm(
   if (!isValidURL(form.rest_api_host_url.trim())) {
     errors.rest_api_host_url = 'restApiHostUrlInvalid';
   }
-  if (!isValidBaseDomain(form.base_domain.trim())) {
-    errors.base_domain = 'baseDomainInvalid';
+  if (!isValidInternalDomain(form.internal_domain.trim())) {
+    errors.internal_domain = 'internalDomainInvalid';
+  }
+  if (form.external_domain.trim() && !isValidExternalDomain(form.external_domain.trim())) {
+    errors.external_domain = 'externalDomainInvalid';
   }
   if (!isValidTimeout(form.rest_ready_timeout_seconds)) {
     errors.rest_ready_timeout_seconds = 'restReadyTimeoutInvalid';
@@ -165,7 +177,8 @@ function configRequest(form: GatewayConfigForm) {
     rest_api_url: form.rest_api_url.trim(),
     rest_api_host_url: form.rest_api_host_url.trim(),
     rest_ready_timeout_seconds: Number(form.rest_ready_timeout_seconds),
-    base_domain: form.base_domain.trim(),
+    internal_domain: form.internal_domain.trim(),
+    external_domain: form.external_domain.trim(),
     default_entrypoint: form.default_entrypoint,
     tls_mode: form.tls_mode,
     acme_profile: form.acme_profile,

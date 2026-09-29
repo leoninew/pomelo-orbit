@@ -13,7 +13,8 @@ type GatewayConfig struct {
 	RestApiUrl              string                  `db:"rest_api_url"`
 	RestApiHostUrl          string                  `db:"rest_api_host_url"`
 	RestReadyTimeoutSeconds int                     `db:"rest_ready_timeout_seconds"`
-	BaseDomain              string                  `db:"base_domain"`
+	InternalDomain          string                  `db:"internal_domain"`
+	ExternalDomain          string                  `db:"external_domain"`
 	DefaultEntrypoint       string                  `db:"default_entrypoint"`
 	TLSMode                 string                  `db:"tls_mode"`
 	AcmeProfile             string                  `db:"acme_profile"`

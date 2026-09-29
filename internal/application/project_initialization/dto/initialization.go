@@ -18,7 +18,8 @@ type Defaults struct {
 	RestApiUrl              string
 	RestApiHostUrl          string
 	RestReadyTimeoutSeconds int
-	BaseDomain              string
+	InternalDomain          string
+	ExternalDomain          string
 	DefaultEntrypoint       string
 	TLSMode                 string
 	AcmeProfile             string
@@ -52,7 +53,8 @@ type CreateGatewayInput struct {
 	RestApiUrl              string
 	RestApiHostUrl          string
 	RestReadyTimeoutSeconds int
-	BaseDomain              string
+	InternalDomain          string
+	ExternalDomain          string
 	DefaultEntrypoint       string
 	TLSMode                 string
 	AcmeProfile             string

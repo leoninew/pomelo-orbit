@@ -196,6 +196,47 @@ func TestProvisionGatewayDoesNotCreateMissingGateway(t *testing.T) {
 	}
 }
 
+func TestUpdateGatewayPassesBothDomainsAndCanClearExternalDomain(t *testing.T) {
+	gateway := &readyGatewayService{gateway: readyGatewayView("project-1")}
+	server := newScopedServer(t, Dependencies{Gateway: gateway})
+	session := connectInMemory(t, server)
+
+	result, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "orbit_update_gateway",
+		Arguments: map[string]any{
+			"gateway_id": "gateway-1", "internal_domain": "internal.example.test", "external_domain": "example.com",
+		},
+	})
+	if err != nil || result.IsError {
+		t.Fatalf("CallTool(update gateway) result=%#v err=%v", result, err)
+	}
+	if gateway.update.InternalDomain == nil || *gateway.update.InternalDomain != "internal.example.test" || gateway.update.ExternalDomain == nil || *gateway.update.ExternalDomain != "example.com" {
+		t.Fatalf("gateway update input = %#v", gateway.update)
+	}
+
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "orbit_update_gateway",
+		Arguments: map[string]any{"gateway_id": "gateway-1", "external_domain": ""},
+	})
+	if err != nil || result.IsError {
+		t.Fatalf("CallTool(clear external domain) result=%#v err=%v", result, err)
+	}
+	if gateway.update.ExternalDomain == nil || *gateway.update.ExternalDomain != "" || gateway.gateway.Config.InternalDomain != "internal.example.test" {
+		t.Fatalf("gateway clear input or state = %#v, %#v", gateway.update, gateway.gateway.Config)
+	}
+
+	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "orbit_get_gateway", Arguments: map[string]any{"gateway_id": "gateway-1"},
+	})
+	if err != nil || result.IsError {
+		t.Fatalf("CallTool(get gateway) result=%#v err=%v", result, err)
+	}
+	output, ok := structuredOutput(t, result)["gateway"].(map[string]any)
+	if !ok || output["internal_domain"] != "internal.example.test" || output["external_domain"] != "" {
+		t.Fatalf("gateway output = %#v", output)
+	}
+}
+
 type missingEnvironmentService struct{ EnvironmentService }
 
 func (missingEnvironmentService) EnvironmentForUser(context.Context, string, string) (environmentdto.View, error) {

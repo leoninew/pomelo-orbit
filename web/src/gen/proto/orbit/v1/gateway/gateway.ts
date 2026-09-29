@@ -18,7 +18,7 @@ export interface GatewayCreateReq {
   code: string;
   name: string;
   rest_api_url: string;
-  base_domain: string;
+  internal_domain: string;
   initial_component_image?: string | undefined;
   initial_component_pull_policy: string;
   /** Traefik entryPoints name: web|websecure (default web when empty on create) */
@@ -32,12 +32,13 @@ export interface GatewayCreateReq {
   acme_email?: string | undefined;
   dns_api_token?: string | undefined;
   rest_api_host_url: string;
+  external_domain: string;
 }
 
 export interface GatewayUpdateReq {
   name?: string | undefined;
   rest_api_url?: string | undefined;
-  base_domain?: string | undefined;
+  internal_domain?: string | undefined;
   default_entrypoint?: string | undefined;
   tls_mode?: string | undefined;
   rest_ready_timeout_seconds?: number | undefined;
@@ -45,6 +46,7 @@ export interface GatewayUpdateReq {
   acme_email?: string | undefined;
   dns_api_token?: string | undefined;
   rest_api_host_url?: string | undefined;
+  external_domain?: string | undefined;
 }
 
 /** Read-only active exit / cluster DNS row (not a CRUD resource). */
@@ -68,7 +70,7 @@ export interface GatewayResp {
   name: string;
   kind: string;
   rest_api_url: string;
-  base_domain: string;
+  internal_domain: string;
   created_at: string;
   updated_at: string;
   config_updated_at: string;
@@ -85,6 +87,7 @@ export interface GatewayResp {
   dns_api_token: string;
   version_bindings: GatewayVersionBinding[];
   rest_api_host_url: string;
+  external_domain: string;
 }
 
 export interface GatewayPaginatedResp {

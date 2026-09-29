@@ -64,7 +64,7 @@ func (s Service) validateRoute(ctx context.Context, projectId string, route *mod
 			return apperror.New(apperror.KindValidation, "HTTP route requires a managed HTTP endpoint or custom target URL")
 		}
 	case routeProtocolTCP:
-		if !routeNamePattern.MatchString(route.Name) || strings.TrimSpace(route.Domain) == "" || route.ListenPort == nil || *route.ListenPort < 1 || *route.ListenPort > 65535 || route.ServiceId == nil || route.ComponentName == nil || route.EndpointProtocol == nil || route.EndpointContainerPort == nil {
+		if !validRouteCode(route.Name) || strings.TrimSpace(route.Domain) == "" || route.ListenPort == nil || *route.ListenPort < 1 || *route.ListenPort > 65535 || route.ServiceId == nil || route.ComponentName == nil || route.EndpointProtocol == nil || route.EndpointContainerPort == nil {
 			return apperror.New(apperror.KindValidation, "Invalid TCP route fields")
 		}
 		if reservedTCPRoutePort(*route.ListenPort) {

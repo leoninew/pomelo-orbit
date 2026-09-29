@@ -200,11 +200,12 @@
         <input
           v-model="form.name"
           type="text"
+          maxlength="32"
           class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
           :placeholder="t('route.hints.name')"
           :aria-invalid="errors.name ? 'true' : undefined"
-          @input="errors.name = ''"
+          @input="handleCreateCodeInput(($event.target as HTMLInputElement).value)"
         />
         <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
       </div>
@@ -353,12 +354,13 @@
           id="edit-route-name"
           v-model="editForm.name"
           type="text"
+          maxlength="32"
           class="app-input"
           :class="editErrors.name ? 'app-input-error' : ''"
           :placeholder="t('route.hints.name')"
           :aria-invalid="editErrors.name ? 'true' : undefined"
           :aria-describedby="editErrors.name ? 'edit-route-name-error' : undefined"
-          @input="clearEditError('name')"
+          @input="handleEditCodeInput(($event.target as HTMLInputElement).value)"
         />
         <p
           v-if="editErrors.name"
@@ -540,6 +542,7 @@
   import { useProjectStore } from '@/stores/project';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
+  import { domainAfterCodeChange, isValidRouteCode } from './routeDomain';
 
   const toast = useToast();
   const { t } = useI18n();
@@ -564,6 +567,9 @@
   const isEditDialogOpen = ref(false);
   const isSyncDialogOpen = ref(false);
   const editingRoute = ref<RouteResp>();
+  const externalDomain = ref('');
+  const createPreviousCode = ref('');
+  const editPreviousCode = ref('');
   const pendingEnabled = reactive<Record<string, boolean>>({});
   const hasPendingRouteChanges = ref(currentRoute.query.pending_sync === '1');
   const hasPendingCertificateChanges = ref(currentRoute.query.pending_certificate === '1');
@@ -640,9 +646,7 @@
   type RouteErrors = typeof errors;
 
   function validateRouteForm(routeForm: RouteForm, routeErrors: RouteErrors) {
-    routeErrors.name = /^[a-z][a-z0-9._-]*$/.test(routeForm.name)
-      ? ''
-      : t('route.validation.nameInvalid');
+    routeErrors.name = isValidRouteCode(routeForm.name) ? '' : t('route.validation.nameInvalid');
     routeErrors.domain = routeForm.domain.trim() ? '' : t('route.validation.domainRequired');
     routeErrors.target_url = '';
     routeErrors.listen_port = '';
@@ -797,10 +801,12 @@
     try {
       const config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
+      externalDomain.value = config.external_domain;
+      createPreviousCode.value = '';
       Object.assign(form, {
         name: '',
         protocol: 'http',
-        domain: config?.base_domain ?? '',
+        domain: '',
         path_prefix: '/',
         target_url: '',
         custom_target: false,
@@ -845,6 +851,7 @@
       endpoint_protocol: editingRoute.value.endpoint_protocol ?? '',
       endpoint_container_port: editingRoute.value.endpoint_container_port,
     });
+    editPreviousCode.value = editingRoute.value.name;
     Object.assign(editErrors, {
       name: '',
       domain: '',
@@ -862,6 +869,30 @@
     return validateRouteForm(form, errors);
   }
 
+  function handleCreateCodeInput(code: string) {
+    errors.name = '';
+    form.domain = domainAfterCodeChange(
+      createPreviousCode.value,
+      code,
+      form.domain,
+      externalDomain.value
+    );
+    createPreviousCode.value = code;
+    errors.domain = '';
+  }
+
+  function handleEditCodeInput(code: string) {
+    clearEditError('name');
+    editForm.domain = domainAfterCodeChange(
+      editPreviousCode.value,
+      code,
+      editForm.domain,
+      externalDomain.value
+    );
+    editPreviousCode.value = code;
+    clearEditError('domain');
+  }
+
   function validateEditForm() {
     return validateRouteForm(editForm, editErrors);
   }
@@ -877,7 +908,9 @@
       return;
     }
     try {
+      const config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
+      externalDomain.value = config.external_domain;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.loadFailed'));
       return;

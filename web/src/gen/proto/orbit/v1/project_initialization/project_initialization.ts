@@ -19,7 +19,7 @@ export interface ProjectInitializationDefaults {
   image: string;
   rest_api_url: string;
   rest_ready_timeout_seconds: number;
-  base_domain: string;
+  internal_domain: string;
   default_entrypoint: string;
   tls_mode: string;
   acme_profile: string;
@@ -29,6 +29,7 @@ export interface ProjectInitializationDefaults {
   local_host: string;
   local_username: string;
   rest_api_host_url: string;
+  external_domain: string;
 }
 
 export interface ProjectInitializationEnvironmentSnapshot {
@@ -49,9 +50,10 @@ export interface ProjectInitializationGatewaySnapshot {
   code: string;
   name: string;
   rest_api_url: string;
-  base_domain: string;
+  internal_domain: string;
   service_status: string;
   rest_api_host_url: string;
+  external_domain: string;
 }
 
 export interface ProjectInitializationStatusResp {
@@ -76,11 +78,12 @@ export interface ProjectInitializationGatewayReq {
   image: string;
   rest_api_url: string;
   rest_ready_timeout_seconds: number;
-  base_domain: string;
+  internal_domain: string;
   default_entrypoint: string;
   tls_mode: string;
   acme_profile: string;
   acme_email: string;
   dns_api_token: string;
   rest_api_host_url: string;
+  external_domain: string;
 }

@@ -23,7 +23,7 @@ const incompleteStatus = {
     image: 'traefik:3.6',
     rest_api_url: 'http://traefik:8080',
     rest_ready_timeout_seconds: 30,
-    base_domain: 'example.test',
+    internal_domain: 'example.test',
     default_entrypoint: 'web',
     tls_mode: 'none',
     acme_profile: '',

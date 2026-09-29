@@ -79,7 +79,7 @@ type GatewayCreateReq struct {
 	Code                       string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
 	Name                       string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	RestApiUrl                 string                 `protobuf:"bytes,4,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain                 string                 `protobuf:"bytes,5,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	InternalDomain             string                 `protobuf:"bytes,5,opt,name=internal_domain,json=internalDomain,proto3" json:"internal_domain,omitempty"`
 	InitialComponentImage      *string                `protobuf:"bytes,6,opt,name=initial_component_image,json=initialComponentImage,proto3,oneof" json:"initial_component_image,omitempty"`
 	InitialComponentPullPolicy string                 `protobuf:"bytes,7,opt,name=initial_component_pull_policy,json=initialComponentPullPolicy,proto3" json:"initial_component_pull_policy,omitempty"`
 	// Traefik entryPoints name: web|websecure (default web when empty on create)
@@ -91,6 +91,7 @@ type GatewayCreateReq struct {
 	AcmeEmail               *string `protobuf:"bytes,13,opt,name=acme_email,json=acmeEmail,proto3,oneof" json:"acme_email,omitempty"`
 	DnsApiToken             *string `protobuf:"bytes,14,opt,name=dns_api_token,json=dnsApiToken,proto3,oneof" json:"dns_api_token,omitempty"`
 	RestApiHostUrl          string  `protobuf:"bytes,15,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
+	ExternalDomain          string  `protobuf:"bytes,16,opt,name=external_domain,json=externalDomain,proto3" json:"external_domain,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -153,9 +154,9 @@ func (x *GatewayCreateReq) GetRestApiUrl() string {
 	return ""
 }
 
-func (x *GatewayCreateReq) GetBaseDomain() string {
+func (x *GatewayCreateReq) GetInternalDomain() string {
 	if x != nil {
-		return x.BaseDomain
+		return x.InternalDomain
 	}
 	return ""
 }
@@ -223,11 +224,18 @@ func (x *GatewayCreateReq) GetRestApiHostUrl() string {
 	return ""
 }
 
+func (x *GatewayCreateReq) GetExternalDomain() string {
+	if x != nil {
+		return x.ExternalDomain
+	}
+	return ""
+}
+
 type GatewayUpdateReq struct {
 	state                   protoimpl.MessageState `protogen:"open.v1"`
 	Name                    *string                `protobuf:"bytes,1,opt,name=name,proto3,oneof" json:"name,omitempty"`
 	RestApiUrl              *string                `protobuf:"bytes,2,opt,name=rest_api_url,json=restApiUrl,proto3,oneof" json:"rest_api_url,omitempty"`
-	BaseDomain              *string                `protobuf:"bytes,3,opt,name=base_domain,json=baseDomain,proto3,oneof" json:"base_domain,omitempty"`
+	InternalDomain          *string                `protobuf:"bytes,3,opt,name=internal_domain,json=internalDomain,proto3,oneof" json:"internal_domain,omitempty"`
 	DefaultEntrypoint       *string                `protobuf:"bytes,4,opt,name=default_entrypoint,json=defaultEntrypoint,proto3,oneof" json:"default_entrypoint,omitempty"`
 	TlsMode                 *string                `protobuf:"bytes,5,opt,name=tls_mode,json=tlsMode,proto3,oneof" json:"tls_mode,omitempty"`
 	RestReadyTimeoutSeconds *int32                 `protobuf:"varint,7,opt,name=rest_ready_timeout_seconds,json=restReadyTimeoutSeconds,proto3,oneof" json:"rest_ready_timeout_seconds,omitempty"`
@@ -235,6 +243,7 @@ type GatewayUpdateReq struct {
 	AcmeEmail               *string                `protobuf:"bytes,9,opt,name=acme_email,json=acmeEmail,proto3,oneof" json:"acme_email,omitempty"`
 	DnsApiToken             *string                `protobuf:"bytes,10,opt,name=dns_api_token,json=dnsApiToken,proto3,oneof" json:"dns_api_token,omitempty"`
 	RestApiHostUrl          *string                `protobuf:"bytes,11,opt,name=rest_api_host_url,json=restApiHostUrl,proto3,oneof" json:"rest_api_host_url,omitempty"`
+	ExternalDomain          *string                `protobuf:"bytes,12,opt,name=external_domain,json=externalDomain,proto3,oneof" json:"external_domain,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -283,9 +292,9 @@ func (x *GatewayUpdateReq) GetRestApiUrl() string {
 	return ""
 }
 
-func (x *GatewayUpdateReq) GetBaseDomain() string {
-	if x != nil && x.BaseDomain != nil {
-		return *x.BaseDomain
+func (x *GatewayUpdateReq) GetInternalDomain() string {
+	if x != nil && x.InternalDomain != nil {
+		return *x.InternalDomain
 	}
 	return ""
 }
@@ -335,6 +344,13 @@ func (x *GatewayUpdateReq) GetDnsApiToken() string {
 func (x *GatewayUpdateReq) GetRestApiHostUrl() string {
 	if x != nil && x.RestApiHostUrl != nil {
 		return *x.RestApiHostUrl
+	}
+	return ""
+}
+
+func (x *GatewayUpdateReq) GetExternalDomain() string {
+	if x != nil && x.ExternalDomain != nil {
+		return *x.ExternalDomain
 	}
 	return ""
 }
@@ -464,7 +480,7 @@ type GatewayResp struct {
 	Name                    string                   `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
 	Kind                    string                   `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
 	RestApiUrl              string                   `protobuf:"bytes,6,opt,name=rest_api_url,json=restApiUrl,proto3" json:"rest_api_url,omitempty"`
-	BaseDomain              string                   `protobuf:"bytes,7,opt,name=base_domain,json=baseDomain,proto3" json:"base_domain,omitempty"`
+	InternalDomain          string                   `protobuf:"bytes,7,opt,name=internal_domain,json=internalDomain,proto3" json:"internal_domain,omitempty"`
 	CreatedAt               string                   `protobuf:"bytes,8,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt               string                   `protobuf:"bytes,9,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	ConfigUpdatedAt         string                   `protobuf:"bytes,10,opt,name=config_updated_at,json=configUpdatedAt,proto3" json:"config_updated_at,omitempty"`
@@ -481,6 +497,7 @@ type GatewayResp struct {
 	DnsApiToken             string                   `protobuf:"bytes,22,opt,name=dns_api_token,json=dnsApiToken,proto3" json:"dns_api_token,omitempty"`
 	VersionBindings         []*GatewayVersionBinding `protobuf:"bytes,23,rep,name=version_bindings,json=versionBindings,proto3" json:"version_bindings,omitempty"`
 	RestApiHostUrl          string                   `protobuf:"bytes,24,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
+	ExternalDomain          string                   `protobuf:"bytes,25,opt,name=external_domain,json=externalDomain,proto3" json:"external_domain,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -557,9 +574,9 @@ func (x *GatewayResp) GetRestApiUrl() string {
 	return ""
 }
 
-func (x *GatewayResp) GetBaseDomain() string {
+func (x *GatewayResp) GetInternalDomain() string {
 	if x != nil {
-		return x.BaseDomain
+		return x.InternalDomain
 	}
 	return ""
 }
@@ -676,6 +693,13 @@ func (x *GatewayResp) GetRestApiHostUrl() string {
 	return ""
 }
 
+func (x *GatewayResp) GetExternalDomain() string {
+	if x != nil {
+		return x.ExternalDomain
+	}
+	return ""
+}
+
 type GatewayPaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*GatewayResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -760,16 +784,15 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\x15GatewayVersionBinding\x12\x18\n" +
 	"\aprofile\x18\x01 \x01(\tR\aprofile\x12\x1d\n" +
 	"\n" +
-	"version_id\x18\x02 \x01(\tR\tversionId\"\xe3\x05\n" +
+	"version_id\x18\x02 \x01(\tR\tversionId\"\x94\x06\n" +
 	"\x10GatewayCreateReq\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
 	"\frest_api_url\x18\x04 \x01(\tR\n" +
-	"restApiUrl\x12\x1f\n" +
-	"\vbase_domain\x18\x05 \x01(\tR\n" +
-	"baseDomain\x12;\n" +
+	"restApiUrl\x12'\n" +
+	"\x0finternal_domain\x18\x05 \x01(\tR\x0einternalDomain\x12;\n" +
 	"\x17initial_component_image\x18\x06 \x01(\tH\x00R\x15initialComponentImage\x88\x01\x01\x12A\n" +
 	"\x1dinitial_component_pull_policy\x18\a \x01(\tR\x1ainitialComponentPullPolicy\x122\n" +
 	"\x12default_entrypoint\x18\b \x01(\tH\x01R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
@@ -779,20 +802,20 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\n" +
 	"acme_email\x18\r \x01(\tH\x05R\tacmeEmail\x88\x01\x01\x12'\n" +
 	"\rdns_api_token\x18\x0e \x01(\tH\x06R\vdnsApiToken\x88\x01\x01\x12)\n" +
-	"\x11rest_api_host_url\x18\x0f \x01(\tR\x0erestApiHostUrlB\x1a\n" +
+	"\x11rest_api_host_url\x18\x0f \x01(\tR\x0erestApiHostUrl\x12'\n" +
+	"\x0fexternal_domain\x18\x10 \x01(\tR\x0eexternalDomainB\x1a\n" +
 	"\x18_initial_component_imageB\x15\n" +
 	"\x13_default_entrypointB\v\n" +
 	"\t_tls_modeB\x1d\n" +
 	"\x1b_rest_ready_timeout_secondsB\x0f\n" +
 	"\r_acme_profileB\r\n" +
 	"\v_acme_emailB\x10\n" +
-	"\x0e_dns_api_token\"\xe8\x04\n" +
+	"\x0e_dns_api_token\"\xb6\x05\n" +
 	"\x10GatewayUpdateReq\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tH\x00R\x04name\x88\x01\x01\x12%\n" +
 	"\frest_api_url\x18\x02 \x01(\tH\x01R\n" +
-	"restApiUrl\x88\x01\x01\x12$\n" +
-	"\vbase_domain\x18\x03 \x01(\tH\x02R\n" +
-	"baseDomain\x88\x01\x01\x122\n" +
+	"restApiUrl\x88\x01\x01\x12,\n" +
+	"\x0finternal_domain\x18\x03 \x01(\tH\x02R\x0einternalDomain\x88\x01\x01\x122\n" +
 	"\x12default_entrypoint\x18\x04 \x01(\tH\x03R\x11defaultEntrypoint\x88\x01\x01\x12\x1e\n" +
 	"\btls_mode\x18\x05 \x01(\tH\x04R\atlsMode\x88\x01\x01\x12@\n" +
 	"\x1arest_ready_timeout_seconds\x18\a \x01(\x05H\x05R\x17restReadyTimeoutSeconds\x88\x01\x01\x12&\n" +
@@ -801,17 +824,20 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"acme_email\x18\t \x01(\tH\aR\tacmeEmail\x88\x01\x01\x12'\n" +
 	"\rdns_api_token\x18\n" +
 	" \x01(\tH\bR\vdnsApiToken\x88\x01\x01\x12.\n" +
-	"\x11rest_api_host_url\x18\v \x01(\tH\tR\x0erestApiHostUrl\x88\x01\x01B\a\n" +
+	"\x11rest_api_host_url\x18\v \x01(\tH\tR\x0erestApiHostUrl\x88\x01\x01\x12,\n" +
+	"\x0fexternal_domain\x18\f \x01(\tH\n" +
+	"R\x0eexternalDomain\x88\x01\x01B\a\n" +
 	"\x05_nameB\x0f\n" +
-	"\r_rest_api_urlB\x0e\n" +
-	"\f_base_domainB\x15\n" +
+	"\r_rest_api_urlB\x12\n" +
+	"\x10_internal_domainB\x15\n" +
 	"\x13_default_entrypointB\v\n" +
 	"\t_tls_modeB\x1d\n" +
 	"\x1b_rest_ready_timeout_secondsB\x0f\n" +
 	"\r_acme_profileB\r\n" +
 	"\v_acme_emailB\x10\n" +
 	"\x0e_dns_api_tokenB\x14\n" +
-	"\x12_rest_api_host_url\"\xef\x02\n" +
+	"\x12_rest_api_host_urlB\x12\n" +
+	"\x10_external_domain\"\xef\x02\n" +
 	"\x13GatewayExposureItem\x12%\n" +
 	"\x0eapplication_id\x18\x01 \x01(\tR\rapplicationId\x12)\n" +
 	"\x10application_code\x18\x02 \x01(\tR\x0fapplicationCode\x12%\n" +
@@ -826,7 +852,7 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\finternal_dns\x18\t \x01(\tR\vinternalDns\x12\x1f\n" +
 	"\vclient_hint\x18\n" +
 	" \x01(\tR\n" +
-	"clientHint\"\xec\x06\n" +
+	"clientHint\"\x9d\a\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -835,9 +861,8 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\x04name\x18\x04 \x01(\tR\x04name\x12\x12\n" +
 	"\x04kind\x18\x05 \x01(\tR\x04kind\x12 \n" +
 	"\frest_api_url\x18\x06 \x01(\tR\n" +
-	"restApiUrl\x12\x1f\n" +
-	"\vbase_domain\x18\a \x01(\tR\n" +
-	"baseDomain\x12\x1d\n" +
+	"restApiUrl\x12'\n" +
+	"\x0finternal_domain\x18\a \x01(\tR\x0einternalDomain\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\b \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
@@ -858,7 +883,8 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"acme_email\x18\x15 \x01(\tR\tacmeEmail\x12\"\n" +
 	"\rdns_api_token\x18\x16 \x01(\tR\vdnsApiToken\x12R\n" +
 	"\x10version_bindings\x18\x17 \x03(\v2'.orbit.v1.gateway.GatewayVersionBindingR\x0fversionBindings\x12)\n" +
-	"\x11rest_api_host_url\x18\x18 \x01(\tR\x0erestApiHostUrl\"\xa6\x01\n" +
+	"\x11rest_api_host_url\x18\x18 \x01(\tR\x0erestApiHostUrl\x12'\n" +
+	"\x0fexternal_domain\x18\x19 \x01(\tR\x0eexternalDomain\"\xa6\x01\n" +
 	"\x14GatewayPaginatedResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.gateway.GatewayRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +

@@ -1,6 +1,6 @@
 -- name: GatewayConfigByApplication :one
 SELECT application_id, rest_api_url, rest_api_host_url, rest_ready_timeout_seconds,
-       base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
+       internal_domain, external_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
        dns_api_token, created_at, updated_at
 FROM gateway_config
 WHERE application_id = ?;
@@ -43,15 +43,15 @@ WHERE e.project_id = ?;
 -- name: InsertGatewayConfig :exec
 INSERT INTO gateway_config (
   application_id, rest_api_url, rest_api_host_url, rest_ready_timeout_seconds,
-  base_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
+  internal_domain, external_domain, default_entrypoint, tls_mode, acme_profile, acme_email,
   dns_api_token, created_at, updated_at
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateGatewayConfig :exec
 UPDATE gateway_config
 SET rest_api_url = ?, rest_api_host_url = ?, rest_ready_timeout_seconds = ?,
-    base_domain = ?, default_entrypoint = ?, tls_mode = ?, acme_profile = ?, acme_email = ?,
+    internal_domain = ?, external_domain = ?, default_entrypoint = ?, tls_mode = ?, acme_profile = ?, acme_email = ?,
     dns_api_token = ?, updated_at = ?
 WHERE application_id = ?;
 

@@ -83,9 +83,13 @@
           </div>
           <div class="flex gap-2">
             <dt>
-              {{ t('gateway.fields.baseDomain') }}
+              {{ t('gateway.fields.internalDomain') }}
             </dt>
-            <dd class="text-foreground">{{ gateway.base_domain }}</dd>
+            <dd class="text-foreground">{{ gateway.internal_domain }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('gateway.fields.externalDomain') }}</dt>
+            <dd class="text-foreground">{{ gateway.external_domain || '-' }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('gateway.fields.restReadyTimeout') }}</dt>
@@ -260,22 +264,40 @@
             {{ validationMessage(controlPlaneErrors.rest_ready_timeout_seconds) }}
           </p>
         </div>
-        <div class="space-y-1.5">
-          <label class="app-field-label block" for="gateway-edit-base-domain">
-            {{ t('gateway.fields.baseDomain') }}
+        <div class="space-y-1.5 sm:col-span-2">
+          <label class="app-field-label block" for="gateway-edit-internal-domain">
+            {{ t('gateway.fields.internalDomain') }}
             <span class="text-destructive">*</span>
           </label>
           <input
-            id="gateway-edit-base-domain"
-            v-model="controlPlaneForm.base_domain"
+            id="gateway-edit-internal-domain"
+            v-model="controlPlaneForm.internal_domain"
             type="text"
             class="app-input"
-            :class="controlPlaneErrors.base_domain ? 'app-input-error' : ''"
-            :aria-invalid="controlPlaneErrors.base_domain ? 'true' : undefined"
-            @input="delete controlPlaneErrors.base_domain"
+            :class="controlPlaneErrors.internal_domain ? 'app-input-error' : ''"
+            :aria-invalid="controlPlaneErrors.internal_domain ? 'true' : undefined"
+            @input="delete controlPlaneErrors.internal_domain"
           />
-          <p v-if="controlPlaneErrors.base_domain" class="app-field-error" role="alert">
-            {{ validationMessage(controlPlaneErrors.base_domain) }}
+          <p v-if="controlPlaneErrors.internal_domain" class="app-field-error" role="alert">
+            {{ validationMessage(controlPlaneErrors.internal_domain) }}
+          </p>
+        </div>
+        <div class="space-y-1.5 sm:col-span-2">
+          <label class="app-field-label block" for="gateway-edit-external-domain">
+            {{ t('gateway.fields.externalDomain') }}
+          </label>
+          <input
+            id="gateway-edit-external-domain"
+            v-model="controlPlaneForm.external_domain"
+            type="text"
+            class="app-input"
+            :class="controlPlaneErrors.external_domain ? 'app-input-error' : ''"
+            :placeholder="t('gateway.placeholders.externalDomain')"
+            :aria-invalid="controlPlaneErrors.external_domain ? 'true' : undefined"
+            @input="delete controlPlaneErrors.external_domain"
+          />
+          <p v-if="controlPlaneErrors.external_domain" class="app-field-error" role="alert">
+            {{ validationMessage(controlPlaneErrors.external_domain) }}
           </p>
         </div>
       </div>
@@ -542,14 +564,20 @@
   const controlPlaneForm = reactive<
     Pick<
       GatewayConfigForm,
-      'name' | 'rest_api_url' | 'rest_api_host_url' | 'rest_ready_timeout_seconds' | 'base_domain'
+      | 'name'
+      | 'rest_api_url'
+      | 'rest_api_host_url'
+      | 'rest_ready_timeout_seconds'
+      | 'internal_domain'
+      | 'external_domain'
     >
   >({
     name: '',
     rest_api_url: '',
     rest_api_host_url: '',
     rest_ready_timeout_seconds: '',
-    base_domain: '',
+    internal_domain: '',
+    external_domain: '',
   });
   const controlPlaneErrors = reactive<GatewayConfigFormErrors>({});
   const controlPlaneSubmitError = ref('');
@@ -665,7 +693,8 @@
       rest_api_url: form.rest_api_url,
       rest_api_host_url: form.rest_api_host_url,
       rest_ready_timeout_seconds: form.rest_ready_timeout_seconds,
-      base_domain: form.base_domain,
+      internal_domain: form.internal_domain,
+      external_domain: form.external_domain,
     });
     replaceErrors(controlPlaneErrors, {});
     controlPlaneSubmitError.value = '';
@@ -686,7 +715,8 @@
       'rest_api_url',
       'rest_api_host_url',
       'rest_ready_timeout_seconds',
-      'base_domain',
+      'internal_domain',
+      'external_domain',
     ]);
     if (Object.keys(controlPlaneErrors).length > 0) {
       return;
@@ -698,7 +728,8 @@
           rest_api_url: controlPlaneForm.rest_api_url.trim(),
           rest_api_host_url: controlPlaneForm.rest_api_host_url.trim(),
           rest_ready_timeout_seconds: Number(controlPlaneForm.rest_ready_timeout_seconds),
-          base_domain: controlPlaneForm.base_domain.trim(),
+          internal_domain: controlPlaneForm.internal_domain.trim(),
+          external_domain: controlPlaneForm.external_domain.trim(),
         });
         isControlPlaneEditDialogOpen.value = false;
         toast.success(t('gateway.toast.saveSuccess'));

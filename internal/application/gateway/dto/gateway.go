@@ -13,7 +13,8 @@ type GatewayCreateInput struct {
 	RestApiUrl              string
 	RestApiHostUrl          string
 	RestReadyTimeoutSeconds *int
-	BaseDomain              string
+	InternalDomain          string
+	ExternalDomain          string
 	InitialComponentImage   *string
 	DefaultEntrypoint       *string
 	TLSMode                 *string
@@ -27,7 +28,8 @@ type GatewayUpdateInput struct {
 	RestApiUrl              *string
 	RestApiHostUrl          *string
 	RestReadyTimeoutSeconds *int
-	BaseDomain              *string
+	InternalDomain          *string
+	ExternalDomain          *string
 	DefaultEntrypoint       *string
 	TLSMode                 *string
 	AcmeProfile             *string

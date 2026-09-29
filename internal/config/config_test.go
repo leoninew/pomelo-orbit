@@ -75,8 +75,8 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.ProjectInitialization.Gateway.Image != "traefik:3.6" {
 		t.Fatalf("unexpected initialization image: %q", cfg.ProjectInitialization.Gateway.Image)
 	}
-	if cfg.ProjectInitialization.Gateway.RestApiUrl != "http://traefik:8080" || cfg.ProjectInitialization.Gateway.RestApiHostUrl != "http://127.0.0.1:8080" || cfg.ProjectInitialization.Gateway.BaseDomain != "lvh.me" {
-		t.Fatalf("unexpected initialization endpoints: container=%q host=%q domain=%q", cfg.ProjectInitialization.Gateway.RestApiUrl, cfg.ProjectInitialization.Gateway.RestApiHostUrl, cfg.ProjectInitialization.Gateway.BaseDomain)
+	if cfg.ProjectInitialization.Gateway.RestApiUrl != "http://traefik:8080" || cfg.ProjectInitialization.Gateway.RestApiHostUrl != "http://127.0.0.1:8080" || cfg.ProjectInitialization.Gateway.InternalDomain != "lvh.me" {
+		t.Fatalf("unexpected initialization endpoints: container=%q host=%q domain=%q", cfg.ProjectInitialization.Gateway.RestApiUrl, cfg.ProjectInitialization.Gateway.RestApiHostUrl, cfg.ProjectInitialization.Gateway.InternalDomain)
 	}
 	if cfg.ProjectInitialization.Gateway.RestReadyTimeout != 20*time.Second {
 		t.Fatalf("unexpected initialization rest ready timeout: %s", cfg.ProjectInitialization.Gateway.RestReadyTimeout)
@@ -128,6 +128,20 @@ func TestLoadConfigReadsMCPAccessTokenFromEnvironment(t *testing.T) {
 		t.Fatalf("MCP access token = %q", cfg.MCP.AccessToken)
 	}
 }
+
+func TestLoadConfigReadsGatewayExternalDomainFromEnvironment(t *testing.T) {
+	setupDefaultConfig(t)
+	t.Setenv("POMELO_ORBIT_PROJECT_INITIALIZATION__GATEWAY__EXTERNAL_DOMAIN", "Example.COM")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if cfg.ProjectInitialization.Gateway.ExternalDomain != "example.com" {
+		t.Fatalf("gateway external domain = %q", cfg.ProjectInitialization.Gateway.ExternalDomain)
+	}
+}
+
 func TestLoadConfigReadsLLMMaxToolCallRoundsFromEnvironment(t *testing.T) {
 	setupDefaultConfig(t)
 	t.Setenv("POMELO_ORBIT_LLM__MAX_TOOL_CALL_ROUNDS", "48")
@@ -990,7 +1004,7 @@ project_initialization:
     image: traefik:3.6
     rest_api_url: http://traefik:8080
     rest_api_host_url: http://127.0.0.1:8080
-    base_domain: lvh.me
+    internal_domain: lvh.me
     rest_ready_timeout: 20s
     default_entrypoint: web
     tls_mode: none

@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-09-28
+最后修改时间: 2026-09-29 09:28:22
 
 Doc role: living architecture
 
@@ -36,7 +36,7 @@ Gateway 创建四个可编辑的普通 Version：`base`、`http`、`dns`、`http
 
 Gateway Compose 创建或复用部署宿主上的 Docker bridge network `traefik`。普通 Service 在声明加入 Traefik 网络时以 external 方式接入该共享网络；缺少 Gateway 网络配置时渲染失败。网络名固定为 `traefik`，不由 Environment code 派生。
 
-GatewayConfig 保存 REST URL/readiness、base domain、Component ingress 默认策略，以及 `acme_profile`、`acme_email`、`dns_api_token`。Traefik Component 名称固定为 `traefik`，从绑定 Version 解析，不存在 GatewayConfig 中。空 profile 选择 `base`；其余 profile 为 `http`、`dns`、`http-dns`。
+GatewayConfig 保存 REST URL/readiness、`internal_domain`、可选的 `external_domain`、Component ingress 默认策略，以及 `acme_profile`、`acme_email`、`dns_api_token`。gateway mode 的 Docker labels 和 Gateway 派生地址继续使用 `internal_domain`；`external_domain` 仅由自定义 Route 表单读取以生成域名控件的候选值，不参与部署渲染、DNS 管理或 Traefik 发布。Traefik Component 名称固定为 `traefik`，从绑定 Version 解析，不存在 GatewayConfig 中。空 profile 选择 `base`；其余 profile 为 `http`、`dns`、`http-dns`。
 
 创建 Gateway deployment 前，默认 Service 切换到保存 profile 所绑定的普通 Version，并持久化该 Version ID。worker 只执行该 ID，不能因之后的 profile 更新重新选择 Version。
 

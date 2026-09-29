@@ -104,6 +104,32 @@ func TestMigrateUpSQLite(t *testing.T) {
 	}
 }
 
+func TestMigrateGatewayDomainsSQLite(t *testing.T) {
+	database := openMemoryDb(t)
+	if err := MigrateTo(database, config.DatabaseDriverSQLite, 48); err != nil {
+		t.Fatalf("migrate to previous schema: %v", err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO project (id, name, code) VALUES ('project-domains', 'Project', 'project-domains')`,
+		`INSERT INTO application (id, project_id, name, code, kind) VALUES ('gateway-domains', 'project-domains', 'Traefik', 'traefik', 'standard')`,
+		`INSERT INTO gateway_config (application_id, rest_api_url, rest_api_host_url, base_domain) VALUES ('gateway-domains', 'http://traefik:8080', 'http://127.0.0.1:8080', 'internal.example.test')`,
+	} {
+		if _, err := database.Exec(statement); err != nil {
+			t.Fatalf("seed previous schema: %v", err)
+		}
+	}
+	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatalf("migrate gateway domains: %v", err)
+	}
+	var internalDomain, externalDomain string
+	if err := database.QueryRow(`SELECT internal_domain, external_domain FROM gateway_config WHERE application_id = 'gateway-domains'`).Scan(&internalDomain, &externalDomain); err != nil {
+		t.Fatalf("load gateway domains: %v", err)
+	}
+	if internalDomain != "internal.example.test" || externalDomain != "" {
+		t.Fatalf("gateway domains = %q, %q", internalDomain, externalDomain)
+	}
+}
+
 func TestMigrateUpSQLiteRemovesServiceInstanceAndEnvironmentState(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateTo(database, config.DatabaseDriverSQLite, 42); err != nil {

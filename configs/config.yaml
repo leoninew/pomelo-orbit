@@ -50,7 +50,8 @@ project_initialization:
     image: traefik:3.6
     rest_api_url: http://traefik:8080
     rest_api_host_url: http://127.0.0.1:8080
-    base_domain: lvh.me
+    internal_domain: lvh.me
+    external_domain: ""
     rest_ready_timeout: 20s
     default_entrypoint: web
     tls_mode: none

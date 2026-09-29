@@ -16,7 +16,7 @@ func TestInitializationResponseMapsLocalWorkspaceAndDefaults(t *testing.T) {
 		Status: initdto.StatusNeedsGateway,
 		Defaults: initdto.Defaults{
 			LocalWorkspaceRoot: "/srv/orbit", Image: "traefik:3.6", RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl,
-			RestReadyTimeoutSeconds: 20, BaseDomain: "lvh.me", DefaultEntrypoint: "web", TLSMode: "none",
+			RestReadyTimeoutSeconds: 20, InternalDomain: "lvh.me", DefaultEntrypoint: "web", TLSMode: "none",
 			LocalPlatform: "windows", LocalHost: "orbit-host", LocalUsername: "orbit",
 		},
 		Environment: &environmentdto.View{
@@ -72,7 +72,7 @@ func TestInitializationResponseMapsReadyGateway(t *testing.T) {
 		Defaults: initdto.Defaults{Image: "traefik:3.6"},
 		Gateway: &gatewaydto.GatewayView{
 			Application: model.Application{Id: "gateway-1", ProjectId: &projectId, Code: "traefik", Name: "Traefik"},
-			Config:      model.GatewayConfig{RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, BaseDomain: "lvh.me"},
+			Config:      model.GatewayConfig{RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, InternalDomain: "lvh.me"},
 			Service:     &service,
 		},
 	}

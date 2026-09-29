@@ -330,7 +330,11 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
-	baseDomain, err := normalizeBaseDomain(input.BaseDomain)
+	internalDomain, err := normalizeInternalDomain(input.InternalDomain)
+	if err != nil {
+		return gatewaydto.GatewayView{}, err
+	}
+	externalDomain, err := normalizeExternalDomain(input.ExternalDomain)
 	if err != nil {
 		return gatewaydto.GatewayView{}, err
 	}
@@ -366,7 +370,8 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 		RestApiUrl:              restApiUrl,
 		RestApiHostUrl:          restApiHostUrl,
 		RestReadyTimeoutSeconds: restReadyTimeoutSeconds,
-		BaseDomain:              baseDomain,
+		InternalDomain:          internalDomain,
+		ExternalDomain:          externalDomain,
 		DefaultEntrypoint:       policy.DefaultEntrypoint,
 		TLSMode:                 policy.TLSMode,
 		AcmeProfile:             acmeProfile,
@@ -548,12 +553,19 @@ func (s Service) UpdateGateway(ctx context.Context, userId string, projectId str
 		}
 		cfg.RestReadyTimeoutSeconds = timeout
 	}
-	if input.BaseDomain != nil {
-		baseDomain, err := normalizeBaseDomain(*input.BaseDomain)
+	if input.InternalDomain != nil {
+		internalDomain, err := normalizeInternalDomain(*input.InternalDomain)
 		if err != nil {
 			return gatewaydto.GatewayView{}, err
 		}
-		cfg.BaseDomain = baseDomain
+		cfg.InternalDomain = internalDomain
+	}
+	if input.ExternalDomain != nil {
+		externalDomain, err := normalizeExternalDomain(*input.ExternalDomain)
+		if err != nil {
+			return gatewaydto.GatewayView{}, err
+		}
+		cfg.ExternalDomain = externalDomain
 	}
 	defaultEntrypoint := &cfg.DefaultEntrypoint
 	if input.DefaultEntrypoint != nil {
@@ -682,16 +694,24 @@ func normalizeGatewayRestApiUrl(raw string, field string) (string, error) {
 	return strings.TrimRight(raw, "/"), nil
 }
 
-func normalizeBaseDomain(raw string) (string, error) {
+func normalizeInternalDomain(raw string) (string, error) {
 	raw = strings.ToLower(strings.TrimSpace(raw))
 	if raw == "" {
-		return "", apperror.New(apperror.KindValidation, "base_domain is required")
+		return "", apperror.New(apperror.KindValidation, "internal_domain is required")
 	}
 	if len(raw) > 255 {
-		return "", apperror.New(apperror.KindValidation, "base_domain is too long")
+		return "", apperror.New(apperror.KindValidation, "internal_domain is too long")
 	}
 	if strings.Contains(raw, "://") || strings.Contains(raw, "/") || strings.Contains(raw, " ") {
-		return "", apperror.New(apperror.KindValidation, "base_domain must be a bare domain (e.g. example.com)")
+		return "", apperror.New(apperror.KindValidation, "internal_domain must be a bare domain (e.g. example.com)")
+	}
+	return raw, nil
+}
+
+func normalizeExternalDomain(raw string) (string, error) {
+	raw = strings.ToLower(strings.TrimSpace(raw))
+	if raw != "" && !model.IsExternalDomainSuffix(raw) {
+		return "", apperror.New(apperror.KindValidation, "external_domain must be a valid domain suffix")
 	}
 	return raw, nil
 }
@@ -802,7 +822,11 @@ func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (mo
 	if _, err := normalizeRestReadyTimeoutSeconds(&timeout); err != nil {
 		return model.GatewayConfig{}, err
 	}
-	baseDomain, err := normalizeBaseDomain(input.BaseDomain)
+	internalDomain, err := normalizeInternalDomain(input.InternalDomain)
+	if err != nil {
+		return model.GatewayConfig{}, err
+	}
+	externalDomain, err := normalizeExternalDomain(input.ExternalDomain)
 	if err != nil {
 		return model.GatewayConfig{}, err
 	}
@@ -820,7 +844,8 @@ func normalizeGatewayConfig(input model.GatewayConfig, applicationId string) (mo
 		RestApiUrl:              restApiUrl,
 		RestApiHostUrl:          restApiHostUrl,
 		RestReadyTimeoutSeconds: timeout,
-		BaseDomain:              baseDomain,
+		InternalDomain:          internalDomain,
+		ExternalDomain:          externalDomain,
 		DefaultEntrypoint:       policy.DefaultEntrypoint,
 		TLSMode:                 policy.TLSMode,
 		AcmeProfile:             acmeProfile,

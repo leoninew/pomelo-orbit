@@ -337,24 +337,50 @@
                     {{ gatewayValidationMessage('rest_ready_timeout_seconds') }}
                   </p>
                 </div>
-                <div class="space-y-1.5">
-                  <label class="app-field-label block" for="initialization-gateway-base-domain">
-                    {{ t('gateway.fields.baseDomain') }}
+                <div class="space-y-1.5 md:col-span-2">
+                  <label class="app-field-label block" for="initialization-gateway-internal-domain">
+                    {{ t('gateway.fields.internalDomain') }}
                     <span class="text-destructive">*</span>
                   </label>
                   <input
-                    id="initialization-gateway-base-domain"
-                    :value="gatewayForm.base_domain"
+                    id="initialization-gateway-internal-domain"
+                    :value="gatewayForm.internal_domain"
                     type="text"
                     class="app-input"
-                    :class="gatewayErrors.base_domain ? 'app-input-error' : ''"
-                    :aria-invalid="gatewayErrors.base_domain ? 'true' : undefined"
+                    :class="gatewayErrors.internal_domain ? 'app-input-error' : ''"
+                    :aria-invalid="gatewayErrors.internal_domain ? 'true' : undefined"
                     @input="
-                      updateGatewayField('base_domain', ($event.target as HTMLInputElement).value)
+                      updateGatewayField(
+                        'internal_domain',
+                        ($event.target as HTMLInputElement).value
+                      )
                     "
                   />
-                  <p v-if="gatewayErrors.base_domain" class="app-field-error" role="alert">
-                    {{ gatewayValidationMessage('base_domain') }}
+                  <p v-if="gatewayErrors.internal_domain" class="app-field-error" role="alert">
+                    {{ gatewayValidationMessage('internal_domain') }}
+                  </p>
+                </div>
+                <div class="space-y-1.5 md:col-span-2">
+                  <label class="app-field-label block" for="initialization-gateway-external-domain">
+                    {{ t('gateway.fields.externalDomain') }}
+                  </label>
+                  <input
+                    id="initialization-gateway-external-domain"
+                    :value="gatewayForm.external_domain"
+                    type="text"
+                    class="app-input"
+                    :class="gatewayErrors.external_domain ? 'app-input-error' : ''"
+                    :placeholder="t('gateway.placeholders.externalDomain')"
+                    :aria-invalid="gatewayErrors.external_domain ? 'true' : undefined"
+                    @input="
+                      updateGatewayField(
+                        'external_domain',
+                        ($event.target as HTMLInputElement).value
+                      )
+                    "
+                  />
+                  <p v-if="gatewayErrors.external_domain" class="app-field-error" role="alert">
+                    {{ gatewayValidationMessage('external_domain') }}
                   </p>
                 </div>
               </div>

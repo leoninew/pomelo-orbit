@@ -72,7 +72,7 @@ func TestEffectiveServicePlanHashTracksTraefikNetworkOption(t *testing.T) {
 		Service:     model.Service{Code: "demo-default"},
 		Gateway: &model.GatewayConfig{
 			NetworkName: "traefik", RestApiUrl: "http://127.0.0.1:8080",
-			BaseDomain: "example.com", DefaultEntrypoint: "websecure", TLSMode: "letsencrypt",
+			InternalDomain: "example.com", DefaultEntrypoint: "websecure", TLSMode: "letsencrypt",
 		},
 		Components: []model.EffectiveServiceComponent{{
 			Name: "web", Image: "nginx:latest",
@@ -83,7 +83,7 @@ func TestEffectiveServicePlanHashTracksTraefikNetworkOption(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan.Gateway.BaseDomain = "changed.example.com"
+	plan.Gateway.InternalDomain = "changed.example.com"
 	withGatewayPolicyChange, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -191,7 +191,7 @@ func TestBuildVersionPreviewPlanRendersGatewayHTTPHost(t *testing.T) {
 		Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "gateway"}},
 	}}
 
-	plan, err := BuildVersionPreviewPlan(app, version, declarations, &model.GatewayConfig{BaseDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "traefik"})
+	plan, err := BuildVersionPreviewPlan(app, version, declarations, &model.GatewayConfig{InternalDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "traefik"})
 	if err != nil {
 		t.Fatalf("BuildVersionPreviewPlan returned error: %v", err)
 	}

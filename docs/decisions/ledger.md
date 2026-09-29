@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-09-28
+最后修改时间: 2026-09-29 09:28:22
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -13,8 +13,8 @@ Doc role: living SoT
 | C-03 | Deployment = 操作流水 + 任务状态 | worker 执行 Docker |
 | C-04 | Gateway 身份由 `gateway_config` 关联表达，不由 Application.kind 决定 | Application/Version/Component/Service 保持通用；历史 kind 枚举不承载 Gateway 行为 |
 | C-05 | 暴露 SoT = VersionExpose（protocol + access + ports） | 无域名列 |
-| C-06 | 域名 / rest 控制面在 GatewayConfig | base_domain、rest_api_url |
-| C-07 | Environment = Project 下元数据 | 无 base_domain / ingress 用户 SoT |
+| C-06 | 域名 / REST 控制面在 GatewayConfig | `internal_domain` 用于 Docker labels 和 Gateway 派生地址；`external_domain` 仅辅助自定义 Route 表单拼接完整域名；另有 `rest_api_url` |
+| C-07 | Environment = Project 下元数据 | 无域名 / ingress 用户 SoT |
 | C-08 | 平台 Route 与应用 Expose 分流 | Route → rest；Expose → labels |
 | C-09 | 单节点 API+worker；挂 Docker socket | 无独立 worker 部署角色主路径 |
 | C-10 | 单 active gateway Service | 同时仅一个 deploying/running gateway |

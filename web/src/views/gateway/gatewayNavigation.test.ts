@@ -38,7 +38,8 @@ const gateway: GatewayResp = {
   kind: 'gateway',
   rest_api_url: 'http://traefik:8080',
   rest_api_host_url: 'http://127.0.0.1:8080',
-  base_domain: 'example.com',
+  internal_domain: 'example.com',
+  external_domain: '',
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
   config_updated_at: '2026-01-01T00:00:00Z',
@@ -165,7 +166,8 @@ describe('Gateway detail editing', () => {
       rest_api_url: gateway.rest_api_url,
       rest_api_host_url: gateway.rest_api_host_url,
       rest_ready_timeout_seconds: gateway.rest_ready_timeout_seconds,
-      base_domain: gateway.base_domain,
+      internal_domain: gateway.internal_domain,
+      external_domain: gateway.external_domain,
     });
     expect(gatewayApi.list).toHaveBeenCalledWith('project-1');
     expect(target.textContent).toContain('Traefik edge');

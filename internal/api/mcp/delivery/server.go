@@ -209,7 +209,8 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		RestApiUrl              *string `json:"rest_api_url,omitempty"`
 		RestApiHostUrl          *string `json:"rest_api_host_url,omitempty"`
 		RestReadyTimeoutSeconds *int    `json:"rest_ready_timeout_seconds,omitempty"`
-		BaseDomain              *string `json:"base_domain,omitempty"`
+		InternalDomain          *string `json:"internal_domain,omitempty"`
+		ExternalDomain          *string `json:"external_domain,omitempty"`
 		DefaultEntrypoint       *string `json:"default_entrypoint,omitempty"`
 		TLSMode                 *string `json:"tls_mode,omitempty"`
 		AcmeProfile             *string `json:"acme_profile,omitempty"`
@@ -223,10 +224,10 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		if _, err := c.gatewayInScope(ctx, input.GatewayId); err != nil {
 			return nil, err
 		}
-		if input.Name == nil && input.RestApiUrl == nil && input.RestApiHostUrl == nil && input.RestReadyTimeoutSeconds == nil && input.BaseDomain == nil && input.DefaultEntrypoint == nil && input.TLSMode == nil && input.AcmeProfile == nil && input.AcmeEmail == nil && input.DNSApiToken == nil {
+		if input.Name == nil && input.RestApiUrl == nil && input.RestApiHostUrl == nil && input.RestReadyTimeoutSeconds == nil && input.InternalDomain == nil && input.ExternalDomain == nil && input.DefaultEntrypoint == nil && input.TLSMode == nil && input.AcmeProfile == nil && input.AcmeEmail == nil && input.DNSApiToken == nil {
 			return nil, apperror.New(apperror.KindValidation, "at least one Gateway field must be supplied")
 		}
-		gateway, err := c.deps.Gateway.UpdateGateway(ctx, c.deps.ActorUserId, projectId, input.GatewayId, gatewaydto.GatewayUpdateInput{Name: input.Name, RestApiUrl: input.RestApiUrl, RestApiHostUrl: input.RestApiHostUrl, RestReadyTimeoutSeconds: input.RestReadyTimeoutSeconds, BaseDomain: input.BaseDomain, DefaultEntrypoint: input.DefaultEntrypoint, TLSMode: input.TLSMode, AcmeProfile: input.AcmeProfile, AcmeEmail: input.AcmeEmail, DNSApiToken: input.DNSApiToken})
+		gateway, err := c.deps.Gateway.UpdateGateway(ctx, c.deps.ActorUserId, projectId, input.GatewayId, gatewaydto.GatewayUpdateInput{Name: input.Name, RestApiUrl: input.RestApiUrl, RestApiHostUrl: input.RestApiHostUrl, RestReadyTimeoutSeconds: input.RestReadyTimeoutSeconds, InternalDomain: input.InternalDomain, ExternalDomain: input.ExternalDomain, DefaultEntrypoint: input.DefaultEntrypoint, TLSMode: input.TLSMode, AcmeProfile: input.AcmeProfile, AcmeEmail: input.AcmeEmail, DNSApiToken: input.DNSApiToken})
 		if err != nil {
 			return nil, err
 		}

@@ -23,6 +23,21 @@ import (
 
 const testBodyMaxBytes = 32
 
+func TestTerminalRoutesDoNotLogBodies(t *testing.T) {
+	for _, path := range []string{"/api/environment/terminal/ticket", "/api/environment/terminal"} {
+		t.Run(path, func(t *testing.T) {
+			entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 1024, ResponseBodyLimit: 1024}, http.MethodPost, path, "application/json", `{"input":"terminal secret"}`, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"ticket":"one-time-secret"}`))
+			}))
+			started, completed := assertStartedAndCompleted(t, entries)
+			assertLogValue(t, started, "path", path)
+			assertLogMissing(t, started, "request_body")
+			assertLogMissing(t, completed, "response_body")
+		})
+	}
+}
+
 func TestLogRequestIncludesMetadata(t *testing.T) {
 	entries, _ := runLoggedRequest(t, http.MethodGet, "/api/test?x=1", "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

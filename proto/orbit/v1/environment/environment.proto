@@ -57,3 +57,7 @@ message ProjectEnvironmentSSHCommandResp {
   EnvironmentResp environment = 1;
   string public_key = 2;
 }
+
+message EnvironmentTerminalTicketResp {
+  string ticket = 1;
+}

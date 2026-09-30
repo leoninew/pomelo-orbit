@@ -23,6 +23,10 @@
             <KeyRound class="size-4" aria-hidden="true" />
             {{ t('project.initialization.sshCommand') }}
           </button>
+          <button v-if="isSSH" class="app-button h-9 px-3" @click="showTerminal = true">
+            <SquareTerminal class="size-4" aria-hidden="true" />
+            {{ t('project.environment.terminal.title') }}
+          </button>
         </template>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
@@ -190,11 +194,19 @@
       :loading="loadingSshCommand"
       :error="sshCommandError"
     />
+    <EnvironmentTerminalDrawer
+      v-if="isSSH && environment?.ssh && projectStore.activeProjectId"
+      :key="`${projectStore.activeProjectId}:${environment.target_revision}`"
+      v-model:open="showTerminal"
+      :project-id="projectStore.activeProjectId"
+      :host="environment.ssh.host"
+      :username="environment.ssh.username"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-  import { KeyRound, RefreshCw } from '@lucide/vue';
+  import { KeyRound, RefreshCw, SquareTerminal } from '@lucide/vue';
   import { computed, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -216,6 +228,7 @@
   import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
   import { buildWindowsSshInitializationCommand } from '@/utils/windowsSshCommand';
   import EnvironmentTargetFields from '@/views/environment/EnvironmentTargetFields.vue';
+  import EnvironmentTerminalDrawer from '@/views/environment/EnvironmentTerminalDrawer.vue';
   import {
     assignEnvironmentFormErrors as assignTargetFormErrors,
     emptyEnvironmentForm,
@@ -238,6 +251,7 @@
   const submitError = ref('');
   const isEditDialogOpen = ref(false);
   const showSshCommandDialog = ref(false);
+  const showTerminal = ref(false);
   const loadingSshCommand = ref(false);
   const sshCommand = ref('');
   const sshCommandError = ref('');
@@ -269,6 +283,7 @@
   }
 
   async function fetchEnvironment() {
+    showTerminal.value = false;
     const projectId = projectStore.activeProjectId;
     showSshCommandDialog.value = false;
     sshCommand.value = '';
@@ -281,9 +296,15 @@
     loadError.value = '';
     try {
       await execute(async () => {
-        environment.value = await projectEnvironmentApi.get(projectId);
+        const result = await projectEnvironmentApi.get(projectId);
+        if (projectStore.activeProjectId === projectId) {
+          environment.value = result;
+        }
       });
     } catch (error: unknown) {
+      if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
       if (error instanceof ApiError && error.code === 'not_found') {
         await router.replace({
           name: 'ProjectInitialization',
@@ -367,6 +388,7 @@
   }
 
   async function save() {
+    showTerminal.value = false;
     submitError.value = '';
     if (!validate()) {
       return;
@@ -410,6 +432,13 @@
       toast.error(error instanceof Error ? error.message : t('project.environment.probeFailed'));
     }
   }
+
+  watch(
+    () => environment.value?.target_revision,
+    () => {
+      showTerminal.value = false;
+    }
+  );
 
   watch(
     () => projectStore.activeProjectId,

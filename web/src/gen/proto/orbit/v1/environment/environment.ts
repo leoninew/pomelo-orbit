@@ -63,3 +63,7 @@ export interface ProjectEnvironmentSSHCommandResp {
   environment: EnvironmentResp | undefined;
   public_key: string;
 }
+
+export interface EnvironmentTerminalTicketResp {
+  ticket: string;
+}

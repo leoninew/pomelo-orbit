@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"sync"
 )
@@ -16,6 +17,9 @@ type runtimeWorker interface {
 func runHTTPServerAndWorker(ctx context.Context, logger *slog.Logger, addr string, httpServer *http.Server, backgroundWorker runtimeWorker) error {
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	// Shutdown does not close hijacked connections; their request contexts must
+	// also observe the server lifecycle so terminal sessions release SSH clients.
+	httpServer.BaseContext = func(net.Listener) context.Context { return runCtx }
 
 	var shutdownOnce sync.Once
 	shutdownHTTP := func() {

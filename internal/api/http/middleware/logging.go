@@ -76,9 +76,13 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 		}
 	}
 	return func(c *gin.Context) {
+		requestBodyLimit, responseBodyLimit := cfg.RequestBodyLimit, cfg.ResponseBodyLimit
+		if c.Request.URL.Path == "/api/environment/terminal" || c.Request.URL.Path == "/api/environment/terminal/ticket" {
+			requestBodyLimit, responseBodyLimit = 0, 0
+		}
 		startedAt := time.Now()
 		requestAttrs := requestLogAttrs(c)
-		requestBody, bodyErr := readRequestBodyForLog(c.Request, cfg.RequestBodyLimit)
+		requestBody, bodyErr := readRequestBodyForLog(c.Request, requestBodyLimit)
 
 		startedAttrs := append([]any{}, requestAttrs...)
 		if requestBody != "" {
@@ -92,7 +96,7 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 			logger.Info("request started", startedAttrs...)
 		}
 
-		bodyWriter := &bodyLogWriter{ResponseWriter: c.Writer, responseBodyLimit: cfg.ResponseBodyLimit}
+		bodyWriter := &bodyLogWriter{ResponseWriter: c.Writer, responseBodyLimit: responseBodyLimit}
 		c.Writer = bodyWriter
 		c.Next()
 

@@ -15,6 +15,7 @@ import (
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	dialoguesvc "github.com/leoninew/pomelo-orbit/internal/application/dialogue/usecase"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
@@ -53,6 +54,8 @@ type Dependencies struct {
 	DeploymentService            deploymentsvc.Service
 	DialogueService              dialoguesvc.Service
 	EnvironmentService           environmentsvc.Service
+	EnvironmentTerminalService   *environmentsvc.TerminalService
+	EnvironmentTerminalRunner    environmentport.TerminalRunner
 	GatewayService               gatewaysvc.Service
 	TaskService                  tasksvc.Service
 	TurnstileVerifier            authhandler.TurnstileVerifier

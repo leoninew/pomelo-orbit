@@ -553,6 +553,50 @@ func (x *ProjectEnvironmentSSHCommandResp) GetPublicKey() string {
 	return ""
 }
 
+type EnvironmentTerminalTicketResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ticket        string                 `protobuf:"bytes,1,opt,name=ticket,proto3" json:"ticket,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnvironmentTerminalTicketResp) Reset() {
+	*x = EnvironmentTerminalTicketResp{}
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnvironmentTerminalTicketResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvironmentTerminalTicketResp) ProtoMessage() {}
+
+func (x *EnvironmentTerminalTicketResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_environment_environment_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvironmentTerminalTicketResp.ProtoReflect.Descriptor instead.
+func (*EnvironmentTerminalTicketResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_environment_environment_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *EnvironmentTerminalTicketResp) GetTicket() string {
+	if x != nil {
+		return x.Ticket
+	}
+	return ""
+}
+
 var File_orbit_v1_environment_environment_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_environment_environment_proto_rawDesc = "" +
@@ -614,7 +658,9 @@ const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	" ProjectEnvironmentSSHCommandResp\x12G\n" +
 	"\venvironment\x18\x01 \x01(\v2%.orbit.v1.environment.EnvironmentRespR\venvironment\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x02 \x01(\tR\tpublicKeyB\xe8\x01\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKey\"7\n" +
+	"\x1dEnvironmentTerminalTicketResp\x12\x16\n" +
+	"\x06ticket\x18\x01 \x01(\tR\x06ticketB\xe8\x01\n" +
 	"\x18com.orbit.v1.environmentB\x10EnvironmentProtoP\x01ZHgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment\xa2\x02\x03OVE\xaa\x02\x14Orbit.V1.Environment\xca\x02\x14Orbit\\V1\\Environment\xe2\x02 Orbit\\V1\\Environment\\GPBMetadata\xea\x02\x16Orbit::V1::Environmentb\x06proto3"
 
 var (
@@ -629,7 +675,7 @@ func file_orbit_v1_environment_environment_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_environment_environment_proto_rawDescData
 }
 
-var file_orbit_v1_environment_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_orbit_v1_environment_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_orbit_v1_environment_environment_proto_goTypes = []any{
 	(*EnvironmentSSHTargetResp)(nil),         // 0: orbit.v1.environment.EnvironmentSSHTargetResp
 	(*EnvironmentSSHTargetReq)(nil),          // 1: orbit.v1.environment.EnvironmentSSHTargetReq
@@ -638,6 +684,7 @@ var file_orbit_v1_environment_environment_proto_goTypes = []any{
 	(*ProjectEnvironmentUpdateReq)(nil),      // 4: orbit.v1.environment.ProjectEnvironmentUpdateReq
 	(*EnvironmentLocalTargetReq)(nil),        // 5: orbit.v1.environment.EnvironmentLocalTargetReq
 	(*ProjectEnvironmentSSHCommandResp)(nil), // 6: orbit.v1.environment.ProjectEnvironmentSSHCommandResp
+	(*EnvironmentTerminalTicketResp)(nil),    // 7: orbit.v1.environment.EnvironmentTerminalTicketResp
 }
 var file_orbit_v1_environment_environment_proto_depIdxs = []int32{
 	0, // 0: orbit.v1.environment.EnvironmentResp.ssh:type_name -> orbit.v1.environment.EnvironmentSSHTargetResp
@@ -665,7 +712,7 @@ func file_orbit_v1_environment_environment_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_environment_environment_proto_rawDesc), len(file_orbit_v1_environment_environment_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

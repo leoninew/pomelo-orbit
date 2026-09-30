@@ -316,6 +316,7 @@
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
+  import { provideLogStreamCache } from '@/composables/useLogStream';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import {
     cloneEnvironmentVariableRows,
@@ -341,6 +342,7 @@
   const { t } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
+  provideLogStreamCache(() => `${projectStore.activeProjectId}:${String(route.params.id ?? '')}`);
   const { loading, execute } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();

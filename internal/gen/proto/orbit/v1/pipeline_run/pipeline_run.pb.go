@@ -470,66 +470,6 @@ func (x *PipelineRunArtifactListResp) GetItems() []*ArtifactResp {
 	return nil
 }
 
-type PipelineStageLogResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Logs          string                 `protobuf:"bytes,1,opt,name=logs,proto3" json:"logs,omitempty"`
-	Offset        int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
-	IsComplete    bool                   `protobuf:"varint,3,opt,name=is_complete,json=isComplete,proto3" json:"is_complete,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *PipelineStageLogResp) Reset() {
-	*x = PipelineStageLogResp{}
-	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[6]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *PipelineStageLogResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*PipelineStageLogResp) ProtoMessage() {}
-
-func (x *PipelineStageLogResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[6]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use PipelineStageLogResp.ProtoReflect.Descriptor instead.
-func (*PipelineStageLogResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *PipelineStageLogResp) GetLogs() string {
-	if x != nil {
-		return x.Logs
-	}
-	return ""
-}
-
-func (x *PipelineStageLogResp) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
-func (x *PipelineStageLogResp) GetIsComplete() bool {
-	if x != nil {
-		return x.IsComplete
-	}
-	return false
-}
-
 type PipelineRunPaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*PipelineRunResp     `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -543,7 +483,7 @@ type PipelineRunPaginatedResp struct {
 
 func (x *PipelineRunPaginatedResp) Reset() {
 	*x = PipelineRunPaginatedResp{}
-	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[7]
+	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -555,7 +495,7 @@ func (x *PipelineRunPaginatedResp) String() string {
 func (*PipelineRunPaginatedResp) ProtoMessage() {}
 
 func (x *PipelineRunPaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[7]
+	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -568,7 +508,7 @@ func (x *PipelineRunPaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PipelineRunPaginatedResp.ProtoReflect.Descriptor instead.
 func (*PipelineRunPaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{7}
+	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PipelineRunPaginatedResp) GetItems() []*PipelineRunResp {
@@ -614,7 +554,7 @@ type PipelineRunExecuteTaskReq struct {
 
 func (x *PipelineRunExecuteTaskReq) Reset() {
 	*x = PipelineRunExecuteTaskReq{}
-	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[8]
+	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -626,7 +566,7 @@ func (x *PipelineRunExecuteTaskReq) String() string {
 func (*PipelineRunExecuteTaskReq) ProtoMessage() {}
 
 func (x *PipelineRunExecuteTaskReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[8]
+	mi := &file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -639,7 +579,7 @@ func (x *PipelineRunExecuteTaskReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PipelineRunExecuteTaskReq.ProtoReflect.Descriptor instead.
 func (*PipelineRunExecuteTaskReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{8}
+	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP(), []int{7}
 }
 
 var File_orbit_v1_pipeline_run_pipeline_run_proto protoreflect.FileDescriptor
@@ -698,12 +638,7 @@ const file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc = "" +
 	"\x0f_environment_idB\x1a\n" +
 	"\x18_environment_target_type\"X\n" +
 	"\x1bPipelineRunArtifactListResp\x129\n" +
-	"\x05items\x18\x01 \x03(\v2#.orbit.v1.pipeline_run.ArtifactRespR\x05items\"c\n" +
-	"\x14PipelineStageLogResp\x12\x12\n" +
-	"\x04logs\x18\x01 \x01(\tR\x04logs\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12\x1f\n" +
-	"\vis_complete\x18\x03 \x01(\bR\n" +
-	"isComplete\"\xb3\x01\n" +
+	"\x05items\x18\x01 \x03(\v2#.orbit.v1.pipeline_run.ArtifactRespR\x05items\"\xb3\x01\n" +
 	"\x18PipelineRunPaginatedResp\x12<\n" +
 	"\x05items\x18\x01 \x03(\v2&.orbit.v1.pipeline_run.PipelineRunRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
@@ -725,7 +660,7 @@ func file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_pipeline_run_pipeline_run_proto_rawDescData
 }
 
-var file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_orbit_v1_pipeline_run_pipeline_run_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_orbit_v1_pipeline_run_pipeline_run_proto_goTypes = []any{
 	(*PipelineRunTriggerReq)(nil),         // 0: orbit.v1.pipeline_run.PipelineRunTriggerReq
 	(*PipelineRunRetryReq)(nil),           // 1: orbit.v1.pipeline_run.PipelineRunRetryReq
@@ -733,18 +668,17 @@ var file_orbit_v1_pipeline_run_pipeline_run_proto_goTypes = []any{
 	(*PipelineRunVersionBindingResp)(nil), // 3: orbit.v1.pipeline_run.PipelineRunVersionBindingResp
 	(*PipelineRunResp)(nil),               // 4: orbit.v1.pipeline_run.PipelineRunResp
 	(*PipelineRunArtifactListResp)(nil),   // 5: orbit.v1.pipeline_run.PipelineRunArtifactListResp
-	(*PipelineStageLogResp)(nil),          // 6: orbit.v1.pipeline_run.PipelineStageLogResp
-	(*PipelineRunPaginatedResp)(nil),      // 7: orbit.v1.pipeline_run.PipelineRunPaginatedResp
-	(*PipelineRunExecuteTaskReq)(nil),     // 8: orbit.v1.pipeline_run.PipelineRunExecuteTaskReq
-	(*common.VariableResp)(nil),           // 9: orbit.v1.common.VariableResp
-	(*PipelineStageRunResp)(nil),          // 10: orbit.v1.pipeline_run.PipelineStageRunResp
-	(*ArtifactResp)(nil),                  // 11: orbit.v1.pipeline_run.ArtifactResp
+	(*PipelineRunPaginatedResp)(nil),      // 6: orbit.v1.pipeline_run.PipelineRunPaginatedResp
+	(*PipelineRunExecuteTaskReq)(nil),     // 7: orbit.v1.pipeline_run.PipelineRunExecuteTaskReq
+	(*common.VariableResp)(nil),           // 8: orbit.v1.common.VariableResp
+	(*PipelineStageRunResp)(nil),          // 9: orbit.v1.pipeline_run.PipelineStageRunResp
+	(*ArtifactResp)(nil),                  // 10: orbit.v1.pipeline_run.ArtifactResp
 }
 var file_orbit_v1_pipeline_run_pipeline_run_proto_depIdxs = []int32{
-	9,  // 0: orbit.v1.pipeline_run.PipelineRunResp.variables:type_name -> orbit.v1.common.VariableResp
-	10, // 1: orbit.v1.pipeline_run.PipelineRunResp.pipeline_stage_runs:type_name -> orbit.v1.pipeline_run.PipelineStageRunResp
+	8,  // 0: orbit.v1.pipeline_run.PipelineRunResp.variables:type_name -> orbit.v1.common.VariableResp
+	9,  // 1: orbit.v1.pipeline_run.PipelineRunResp.pipeline_stage_runs:type_name -> orbit.v1.pipeline_run.PipelineStageRunResp
 	3,  // 2: orbit.v1.pipeline_run.PipelineRunResp.version_binding:type_name -> orbit.v1.pipeline_run.PipelineRunVersionBindingResp
-	11, // 3: orbit.v1.pipeline_run.PipelineRunArtifactListResp.items:type_name -> orbit.v1.pipeline_run.ArtifactResp
+	10, // 3: orbit.v1.pipeline_run.PipelineRunArtifactListResp.items:type_name -> orbit.v1.pipeline_run.ArtifactResp
 	4,  // 4: orbit.v1.pipeline_run.PipelineRunPaginatedResp.items:type_name -> orbit.v1.pipeline_run.PipelineRunResp
 	5,  // [5:5] is the sub-list for method output_type
 	5,  // [5:5] is the sub-list for method input_type
@@ -768,7 +702,7 @@ func file_orbit_v1_pipeline_run_pipeline_run_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc), len(file_orbit_v1_pipeline_run_pipeline_run_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

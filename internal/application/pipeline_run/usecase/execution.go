@@ -110,7 +110,7 @@ func (s Service) pipelineExecutionContext(ctx context.Context, projectId string,
 	monitoredCtx, cancelMonitored := context.WithCancel(timedCtx)
 	done := make(chan struct{})
 	interval := s.pollInterval
-	if interval <= 0 {
+	if interval <= 0 || interval > time.Second {
 		interval = time.Second
 	}
 	go func() {

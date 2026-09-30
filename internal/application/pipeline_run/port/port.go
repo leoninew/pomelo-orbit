@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 
+	logport "github.com/leoninew/pomelo-orbit/internal/application/logstream/port"
+
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -20,6 +22,7 @@ type TransactionRunner interface {
 
 type LogReader interface {
 	Read(logPath string, offset int) ([]byte, int, error)
+	OpenReader(ctx context.Context, logPath string) (logport.Reader, error)
 }
 
 type ExecutionLogStore interface {

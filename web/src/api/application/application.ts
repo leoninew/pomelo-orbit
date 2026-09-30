@@ -1,6 +1,5 @@
 import type {
   ApplicationCreateReq,
-  ApplicationLogsResp,
   ApplicationPaginatedResp,
   ApplicationResp,
   ApplicationRestartReq,
@@ -28,7 +27,7 @@ import type {
   VersionResp,
   VersionUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
-import request, { remoteRequestConfig, type AxiosRequestConfig } from '@/utils/request';
+import request, { remoteRequestConfig } from '@/utils/request';
 
 export const applicationApi = {
   list(
@@ -81,22 +80,6 @@ export const applicationApi = {
     return request.get(
       `/api/application/${id}/status`,
       remoteRequestConfig({ params: { project_id: projectId, ...params } })
-    );
-  },
-
-  getLogs(
-    projectId: string,
-    id: string,
-    params?: {
-      tail?: number;
-      service_id?: string;
-      component?: string;
-    },
-    config?: AxiosRequestConfig
-  ): Promise<ApplicationLogsResp> {
-    return request.get(
-      `/api/application/${id}/logs`,
-      remoteRequestConfig({ ...config, params: { project_id: projectId, ...params } })
     );
   },
 

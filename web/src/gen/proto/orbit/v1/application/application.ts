@@ -61,10 +61,6 @@ export interface ApplicationStatusResp {
   containers: ApplicationContainerStatusResp[];
 }
 
-export interface ApplicationLogsResp {
-  logs: string;
-}
-
 export interface ApplicationPaginatedResp {
   items: ApplicationResp[];
   total: number;

@@ -355,7 +355,7 @@ func (s Service) deploymentExecutionContext(ctx context.Context, projectId strin
 	monitoredCtx, cancelMonitored := context.WithCancel(ctx)
 	done := make(chan struct{})
 	interval := s.pollInterval
-	if interval <= 0 {
+	if interval <= 0 || interval > time.Second {
 		interval = time.Second
 	}
 	go func() {

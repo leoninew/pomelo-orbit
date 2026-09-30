@@ -21,134 +21,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type DeploymentLogsResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Logs          string                 `protobuf:"bytes,1,opt,name=logs,proto3" json:"logs,omitempty"`
-	Offset        int32                  `protobuf:"varint,2,opt,name=offset,proto3" json:"offset,omitempty"`
-	IsComplete    bool                   `protobuf:"varint,3,opt,name=is_complete,json=isComplete,proto3" json:"is_complete,omitempty"`
-	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeploymentLogsResp) Reset() {
-	*x = DeploymentLogsResp{}
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[0]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeploymentLogsResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeploymentLogsResp) ProtoMessage() {}
-
-func (x *DeploymentLogsResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[0]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeploymentLogsResp.ProtoReflect.Descriptor instead.
-func (*DeploymentLogsResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *DeploymentLogsResp) GetLogs() string {
-	if x != nil {
-		return x.Logs
-	}
-	return ""
-}
-
-func (x *DeploymentLogsResp) GetOffset() int32 {
-	if x != nil {
-		return x.Offset
-	}
-	return 0
-}
-
-func (x *DeploymentLogsResp) GetIsComplete() bool {
-	if x != nil {
-		return x.IsComplete
-	}
-	return false
-}
-
-func (x *DeploymentLogsResp) GetStatus() string {
-	if x != nil {
-		return x.Status
-	}
-	return ""
-}
-
-type DeploymentContainerLogsResp struct {
-	state               protoimpl.MessageState `protogen:"open.v1"`
-	Logs                string                 `protobuf:"bytes,1,opt,name=logs,proto3" json:"logs,omitempty"`
-	Source              string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
-	IsRealtimeSupported bool                   `protobuf:"varint,3,opt,name=is_realtime_supported,json=isRealtimeSupported,proto3" json:"is_realtime_supported,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
-}
-
-func (x *DeploymentContainerLogsResp) Reset() {
-	*x = DeploymentContainerLogsResp{}
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeploymentContainerLogsResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeploymentContainerLogsResp) ProtoMessage() {}
-
-func (x *DeploymentContainerLogsResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[1]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeploymentContainerLogsResp.ProtoReflect.Descriptor instead.
-func (*DeploymentContainerLogsResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *DeploymentContainerLogsResp) GetLogs() string {
-	if x != nil {
-		return x.Logs
-	}
-	return ""
-}
-
-func (x *DeploymentContainerLogsResp) GetSource() string {
-	if x != nil {
-		return x.Source
-	}
-	return ""
-}
-
-func (x *DeploymentContainerLogsResp) GetIsRealtimeSupported() bool {
-	if x != nil {
-		return x.IsRealtimeSupported
-	}
-	return false
-}
-
 type DeploymentResp struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
 	Id                       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -176,7 +48,7 @@ type DeploymentResp struct {
 
 func (x *DeploymentResp) Reset() {
 	*x = DeploymentResp{}
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[2]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -188,7 +60,7 @@ func (x *DeploymentResp) String() string {
 func (*DeploymentResp) ProtoMessage() {}
 
 func (x *DeploymentResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[2]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -201,7 +73,7 @@ func (x *DeploymentResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentResp.ProtoReflect.Descriptor instead.
 func (*DeploymentResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{2}
+	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *DeploymentResp) GetId() string {
@@ -345,7 +217,7 @@ type DeploymentCancelReq struct {
 
 func (x *DeploymentCancelReq) Reset() {
 	*x = DeploymentCancelReq{}
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[3]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -357,7 +229,7 @@ func (x *DeploymentCancelReq) String() string {
 func (*DeploymentCancelReq) ProtoMessage() {}
 
 func (x *DeploymentCancelReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[3]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -370,7 +242,7 @@ func (x *DeploymentCancelReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentCancelReq.ProtoReflect.Descriptor instead.
 func (*DeploymentCancelReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{3}
+	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{1}
 }
 
 type DeploymentPaginatedResp struct {
@@ -386,7 +258,7 @@ type DeploymentPaginatedResp struct {
 
 func (x *DeploymentPaginatedResp) Reset() {
 	*x = DeploymentPaginatedResp{}
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[4]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -398,7 +270,7 @@ func (x *DeploymentPaginatedResp) String() string {
 func (*DeploymentPaginatedResp) ProtoMessage() {}
 
 func (x *DeploymentPaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[4]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -411,7 +283,7 @@ func (x *DeploymentPaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeploymentPaginatedResp.ProtoReflect.Descriptor instead.
 func (*DeploymentPaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{4}
+	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DeploymentPaginatedResp) GetItems() []*DeploymentResp {
@@ -457,7 +329,7 @@ type ApplicationDeployTaskReq struct {
 
 func (x *ApplicationDeployTaskReq) Reset() {
 	*x = ApplicationDeployTaskReq{}
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[5]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -469,7 +341,7 @@ func (x *ApplicationDeployTaskReq) String() string {
 func (*ApplicationDeployTaskReq) ProtoMessage() {}
 
 func (x *ApplicationDeployTaskReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[5]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -482,7 +354,7 @@ func (x *ApplicationDeployTaskReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationDeployTaskReq.ProtoReflect.Descriptor instead.
 func (*ApplicationDeployTaskReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{5}
+	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{3}
 }
 
 type ApplicationRestartTaskReq struct {
@@ -493,7 +365,7 @@ type ApplicationRestartTaskReq struct {
 
 func (x *ApplicationRestartTaskReq) Reset() {
 	*x = ApplicationRestartTaskReq{}
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[6]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +377,7 @@ func (x *ApplicationRestartTaskReq) String() string {
 func (*ApplicationRestartTaskReq) ProtoMessage() {}
 
 func (x *ApplicationRestartTaskReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[6]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +390,7 @@ func (x *ApplicationRestartTaskReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationRestartTaskReq.ProtoReflect.Descriptor instead.
 func (*ApplicationRestartTaskReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{6}
+	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{4}
 }
 
 type ApplicationStopTaskReq struct {
@@ -529,7 +401,7 @@ type ApplicationStopTaskReq struct {
 
 func (x *ApplicationStopTaskReq) Reset() {
 	*x = ApplicationStopTaskReq{}
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[7]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -541,7 +413,7 @@ func (x *ApplicationStopTaskReq) String() string {
 func (*ApplicationStopTaskReq) ProtoMessage() {}
 
 func (x *ApplicationStopTaskReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[7]
+	mi := &file_orbit_v1_deployment_deployment_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -554,24 +426,14 @@ func (x *ApplicationStopTaskReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplicationStopTaskReq.ProtoReflect.Descriptor instead.
 func (*ApplicationStopTaskReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{7}
+	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{5}
 }
 
 var File_orbit_v1_deployment_deployment_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_deployment_deployment_proto_rawDesc = "" +
 	"\n" +
-	"$orbit/v1/deployment/deployment.proto\x12\x13orbit.v1.deployment\"y\n" +
-	"\x12DeploymentLogsResp\x12\x12\n" +
-	"\x04logs\x18\x01 \x01(\tR\x04logs\x12\x16\n" +
-	"\x06offset\x18\x02 \x01(\x05R\x06offset\x12\x1f\n" +
-	"\vis_complete\x18\x03 \x01(\bR\n" +
-	"isComplete\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06status\"}\n" +
-	"\x1bDeploymentContainerLogsResp\x12\x12\n" +
-	"\x04logs\x18\x01 \x01(\tR\x04logs\x12\x16\n" +
-	"\x06source\x18\x02 \x01(\tR\x06source\x122\n" +
-	"\x15is_realtime_supported\x18\x03 \x01(\bR\x13isRealtimeSupported\"\xf9\x06\n" +
+	"$orbit/v1/deployment/deployment.proto\x12\x13orbit.v1.deployment\"\xf9\x06\n" +
 	"\x0eDeploymentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
@@ -635,19 +497,17 @@ func file_orbit_v1_deployment_deployment_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_deployment_deployment_proto_rawDescData
 }
 
-var file_orbit_v1_deployment_deployment_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_orbit_v1_deployment_deployment_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_orbit_v1_deployment_deployment_proto_goTypes = []any{
-	(*DeploymentLogsResp)(nil),          // 0: orbit.v1.deployment.DeploymentLogsResp
-	(*DeploymentContainerLogsResp)(nil), // 1: orbit.v1.deployment.DeploymentContainerLogsResp
-	(*DeploymentResp)(nil),              // 2: orbit.v1.deployment.DeploymentResp
-	(*DeploymentCancelReq)(nil),         // 3: orbit.v1.deployment.DeploymentCancelReq
-	(*DeploymentPaginatedResp)(nil),     // 4: orbit.v1.deployment.DeploymentPaginatedResp
-	(*ApplicationDeployTaskReq)(nil),    // 5: orbit.v1.deployment.ApplicationDeployTaskReq
-	(*ApplicationRestartTaskReq)(nil),   // 6: orbit.v1.deployment.ApplicationRestartTaskReq
-	(*ApplicationStopTaskReq)(nil),      // 7: orbit.v1.deployment.ApplicationStopTaskReq
+	(*DeploymentResp)(nil),            // 0: orbit.v1.deployment.DeploymentResp
+	(*DeploymentCancelReq)(nil),       // 1: orbit.v1.deployment.DeploymentCancelReq
+	(*DeploymentPaginatedResp)(nil),   // 2: orbit.v1.deployment.DeploymentPaginatedResp
+	(*ApplicationDeployTaskReq)(nil),  // 3: orbit.v1.deployment.ApplicationDeployTaskReq
+	(*ApplicationRestartTaskReq)(nil), // 4: orbit.v1.deployment.ApplicationRestartTaskReq
+	(*ApplicationStopTaskReq)(nil),    // 5: orbit.v1.deployment.ApplicationStopTaskReq
 }
 var file_orbit_v1_deployment_deployment_proto_depIdxs = []int32{
-	2, // 0: orbit.v1.deployment.DeploymentPaginatedResp.items:type_name -> orbit.v1.deployment.DeploymentResp
+	0, // 0: orbit.v1.deployment.DeploymentPaginatedResp.items:type_name -> orbit.v1.deployment.DeploymentResp
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -660,14 +520,14 @@ func file_orbit_v1_deployment_deployment_proto_init() {
 	if File_orbit_v1_deployment_deployment_proto != nil {
 		return
 	}
-	file_orbit_v1_deployment_deployment_proto_msgTypes[2].OneofWrappers = []any{}
+	file_orbit_v1_deployment_deployment_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_deployment_deployment_proto_rawDesc), len(file_orbit_v1_deployment_deployment_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

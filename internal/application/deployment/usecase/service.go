@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"log/slog"
-	"strconv"
 	"strings"
 	"time"
 
@@ -152,59 +151,6 @@ func (s Service) DeleteDeployment(ctx context.Context, userId string, projectId 
 		return apperror.Wrap(apperror.KindInternal, "Failed to delete deployment", err)
 	}
 	return nil
-}
-
-func (s Service) DeploymentContainerLog(ctx context.Context, userId string, projectId string, deploymentId string, tail int) (deploymentdto.DeploymentContainerLog, error) {
-	if tail < 1 || tail > 1000 {
-		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
-	}
-	deployment, err := s.loadDeploymentForUser(ctx, userId, projectId, deploymentId)
-	if err != nil {
-		return deploymentdto.DeploymentContainerLog{}, err
-	}
-	if deployment.OperationType == "stop" {
-		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "container logs are not available for stop deployments")
-	}
-	if deployment.Status == status.WorkStatusWaitingToRun {
-		return deploymentdto.DeploymentContainerLog{Source: "pending", IsRealtimeSupported: true}, nil
-	}
-	if deployment.ApplicationId == nil || *deployment.ApplicationId == "" {
-		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindValidation, "Deployment "+deployment.Id+" has no associated application")
-	}
-	app, err := s.application.Application(ctx, projectId, *deployment.ApplicationId)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindNotFound, "Application "+*deployment.ApplicationId+" not found")
-		}
-		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
-	}
-	svc, err := s.resolveServiceFromDeployment(ctx, projectId, app.Id, deployment)
-	if err != nil {
-		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
-	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
-	if err != nil {
-		return deploymentdto.DeploymentContainerLog{}, err
-	}
-	exists, err := s.runtime.ServiceDirExists(ctx, target, svc.Code)
-	if err != nil {
-		return deploymentdto.DeploymentContainerLog{}, apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
-	}
-	if !exists {
-		return deploymentdto.DeploymentContainerLog{Source: "pending", IsRealtimeSupported: true}, nil
-	}
-	projectName := composeProjectName(svc.Code)
-	sinceCommand := containerLogsSinceCommand(projectName, deployment.StartedAt.UTC().Format(time.RFC3339))
-	output, err := s.runtime.Query(ctx, target, svc.Code, sinceCommand.Name, sinceCommand.Args...)
-	if err == nil {
-		return deploymentdto.DeploymentContainerLog{Logs: output, Source: "since", IsRealtimeSupported: true}, nil
-	}
-	tailCommand := containerLogsTailCommand(projectName, strconv.Itoa(tail))
-	output, tailErr := s.runtime.Query(ctx, target, svc.Code, tailCommand.Name, tailCommand.Args...)
-	if tailErr != nil {
-		return deploymentdto.DeploymentContainerLog{}, apperror.New(apperror.KindInternal, outputOrError(output, tailErr))
-	}
-	return deploymentdto.DeploymentContainerLog{Logs: output, Source: "tail", IsRealtimeSupported: true}, nil
 }
 
 func (s Service) loadDeploymentForUser(ctx context.Context, userId string, projectId string, deploymentId string) (model.Deployment, error) {

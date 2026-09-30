@@ -8,19 +8,6 @@
 
 export const protobufPackage = "orbit.v1.deployment";
 
-export interface DeploymentLogsResp {
-  logs: string;
-  offset: number;
-  is_complete: boolean;
-  status: string;
-}
-
-export interface DeploymentContainerLogsResp {
-  logs: string;
-  source: string;
-  is_realtime_supported: boolean;
-}
-
 export interface DeploymentResp {
   id: string;
   project_id?: string | undefined;

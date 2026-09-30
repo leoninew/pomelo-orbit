@@ -1,110 +1,120 @@
 // @vitest-environment happy-dom
-/* eslint-disable vue/one-component-per-file -- The test uses lightweight child component doubles. */
-import { createApp, h, nextTick } from 'vue';
-import { createI18n } from 'vue-i18n';
+/* eslint-disable vue/one-component-per-file -- The test uses child component doubles. */
+import { createApp, h, nextTick, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useProjectStore } from '@/stores/project';
+import { provideLogStreamCache } from '@/composables/useLogStream';
+import type { LogStreamEvent } from '@/gen/proto/orbit/v1/common/log_stream';
 
-const { getLogs, getDeployment } = vi.hoisted(() => ({
-  getLogs: vi.fn(),
-  getDeployment: vi.fn(),
+const { readLogStream } = vi.hoisted(() => ({ readLogStream: vi.fn() }));
+vi.mock('@/api/log/log', async (original) => ({
+  ...(await original<typeof import('@/api/log/log')>()),
+  readLogStream,
 }));
-
-vi.mock('@/api/application/application', () => ({
-  applicationApi: { getLogs },
-}));
-
-vi.mock('@/api/deployment/deployment', () => ({
-  deploymentApi: { get: getDeployment },
-}));
-
-vi.mock('@/components/AppDrawer.vue', async () => {
+vi.mock('@/components/LogDrawer.vue', async () => {
   const { defineComponent, h: render } = await import('vue');
   return {
     default: defineComponent({
-      props: { open: Boolean },
-      setup(_, { slots }) {
-        return () => render('section', [slots.default?.(), slots.footer?.()]);
-      },
-    }),
-  };
-});
-
-vi.mock('@/components/ContainerLogView.vue', async () => {
-  const { defineComponent, h: render } = await import('vue');
-  return {
-    default: defineComponent({
-      props: { logs: String, autoRefreshing: Boolean },
+      props: { state: Object },
       setup(props) {
-        return () =>
-          render('div', {
-            'data-auto-refreshing': String(props.autoRefreshing),
-            'data-logs': props.logs,
-          });
+        return () => render('div', props.state?.text);
       },
     }),
   };
 });
-
 import RuntimeContainerLogsDrawer from './RuntimeContainerLogsDrawer.vue';
 
-async function flushAsyncWork() {
-  await Promise.resolve();
+const callbacks: ((event: LogStreamEvent) => void)[] = [];
+const signals: AbortSignal[] = [];
+function event(type: string, extra: Partial<LogStreamEvent> = {}): LogStreamEvent {
+  return {
+    type,
+    source_id: 'source',
+    cursor: '',
+    data_base64: '',
+    status: '',
+    message: '',
+    code: '',
+    request_id: '',
+    http_status: 0,
+    retryable: false,
+    ...extra,
+  };
+}
+async function flush() {
   await nextTick();
   await Promise.resolve();
   await nextTick();
 }
 
+afterEach(() => {
+  vi.useRealTimers();
+  readLogStream.mockReset();
+  callbacks.length = 0;
+  signals.length = 0;
+});
+
 describe('RuntimeContainerLogsDrawer', () => {
-  it('stops automatic refresh after the associated deployment completes', async () => {
-    getLogs.mockResolvedValue({ logs: 'container started' });
-    getDeployment.mockResolvedValue({ status: 'ran_to_completion' });
-    const target = document.createElement('div');
-    const i18n = createI18n({
-      legacy: false,
-      locale: 'en',
-      messages: { en: { common: { cancel: 'Cancel', refresh: 'Refresh' } } },
+  it('keeps streaming after deployment completion and restores content/cursor after unmount', async () => {
+    vi.useFakeTimers();
+    readLogStream.mockImplementation((_resource, _cursor, signal, callback) => {
+      signals.push(signal);
+      callbacks.push(callback);
+      return new Promise<void>((resolve) =>
+        signal.addEventListener('abort', () => resolve(), { once: true })
+      );
     });
     const pinia = createPinia();
     setActivePinia(pinia);
     useProjectStore().setActiveProject('project-1');
+    const visible = ref(true);
+    const host = document.createElement('div');
     const app = createApp({
-      render: () =>
-        h(RuntimeContainerLogsDrawer, {
-          open: true,
-          target: {
-            applicationId: 'application-1',
-            serviceId: 'service-1',
-            component: 'web',
-            title: 'Application / default · web',
-            deploymentId: 'deployment-1',
-          },
-        }),
+      setup() {
+        provideLogStreamCache(() => 'project-1');
+        return () =>
+          visible.value
+            ? h(RuntimeContainerLogsDrawer, {
+                open: true,
+                target: {
+                  applicationId: 'app-1',
+                  serviceId: 'service-1',
+                  component: 'web',
+                  title: 'Logs',
+                  deploymentId: 'completed-deployment',
+                },
+              })
+            : null;
+      },
     });
     app.use(pinia);
-    app.use(i18n);
-    document.body.append(target);
-    app.mount(target);
-
-    await flushAsyncWork();
-
-    expect(getLogs).toHaveBeenCalledOnce();
-    expect(getLogs).toHaveBeenCalledWith(
-      'project-1',
-      'application-1',
-      { tail: 200, service_id: 'service-1', component: 'web' },
-      expect.any(Object)
+    app.mount(host);
+    callbacks[0]?.(event('ready'));
+    callbacks[0]?.(event('chunk', { data_base64: btoa('started\n'), cursor: 'cursor-1' }));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(host.textContent).toBe('started\n');
+    expect(signals[0]?.aborted).toBe(false);
+    visible.value = false;
+    await flush();
+    expect(signals[0]?.aborted).toBe(true);
+    visible.value = true;
+    await flush();
+    expect(readLogStream).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        path: '/api/application/app-1/log/stream',
+        params: { service_id: 'service-1', component: 'web' },
+      }),
+      'cursor-1',
+      expect.any(AbortSignal),
+      expect.any(Function)
     );
-    expect(getDeployment).toHaveBeenCalledWith('project-1', 'deployment-1', expect.any(Object));
-    expect(target.querySelector('[data-logs]')?.getAttribute('data-logs')).toBe(
-      'container started'
-    );
-    expect(
-      target.querySelector('[data-auto-refreshing]')?.getAttribute('data-auto-refreshing')
-    ).toBe('false');
-
+    expect(host.textContent).toBe('started\n');
+    callbacks[1]?.(event('ready'));
+    callbacks[1]?.(event('chunk', { data_base64: btoa('continued\n'), cursor: 'cursor-2' }));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(host.textContent).toBe('started\ncontinued\n');
     app.unmount();
-    target.remove();
+    expect(signals[1]?.aborted).toBe(true);
   });
 });

@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-09-29 09:28:22
+最后修改时间: 2026-09-30 14:23:58
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -28,6 +28,7 @@ Doc role: living SoT
 | C-18 | MCP 仅采用本地 stdio 与内部 actor 绑定 | Web Dialogue 为每 turn 建立固定 actor 的内存 Core；Grok/Codex stdio 用显式 MCP PAT `POMELO_ORBIT_MCP__ACCESS_TOKEN`，每次 tools/call 认证；无远程 /mcp |
 | C-19 | Project 环境/Gateway 初始化只走 Web Wizard；MCP 使用 connection-local 已就绪 Project scope | Project 创建和 identity seed 不预建 Environment/Gateway；`ProjectInitializationConfig` 只给 Wizard 初值；运行时只读库存；Grok/Codex 先 list/select，后续工具不再传 `project_id` |
 | C-20 | Repository 与 Repository Credential 全局共享，Project 只作成员校验上下文 | 仓库 `code`、凭据名称全局唯一；Application Pipeline、Run、Artifact 和 Environment 仍按 Project 归属；仓库删除检查所有现存应用流水线绑定，应用流水线删除检查其未结束 Run；历史 Run/Snapshot/Artifact 不直接阻止仓库删除 |
+| C-21 | Web CI/CD 日志统一组件、功能与样式，采用 Fetch + SSE | 全部来源运行中持续读取；文件按字节续读，容器跟随并按时间重叠恢复；关闭停止订阅并保留页面缓存；不提供复制/导出，部署终态不结束容器日志，stop 仍不展示容器日志 |
 
 ## 废止（Superseded）
 

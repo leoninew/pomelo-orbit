@@ -294,55 +294,12 @@
       </DetailInfoCard>
     </div>
 
-    <AppDrawer
+    <LogDrawer
       :open="showLogsDrawer"
       :title="`${currentStageRun?.stage_name ?? ''} - ${t('pipelineRun.log')}`"
-      width-class="w-[min(960px,100vw)]"
-      body-class="min-h-0 flex-1 overflow-hidden p-0"
+      :state="stageLogState"
       @update:open="handleLogDrawerOpenChange"
-    >
-      <div class="flex h-full flex-col gap-3 p-6">
-        <div
-          v-if="currentStageRun?.error_message"
-          class="border-l-2 border-destructive px-3 py-1"
-          role="alert"
-        >
-          <p class="text-xs font-medium text-destructive">
-            {{ t('pipelineRun.fields.errorMessage') }}
-          </p>
-          <p class="whitespace-pre-wrap break-words text-sm text-destructive">
-            {{ currentStageRun.error_message }}
-          </p>
-        </div>
-        <div v-if="logsText" class="min-h-0 flex-1">
-          <MonacoEditor
-            :model-value="logsText"
-            language="plaintext"
-            height="100%"
-            :readonly="true"
-            @mount="handleStageLogEditorMount"
-          />
-        </div>
-        <div v-else class="flex flex-1 items-center justify-center text-muted-foreground">
-          <div class="text-center">
-            <AppSpinner v-if="stageLogStatus === 'loading' || stageLogStatus === 'streaming'" />
-            <p v-if="stageLogStatus === 'loading'" class="mt-2">
-              {{ t('pipelineRun.logLoading') }}
-            </p>
-            <p v-else-if="stageLogStatus === 'streaming'" class="mt-2">
-              {{ t('pipelineRun.logWaiting') }}
-            </p>
-            <p v-else-if="stageLogStatus === 'empty'">{{ t('pipelineRun.noLogOutput') }}</p>
-            <div v-else-if="stageLogStatus === 'error'">
-              <p class="text-destructive">{{ stageLogError || t('pipelineRun.logLoadFailed') }}</p>
-              <button type="button" class="app-link mt-2 text-sm" @click="retryStageLog">
-                {{ t('pipelineRun.retry') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </AppDrawer>
+    ></LogDrawer>
 
     <AppDialog
       v-model:open="isCancelDialogOpen"
@@ -402,11 +359,10 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
   import SearchControl from '@/components/SearchControl.vue';
-  import AppDrawer from '@/components/AppDrawer.vue';
+  import LogDrawer from '@/components/LogDrawer.vue';
   import ViewModeTabs from '@/components/ViewModeTabs.vue';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
+  import { provideLogStreamCache, useLogStream } from '@/composables/useLogStream';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ArtifactResp } from '@/gen/proto/orbit/v1/pipeline_run/artifact';
@@ -421,7 +377,6 @@
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
   import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
   import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
-  import type { editor } from 'monaco-editor';
 
   const route = useRoute();
   const router = useRouter();
@@ -450,8 +405,17 @@
   const appliedStageSearch = ref('');
   const artifactSearchText = ref('');
   const appliedArtifactSearch = ref('');
-  const stageLogStatus = ref<'loading' | 'streaming' | 'done' | 'empty' | 'error'>('loading');
-  const stageLogError = ref('');
+  const logCache = provideLogStreamCache(() => `${projectStore.activeProjectId}:${runId.value}`);
+  const stageLogResource = computed(() =>
+    projectStore.activeProjectId && currentStageRunResp.value
+      ? {
+          projectId: projectStore.activeProjectId,
+          path: `/api/pipeline-run/${runId.value}/stage/${currentStageRunResp.value.id}/log/stream`,
+          kind: 'file' as const,
+        }
+      : undefined
+  );
+  const { state: stageLogState } = useLogStream(stageLogResource, showLogsDrawer);
 
   function selectedProjectId() {
     const projectId = projectStore.activeProjectId;
@@ -508,11 +472,6 @@
     );
   });
 
-  // Log drawer state
-  const logsText = ref('');
-  let logPollAbort: AbortController | null = null;
-  let stageLogEditor: editor.IStandaloneCodeEditor | null = null;
-
   let pollAbort: AbortController | null = null;
   const isPolling = ref(false);
 
@@ -522,14 +481,8 @@
   }
 
   function openLogDrawer(sr: PipelineStageRunResp) {
-    logPollAbort?.abort();
     currentStageRunResp.value = sr;
-    logsText.value = '';
-    stageLogStatus.value = 'loading';
-    stageLogError.value = '';
-    stageLogEditor = null;
     showLogsDrawer.value = true;
-    startLogPolling(sr.id);
   }
 
   function openStageLog(stageId: string) {
@@ -539,93 +492,8 @@
     }
   }
 
-  function closeLogDrawer() {
-    showLogsDrawer.value = false;
-    logPollAbort?.abort();
-    logPollAbort = null;
-    stageLogEditor = null;
-  }
-
   function handleLogDrawerOpenChange(open: boolean) {
-    if (open) {
-      showLogsDrawer.value = true;
-      return;
-    }
-    closeLogDrawer();
-  }
-
-  function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
-    if (!ed) {
-      return;
-    }
-    const n = ed.getModel()?.getLineCount() ?? 0;
-    if (n > 0) {
-      ed.revealLine(n);
-    }
-  }
-
-  function handleStageLogEditorMount(ed: editor.IStandaloneCodeEditor) {
-    stageLogEditor = ed;
-    revealLastLine(ed);
-  }
-
-  function retryStageLog() {
-    if (!currentStageRunResp.value) {
-      return;
-    }
-    logPollAbort?.abort();
-    logsText.value = '';
-    stageLogStatus.value = 'loading';
-    stageLogError.value = '';
-    stageLogEditor = null;
-    startLogPolling(currentStageRunResp.value.id);
-  }
-
-  async function startLogPolling(stageRunId: string) {
-    logPollAbort = new AbortController();
-    const signal = logPollAbort.signal;
-    stageLogStatus.value = 'loading';
-    let offset = 0;
-
-    while (!signal.aborted) {
-      try {
-        const resp = await pipelineRunApi.getStageLog(
-          selectedProjectId(),
-          runId.value,
-          stageRunId,
-          offset,
-          { signal }
-        );
-        if (signal.aborted) {
-          break;
-        }
-        if (currentStageRunResp.value?.id !== stageRunId) {
-          break;
-        }
-        // is_complete uses the unified WorkStatus definition from the API.
-        if (resp.logs) {
-          logsText.value += resp.logs;
-          offset = resp.offset;
-          stageLogStatus.value = resp.is_complete ? 'done' : 'streaming';
-          revealLastLine(stageLogEditor);
-        } else if (resp.is_complete) {
-          stageLogStatus.value = logsText.value ? 'done' : 'empty';
-        } else {
-          stageLogStatus.value = 'streaming';
-        }
-        if (resp.is_complete) {
-          break;
-        }
-      } catch (error) {
-        if (!signal.aborted) {
-          stageLogStatus.value = 'error';
-          stageLogError.value =
-            error instanceof Error ? error.message : t('pipelineRun.logLoadFailed');
-        }
-        break;
-      }
-      await delayAsync(1500, signal);
-    }
+    showLogsDrawer.value = open;
   }
 
   async function fetchRun() {
@@ -735,7 +603,7 @@
     try {
       await executeDelete(async () => {
         stopPolling();
-        logPollAbort?.abort();
+        showLogsDrawer.value = false;
         await pipelineRunApi.delete(selectedProjectId(), runId.value);
         toast.success(t('pipelineRun.toast.deleteSuccess'));
         await router.replace('/pipeline-run');
@@ -781,6 +649,9 @@
 
   function resetState() {
     stopPolling();
+    logCache.clear();
+    showLogsDrawer.value = false;
+    currentStageRunResp.value = undefined;
     run.value = undefined;
     snapshot.value = undefined;
     artifacts.value = [];
@@ -811,6 +682,5 @@
 
   onUnmounted(() => {
     stopPolling();
-    logPollAbort?.abort();
   });
 </script>

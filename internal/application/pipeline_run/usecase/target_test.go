@@ -312,7 +312,7 @@ func TestChangedRunTargetCannotReadControlPlaneStageLog(t *testing.T) {
 		stageRun: model.PipelineStageRun{Id: "stage-run-1", PipelineRunId: run.Id}}
 	service := Service{store: stores{project: directTriggerProjectStore{}, pipelineRun: store},
 		environments: &runTargetEnvironmentStore{environment: environment}, workspace: directTriggerWorkspace{}}
-	_, err := service.PipelineStageLog(context.Background(), "user-1", "project-1", run.Id, store.stageRun.Id, 0)
+	_, err := service.OpenStageLogStream(context.Background(), "user-1", "project-1", run.Id, store.stageRun.Id, "")
 	if err == nil || !strings.Contains(err.Error(), "changed") {
 		t.Fatalf("log read after target change error = %v", err)
 	}

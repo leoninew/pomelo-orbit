@@ -113,25 +113,31 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 		return e.failStage(ctx, projectId, pipelineStageRun, fmt.Sprintf("create log writer: %v", err))
 	}
 	defer func() { _ = logWriter.Close() }()
+	failStage := func(message string) bool {
+		if err := logWriter.Close(); err != nil {
+			message = fmt.Sprintf("%s; close stage log: %v", message, err)
+		}
+		return e.failStage(ctx, projectId, pipelineStageRun, message)
+	}
 
 	volumes, err := e.workspace.DockerStageMounts(ctx, repo.Code, run.Id)
 	if err != nil {
-		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
+		return failStage(err.Error())
 	}
 	if repo.RepositoryType == model.RepositoryTypeLocalDirectory {
 		if e.localSource == nil {
-			return e.failStage(ctx, projectId, pipelineStageRun, "local directory sources are disabled")
+			return failStage("local directory sources are disabled")
 		}
 		sourcePath, err := e.localSource.DockerHostPath(ctx, repo.RepositoryUrl)
 		if err != nil {
-			return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
+			return failStage(err.Error())
 		}
 		volumes = append(volumes, pipelinerunport.VolumeMount{HostPath: sourcePath, ContainerPath: "/source", Mode: "ro"})
 	}
 
 	script, environment, err := e.pipelineStageRunConfig(ctx, repo, runtime, stage)
 	if err != nil {
-		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
+		return failStage(err.Error())
 	}
 
 	runOptions := pipelinerunport.RunOptions{
@@ -149,12 +155,12 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 			if err != executionErr {
 				message = fmt.Sprintf("%s: %v", message, err)
 			}
-			return e.failStage(ctx, projectId, pipelineStageRun, message)
+			return failStage(message)
 		}
-		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
+		return failStage(err.Error())
 	}
 	if err := executionCtx.Err(); err != nil {
-		return e.failStage(ctx, projectId, pipelineStageRun, e.executionErrorMessage(err))
+		return failStage(e.executionErrorMessage(err))
 	}
 	if exitCode != 0 {
 		if err := logWriter.Close(); err != nil {
@@ -171,7 +177,10 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 	pipelineStageRun.ExitCode = &exitCode
 	runtimeDatetime, _ := runtime.Global["runtime_datetime"].(string)
 	if err := e.saveArtifacts(executionCtx, projectId, run, stage, stages, runOptions, runtimeDatetime); err != nil {
-		return e.failStage(ctx, projectId, pipelineStageRun, err.Error())
+		return failStage(err.Error())
+	}
+	if err := logWriter.Close(); err != nil {
+		return e.failStage(ctx, projectId, pipelineStageRun, fmt.Sprintf("close stage log: %v", err))
 	}
 	if _, err := e.store.CompletePipelineStageRun(ctx, projectId, pipelineStageRun); err != nil {
 		e.logger.Error("pipeline stage run update failed", "run", run.Id, "stage", stage.Name, "error", err)

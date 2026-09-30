@@ -1,11 +1,9 @@
 import type {
   DeploymentCancelReq,
-  DeploymentContainerLogsResp,
-  DeploymentLogsResp,
   DeploymentPaginatedResp,
   DeploymentResp,
 } from '@/gen/proto/orbit/v1/deployment/deployment';
-import request, { remoteRequestConfig, type AxiosRequestConfig } from '@/utils/request';
+import request, { type AxiosRequestConfig } from '@/utils/request';
 
 // 部署记录相关 API
 export const deploymentApi = {
@@ -43,31 +41,5 @@ export const deploymentApi = {
     return request.post(`/api/deployment/${id}/cancel`, data, {
       params: { project_id: projectId },
     });
-  },
-
-  // 获取部署日志（增量读取；失败详情主展示）
-  getLogs(
-    projectId: string,
-    id: string,
-    offset: number = 0,
-    config?: AxiosRequestConfig
-  ): Promise<DeploymentLogsResp> {
-    return request.get(`/api/deployment/${id}/logs`, {
-      ...config,
-      params: { project_id: projectId, offset },
-    });
-  },
-
-  // 获取部署对应的容器日志
-  getContainerLogs(
-    projectId: string,
-    id: string,
-    params?: { tail?: number },
-    config?: AxiosRequestConfig
-  ): Promise<DeploymentContainerLogsResp> {
-    return request.get(
-      `/api/deployment/${id}/container-logs`,
-      remoteRequestConfig({ ...config, params: { project_id: projectId, ...params } })
-    );
   },
 };

@@ -9,6 +9,7 @@ import (
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	logport "github.com/leoninew/pomelo-orbit/internal/application/logstream/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -52,6 +53,19 @@ func (w *workspaceFake) StageWorkspace(_ context.Context, _ environmentport.Targ
 func (w *workspaceFake) Run(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
 	return w.queryErr
 }
+
+func (w *workspaceFake) Stream(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
+	return w.queryErr
+}
+
+func (w *workspaceFake) OpenReader(context.Context, string, string) (logport.Reader, error) {
+	return emptyLogReader{}, nil
+}
+
+type emptyLogReader struct{}
+
+func (emptyLogReader) Read(context.Context, int64, int) ([]byte, bool, error) { return nil, false, nil }
+func (emptyLogReader) Close() error                                           { return nil }
 
 func (w *workspaceFake) Query(context.Context, environmentport.Target, string, string, ...string) (string, error) {
 	w.queryCalled = true

@@ -1,13 +1,52 @@
 package executionlog
 
 import (
+	"context"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"sync"
+
+	logport "github.com/leoninew/pomelo-orbit/internal/application/logstream/port"
 )
 
 type Store struct{}
+
+type fileReader struct{ path string }
+
+func (Store) OpenReader(_ context.Context, logPath string) (logport.Reader, error) {
+	return fileReader{path: logPath}, nil
+}
+
+func (r fileReader) Read(ctx context.Context, offset int64, limit int) ([]byte, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
+	file, err := os.Open(r.path)
+	if os.IsNotExist(err) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = file.Close() }()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, true, err
+	}
+	if offset > info.Size() {
+		return nil, true, errors.New("log file was truncated")
+	}
+	buffer := make([]byte, limit)
+	n, err := file.ReadAt(buffer, offset)
+	if errors.Is(err, io.EOF) {
+		err = nil
+	}
+	return buffer[:n], true, err
+}
+
+func (fileReader) Close() error { return nil }
 
 func (Store) Writer(logPath string) (io.WriteCloser, error) {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o755); err != nil {
@@ -68,6 +107,10 @@ func NewDeploymentStore(root string) DeploymentStore {
 
 func (s DeploymentStore) Writer(serviceCode string, deploymentId string) (io.WriteCloser, error) {
 	return Store{}.Writer(s.path(serviceCode, deploymentId))
+}
+
+func (s DeploymentStore) OpenReader(ctx context.Context, serviceCode, deploymentId string) (logport.Reader, error) {
+	return Store{}.OpenReader(ctx, s.path(serviceCode, deploymentId))
 }
 
 func (s DeploymentStore) Read(serviceCode string, deploymentId string, offset int) ([]byte, int, error) {

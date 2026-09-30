@@ -3,18 +3,7 @@ syntax = "proto3";
 package orbit.v1.deployment;
 
 
-message DeploymentLogsResp {
-  string logs = 1;
-  int32 offset = 2;
-  bool is_complete = 3;
-  string status = 4;
-}
 
-message DeploymentContainerLogsResp {
-  string logs = 1;
-  string source = 2;
-  bool is_realtime_supported = 3;
-}
 
 message DeploymentResp {
   string id = 1;

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"path"
-	"strconv"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -69,42 +68,6 @@ func applyContainerComponentIds(containers []deploymentdto.RuntimeContainer, ver
 		containers[index].VersionId = versionId
 		containers[index].ComponentId = componentIds[containers[index].Service]
 	}
-}
-
-// ApplicationLogs returns recent compose logs for a resolved runtime service.
-func (s Service) ApplicationLogs(ctx context.Context, userId string, projectId string, applicationId string, tail int, input deploymentdto.ServiceTargetInput, component string) (string, error) {
-	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
-	if err != nil {
-		return "", err
-	}
-	if tail < 1 || tail > 1000 {
-		return "", apperror.New(apperror.KindValidation, "tail must be between 1 and 1000")
-	}
-	service, err := s.resolveServiceTarget(ctx, projectId, app.Id, input)
-	if err != nil {
-		return "", err
-	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
-	if err != nil {
-		return "", err
-	}
-	exists, err := s.runtime.ServiceDirExists(ctx, target, service.Code)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
-	}
-	if !exists {
-		return "", nil
-	}
-	projectName := composeProjectName(service.Code)
-	command := containerLogsTailCommand(projectName, strconv.Itoa(tail))
-	if component != "" {
-		command = containerLogsTailCommand(projectName, strconv.Itoa(tail), component)
-	}
-	output, err := s.runtime.Query(ctx, target, service.Code, command.Name, command.Args...)
-	if err != nil {
-		return outputOrError(output, err), apperror.New(apperror.KindInternal, outputOrError(output, err))
-	}
-	return output, nil
 }
 
 // PreviewService renders a saved service configuration without creating a deployment.

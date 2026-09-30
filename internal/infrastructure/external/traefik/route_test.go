@@ -323,6 +323,9 @@ func (r *routeRuntimeFake) StageWorkspace(context.Context, environmentport.Targe
 func (r *routeRuntimeFake) Run(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
 	return nil
 }
+func (r *routeRuntimeFake) Stream(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
+	return nil
+}
 func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.Target, _ string, _ string, args ...string) (string, error) {
 	return r.query(target, args...)
 }

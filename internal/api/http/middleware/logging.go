@@ -77,6 +77,9 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 	}
 	return func(c *gin.Context) {
 		requestBodyLimit, responseBodyLimit := cfg.RequestBodyLimit, cfg.ResponseBodyLimit
+		if strings.HasSuffix(c.FullPath(), "/log/stream") || strings.HasSuffix(c.FullPath(), "/container-log/stream") {
+			responseBodyLimit = 0
+		}
 		if c.Request.URL.Path == "/api/environment/terminal" || c.Request.URL.Path == "/api/environment/terminal/ticket" {
 			requestBodyLimit, responseBodyLimit = 0, 0
 		}
@@ -225,6 +228,8 @@ type bodyLogWriter struct {
 	responseBodyLimit int
 	body              bytes.Buffer
 }
+
+func (w *bodyLogWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func (w *bodyLogWriter) Write(data []byte) (int, error) {
 	w.captureBody(data)

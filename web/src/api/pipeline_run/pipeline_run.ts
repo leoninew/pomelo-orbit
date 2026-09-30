@@ -4,10 +4,9 @@ import type {
   PipelineRunPaginatedResp,
   PipelineRunResp,
   PipelineRunRetryReq,
-  PipelineStageLogResp,
   PipelineRunTriggerReq,
 } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
-import request, { type AxiosRequestConfig } from '@/utils/request';
+import request from '@/utils/request';
 
 // PipelineRun API
 export const pipelineRunApi = {
@@ -52,19 +51,6 @@ export const pipelineRunApi = {
   listArtifacts(projectId: string, runId: string): Promise<PipelineRunArtifactListResp> {
     return request.get(`/api/pipeline-run/${runId}/artifact`, {
       params: { project_id: projectId },
-    });
-  },
-
-  getStageLog(
-    projectId: string,
-    runId: string,
-    stageRunId: string,
-    offset: number,
-    config?: AxiosRequestConfig
-  ): Promise<PipelineStageLogResp> {
-    return request.get(`/api/pipeline-run/${runId}/stage/${stageRunId}/log`, {
-      ...config,
-      params: { project_id: projectId, offset },
     });
   },
 };

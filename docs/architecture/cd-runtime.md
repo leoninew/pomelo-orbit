@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-09-30 10:49:08
+最后修改时间: 2026-09-30 14:23:58
 
 Doc role: living architecture
 
@@ -58,3 +58,13 @@ Route snapshot 与端口冲突检查始终限定在当前 Project。确认同步
 同步确认先在数据库事务内保存启停草稿，再执行外部 Traefik 发布。若发布失败，业务配置已保存，API 返回 `route_sync_publish_failed`，前端重新预览并保留同步提示供重试；不承诺跨数据库和 Traefik 的原子提交。证书接口只保存证书配置；已启用 Route 的证书更新在下一次显式同步时随完整快照发布，未启用 Route 的证书配置在启用并同步后发布。
 
 TCP Route 的 entrypoint/host port 由选中 Gateway Version 的 Component endpoint 声明。Route 不创建 Gateway listener，也不改变 Gateway Version。
+
+## Web 日志流
+
+CI/CD 日志统一通过 Fetch + SSE 读取，所有入口沿用 Bearer 与 Project 成员授权。CD 操作文件保持位于控制面 `logging.deployment_root`，读取历史不要求远端在线；部署详情容器、Service Component、Gateway 与 Route 日志通过明确的 local/SSH target runtime 执行持续读取。Route 展示关联 Gateway 的输出。
+
+操作文件入口为 `/api/deployment/:deployment_id/log/stream`，部署容器入口为 `/api/deployment/:deployment_id/container-log/stream`，持续运行的容器入口为 `/api/application/:app_id/log/stream`，后者要求显式 service_id，可指定 Component 名称。所有路由均为 GET，并要求 project_id，可携带续读 cursor。旧 Web 日志快照路由已移除；MCP 的 DeploymentLog/RuntimeComposeLogs 按需读取用途独立保留。
+
+容器日志在操作进行中订阅；容器或 Compose 配置尚未出现时保持 waiting。以非 PTY 的 `docker compose logs --follow --timestamps --no-color` 传递 stdout，命令 stderr 单独保留最多 32 KiB 诊断。两秒复核成员、资源、目标/凭据修订与 Docker 容器 ID；容器重建时刷新来源，取消旧读取命令后继续。部署结束不会结束容器日志；stop 操作继续不展示容器日志。
+
+文件日志采用精确字节游标；容器日志按时间戳重叠两秒补读，前端采用有界记录次数去重。来源变化和不能保证补齐的恢复显示缺口；Docker 删除的历史无法恢复。客户端断开仅取消读取命令/session，不停止部署任务或容器。SSE 心跳 15 秒，慢连接单次写入超时 10 秒；新增日志 SSE 路由关闭响应正文捕获，保留请求元信息。

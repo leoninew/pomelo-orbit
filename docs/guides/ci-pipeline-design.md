@@ -1,5 +1,5 @@
 # CI Pipeline 设计文档
-最后修改时间: 2026-09-26
+最后修改时间: 2026-09-30 14:23:58
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -116,3 +116,11 @@ Pipeline 到其 Stage/StageReference 使用带级联删除的物理外键；Pipe
 | `GET /api/pipeline-run/artifact` | 按 Repository 或 Pipeline 查询制品 |
 
 Webhook 尚未投入使用，本模型不定义 Repository Webhook、公开 Webhook 接收入口或自动触发行为。
+
+## 阶段日志读取
+
+Web 阶段日志统一使用带 Bearer 认证的 Fetch + SSE：`GET /api/pipeline-run/:run_id/stage/:stage_run_id/log/stream?project_id=...`。授权、Stage/Run 归属和执行目标在建立订阅时校验，并在订阅期间每两秒复核；SSH 日志通过同一 SFTP 会话有界补读，不回退控制面文件。
+
+任务运行中持续传递原始字节；尚未创建文件时等待，临时 EOF 不表示完成。游标绑定资源和来源，内部为 int64 字节偏移；SSE 明确传递 Base64，前端保留 UTF-8 解码器以处理跨块字符。终态后等待三秒无新增并再次读取 EOF，再发送 complete，失败/取消是任务结果，不是日志读取错误。取消状态观测间隔最多一秒，阶段普通完成前关闭写入器。
+
+阶段抽屉使用共享 LogDrawer/LogView，上滚只停止滚动跟随。关闭取消订阅并保留页面内内容、游标和阅读位置，重开补读；离页、换 Project/Run 时清空。视图有界，不提供复制或导出。

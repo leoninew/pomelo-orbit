@@ -460,32 +460,6 @@ func (s Service) CancelPipelineRun(ctx context.Context, userId string, projectId
 	return s.pipelineRunDetail(ctx, projectId, updated, true)
 }
 
-func (s Service) PipelineStageLog(ctx context.Context, userId string, projectId string, runId string, stageRunId string, offset int) (pipelinerundto.PipelineStageLog, error) {
-	run, err := s.loadPipelineRunForUser(ctx, userId, projectId, runId)
-	if err != nil {
-		return pipelinerundto.PipelineStageLog{}, err
-	}
-	if offset < 0 {
-		return pipelinerundto.PipelineStageLog{}, apperror.New(apperror.KindValidation, "offset must be greater than or equal to 0")
-	}
-	stageRun, err := s.store.PipelineStageRun(ctx, projectId, stageRunId)
-	if errors.Is(err, repository.ErrNotFound) || (err == nil && stageRun.PipelineRunId != run.Id) {
-		return pipelinerundto.PipelineStageLog{Offset: offset, IsComplete: true}, nil
-	}
-	if err != nil {
-		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to load pipeline stage run", err)
-	}
-	runtime, err := s.runtimeForRun(ctx, projectId, run)
-	if err != nil {
-		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve pipeline workspace", err)
-	}
-	content, next, err := runtime.reader.Read(runtime.workspace.StageLogPath(run.Id, stageRun.Id), offset)
-	if err != nil {
-		return pipelinerundto.PipelineStageLog{}, apperror.Wrap(apperror.KindInternal, "Failed to read stage log", err)
-	}
-	return pipelinerundto.PipelineStageLog{Logs: string(content), Offset: next, IsComplete: status.WorkStatusIsComplete(stageRun.Status)}, nil
-}
-
 func (s Service) loadPipelineRunForUser(ctx context.Context, userId string, projectId string, runId string) (model.PipelineRun, error) {
 	if projectId == "" {
 		return model.PipelineRun{}, apperror.New(apperror.KindValidation, "project_id is required")

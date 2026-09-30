@@ -364,6 +364,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
+  import { provideLogStreamCache } from '@/composables/useLogStream';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
   import RouteSyncDialog from '@/components/RouteSyncDialog.vue';
@@ -383,6 +384,7 @@
   const routeId = currentRoute.params.id as string;
   const toast = useToast();
   const projectStore = useProjectStore();
+  provideLogStreamCache(() => `${projectStore.activeProjectId}:${routeId}`);
   const { t } = useI18n();
   const targetUrlPattern = /^https?:\/\/[a-zA-Z0-9.-]+(?::\d+)?$/;
 

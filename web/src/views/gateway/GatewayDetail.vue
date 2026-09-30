@@ -526,6 +526,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
+  import { provideLogStreamCache } from '@/composables/useLogStream';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import SelectControl from '@/components/SelectControl.vue';
   import SensitiveValue from '@/components/SensitiveValue.vue';
@@ -548,6 +549,7 @@
   const { t } = useI18n();
   const router = useRouter();
   const projectStore = useProjectStore();
+  provideLogStreamCache(() => projectStore.activeProjectId ?? '');
   const { status, execute } = useStatusAsync();
   const { status: opStatus, execute: executeOp } = useStatusAsync();
 

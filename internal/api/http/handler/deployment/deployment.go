@@ -54,34 +54,6 @@ func (h Handler) DeleteDeployment(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h Handler) GetDeploymentLogs(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	log, err := h.service.DeploymentLog(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("deployment_id"), transport.QueryInt(c.Request.URL.Query().Get("offset"), 0))
-	if err != nil {
-		transport.WriteError(c, err)
-		return
-	}
-	resp := deploymentLogsResponse(log)
-	transport.WriteProtoJSON(c, http.StatusOK, &resp)
-}
-
-func (h Handler) GetDeploymentContainerLogs(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	log, err := h.service.DeploymentContainerLog(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("deployment_id"), transport.QueryInt(c.Request.URL.Query().Get("tail"), 200))
-	if err != nil {
-		transport.WriteError(c, err)
-		return
-	}
-	resp := deploymentContainerLogsResponse(log)
-	transport.WriteProtoJSON(c, http.StatusOK, &resp)
-}
-
 func (h Handler) CancelDeployment(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
@@ -166,19 +138,6 @@ func (h Handler) GetApplicationStatus(c *gin.Context) {
 		return
 	}
 	transport.WriteProtoJSON(c, http.StatusOK, applicationStatusResponse(containers))
-}
-
-func (h Handler) GetApplicationLogs(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	value, err := h.service.ApplicationLogs(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("app_id"), transport.QueryInt(c.Request.URL.Query().Get("tail"), 100), deploymentTargetFromQuery(c), c.Request.URL.Query().Get("component"))
-	if err != nil {
-		transport.WriteError(c, err)
-		return
-	}
-	transport.WriteProtoJSON(c, http.StatusOK, &applicationv1.ApplicationLogsResp{Logs: value})
 }
 
 func (h Handler) PreviewService(c *gin.Context) {

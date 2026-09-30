@@ -21,7 +21,7 @@ func (r Router) registerApplication(engine *gin.Engine) {
 	engine.POST("/api/application/:app_id/stop", deploymentHandler.StopApplication)
 	engine.POST("/api/application/:app_id/restart", deploymentHandler.RestartApplication)
 	engine.GET("/api/application/:app_id/status", deploymentHandler.GetApplicationStatus)
-	engine.GET("/api/application/:app_id/logs", deploymentHandler.GetApplicationLogs)
+	engine.GET("/api/application/:app_id/log/stream", deploymentHandler.StreamApplicationLog)
 	engine.GET("/api/application/:app_id/service", serviceHandler.ListApplicationServices)
 	engine.GET("/api/application/:app_id/version", handler.ListVersions)
 	engine.POST("/api/application/:app_id/version", handler.CreateVersion)

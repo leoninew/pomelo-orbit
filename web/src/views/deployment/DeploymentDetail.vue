@@ -4,6 +4,18 @@
       <DetailPageHeader :items="[]" title="部署详情" />
       <div class="flex flex-wrap items-center gap-2">
         <button
+          v-if="deployment && !isCompleteDeployment"
+          type="button"
+          class="app-icon-button size-9"
+          :class="isAutoRefreshing ? 'text-primary' : ''"
+          :title="t(isAutoRefreshing ? 'logs.pauseDetailRefresh' : 'logs.resumeDetailRefresh')"
+          :aria-label="t(isAutoRefreshing ? 'logs.pauseDetailRefresh' : 'logs.resumeDetailRefresh')"
+          :aria-pressed="isAutoRefreshing"
+          @click="toggleAutoRefresh"
+        >
+          <Loader2 class="size-4" :class="isAutoRefreshing ? 'animate-spin' : ''" />
+        </button>
+        <button
           v-if="isCancelable"
           class="app-button-danger h-9 px-3"
           :disabled="isCancelling"
@@ -111,82 +123,33 @@
         </dl>
       </DetailInfoCard>
 
-      <TabsRoot default-value="operation" class="flex min-h-[360px] min-w-0 flex-1 flex-col">
-        <DetailInfoCard class="flex min-h-0 flex-1 flex-col">
-          <template #header>
-            <TabsList aria-label="日志类型" class="flex h-9 gap-1">
-              <TabsTrigger
-                value="operation"
-                class="inline-flex h-9 items-center px-3 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
-              >
-                操作日志
-              </TabsTrigger>
-              <TabsTrigger
-                value="container"
-                class="inline-flex h-9 items-center px-3 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
-              >
-                容器日志
-              </TabsTrigger>
-            </TabsList>
-            <button
-              v-if="!isCompleteDeployment"
-              class="app-button inline-flex h-9 items-center gap-2 px-3"
-              :class="isAutoRefreshing ? 'text-primary' : ''"
-              @click="toggleAutoRefresh"
-            >
-              <Loader2 class="size-4" :class="isAutoRefreshing ? 'animate-spin' : ''" />
-              {{ isAutoRefreshing ? '自动刷新' : '暂停刷新' }}
-            </button>
-          </template>
-          <TabsContent value="operation" class="min-h-0 flex-1 p-5 outline-none">
-            <div
-              v-if="!operationLogText"
-              class="flex h-full min-h-[240px] items-center justify-center text-muted-foreground"
-            >
-              <div class="text-center">
-                <AppSpinner
-                  v-if="operationLogStatus === 'loading' || operationLogStatus === 'streaming'"
-                />
-                <p v-if="operationLogStatus === 'loading'" class="mt-2 text-sm">
-                  加载操作日志中...
-                </p>
-                <p v-else-if="operationLogStatus === 'streaming'" class="mt-2 text-sm">
-                  操作日志刷新中...
-                </p>
-                <p v-else-if="operationLogStatus === 'empty'" class="text-sm">暂无操作日志输出</p>
-                <div v-else-if="operationLogStatus === 'error'">
-                  <p class="text-sm text-destructive">操作日志加载失败</p>
-                  <button class="app-link mt-2 text-sm" @click="retryOperationLogs">重试</button>
-                </div>
-              </div>
-            </div>
-            <MonacoEditor
-              v-else
-              :model-value="operationLogText"
-              language="plaintext"
-              height="100%"
-              :readonly="true"
-              @mount="handleOperationLogEditorMount"
-            />
-          </TabsContent>
-
-          <TabsContent value="container" class="min-h-0 flex-1 p-5 outline-none">
-            <p v-if="containerLogSource === 'tail'" class="mt-1 text-xs text-muted-foreground">
-              当前展示最近容器日志，可能包含本次操作前的历史输出。
-            </p>
-            <ContainerLogView
-              :logs="containerLogText"
-              :status="containerLogViewStatus"
-              :error="containerLogError"
-              :message="containerLogMessage"
-              :auto-refreshing="false"
-              :show-auto-refresh="false"
-              @retry="retryContainerLogs"
-            />
-          </TabsContent>
-        </DetailInfoCard>
-      </TabsRoot>
+      <DetailInfoCard class="flex min-h-[360px] min-w-0 flex-1 flex-col" title="操作日志">
+        <template #actions>
+          <LogActions
+            :state="operationLogState"
+            @find="operationLogView?.find()"
+            @follow="operationLogView?.follow()"
+          />
+          <button
+            v-if="deployment.operation_type !== 'stop'"
+            type="button"
+            class="app-icon-button size-8"
+            :title="t('service.logs.title')"
+            :aria-label="t('service.logs.title')"
+            @click="isContainerLogDrawerOpen = true"
+          >
+            <ScrollText class="size-4" />
+          </button>
+        </template>
+        <LogView ref="operationLogView" :state="operationLogState" />
+      </DetailInfoCard>
     </div>
+
+    <LogDrawer
+      v-model:open="isContainerLogDrawerOpen"
+      :title="t('service.logs.title')"
+      :state="containerLogState"
+    />
 
     <AppDialog
       v-model:open="isCancelDialogOpen"
@@ -239,9 +202,8 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Loader2, Trash2, X } from '@lucide/vue';
-  import { computed, onMounted, onUnmounted, ref } from 'vue';
-  import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
+  import { ArrowLeft, Loader2, ScrollText, Trash2, X } from '@lucide/vue';
+  import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { deploymentApi } from '@/api/deployment/deployment';
@@ -251,16 +213,16 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppSpinner from '@/components/AppSpinner.vue';
-  import ContainerLogView from '@/components/ContainerLogView.vue';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
+  import LogView from '@/components/LogView.vue';
+  import LogActions from '@/components/LogActions.vue';
+  import LogDrawer from '@/components/LogDrawer.vue';
+  import { provideLogStreamCache, useLogStream } from '@/composables/useLogStream';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment/deployment';
   import { useProjectStore } from '@/stores/project';
   import { isComplete, statusTone } from '@/utils/status';
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
-  import type { editor } from 'monaco-editor';
 
   const route = useRoute();
   const router = useRouter();
@@ -273,6 +235,8 @@
   const { loading: isDeleting, execute: executeDelete } = useStatusAsync();
 
   const deployment = ref<DeploymentResp>();
+  const isContainerLogDrawerOpen = ref(false);
+  const operationLogView = ref<InstanceType<typeof LogView>>();
   const deploymentServiceLabel = computed(
     () =>
       deployment.value?.application_name ||
@@ -280,21 +244,32 @@
       deployment.value?.service_id ||
       ''
   );
-  type LogStatus =
-    | 'loading'
-    | 'streaming'
-    | 'done'
-    | 'empty'
-    | 'error'
-    | 'not_applicable'
-    | 'waiting_for_operation';
-
-  const operationLogText = ref('');
-  const operationLogOffset = ref(0);
-  const operationLogStatus = ref<LogStatus>('loading');
-  const containerLogText = ref('');
-  const containerLogSource = ref('since');
-  const containerLogStatus = ref<LogStatus>('loading');
+  const logCache = provideLogStreamCache(
+    () => `${projectStore.activeProjectId}:${deploymentId.value}`
+  );
+  const operationLogResource = computed(() =>
+    projectStore.activeProjectId && deployment.value
+      ? {
+          projectId: projectStore.activeProjectId,
+          path: `/api/deployment/${deploymentId.value}/log/stream`,
+          kind: 'file' as const,
+        }
+      : undefined
+  );
+  const containerLogResource = computed(() =>
+    projectStore.activeProjectId && deployment.value && deployment.value.operation_type !== 'stop'
+      ? {
+          projectId: projectStore.activeProjectId,
+          path: `/api/deployment/${deploymentId.value}/container-log/stream`,
+          kind: 'container' as const,
+        }
+      : undefined
+  );
+  const { state: operationLogState } = useLogStream(operationLogResource, () => !!deployment.value);
+  const { state: containerLogState } = useLogStream(
+    containerLogResource,
+    () => isContainerLogDrawerOpen.value
+  );
   const isCancelDialogOpen = ref(false);
   const cancelSubmitError = ref('');
   const isDeleteDialogOpen = ref(false);
@@ -302,7 +277,6 @@
   const isAutoRefreshing = ref(false);
   let refreshAbort: AbortController | null = null;
   let refreshGeneration = 0;
-  let operationLogEditor: editor.IStandaloneCodeEditor | null = null;
 
   function selectedProjectId() {
     const projectId = projectStore.activeProjectId;
@@ -345,107 +319,8 @@
   const isCancelable = computed(() =>
     deployment.value ? !isComplete(deployment.value.status) : false
   );
-  const containerLogViewStatus = computed<'loading' | 'streaming' | 'done' | 'empty' | 'error'>(
-    () => {
-      if (
-        containerLogStatus.value === 'waiting_for_operation' ||
-        containerLogStatus.value === 'not_applicable'
-      ) {
-        return 'empty';
-      }
-      return containerLogStatus.value;
-    }
-  );
-  const containerLogMessage = computed(() => {
-    if (containerLogStatus.value === 'not_applicable') {
-      return '停止操作不展示容器日志。';
-    }
-    if (containerLogStatus.value === 'waiting_for_operation') {
-      return '等待操作完成后拉取容器日志。';
-    }
-    return '';
-  });
-  const containerLogError = computed(() =>
-    containerLogStatus.value === 'error' ? '容器日志加载失败' : ''
-  );
-
   function isCurrentRefresh(generation: number, signal: AbortSignal) {
     return !signal.aborted && generation === refreshGeneration;
-  }
-
-  async function fetchOperationLogs(generation?: number, signal?: AbortSignal) {
-    const offset = operationLogOffset.value;
-    try {
-      const data = await deploymentApi.getLogs(selectedProjectId(), deploymentId.value, offset, {
-        signal,
-      });
-      if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
-        return;
-      }
-      if (operationLogOffset.value !== offset) {
-        return;
-      }
-      operationLogText.value += data.logs;
-      operationLogOffset.value = data.offset;
-      operationLogStatus.value = data.is_complete
-        ? operationLogText.value
-          ? 'done'
-          : 'empty'
-        : 'streaming';
-      revealLastLine(operationLogEditor);
-    } catch {
-      if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
-        operationLogStatus.value = 'error';
-      }
-    }
-  }
-
-  async function fetchContainerLogs(generation?: number, signal?: AbortSignal) {
-    if (!deployment.value || deployment.value.operation_type === 'stop') {
-      containerLogText.value = '';
-      containerLogStatus.value = 'not_applicable';
-      return;
-    }
-    if (!isCompleteDeployment.value) {
-      containerLogText.value = '';
-      containerLogStatus.value = 'waiting_for_operation';
-      return;
-    }
-    try {
-      const data = await deploymentApi.getContainerLogs(
-        selectedProjectId(),
-        deploymentId.value,
-        { tail: 200 },
-        { signal }
-      );
-      if (generation !== undefined && signal && !isCurrentRefresh(generation, signal)) {
-        return;
-      }
-      containerLogText.value = data.logs;
-      containerLogSource.value = data.source;
-      // Container logs are only fetched after WorkStatus is_complete.
-      containerLogStatus.value = containerLogText.value ? 'done' : 'empty';
-    } catch {
-      if (generation === undefined || !signal || isCurrentRefresh(generation, signal)) {
-        containerLogStatus.value = 'error';
-      }
-    }
-  }
-
-  async function fetchLogs(generation?: number, signal?: AbortSignal) {
-    if (!deployment.value) {
-      return;
-    }
-    await fetchOperationLogs(generation, signal);
-    await fetchContainerLogs(generation, signal);
-  }
-
-  function retryOperationLogs() {
-    void fetchOperationLogs();
-  }
-
-  function retryContainerLogs() {
-    void fetchContainerLogs();
   }
 
   function stopAutoRefresh() {
@@ -477,10 +352,8 @@
           }
           deployment.value = data;
           if (isComplete(data.status)) {
-            await fetchLogs(generation, signal);
             break;
           }
-          await fetchLogs(generation, signal);
         } catch {
           // Continue refreshing after a transient detail request failure.
         }
@@ -502,13 +375,9 @@
 
   function resetState() {
     stopAutoRefresh();
+    isContainerLogDrawerOpen.value = false;
     deployment.value = undefined;
-    operationLogText.value = '';
-    operationLogOffset.value = 0;
-    operationLogStatus.value = 'loading';
-    containerLogText.value = '';
-    containerLogSource.value = 'since';
-    containerLogStatus.value = 'loading';
+    logCache.clear();
     isCancelDialogOpen.value = false;
     isDeleteDialogOpen.value = false;
   }
@@ -525,7 +394,6 @@
       router.push('/deployments');
       return;
     }
-    await fetchLogs();
     if (!isCompleteDeployment.value) {
       startAutoRefresh();
     }
@@ -575,20 +443,7 @@
     }
   }
 
-  function revealLastLine(ed: editor.IStandaloneCodeEditor | null) {
-    if (!ed) {
-      return;
-    }
-    const n = ed.getModel()?.getLineCount() ?? 0;
-    if (n > 0) {
-      ed.revealLine(n);
-    }
-  }
-
-  function handleOperationLogEditorMount(ed: editor.IStandaloneCodeEditor) {
-    operationLogEditor = ed;
-    revealLastLine(ed);
-  }
+  watch([deploymentId, () => projectStore.activeProjectId], loadDeployment);
 
   onMounted(loadDeployment);
   onUnmounted(stopAutoRefresh);

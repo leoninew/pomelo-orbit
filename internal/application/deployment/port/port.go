@@ -2,12 +2,17 @@ package port
 
 import (
 	"context"
+	"errors"
 	"io"
+
+	logport "github.com/leoninew/pomelo-orbit/internal/application/logstream/port"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+var ErrLogNotReady = errors.New("container log configuration is not ready")
 
 // Dispatcher persists the existing asynchronous task contract for deployment commands.
 type Dispatcher interface {
@@ -50,6 +55,7 @@ type ExecutionStore interface {
 }
 
 type ExecutionLogStore interface {
+	OpenReader(ctx context.Context, serviceCode, deploymentId string) (logport.Reader, error)
 	Read(serviceCode string, deploymentId string, offset int) ([]byte, int, error)
 	Writer(serviceCode string, deploymentId string) (io.WriteCloser, error)
 	Remove(serviceCode string, deploymentId string) error
@@ -73,6 +79,7 @@ type Workspace struct {
 // Runtime is the only deployment execution boundary. Every operation receives
 // an explicit Project Environment target and dispatches only by target type.
 type Runtime interface {
+	Stream(ctx context.Context, target environmentport.Target, serviceCode string, output io.Writer, name string, args ...string) error
 	ServiceDir(target environmentport.Target, serviceCode string) (string, error)
 	ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error)
 	ComposeMountSourceDir(ctx context.Context, target environmentport.Target, serviceCode string) (string, error)

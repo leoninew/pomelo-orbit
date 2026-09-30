@@ -52,14 +52,6 @@ func deploymentResponse(item model.Deployment) deploymentv1.DeploymentResp {
 	}
 }
 
-func deploymentLogsResponse(log deploymentdto.DeploymentLog) deploymentv1.DeploymentLogsResp {
-	return deploymentv1.DeploymentLogsResp{Logs: log.Logs, Offset: int32(log.Offset), IsComplete: log.IsComplete, Status: log.Status}
-}
-
-func deploymentContainerLogsResponse(log deploymentdto.DeploymentContainerLog) deploymentv1.DeploymentContainerLogsResp {
-	return deploymentv1.DeploymentContainerLogsResp{Logs: log.Logs, Source: log.Source, IsRealtimeSupported: log.IsRealtimeSupported}
-}
-
 func applicationStatusResponse(containers []deploymentdto.RuntimeContainer) *applicationv1.ApplicationStatusResp {
 	response := make([]*applicationv1.ApplicationContainerStatusResp, 0, len(containers))
 	for _, container := range containers {

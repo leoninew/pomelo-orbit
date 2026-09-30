@@ -11,6 +11,9 @@ import (
 	"time"
 
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	logdto "github.com/leoninew/pomelo-orbit/internal/application/logstream/dto"
+	logport "github.com/leoninew/pomelo-orbit/internal/application/logstream/port"
+	logstream "github.com/leoninew/pomelo-orbit/internal/application/logstream/usecase"
 	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -44,6 +47,29 @@ func (workspace *remoteWorkspaceStub) DockerStageMounts(context.Context, string,
 }
 
 type remoteLogStub struct{ content map[string]*bytes.Buffer }
+
+func (logs *remoteLogStub) OpenReader(_ context.Context, path string) (logport.Reader, error) {
+	return remoteLogReaderStub{logs: logs, path: path}, nil
+}
+
+type remoteLogReaderStub struct {
+	logs *remoteLogStub
+	path string
+}
+
+func (r remoteLogReaderStub) Read(_ context.Context, offset int64, limit int) ([]byte, bool, error) {
+	buffer := r.logs.content[r.path]
+	if buffer == nil {
+		return nil, false, nil
+	}
+	content := buffer.Bytes()
+	if offset >= int64(len(content)) {
+		return nil, true, nil
+	}
+	end := min(int64(len(content)), offset+int64(limit))
+	return content[offset:end], true, nil
+}
+func (remoteLogReaderStub) Close() error { return nil }
 
 type logWriteCloser struct{ io.Writer }
 
@@ -256,9 +282,23 @@ func TestWindowsSSHTriggerRetryAndIncrementalLog(t *testing.T) {
 	logStore := runTargetLogStore{directTriggerPipelineRunStore: &directTriggerPipelineRunStore{run: second.Run},
 		stageRun: model.PipelineStageRun{Id: "stage-run-1", PipelineRunId: second.Run.Id}}
 	service.store.pipelineRun = logStore
-	result, err := service.PipelineStageLog(context.Background(), "user-1", "project-1", second.Run.Id, "stage-run-1", 7)
-	if err != nil || result.Logs != "output" || result.Offset != len("remote output") {
-		t.Fatalf("remote log result = %+v, err = %v", result, err)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	initial, err := service.OpenStageLogStream(ctx, "user-1", "project-1", second.Run.Id, "stage-run-1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = initial.Close()
+	result, err := service.OpenStageLogStream(ctx, "user-1", "project-1", second.Run.Id, "stage-run-1", logstream.EncodeCursor(initial.SourceId, 7))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = result.Close() }()
+	var chunk logdto.Event
+	_ = result.Run(ctx, func(event logdto.Event) error { chunk = event; cancel(); return nil })
+	offset, err := logstream.DecodeCursor(chunk.Cursor, result.SourceId)
+	if err != nil || string(chunk.Data) != "output" || offset != int64(len("remote output")) {
+		t.Fatalf("remote log chunk = %+v, offset = %d, err = %v", chunk, offset, err)
 	}
 }
 

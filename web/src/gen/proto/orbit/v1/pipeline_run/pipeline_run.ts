@@ -58,12 +58,6 @@ export interface PipelineRunArtifactListResp {
   items: ArtifactResp[];
 }
 
-export interface PipelineStageLogResp {
-  logs: string;
-  offset: number;
-  is_complete: boolean;
-}
-
 export interface PipelineRunPaginatedResp {
   items: PipelineRunResp[];
   total: number;

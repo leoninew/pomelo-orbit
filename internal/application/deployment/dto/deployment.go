@@ -82,12 +82,6 @@ type DeploymentWaitResult struct {
 	TimedOut   bool
 }
 
-type DeploymentContainerLog struct {
-	Logs                string
-	Source              string
-	IsRealtimeSupported bool
-}
-
 // RuntimeContainer is a normalized docker compose ps record for one container.
 type RuntimeContainer struct {
 	Id           string

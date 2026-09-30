@@ -33,12 +33,6 @@ type PipelineRunDetail struct {
 	VersionBinding    *model.PipelineRunVersionBinding
 }
 
-type PipelineStageLog struct {
-	Logs       string
-	Offset     int
-	IsComplete bool
-}
-
 type ArtifactListInput struct {
 	ProjectId    string
 	RepositoryId string

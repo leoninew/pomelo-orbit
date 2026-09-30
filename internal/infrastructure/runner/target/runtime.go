@@ -61,6 +61,14 @@ func (r Runtime) Run(ctx context.Context, target environmentport.Target, service
 	return runtime.Run(ctx, target, serviceCode, log, name, args...)
 }
 
+func (r Runtime) Stream(ctx context.Context, target environmentport.Target, serviceCode string, output io.Writer, name string, args ...string) error {
+	runtime, err := r.forTarget(target)
+	if err != nil {
+		return err
+	}
+	return runtime.Stream(ctx, target, serviceCode, output, name, args...)
+}
+
 func (r Runtime) Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error) {
 	runtime, err := r.forTarget(target)
 	if err != nil {

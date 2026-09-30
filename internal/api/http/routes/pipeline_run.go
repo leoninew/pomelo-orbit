@@ -14,7 +14,7 @@ func (r Router) registerPipelineRun(engine *gin.Engine) {
 	engine.GET("/api/pipeline-run/:run_id", handler.GetPipelineRun)
 	engine.DELETE("/api/pipeline-run/:run_id", handler.DeletePipelineRun)
 	engine.GET("/api/pipeline-run/:run_id/artifact", handler.ListPipelineRunArtifacts)
-	engine.GET("/api/pipeline-run/:run_id/stage/:stage_run_id/log", handler.GetPipelineStageLog)
+	engine.GET("/api/pipeline-run/:run_id/stage/:stage_run_id/log/stream", handler.StreamStageLog)
 	engine.POST("/api/pipeline-run/:run_id/cancel", handler.CancelPipelineRun)
 	engine.POST("/api/pipeline-run/:run_id/retry", handler.RetryPipelineRun)
 	engine.GET("/api/pipeline-run/artifact", handler.ListArtifacts)

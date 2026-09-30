@@ -1,4 +1,15 @@
 export default {
+  logs: {
+    find: 'Find',
+    follow: 'Follow output',
+    stopFollowing: 'Stop following',
+    empty: 'No log output',
+    waiting: 'Waiting for log output',
+    truncated: 'Earlier logs were removed from this view',
+    gap: 'Some historical logs could not be recovered',
+    pauseDetailRefresh: 'Pause detail refresh',
+    resumeDetailRefresh: 'Resume detail refresh',
+  },
   common: {
     confirm: 'Confirm',
     cancel: 'Cancel',

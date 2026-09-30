@@ -55,9 +55,6 @@ message ApplicationStatusResp {
   repeated ApplicationContainerStatusResp containers = 1;
 }
 
-message ApplicationLogsResp {
-  string logs = 1;
-}
 
 message ApplicationPaginatedResp {
   repeated ApplicationResp items = 1;

@@ -8,6 +8,7 @@ import (
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	logdto "github.com/leoninew/pomelo-orbit/internal/application/logstream/dto"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -34,24 +35,23 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	}
 }
 
-func TestApplicationLogsReturnsEmptyBeforeFirstDeployment(t *testing.T) {
+func TestApplicationLogStreamWaitsBeforeFirstDeployment(t *testing.T) {
 	service, store := newRuntimeQueryService()
 	store.service.Status = status.ServiceStatusStopped
 	workspace := testWorkspace(t.TempDir())
 	service.runtime = workspace
 	service.targetResolver = staticTargetResolver{target: testSSHTarget("project-1")}
-
-	logs, err := service.ApplicationLogs(context.Background(), "user-1", "project-1", "app-1", 200, deploymentdto.ServiceTargetInput{
-		ServiceId: "service-1",
-	}, "traefik")
+	service.project = store
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stream, err := service.OpenApplicationLogStream(ctx, "user-1", "project-1", "app-1", "service-1", "", "")
 	if err != nil {
-		t.Fatalf("ApplicationLogs returned error: %v", err)
+		t.Fatalf("OpenApplicationLogStream returned error: %v", err)
 	}
-	if logs != "" {
-		t.Fatalf("logs = %q, want empty", logs)
-	}
-	if workspace.queryCalled {
-		t.Fatal("log query must not run without a deployment workspace")
+	var event logdto.Event
+	_ = stream.Run(ctx, func(next logdto.Event) error { event = next; cancel(); return nil })
+	if event.Type != "waiting" {
+		t.Fatalf("event = %+v, want waiting", event)
 	}
 }
 

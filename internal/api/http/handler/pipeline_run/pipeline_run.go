@@ -86,18 +86,6 @@ func (h Handler) ListPipelineRunArtifacts(c *gin.Context) {
 	}
 	transport.WriteProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineRunArtifactListResp{Items: transport.Ptrs(response)})
 }
-func (h Handler) GetPipelineStageLog(c *gin.Context) {
-	current, ok := h.authenticator.CurrentUser(c)
-	if !ok {
-		return
-	}
-	detail, err := h.service.PipelineStageLog(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("run_id"), c.Param("stage_run_id"), transport.QueryInt(c.Query("offset"), 0))
-	if err != nil {
-		transport.WriteError(c, err)
-		return
-	}
-	transport.WriteProtoJSON(c, http.StatusOK, &pipelinerunv1.PipelineStageLogResp{Logs: detail.Logs, Offset: int32(detail.Offset), IsComplete: detail.IsComplete})
-}
 func (h Handler) CancelPipelineRun(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

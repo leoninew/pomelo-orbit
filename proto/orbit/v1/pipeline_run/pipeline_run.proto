@@ -46,6 +46,5 @@ message PipelineRunResp {
 }
 
 message PipelineRunArtifactListResp { repeated ArtifactResp items = 1; }
-message PipelineStageLogResp { string logs = 1; int32 offset = 2; bool is_complete = 3; }
 message PipelineRunPaginatedResp { repeated PipelineRunResp items = 1; int32 total = 2; int32 page = 3; int32 per_page = 4; int32 pages = 5; }
 message PipelineRunExecuteTaskReq {}

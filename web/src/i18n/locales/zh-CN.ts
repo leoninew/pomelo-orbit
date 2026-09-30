@@ -1,4 +1,15 @@
 export default {
+  logs: {
+    find: '查找',
+    follow: '跟随输出',
+    stopFollowing: '停止跟随',
+    empty: '暂无日志输出',
+    waiting: '等待日志输出',
+    truncated: '较早的日志已从当前视图移除',
+    gap: '部分历史日志无法补齐',
+    pauseDetailRefresh: '暂停详情刷新',
+    resumeDetailRefresh: '恢复详情刷新',
+  },
   common: {
     confirm: '确定',
     cancel: '取消',

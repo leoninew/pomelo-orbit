@@ -1,5 +1,6 @@
 import type {
   EnvironmentResp,
+  EnvironmentTerminalTicketResp,
   ProjectEnvironmentSSHCommandResp,
   ProjectEnvironmentUpdateReq,
 } from '@/gen/proto/orbit/v1/environment/environment';
@@ -27,6 +28,12 @@ export const projectEnvironmentApi = {
     data: ProjectEnvironmentUpdateReq
   ): Promise<ProjectEnvironmentSSHCommandResp> {
     return request.post('/api/environment/ssh-command', data, {
+      params: { project_id: projectId },
+    });
+  },
+
+  terminalTicket(projectId: string): Promise<EnvironmentTerminalTicketResp> {
+    return request.post('/api/environment/terminal/ticket', undefined, {
       params: { project_id: projectId },
     });
   },

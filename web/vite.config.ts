@@ -11,6 +11,12 @@ export default defineConfig({
 			ignored: ["**/src/gen/proto/**"],
 		},
 		proxy: {
+			"/api/environment/terminal": {
+				target: "http://127.0.0.1:9021",
+				ws: true,
+				// Keep the browser host for the backend WebSocket Origin check.
+				changeOrigin: false,
+			},
 			"/api": {
 				target: "http://127.0.0.1:9021",
 				changeOrigin: true,

@@ -1,5 +1,5 @@
 # Project 环境与 CD 产品模型
-最后修改时间: 2026-09-29 10:01:19
+最后修改时间: 2026-09-30 12:02:59
 
 Doc role: living product model
 
@@ -29,7 +29,9 @@ Environment 的 target type 是显式联合：
 
 一个 Docker target 只能绑定一个活跃 Project。`local` target 全局独占；`ssh` target 按精确的 host + port 独占。已废弃 Project 保留其历史 Environment，但不再占用 target；Gateway 使用固定端口和共享 `traefik` 网络，保存 Environment 时若发现其他活跃 Project 已绑定同一 target 会直接拒绝。
 
-`ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。保存、编辑、状态读取和 Probe 不创建、轮换或替换部署密钥；未生成初始化命令时 Probe 返回可恢复诊断。部署私钥只属于 SSH Environment，存在 `environment_credential`，不能通过仓库凭据 API、MCP 或日志读取。SSH 连接不支持密码认证、交互式 shell、PTY 或端口转发，也不接收操作者个人私钥。
+`ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。保存、编辑、状态读取和 Probe 不创建、轮换或替换部署密钥；未生成初始化命令时 Probe 返回可恢复诊断。部署私钥只属于 SSH Environment，存在 `environment_credential`，不能通过仓库凭据 API、MCP 或日志读取。Probe、部署和 CI 不使用交互式 shell 或 PTY，也不支持密码认证、端口转发或操作者个人私钥。环境页终端是独立能力：当前 Project 成员可在最新 Probe 成功后，以该 Environment 保存的 SSH 用户和受管密钥打开目标宿主机的交互式 PTY shell；终端不进入应用容器或 Windows 的 WSL2 发行版。
+
+终端抽屉关闭后保留当前环境页内的终端实例、输出与 SSH 会话，重新打开继续同一会话；离开环境页、切换 Project、目标或凭据变更、主动断开以及服务端会话限制会终止连接。断线后仅手动重连。
 
 镜像 registry、登录方式和多 registry 配置是宿主机责任，不属于 Orbit Project 或 Environment 配置。
 

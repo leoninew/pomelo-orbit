@@ -63,6 +63,8 @@ type applicationServices struct {
 	SettingsService              settingssvc.Service
 	CredentialService            credentialsvc.Service
 	EnvironmentService           environmentsvc.Service
+	EnvironmentTerminalService   *environmentsvc.TerminalService
+	EnvironmentTerminalRunner    *sshrunner.Runtime
 	RepositoryService            repositorysvc.Service
 	PipelineService              pipelinesvc.Service
 	PipelineRunService           pipelinerunsvc.Service
@@ -188,6 +190,8 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		SettingsService:              settingssvc.New(settingssvc.Definitions(cfg), envfile.NewStore(cfg.EnvFilePath)),
 		CredentialService:            credentialService,
 		EnvironmentService:           environmentService,
+		EnvironmentTerminalService:   environmentsvc.NewTerminalService(environmentService, targetResolver),
+		EnvironmentTerminalRunner:    sshrunner.NewRuntime(),
 		RepositoryService: repositorysvc.New(
 			stores.project,
 			stores.credential,
@@ -226,6 +230,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			"/api/route/sync/preview",
 			"/api/route/sync/confirm",
 			"/api/environment/probe",
+			"/api/environment/terminal/ticket",
 			"/api/project-initialization/probe",
 			"/api/auth/login",
 			"/api/auth/logout",
@@ -243,6 +248,8 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		SettingsService:              services.SettingsService,
 		CredentialService:            services.CredentialService,
 		EnvironmentService:           services.EnvironmentService,
+		EnvironmentTerminalService:   services.EnvironmentTerminalService,
+		EnvironmentTerminalRunner:    services.EnvironmentTerminalRunner,
 		RepositoryService:            services.RepositoryService,
 		PipelineService:              services.PipelineService,
 		PipelineRunService:           services.PipelineRunService,

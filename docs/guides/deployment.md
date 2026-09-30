@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-09-23 16:21:10
+最后修改时间: 2026-09-30 10:49:08
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -29,7 +29,7 @@ Environment 的 target type 是显式 `local | ssh`：
 
 `ssh` 到 `127.0.0.1` 仍是 SSH，不会被解释为 local。没有 hostname heuristic 或 local/SSH fallback。两类目标的 Compose 生命周期、运行时查询、证书同步、Gateway network 与 Traefik REST publish 均通过同一 target runtime 执行。
 
-不支持 macOS、其他 Windows Docker 组合或任意 SSH command 执行。宿主机应自行完成 registry 配置和登录；Orbit 不管理多 registry 或 registry credential。
+不支持 macOS、其他 Windows Docker 组合或由部署/流水线提交任意 SSH command。环境页可在 SSH target 通过当前修订 Probe 后打开目标宿主机的交互式终端，使用该 Environment 保存的 SSH 用户与受管密钥。宿主机应自行完成 registry 配置和登录；Orbit 不管理多 registry 或 registry credential。
 
 ## 配置与 Probe
 

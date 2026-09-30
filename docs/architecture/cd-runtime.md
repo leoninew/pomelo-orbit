@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-09-29 09:28:22
+最后修改时间: 2026-09-30 10:49:08
 
 Doc role: living architecture
 
@@ -29,6 +29,8 @@ Deployment 将 `environment_id`、Environment `target_type`、target revision �
 Environment Probe 在 HTTP 请求事务外执行 target I/O。Probe 完成后使用带 `target_revision` 条件的单条更新写入结果，旧配置上的探测不会覆盖新配置状态；单表更新本身是原子操作，不额外引入应用层事务编排。
 
 SSH 初始化命令是普通 HTTP 写事务内的无远端 I/O 动作：它以提交的完整 SSH target 更新 Environment，并只在 binding 缺失或失效时创建 `environment_credential`。有效 binding 会原样复用。保存、编辑和 Probe 均不隐式生成密钥；未初始化 SSH target 的 Probe 仅写入“先生成并执行初始化命令”的失败诊断，不启动 SSH runner。
+
+环境页的 SSH 终端在独立 WebSocket 会话中复用当前 Environment 的受管密钥、SSH 用户及 pinned host key，向目标 Linux/Windows 宿主机申请 PTY 并启动默认 shell。Bearer 认证的短请求签发一次性、短时效票据；WebSocket 通过子协议传票据，服务器仅协商固定协议名，不把票据放入 URL 或常规 HTTP 正文日志。会话在请求事务外运行，周期性复核 Project 成员及目标修订，且在输入前复核；有连接数、空闲和最长时长限制。Probe、部署与 CI 仍运行预定的非交互命令，不共享终端输入输出。
 
 ## GatewayConfig 与部署
 

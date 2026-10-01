@@ -1273,6 +1273,7 @@ export default {
     artifact: '制品',
     noStageRun: '暂无阶段记录',
     viewLog: '日志',
+    viewErrorDetails: '查看失败原因',
     invalidViewMode: '无效的视图模式',
     variableSnapshot: '变量快照',
     artifacts: '制品',

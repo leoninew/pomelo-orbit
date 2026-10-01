@@ -89,6 +89,26 @@
               <AppBadge>v{{ run.pipeline_version }}</AppBadge>
             </dd>
           </div>
+          <div v-if="run.started_at" class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.startTime') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(run.started_at) }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('common.createdAt') }}</dt>
+            <dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
+          </div>
+          <div v-if="run.started_at && run.finished_at" class="flex gap-2">
+            <dt>{{ t('pipelineRun.fields.duration') }}</dt>
+            <dd class="text-muted-foreground">
+              {{ formatDuration(run.started_at, run.finished_at) }}
+            </dd>
+          </div>
+          <div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
+            <dt>{{ t('pipelineRun.fields.errorMessage') }}</dt>
+            <dd class="min-w-0 whitespace-pre-wrap break-words text-destructive">
+              {{ run.error_message }}
+            </dd>
+          </div>
         </dl>
       </DetailInfoCard>
 
@@ -125,35 +145,6 @@
               <router-link :to="`/pipeline-run/${run.retry_of}`" class="app-link break-all">
                 {{ run.retry_of }}
               </router-link>
-            </dd>
-          </div>
-        </dl>
-      </DetailInfoCard>
-
-      <DetailInfoCard title="时间与结果">
-        <dl class="app-detail-info-grid">
-          <div class="flex gap-2">
-            <dt>{{ t('common.createdAt') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(run.created_at) }}</dd>
-          </div>
-          <div v-if="run.started_at" class="flex gap-2">
-            <dt>{{ t('pipelineRun.fields.startTime') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(run.started_at) }}</dd>
-          </div>
-          <div v-if="run.finished_at" class="flex gap-2">
-            <dt>{{ t('pipelineRun.fields.endTime') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(run.finished_at) }}</dd>
-          </div>
-          <div v-if="run.started_at && run.finished_at" class="flex gap-2">
-            <dt>耗时</dt>
-            <dd class="text-muted-foreground">
-              {{ formatDuration(run.started_at, run.finished_at) }}
-            </dd>
-          </div>
-          <div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
-            <dt>{{ t('pipelineRun.fields.errorMessage') }}</dt>
-            <dd class="min-w-0 whitespace-pre-wrap break-words text-destructive">
-              {{ run.error_message }}
             </dd>
           </div>
         </dl>
@@ -204,18 +195,41 @@
                     </div>
                   </td>
                   <td>
-                    <AppBadge
-                      variant="pill"
-                      :tone="stageStatusTone(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
-                    >
-                      {{ stageRunMap[stage.id]?.status ?? 'waiting_to_run' }}
-                    </AppBadge>
-                    <p
-                      v-if="stageRunMap[stage.id]?.error_message"
-                      class="mt-1 max-w-80 whitespace-pre-wrap break-words text-xs text-destructive"
-                    >
-                      {{ stageRunMap[stage.id]?.error_message }}
-                    </p>
+                    <div class="flex items-center gap-1.5">
+                      <AppBadge
+                        variant="pill"
+                        :tone="stageStatusTone(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
+                      >
+                        {{ stageRunMap[stage.id]?.status ?? 'waiting_to_run' }}
+                      </AppBadge>
+                      <PopoverRoot v-if="stageRunMap[stage.id]?.error_message">
+                        <PopoverTrigger as-child>
+                          <button
+                            type="button"
+                            class="app-icon-button size-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            :title="t('pipelineRun.viewErrorDetails')"
+                            :aria-label="t('pipelineRun.viewErrorDetails')"
+                          >
+                            <CircleAlert class="size-4" aria-hidden="true" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverPortal>
+                          <PopoverContent
+                            side="top"
+                            align="start"
+                            :side-offset="6"
+                            class="z-[60] max-h-64 w-[min(24rem,calc(100vw-32px))] overflow-y-auto rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-lg outline-none"
+                          >
+                            <p class="mb-1 font-medium">
+                              {{ t('pipelineRun.fields.errorMessage') }}
+                            </p>
+                            <p class="whitespace-pre-wrap break-words text-muted-foreground">
+                              {{ stageRunMap[stage.id]?.error_message }}
+                            </p>
+                          </PopoverContent>
+                        </PopoverPortal>
+                      </PopoverRoot>
+                    </div>
                   </td>
                   <td>
                     <button
@@ -345,10 +359,11 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, Loader2, RotateCcw, Trash2, X } from '@lucide/vue';
+  import { ArrowLeft, CircleAlert, Loader2, RotateCcw, Trash2, X } from '@lucide/vue';
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
+  import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
   import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';

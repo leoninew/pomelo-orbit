@@ -66,34 +66,6 @@
               </AppBadge>
             </dd>
           </div>
-        </dl>
-      </DetailInfoCard>
-
-      <DetailInfoCard class="shrink-0" title="执行配置">
-        <dl class="app-detail-info-grid">
-          <div class="flex gap-2">
-            <dt>操作类型</dt>
-            <dd>
-              <AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>触发方式</dt>
-            <dd>
-              <AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2 sm:col-span-2">
-            <dt>执行命令</dt>
-            <dd class="min-w-0 break-all text-xs text-foreground">
-              {{ deployment.command_text || '未记录' }}
-            </dd>
-          </div>
-        </dl>
-      </DetailInfoCard>
-
-      <DetailInfoCard class="shrink-0" title="时间与结果">
-        <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>创建时间</dt>
             <dd class="text-muted-foreground">{{ formatTime(deployment.created_at) }}</dd>
@@ -118,6 +90,29 @@
               <pre class="whitespace-pre-wrap break-words font-sans text-xs">{{
                 deployment.error_message
               }}</pre>
+            </dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard class="shrink-0" title="执行配置">
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt>操作类型</dt>
+            <dd>
+              <AppBadge variant="pill">{{ deployment.operation_type }}</AppBadge>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>触发方式</dt>
+            <dd>
+              <AppBadge variant="pill">{{ deployment.trigger_type }}</AppBadge>
+            </dd>
+          </div>
+          <div class="flex gap-2 sm:col-span-2">
+            <dt>执行命令</dt>
+            <dd class="min-w-0 break-all text-xs text-foreground">
+              {{ deployment.command_text || '未记录' }}
             </dd>
           </div>
         </dl>

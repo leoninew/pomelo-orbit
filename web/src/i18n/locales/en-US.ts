@@ -1297,6 +1297,7 @@ export default {
     artifact: 'Artifact',
     noStageRun: 'No stage records',
     viewLog: 'Log',
+    viewErrorDetails: 'View failure details',
     invalidViewMode: 'Invalid view mode',
     variableSnapshot: 'Variable Snapshot',
     artifacts: 'Artifacts',

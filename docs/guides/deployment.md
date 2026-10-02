@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-09-30 10:49:08
+最后修改时间: 2026-10-02 13:06:45
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -27,7 +27,7 @@ Environment 的 target type 是显式 `local | ssh`：
 - `local` 直接在 Orbit 控制面宿主机的 Docker daemon 执行，工作目录为 Environment 保存的 `workspace_root`；页面原样展示该值，`~` / `~/...` 只在 Probe 和部署时展开为控制面用户主目录。不显示 SSH 表单、主机指纹或初始化入口。
 - `ssh` 支持 Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它在目标端按 Environment 保存的 `workspace_root` materialize workspace，`~` / `~/...` 展开为远端登录用户主目录，并使用 `environment_credential` 中的私钥和 pinned host key 执行。
 
-`ssh` 到 `127.0.0.1` 仍是 SSH，不会被解释为 local。没有 hostname heuristic 或 local/SSH fallback。两类目标的 Compose 生命周期、运行时查询、证书同步、Gateway network 与 Traefik REST publish 均通过同一 target runtime 执行。
+`ssh` 到 `127.0.0.1` 仍是 SSH，不会被解释为 local。没有 hostname heuristic 或 local/SSH fallback。两类目标的 Compose 生命周期、运行时查询、Route 文件/证书发布、Gateway network 与 Traefik API 查询均通过同一 target runtime 执行。
 
 不支持 macOS、其他 Windows Docker 组合或由部署/流水线提交任意 SSH command。环境页可在 SSH target 通过当前修订 Probe 后打开目标宿主机的交互式终端，使用该 Environment 保存的 SSH 用户与受管密钥。宿主机应自行完成 registry 配置和登录；Orbit 不管理多 registry 或 registry credential。
 
@@ -50,6 +50,12 @@ SSH Probe 不使用密码认证、PTY、端口转发或用户输入的远端命�
 
 Gateway 创建或复用部署宿主上的 Docker bridge network `traefik`。加入 Traefik 的普通 Service 以 external network 方式接入同一共享网络；Gateway 的 `providers.docker.network` 也固定为 `traefik`。网络名不由 Environment code 派生。
 
-Gateway 仍通过普通 Service/Deployment 生命周期部署。Route 同步及 Gateway deploy/restart 后的 Traefik REST snapshot 发布在当前 Environment target 内执行，确保操作只作用于当前 Project 的 Gateway。
+Gateway 仍通过普通 Service/Deployment 生命周期部署。有效计划统一覆盖 File provider、dynamic/certs 只读目录及 acme 读写目录，并写入静态受控文件；Gateway 自动强制重建，使配置和挂载生效。新建 Gateway 可以先部署空目录，再显式预览/确认 Route 同步。路由按编码命名的 YAML 独立发布在当前 Environment target，内部归属仍使用稳定 ID，普通部署不会清空路由目录。
+
+Gateway deploy/restart 后检查已发布 YAML/PEM 和 Traefik 加载结果，不发布数据库中尚未同步的修改。业务 Service 部署前检查已发布 Route 的 Component/endpoint、容器名称和 Traefik 网络引用；Gateway Version 变更检查已发布 entrypoint/resolver。需要移除这些依赖时，先显式调整或撤销对应 Route。部署与 Route 同步共用协调器。
+
+受管 `gateway/dynamic` 被删除后，Gateway 部署允许重新准备空目录，但最终核验仍报告已发布 YAML 缺失。重新预览并确认 Route 同步可重建选定文件及父目录；部署本身不从业务草稿自动补齐路由。现存文件被外部修改、pending 或证书损坏仍需先处理。
+
+迁移脚本初始化或已部署 REST 的受管 Gateway，无需修改 YAML：线下告知用户重新部署 Gateway 一次，再从现有入口显式同步路由。首次切换不转换旧 REST 快照，重建后到同步完成前路由可能暂不可用，应安排维护时间；不增加迁移 UI，也不改写已执行迁移。
 
 TCP entrypoint/host port 是 Gateway Version Component endpoint。需要新的 TCP 端口时，在 Version 中声明、部署该 Version，再创建 TCP Route。

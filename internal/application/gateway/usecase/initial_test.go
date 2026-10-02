@@ -3,6 +3,7 @@ package gatewaysvc
 import (
 	"testing"
 
+	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
 )
 
@@ -18,8 +19,12 @@ func TestBuildInitialGatewayVersionsDeclareStaticTopology(t *testing.T) {
 		if component.VersionId != version.Version.Id || component.Name != "traefik" || component.Image != "traefik:3.6" || component.PullPolicy != "missing" {
 			t.Fatalf("initial component = %#v", component)
 		}
-		if len(component.Mounts) != 4 || len(component.Endpoints) != 3 {
+		if len(component.Mounts) != 5 || len(component.Endpoints) != 3 {
 			t.Fatalf("initial component topology = %#v", component)
+		}
+		routeMount := component.Mounts[4]
+		if routeMount.Source != model.GatewayRouteConfigSource || routeMount.Target != model.GatewayRouteConfigTarget || !routeMount.ReadOnly {
+			t.Fatalf("initial Route mount = %+v", routeMount)
 		}
 	}
 	for _, role := range []string{"base", "http", "dns", "http-dns"} {
@@ -37,6 +42,10 @@ func TestInitialGatewayProfileStaticConfigsAreValidYAML(t *testing.T) {
 					Docker struct {
 						Network string `yaml:"network"`
 					} `yaml:"docker"`
+					File struct {
+						Directory string `yaml:"directory"`
+						Watch     bool   `yaml:"watch"`
+					} `yaml:"file"`
 				} `yaml:"providers"`
 				CertificatesResolvers map[string]struct {
 					ACME struct {
@@ -55,6 +64,9 @@ func TestInitialGatewayProfileStaticConfigsAreValidYAML(t *testing.T) {
 			}
 			if document.Providers.Docker.Network != "traefik" {
 				t.Fatalf("Docker provider network = %q", document.Providers.Docker.Network)
+			}
+			if document.Providers.File.Directory != model.GatewayRouteConfigTarget || !document.Providers.File.Watch {
+				t.Fatalf("File provider = %+v", document.Providers.File)
 			}
 			if role == gatewayVersionProfileHTTP {
 				return

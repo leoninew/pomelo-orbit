@@ -600,6 +600,8 @@ func (x *RouteSyncChange) GetEnabled() bool {
 type RouteSyncPreviewReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Changes       []*RouteSyncChange     `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+	Scope         string                 `protobuf:"bytes,2,opt,name=scope,proto3" json:"scope,omitempty"`
+	RouteIds      []string               `protobuf:"bytes,3,rep,name=route_ids,json=routeIds,proto3" json:"route_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -641,31 +643,48 @@ func (x *RouteSyncPreviewReq) GetChanges() []*RouteSyncChange {
 	return nil
 }
 
-type RouteSyncDiffResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Action        string                 `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
-	RouteName     string                 `protobuf:"bytes,2,opt,name=route_name,json=routeName,proto3" json:"route_name,omitempty"`
-	Field         string                 `protobuf:"bytes,3,opt,name=field,proto3" json:"field,omitempty"`
-	Business      *RouteSyncRuleResp     `protobuf:"bytes,4,opt,name=business,proto3" json:"business,omitempty"`
-	Traefik       *RouteSyncRuleResp     `protobuf:"bytes,5,opt,name=traefik,proto3" json:"traefik,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+func (x *RouteSyncPreviewReq) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
 }
 
-func (x *RouteSyncDiffResp) Reset() {
-	*x = RouteSyncDiffResp{}
+func (x *RouteSyncPreviewReq) GetRouteIds() []string {
+	if x != nil {
+		return x.RouteIds
+	}
+	return nil
+}
+
+type RouteSyncPlanItemResp struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	RouteId         string                 `protobuf:"bytes,1,opt,name=route_id,json=routeId,proto3" json:"route_id,omitempty"`
+	RouteName       string                 `protobuf:"bytes,2,opt,name=route_name,json=routeName,proto3" json:"route_name,omitempty"`
+	Action          string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
+	Rule            *RouteSyncRuleResp     `protobuf:"bytes,4,opt,name=rule,proto3" json:"rule,omitempty"`
+	CertType        string                 `protobuf:"bytes,5,opt,name=cert_type,json=certType,proto3" json:"cert_type,omitempty"`
+	AcmeChallenge   string                 `protobuf:"bytes,6,opt,name=acme_challenge,json=acmeChallenge,proto3" json:"acme_challenge,omitempty"`
+	BusinessHash    string                 `protobuf:"bytes,7,opt,name=business_hash,json=businessHash,proto3" json:"business_hash,omitempty"`
+	PublicationHash string                 `protobuf:"bytes,8,opt,name=publication_hash,json=publicationHash,proto3" json:"publication_hash,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *RouteSyncPlanItemResp) Reset() {
+	*x = RouteSyncPlanItemResp{}
 	mi := &file_orbit_v1_route_route_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RouteSyncDiffResp) String() string {
+func (x *RouteSyncPlanItemResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RouteSyncDiffResp) ProtoMessage() {}
+func (*RouteSyncPlanItemResp) ProtoMessage() {}
 
-func (x *RouteSyncDiffResp) ProtoReflect() protoreflect.Message {
+func (x *RouteSyncPlanItemResp) ProtoReflect() protoreflect.Message {
 	mi := &file_orbit_v1_route_route_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -677,50 +696,72 @@ func (x *RouteSyncDiffResp) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RouteSyncDiffResp.ProtoReflect.Descriptor instead.
-func (*RouteSyncDiffResp) Descriptor() ([]byte, []int) {
+// Deprecated: Use RouteSyncPlanItemResp.ProtoReflect.Descriptor instead.
+func (*RouteSyncPlanItemResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *RouteSyncDiffResp) GetAction() string {
+func (x *RouteSyncPlanItemResp) GetRouteId() string {
 	if x != nil {
-		return x.Action
+		return x.RouteId
 	}
 	return ""
 }
 
-func (x *RouteSyncDiffResp) GetRouteName() string {
+func (x *RouteSyncPlanItemResp) GetRouteName() string {
 	if x != nil {
 		return x.RouteName
 	}
 	return ""
 }
 
-func (x *RouteSyncDiffResp) GetField() string {
+func (x *RouteSyncPlanItemResp) GetAction() string {
 	if x != nil {
-		return x.Field
+		return x.Action
 	}
 	return ""
 }
 
-func (x *RouteSyncDiffResp) GetBusiness() *RouteSyncRuleResp {
+func (x *RouteSyncPlanItemResp) GetRule() *RouteSyncRuleResp {
 	if x != nil {
-		return x.Business
+		return x.Rule
 	}
 	return nil
 }
 
-func (x *RouteSyncDiffResp) GetTraefik() *RouteSyncRuleResp {
+func (x *RouteSyncPlanItemResp) GetCertType() string {
 	if x != nil {
-		return x.Traefik
+		return x.CertType
 	}
-	return nil
+	return ""
+}
+
+func (x *RouteSyncPlanItemResp) GetAcmeChallenge() string {
+	if x != nil {
+		return x.AcmeChallenge
+	}
+	return ""
+}
+
+func (x *RouteSyncPlanItemResp) GetBusinessHash() string {
+	if x != nil {
+		return x.BusinessHash
+	}
+	return ""
+}
+
+func (x *RouteSyncPlanItemResp) GetPublicationHash() string {
+	if x != nil {
+		return x.PublicationHash
+	}
+	return ""
 }
 
 type RouteSyncRuleResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Match         string                 `protobuf:"bytes,1,opt,name=match,proto3" json:"match,omitempty"`
 	Target        string                 `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
+	Protocol      string                 `protobuf:"bytes,3,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -769,14 +810,21 @@ func (x *RouteSyncRuleResp) GetTarget() string {
 	return ""
 }
 
+func (x *RouteSyncRuleResp) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
 type RouteSyncPreviewResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BusinessHash  string                 `protobuf:"bytes,1,opt,name=business_hash,json=businessHash,proto3" json:"business_hash,omitempty"`
-	TraefikHash   string                 `protobuf:"bytes,2,opt,name=traefik_hash,json=traefikHash,proto3" json:"traefik_hash,omitempty"`
-	Matched       bool                   `protobuf:"varint,3,opt,name=matched,proto3" json:"matched,omitempty"`
-	Differences   []*RouteSyncDiffResp   `protobuf:"bytes,4,rep,name=differences,proto3" json:"differences,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState   `protogen:"open.v1"`
+	BusinessHash    string                   `protobuf:"bytes,1,opt,name=business_hash,json=businessHash,proto3" json:"business_hash,omitempty"`
+	Items           []*RouteSyncPlanItemResp `protobuf:"bytes,4,rep,name=items,proto3" json:"items,omitempty"`
+	RouteIds        []string                 `protobuf:"bytes,5,rep,name=route_ids,json=routeIds,proto3" json:"route_ids,omitempty"`
+	PublicationHash string                   `protobuf:"bytes,6,opt,name=publication_hash,json=publicationHash,proto3" json:"publication_hash,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RouteSyncPreviewResp) Reset() {
@@ -816,34 +864,35 @@ func (x *RouteSyncPreviewResp) GetBusinessHash() string {
 	return ""
 }
 
-func (x *RouteSyncPreviewResp) GetTraefikHash() string {
+func (x *RouteSyncPreviewResp) GetItems() []*RouteSyncPlanItemResp {
 	if x != nil {
-		return x.TraefikHash
-	}
-	return ""
-}
-
-func (x *RouteSyncPreviewResp) GetMatched() bool {
-	if x != nil {
-		return x.Matched
-	}
-	return false
-}
-
-func (x *RouteSyncPreviewResp) GetDifferences() []*RouteSyncDiffResp {
-	if x != nil {
-		return x.Differences
+		return x.Items
 	}
 	return nil
 }
 
+func (x *RouteSyncPreviewResp) GetRouteIds() []string {
+	if x != nil {
+		return x.RouteIds
+	}
+	return nil
+}
+
+func (x *RouteSyncPreviewResp) GetPublicationHash() string {
+	if x != nil {
+		return x.PublicationHash
+	}
+	return ""
+}
+
 type RouteSyncConfirmReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Changes       []*RouteSyncChange     `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
-	BusinessHash  string                 `protobuf:"bytes,2,opt,name=business_hash,json=businessHash,proto3" json:"business_hash,omitempty"`
-	TraefikHash   string                 `protobuf:"bytes,3,opt,name=traefik_hash,json=traefikHash,proto3" json:"traefik_hash,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Changes         []*RouteSyncChange     `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+	BusinessHash    string                 `protobuf:"bytes,2,opt,name=business_hash,json=businessHash,proto3" json:"business_hash,omitempty"`
+	RouteIds        []string               `protobuf:"bytes,4,rep,name=route_ids,json=routeIds,proto3" json:"route_ids,omitempty"`
+	PublicationHash string                 `protobuf:"bytes,5,opt,name=publication_hash,json=publicationHash,proto3" json:"publication_hash,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RouteSyncConfirmReq) Reset() {
@@ -890,9 +939,16 @@ func (x *RouteSyncConfirmReq) GetBusinessHash() string {
 	return ""
 }
 
-func (x *RouteSyncConfirmReq) GetTraefikHash() string {
+func (x *RouteSyncConfirmReq) GetRouteIds() []string {
 	if x != nil {
-		return x.TraefikHash
+		return x.RouteIds
+	}
+	return nil
+}
+
+func (x *RouteSyncConfirmReq) GetPublicationHash() string {
+	if x != nil {
+		return x.PublicationHash
 	}
 	return ""
 }
@@ -1068,6 +1124,9 @@ func (x *RouteDisableResp) GetMessage() string {
 type RouteSyncConfirmResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Results       []*RouteSyncResultResp `protobuf:"bytes,3,rep,name=results,proto3" json:"results,omitempty"`
+	RequestId     string                 `protobuf:"bytes,4,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1109,6 +1168,151 @@ func (x *RouteSyncConfirmResp) GetMessage() string {
 	return ""
 }
 
+func (x *RouteSyncConfirmResp) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *RouteSyncConfirmResp) GetResults() []*RouteSyncResultResp {
+	if x != nil {
+		return x.Results
+	}
+	return nil
+}
+
+func (x *RouteSyncConfirmResp) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+type RouteSyncResultResp struct {
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	RouteId                 string                 `protobuf:"bytes,1,opt,name=route_id,json=routeId,proto3" json:"route_id,omitempty"`
+	RouteName               string                 `protobuf:"bytes,2,opt,name=route_name,json=routeName,proto3" json:"route_name,omitempty"`
+	OperationId             string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	Code                    string                 `protobuf:"bytes,4,opt,name=code,proto3" json:"code,omitempty"`
+	Error                   string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
+	BusinessSave            string                 `protobuf:"bytes,6,opt,name=business_save,json=businessSave,proto3" json:"business_save,omitempty"`
+	FileCommit              string                 `protobuf:"bytes,7,opt,name=file_commit,json=fileCommit,proto3" json:"file_commit,omitempty"`
+	ConfigurationMatch      string                 `protobuf:"bytes,8,opt,name=configuration_match,json=configurationMatch,proto3" json:"configuration_match,omitempty"`
+	CertificateVerification string                 `protobuf:"bytes,9,opt,name=certificate_verification,json=certificateVerification,proto3" json:"certificate_verification,omitempty"`
+	Recovery                string                 `protobuf:"bytes,10,opt,name=recovery,proto3" json:"recovery,omitempty"`
+	Cleanup                 string                 `protobuf:"bytes,11,opt,name=cleanup,proto3" json:"cleanup,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *RouteSyncResultResp) Reset() {
+	*x = RouteSyncResultResp{}
+	mi := &file_orbit_v1_route_route_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouteSyncResultResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouteSyncResultResp) ProtoMessage() {}
+
+func (x *RouteSyncResultResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_route_route_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouteSyncResultResp.ProtoReflect.Descriptor instead.
+func (*RouteSyncResultResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *RouteSyncResultResp) GetRouteId() string {
+	if x != nil {
+		return x.RouteId
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetRouteName() string {
+	if x != nil {
+		return x.RouteName
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetBusinessSave() string {
+	if x != nil {
+		return x.BusinessSave
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetFileCommit() string {
+	if x != nil {
+		return x.FileCommit
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetConfigurationMatch() string {
+	if x != nil {
+		return x.ConfigurationMatch
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetCertificateVerification() string {
+	if x != nil {
+		return x.CertificateVerification
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetRecovery() string {
+	if x != nil {
+		return x.Recovery
+	}
+	return ""
+}
+
+func (x *RouteSyncResultResp) GetCleanup() string {
+	if x != nil {
+		return x.Cleanup
+	}
+	return ""
+}
+
 type RoutePaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*RouteResp           `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -1122,7 +1326,7 @@ type RoutePaginatedResp struct {
 
 func (x *RoutePaginatedResp) Reset() {
 	*x = RoutePaginatedResp{}
-	mi := &file_orbit_v1_route_route_proto_msgTypes[16]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1134,7 +1338,7 @@ func (x *RoutePaginatedResp) String() string {
 func (*RoutePaginatedResp) ProtoMessage() {}
 
 func (x *RoutePaginatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_route_route_proto_msgTypes[16]
+	mi := &file_orbit_v1_route_route_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1147,7 +1351,7 @@ func (x *RoutePaginatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoutePaginatedResp.ProtoReflect.Descriptor instead.
 func (*RoutePaginatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{16}
+	return file_orbit_v1_route_route_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *RoutePaginatedResp) GetItems() []*RouteResp {
@@ -1282,37 +1486,63 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"\broute_id\x18\x01 \x01(\tR\arouteId\x12\x1d\n" +
 	"\aenabled\x18\x02 \x01(\bH\x00R\aenabled\x88\x01\x01B\n" +
 	"\n" +
-	"\b_enabled\"P\n" +
+	"\b_enabled\"\x83\x01\n" +
 	"\x13RouteSyncPreviewReq\x129\n" +
-	"\achanges\x18\x01 \x03(\v2\x1f.orbit.v1.route.RouteSyncChangeR\achanges\"\xdc\x01\n" +
-	"\x11RouteSyncDiffResp\x12\x16\n" +
-	"\x06action\x18\x01 \x01(\tR\x06action\x12\x1d\n" +
+	"\achanges\x18\x01 \x03(\v2\x1f.orbit.v1.route.RouteSyncChangeR\achanges\x12\x14\n" +
+	"\x05scope\x18\x02 \x01(\tR\x05scope\x12\x1b\n" +
+	"\troute_ids\x18\x03 \x03(\tR\brouteIds\"\xb4\x02\n" +
+	"\x15RouteSyncPlanItemResp\x12\x19\n" +
+	"\broute_id\x18\x01 \x01(\tR\arouteId\x12\x1d\n" +
 	"\n" +
-	"route_name\x18\x02 \x01(\tR\trouteName\x12\x14\n" +
-	"\x05field\x18\x03 \x01(\tR\x05field\x12=\n" +
-	"\bbusiness\x18\x04 \x01(\v2!.orbit.v1.route.RouteSyncRuleRespR\bbusiness\x12;\n" +
-	"\atraefik\x18\x05 \x01(\v2!.orbit.v1.route.RouteSyncRuleRespR\atraefik\"A\n" +
+	"route_name\x18\x02 \x01(\tR\trouteName\x12\x16\n" +
+	"\x06action\x18\x03 \x01(\tR\x06action\x125\n" +
+	"\x04rule\x18\x04 \x01(\v2!.orbit.v1.route.RouteSyncRuleRespR\x04rule\x12\x1b\n" +
+	"\tcert_type\x18\x05 \x01(\tR\bcertType\x12%\n" +
+	"\x0eacme_challenge\x18\x06 \x01(\tR\racmeChallenge\x12#\n" +
+	"\rbusiness_hash\x18\a \x01(\tR\fbusinessHash\x12)\n" +
+	"\x10publication_hash\x18\b \x01(\tR\x0fpublicationHash\"]\n" +
 	"\x11RouteSyncRuleResp\x12\x14\n" +
 	"\x05match\x18\x01 \x01(\tR\x05match\x12\x16\n" +
-	"\x06target\x18\x02 \x01(\tR\x06target\"\xbd\x01\n" +
+	"\x06target\x18\x02 \x01(\tR\x06target\x12\x1a\n" +
+	"\bprotocol\x18\x03 \x01(\tR\bprotocol\"\xcc\x01\n" +
 	"\x14RouteSyncPreviewResp\x12#\n" +
-	"\rbusiness_hash\x18\x01 \x01(\tR\fbusinessHash\x12!\n" +
-	"\ftraefik_hash\x18\x02 \x01(\tR\vtraefikHash\x12\x18\n" +
-	"\amatched\x18\x03 \x01(\bR\amatched\x12C\n" +
-	"\vdifferences\x18\x04 \x03(\v2!.orbit.v1.route.RouteSyncDiffRespR\vdifferences\"\x98\x01\n" +
+	"\rbusiness_hash\x18\x01 \x01(\tR\fbusinessHash\x12;\n" +
+	"\x05items\x18\x04 \x03(\v2%.orbit.v1.route.RouteSyncPlanItemRespR\x05items\x12\x1b\n" +
+	"\troute_ids\x18\x05 \x03(\tR\brouteIds\x12)\n" +
+	"\x10publication_hash\x18\x06 \x01(\tR\x0fpublicationHashJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04\"\xc3\x01\n" +
 	"\x13RouteSyncConfirmReq\x129\n" +
 	"\achanges\x18\x01 \x03(\v2\x1f.orbit.v1.route.RouteSyncChangeR\achanges\x12#\n" +
-	"\rbusiness_hash\x18\x02 \x01(\tR\fbusinessHash\x12!\n" +
-	"\ftraefik_hash\x18\x03 \x01(\tR\vtraefikHash\"9\n" +
+	"\rbusiness_hash\x18\x02 \x01(\tR\fbusinessHash\x12\x1b\n" +
+	"\troute_ids\x18\x04 \x03(\tR\brouteIds\x12)\n" +
+	"\x10publication_hash\x18\x05 \x01(\tR\x0fpublicationHashJ\x04\b\x03\x10\x04\"9\n" +
 	"\x19RouteLetsEncryptEnableReq\x12\x1c\n" +
 	"\tchallenge\x18\x01 \x01(\tR\tchallenge\"\x16\n" +
 	"\x14RouteMkcertEnableReq\"+\n" +
 	"\x0fRouteEnableResp\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\",\n" +
 	"\x10RouteDisableResp\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\"0\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"\xa2\x01\n" +
 	"\x14RouteSyncConfirmResp\x12\x18\n" +
-	"\amessage\x18\x01 \x01(\tR\amessage\"\xa0\x01\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12=\n" +
+	"\aresults\x18\x03 \x03(\v2#.orbit.v1.route.RouteSyncResultRespR\aresults\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x04 \x01(\tR\trequestId\"\x84\x03\n" +
+	"\x13RouteSyncResultResp\x12\x19\n" +
+	"\broute_id\x18\x01 \x01(\tR\arouteId\x12\x1d\n" +
+	"\n" +
+	"route_name\x18\x02 \x01(\tR\trouteName\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\x12\x12\n" +
+	"\x04code\x18\x04 \x01(\tR\x04code\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\x12#\n" +
+	"\rbusiness_save\x18\x06 \x01(\tR\fbusinessSave\x12\x1f\n" +
+	"\vfile_commit\x18\a \x01(\tR\n" +
+	"fileCommit\x12/\n" +
+	"\x13configuration_match\x18\b \x01(\tR\x12configurationMatch\x129\n" +
+	"\x18certificate_verification\x18\t \x01(\tR\x17certificateVerification\x12\x1a\n" +
+	"\brecovery\x18\n" +
+	" \x01(\tR\brecovery\x12\x18\n" +
+	"\acleanup\x18\v \x01(\tR\acleanup\"\xa0\x01\n" +
 	"\x12RoutePaginatedResp\x12/\n" +
 	"\x05items\x18\x01 \x03(\v2\x19.orbit.v1.route.RouteRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
@@ -1334,7 +1564,7 @@ func file_orbit_v1_route_route_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_route_route_proto_rawDescData
 }
 
-var file_orbit_v1_route_route_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_orbit_v1_route_route_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_orbit_v1_route_route_proto_goTypes = []any{
 	(*RouteResp)(nil),                 // 0: orbit.v1.route.RouteResp
 	(*RouteCreateReq)(nil),            // 1: orbit.v1.route.RouteCreateReq
@@ -1343,7 +1573,7 @@ var file_orbit_v1_route_route_proto_goTypes = []any{
 	(*RouteDisableReq)(nil),           // 4: orbit.v1.route.RouteDisableReq
 	(*RouteSyncChange)(nil),           // 5: orbit.v1.route.RouteSyncChange
 	(*RouteSyncPreviewReq)(nil),       // 6: orbit.v1.route.RouteSyncPreviewReq
-	(*RouteSyncDiffResp)(nil),         // 7: orbit.v1.route.RouteSyncDiffResp
+	(*RouteSyncPlanItemResp)(nil),     // 7: orbit.v1.route.RouteSyncPlanItemResp
 	(*RouteSyncRuleResp)(nil),         // 8: orbit.v1.route.RouteSyncRuleResp
 	(*RouteSyncPreviewResp)(nil),      // 9: orbit.v1.route.RouteSyncPreviewResp
 	(*RouteSyncConfirmReq)(nil),       // 10: orbit.v1.route.RouteSyncConfirmReq
@@ -1352,20 +1582,21 @@ var file_orbit_v1_route_route_proto_goTypes = []any{
 	(*RouteEnableResp)(nil),           // 13: orbit.v1.route.RouteEnableResp
 	(*RouteDisableResp)(nil),          // 14: orbit.v1.route.RouteDisableResp
 	(*RouteSyncConfirmResp)(nil),      // 15: orbit.v1.route.RouteSyncConfirmResp
-	(*RoutePaginatedResp)(nil),        // 16: orbit.v1.route.RoutePaginatedResp
+	(*RouteSyncResultResp)(nil),       // 16: orbit.v1.route.RouteSyncResultResp
+	(*RoutePaginatedResp)(nil),        // 17: orbit.v1.route.RoutePaginatedResp
 }
 var file_orbit_v1_route_route_proto_depIdxs = []int32{
-	5, // 0: orbit.v1.route.RouteSyncPreviewReq.changes:type_name -> orbit.v1.route.RouteSyncChange
-	8, // 1: orbit.v1.route.RouteSyncDiffResp.business:type_name -> orbit.v1.route.RouteSyncRuleResp
-	8, // 2: orbit.v1.route.RouteSyncDiffResp.traefik:type_name -> orbit.v1.route.RouteSyncRuleResp
-	7, // 3: orbit.v1.route.RouteSyncPreviewResp.differences:type_name -> orbit.v1.route.RouteSyncDiffResp
-	5, // 4: orbit.v1.route.RouteSyncConfirmReq.changes:type_name -> orbit.v1.route.RouteSyncChange
-	0, // 5: orbit.v1.route.RoutePaginatedResp.items:type_name -> orbit.v1.route.RouteResp
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5,  // 0: orbit.v1.route.RouteSyncPreviewReq.changes:type_name -> orbit.v1.route.RouteSyncChange
+	8,  // 1: orbit.v1.route.RouteSyncPlanItemResp.rule:type_name -> orbit.v1.route.RouteSyncRuleResp
+	7,  // 2: orbit.v1.route.RouteSyncPreviewResp.items:type_name -> orbit.v1.route.RouteSyncPlanItemResp
+	5,  // 3: orbit.v1.route.RouteSyncConfirmReq.changes:type_name -> orbit.v1.route.RouteSyncChange
+	16, // 4: orbit.v1.route.RouteSyncConfirmResp.results:type_name -> orbit.v1.route.RouteSyncResultResp
+	0,  // 5: orbit.v1.route.RoutePaginatedResp.items:type_name -> orbit.v1.route.RouteResp
+	6,  // [6:6] is the sub-list for method output_type
+	6,  // [6:6] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_route_route_proto_init() }
@@ -1383,7 +1614,7 @@ func file_orbit_v1_route_route_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_route_route_proto_rawDesc), len(file_orbit_v1_route_route_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

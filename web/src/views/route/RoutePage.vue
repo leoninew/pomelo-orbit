@@ -184,8 +184,8 @@
 
   <RouteSyncDialog
     v-model:open="isSyncDialogOpen"
+    scope="project"
     :changes="syncChanges"
-    :certificate-pending="hasPendingCertificateChanges"
     @synced="handleSyncComplete"
     @saved="handleSyncSaved"
   />
@@ -538,7 +538,7 @@
   import SelectControl from '@/components/SelectControl.vue';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useStatusAsync } from '@/composables/useStatusAsync';
-  import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
+  import type { RouteResp, RouteSyncResultResp } from '@/gen/proto/orbit/v1/route/route';
   import { useProjectStore } from '@/stores/project';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
@@ -1043,11 +1043,13 @@
     await fetchRoutes();
   }
 
-  async function handleSyncSaved() {
-    const certificatePending = hasPendingCertificateChanges.value;
-    clearPendingChanges();
+  async function handleSyncSaved(results: RouteSyncResultResp[]) {
+    for (const item of results) {
+      if (item.business_save === 'saved' || item.code === 'route_sync_completed') {
+        delete pendingEnabled[item.route_id];
+      }
+    }
     hasPendingRouteChanges.value = true;
-    hasPendingCertificateChanges.value = certificatePending;
     await fetchRoutes();
   }
 

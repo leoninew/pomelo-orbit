@@ -90,7 +90,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 
 	syncChanges := []any{map[string]any{"route_id": "route-1", "enabled": true}}
 	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_preview_route_sync", Arguments: map[string]any{
-		"changes": syncChanges,
+		"scope": "selected", "route_ids": []string{"route-1"}, "changes": syncChanges,
 	}})
 	if err != nil {
 		t.Fatalf("CallTool(preview route sync) error = %v", err)
@@ -102,12 +102,12 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 		t.Fatalf("preview input = %q/%q/%#v", routeService.previewUserId, routeService.previewProjectId, routeService.previewChanges)
 	}
 	previewOutput := structuredOutput(t, result)
-	if previewOutput["business_hash"] != "business-hash" || previewOutput["traefik_hash"] != "traefik-hash" || previewOutput["matched"] != false {
+	if previewOutput["business_hash"] != "business-hash" || previewOutput["publication_hash"] != "publication-hash" || previewOutput["items"] == nil {
 		t.Fatalf("preview output = %#v", previewOutput)
 	}
 
 	result, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_confirm_route_sync", Arguments: map[string]any{
-		"changes": syncChanges, "business_hash": "business-hash", "traefik_hash": "traefik-hash",
+		"route_ids": []string{"route-1"}, "publication_hash": "publication-hash", "changes": syncChanges, "business_hash": "business-hash",
 	}})
 	if err != nil {
 		t.Fatalf("CallTool(confirm route sync) error = %v", err)
@@ -115,7 +115,7 @@ func TestRouteToolsMapCustomRouteFormFields(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("CallTool(confirm route sync) returned tool error: %#v", result.Content)
 	}
-	if routeService.confirmUserId != "actor" || routeService.confirmProjectId != "project-1" || routeService.confirmInput.BusinessHash != "business-hash" || routeService.confirmInput.TraefikHash != "traefik-hash" || len(routeService.confirmInput.Changes) != 1 || routeService.confirmInput.Changes[0].RouteId != "route-1" || routeService.confirmInput.Changes[0].Enabled == nil || !*routeService.confirmInput.Changes[0].Enabled {
+	if routeService.confirmUserId != "actor" || routeService.confirmProjectId != "project-1" || routeService.confirmInput.BusinessHash != "business-hash" || routeService.confirmInput.PublicationHash != "publication-hash" || len(routeService.confirmInput.RouteIds) != 1 || len(routeService.confirmInput.Changes) != 1 || routeService.confirmInput.Changes[0].RouteId != "route-1" || routeService.confirmInput.Changes[0].Enabled == nil || !*routeService.confirmInput.Changes[0].Enabled {
 		t.Fatalf("confirm input = %q/%q/%#v", routeService.confirmUserId, routeService.confirmProjectId, routeService.confirmInput)
 	}
 
@@ -187,26 +187,26 @@ func (s *routeToolService) DisableRoute(_ context.Context, _ string, _ string, r
 	return s.route(routeId, false), nil
 }
 
-func (s *routeToolService) PreviewRouteSync(_ context.Context, userId, projectId string, changes []routedto.RouteSyncChange) (routedto.RouteSyncPreview, error) {
+func (s *routeToolService) PreviewRouteSync(_ context.Context, userId, projectId string, input routedto.RouteSyncPreviewInput) (routedto.RouteSyncPreview, error) {
 	s.previewUserId, s.previewProjectId = userId, projectId
-	s.previewChanges = append([]routedto.RouteSyncChange(nil), changes...)
+	s.previewChanges = append([]routedto.RouteSyncChange(nil), input.Changes...)
 	return routedto.RouteSyncPreview{
+		RouteIds: input.RouteIds, PublicationHash: "publication-hash",
 		BusinessHash: "business-hash",
-		TraefikHash:  "traefik-hash",
-		Differences: []routedto.RouteSyncDiff{{
-			Action: "added", RouteName: "api-route", Field: "route", Business: &routedto.RouteSyncRule{Match: "HTTP Host(`api.example.test`)", Target: "https://origin.example.test:8443"},
+		Items: []routedto.RouteSyncPlanItem{{
+			RouteId: "route-1", Action: "publish", RouteName: "api-route", Rule: &routedto.RouteSyncRule{Protocol: "http", Match: "Host(`api.example.test`)", Target: "https://origin.example.test:8443"},
 		}},
 	}, nil
 }
 
-func (s *routeToolService) ConfirmRouteSync(_ context.Context, userId, projectId string, input routedto.RouteSyncConfirmInput) error {
+func (s *routeToolService) ConfirmRouteSync(_ context.Context, userId, projectId string, input routedto.RouteSyncConfirmInput) (routedto.RouteSyncConfirmResult, error) {
 	s.confirmUserId, s.confirmProjectId = userId, projectId
 	s.confirmInput = routedto.RouteSyncConfirmInput{
 		Changes:      append([]routedto.RouteSyncChange(nil), input.Changes...),
 		BusinessHash: input.BusinessHash,
-		TraefikHash:  input.TraefikHash,
+		RouteIds:     input.RouteIds, PublicationHash: input.PublicationHash,
 	}
-	return nil
+	return routedto.RouteSyncConfirmResult{Code: "route_sync_incomplete", Results: []routedto.RouteSyncResult{{RouteId: "route-1", Code: "route_sync_publish_permission_denied", BusinessSave: "saved"}}}, nil
 }
 
 func (s *routeToolService) route(routeId string, enabled bool) model.Route {

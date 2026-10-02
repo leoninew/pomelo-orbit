@@ -42,29 +42,59 @@ type RouteSyncChange struct {
 }
 
 type RouteSyncConfirmInput struct {
-	Changes      []RouteSyncChange
-	BusinessHash string
-	TraefikHash  string
+	RouteIds        []string
+	Changes         []RouteSyncChange
+	BusinessHash    string
+	PublicationHash string
 }
 
-type RouteSyncDiff struct {
-	Action    string
-	RouteName string
-	Field     string
-	Business  *RouteSyncRule
-	Traefik   *RouteSyncRule
+type RouteSyncPreviewInput struct {
+	Scope    string
+	RouteIds []string
+	Changes  []RouteSyncChange
+}
+
+type RouteSyncResult struct {
+	RouteId                 string `json:"route_id"`
+	RouteName               string `json:"route_name"`
+	OperationId             string `json:"operation_id"`
+	Code                    string `json:"code"`
+	Error                   string `json:"error"`
+	BusinessSave            string `json:"business_save"`
+	FileCommit              string `json:"file_commit"`
+	ConfigurationMatch      string `json:"configuration_match"`
+	CertificateVerification string `json:"certificate_verification"`
+	Recovery                string `json:"recovery"`
+	Cleanup                 string `json:"cleanup"`
+}
+
+type RouteSyncConfirmResult struct {
+	Code    string            `json:"code"`
+	Results []RouteSyncResult `json:"results"`
+}
+
+type RouteSyncPlanItem struct {
+	RouteId         string         `json:"route_id"`
+	RouteName       string         `json:"route_name"`
+	Action          string         `json:"action"`
+	Rule            *RouteSyncRule `json:"rule"`
+	CertType        string         `json:"cert_type"`
+	AcmeChallenge   string         `json:"acme_challenge"`
+	BusinessHash    string         `json:"business_hash"`
+	PublicationHash string         `json:"publication_hash"`
 }
 
 type RouteSyncRule struct {
-	Match  string `json:"match"`
-	Target string `json:"target"`
+	Protocol string `json:"protocol"`
+	Match    string `json:"match"`
+	Target   string `json:"target"`
 }
 
 type RouteSyncPreview struct {
-	BusinessHash string
-	TraefikHash  string
-	Matched      bool
-	Differences  []RouteSyncDiff
+	RouteIds        []string
+	PublicationHash string
+	BusinessHash    string
+	Items           []RouteSyncPlanItem
 }
 
 // TraefikConfigView is the application-layer dashboard route state (not an API DTO).

@@ -68,6 +68,13 @@ type WorkspaceFile struct {
 	IgnoreIfExists bool
 }
 
+// WorkspaceFiles operates on explicit paths within the target workspace.
+type WorkspaceFiles interface {
+	ReadFile(context.Context, environmentport.Target, string) ([]byte, error)
+	ListFiles(context.Context, environmentport.Target, string) ([]string, error)
+	RemoveFile(context.Context, environmentport.Target, string) error
+}
+
 type Workspace struct {
 	ServiceCode  string
 	Directories  []string
@@ -91,10 +98,11 @@ type Runtime interface {
 	SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []WorkspaceFile, pruneSuffix string) error
 }
 
-// GatewayRoutePublisher restores the complete custom Route snapshot after a
-// Gateway Compose deployment has replaced the Traefik REST provider state.
+// GatewayRoutePublisher coordinates deployments with explicit Route publication.
 type GatewayRoutePublisher interface {
-	PublishSnapshot(ctx context.Context, projectId string) error
+	VerifyPublishedRoutes(ctx context.Context, projectId string) error
+	LockGateway(context.Context, string) (func(), error)
+	CheckRouteDependencies(context.Context, string, model.EffectiveServicePlan) error
 }
 
 // GatewayDeploymentCoordinator resolves and selects Gateway state required by

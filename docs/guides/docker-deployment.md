@@ -142,6 +142,23 @@ docker compose up -d
 
 删除数据库会清空所有数据，不应作为普通升级步骤。
 
+## 8. 远程目录备份
+
+在本地配置 `scripts/.env` 中的 `SSH_HOST`、`SSH_USER` 与 `REMOTE_DEPLOY_DIR` 后执行：
+
+```bash
+python scripts/manage.py backup
+```
+
+备份下载到本地 `scripts/backup/data-<时间戳>.tar.gz`。默认打包 `REMOTE_DEPLOY_DIR`，也可用 `--remote-dir` 指定远程目录。排除备份目录下的以下路径：
+
+- `data/pipeline/`
+- `data/deployment/<服务>/mysql/`、`data/deployment/<服务>/postgres/` 数据卷
+- `data/deployment/mihomo-default/config/`
+- `data/deployment/sub2api-default/app/logs/`
+
+其余部署内容仍保留，包括 Compose、`.env`、`env/`、其他服务数据、证书和路由文件，以及上述两个服务排除目录之外的内容。数据库排除规则适用于所有服务，不只独立 MySQL/PostgreSQL Service；数据库配置目录（如 `env/mysql/`）不排除。位于备份目录之外的 Environment workspace 不在归档范围内。
+
 ## 目录结构
 
 ```text

@@ -27,8 +27,12 @@ func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
 			Components: []model.EffectiveServiceComponent{{
 				Name: "traefik", Image: "traefik:3.6", PullPolicy: "missing",
 				Mounts: []model.VersionComponentMount{{
-					SourceType: "controlled_file", Source: "./traefik.yml", Target: gatewayMountTargetTraefikYml, Content: "entryPoints: {}\n", Mode: "0644",
-				}},
+					SourceType: "controlled_file", Source: "./traefik.yml", Target: gatewayMountTargetTraefikYml, Content: "entryPoints: {}\nproviders:\n  file:\n    directory: /etc/traefik/dynamic\n    watch: true\n", Mode: "0644",
+				},
+					{SourceType: "directory", Source: model.GatewayRouteConfigSource, Target: model.GatewayRouteConfigTarget, ReadOnly: true},
+					{SourceType: "directory", Source: "./gateway/certs", Target: "/etc/traefik/certs", ReadOnly: true},
+					{SourceType: "directory", Source: "./gateway/acme", Target: "/letsencrypt"},
+				},
 				Endpoints: []model.VersionComponentEndpoint{
 					{Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringPointer("0.0.0.0"), ListenPort: intPointer(80)},
 					{Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringPointer("0.0.0.0"), ListenPort: intPointer(443)},

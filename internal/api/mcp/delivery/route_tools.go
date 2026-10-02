@@ -105,7 +105,7 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 		return writeResult("update_route", map[string]string{"route_id": route.Id}, "PUT", "/api/route/"+route.Id, map[string]any{"route": routeOutput(route)}), nil
 	})
 
-	addTool(server, "orbit_enable_route", "Enable one custom Route in business data. The complete Route snapshot is published through the Route sync flow. For TCP, the target Gateway must already expose the selected listen_port.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_enable_route", "Enable one custom Route in business data. Explicitly preview and confirm Route sync to publish its owned file. For TCP, the target Gateway must already expose the selected listen_port.", func(ctx context.Context, input struct {
 		RouteId string `json:"route_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		projectId, _, err := c.requireReadyEnvironment(ctx)
@@ -119,7 +119,7 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 		return writeResult("enable_route", map[string]string{"route_id": route.Id}, "POST", "/api/route/"+route.Id+"/enable", map[string]any{"route": routeOutput(route)}), nil
 	})
 
-	addTool(server, "orbit_disable_route", "Disable one custom Route in business data. The complete Route snapshot is published through the Route sync flow.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_disable_route", "Disable one custom Route in business data. Explicitly preview and confirm Route sync to withdraw its owned file.", func(ctx context.Context, input struct {
 		RouteId string `json:"route_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		projectId, _, err := c.requireReadyEnvironment(ctx)
@@ -133,37 +133,42 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 		return writeResult("disable_route", map[string]string{"route_id": route.Id}, "POST", "/api/route/"+route.Id+"/disable", map[string]any{"route": routeOutput(route)}), nil
 	})
 
-	addTool(server, "orbit_preview_route_sync", "Preview the complete Route snapshot before publication. Review the returned differences and pass the unchanged changes and hashes to orbit_confirm_route_sync only after approval.", func(ctx context.Context, input struct {
-		Changes []routeSyncChangeInput `json:"changes,omitempty"`
+	addTool(server, "orbit_preview_route_sync", "Preview a publish/withdraw/skip list for selected Route files or the explicit project scope. Review the list and pass the frozen route_ids, changes, business_hash and publication_hash to orbit_confirm_route_sync after approval. Unknown files remain untouched.", func(ctx context.Context, input struct {
+		Scope    string                 `json:"scope" jsonschema:"required"`
+		RouteIds []string               `json:"route_ids,omitempty"`
+		Changes  []routeSyncChangeInput `json:"changes,omitempty"`
 	}) (map[string]any, error) {
 		projectId, _, err := c.requireReadyEnvironment(ctx)
 		if err != nil {
 			return nil, err
 		}
-		preview, err := c.deps.Route.PreviewRouteSync(ctx, c.deps.ActorUserId, projectId, routeSyncChangesInput(input.Changes))
+		preview, err := c.deps.Route.PreviewRouteSync(ctx, c.deps.ActorUserId, projectId, routedto.RouteSyncPreviewInput{Scope: input.Scope, RouteIds: input.RouteIds, Changes: routeSyncChangesInput(input.Changes)})
 		if err != nil {
 			return nil, err
 		}
 		return routeSyncPreviewOutput(projectId, preview), nil
 	})
 
-	addTool(server, "orbit_confirm_route_sync", "Confirm a previously reviewed Route sync. This applies the pending enable/disable changes and replaces the complete Traefik REST snapshot only when both preview hashes still match.", func(ctx context.Context, input struct {
-		Changes      []routeSyncChangeInput `json:"changes,omitempty"`
-		BusinessHash string                 `json:"business_hash" jsonschema:"required"`
-		TraefikHash  string                 `json:"traefik_hash" jsonschema:"required"`
+	addTool(server, "orbit_confirm_route_sync", "Confirm reviewed Route files in the frozen preview order. Failed items are reported and subsequent items continue. Check the overall code and per-Route configuration and certificate results.", func(ctx context.Context, input struct {
+		RouteIds        []string               `json:"route_ids" jsonschema:"required"`
+		PublicationHash string                 `json:"publication_hash" jsonschema:"required"`
+		Changes         []routeSyncChangeInput `json:"changes,omitempty"`
+		BusinessHash    string                 `json:"business_hash" jsonschema:"required"`
 	}) (map[string]any, error) {
 		projectId, _, err := c.requireReadyEnvironment(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if err := c.deps.Route.ConfirmRouteSync(ctx, c.deps.ActorUserId, projectId, routedto.RouteSyncConfirmInput{
-			Changes:      routeSyncChangesInput(input.Changes),
-			BusinessHash: input.BusinessHash,
-			TraefikHash:  input.TraefikHash,
-		}); err != nil {
+		result, err := c.deps.Route.ConfirmRouteSync(ctx, c.deps.ActorUserId, projectId, routedto.RouteSyncConfirmInput{
+			RouteIds:        input.RouteIds,
+			PublicationHash: input.PublicationHash,
+			Changes:         routeSyncChangesInput(input.Changes),
+			BusinessHash:    input.BusinessHash,
+		})
+		if err != nil {
 			return nil, err
 		}
-		return writeResult("confirm_route_sync", map[string]string{"project_id": projectId}, "POST", "/api/route/sync/confirm", map[string]any{"message": "Routes synced successfully"}), nil
+		return writeResult("confirm_route_sync", map[string]string{"project_id": projectId}, "POST", "/api/route/sync/confirm", map[string]any{"code": result.Code, "results": result.Results}), nil
 	})
 }
 
@@ -181,15 +186,8 @@ func routeSyncChangesInput(items []routeSyncChangeInput) []routedto.RouteSyncCha
 }
 
 func routeSyncPreviewOutput(projectId string, preview routedto.RouteSyncPreview) map[string]any {
-	differences := make([]map[string]any, 0, len(preview.Differences))
-	for _, difference := range preview.Differences {
-		differences = append(differences, map[string]any{
-			"action": difference.Action, "route_name": difference.RouteName, "field": difference.Field,
-			"business": difference.Business, "traefik": difference.Traefik,
-		})
-	}
 	return map[string]any{
-		"project_id": projectId, "business_hash": preview.BusinessHash, "traefik_hash": preview.TraefikHash,
-		"matched": preview.Matched, "differences": differences,
+		"route_ids": preview.RouteIds, "publication_hash": preview.PublicationHash,
+		"project_id": projectId, "business_hash": preview.BusinessHash, "items": preview.Items,
 	}
 }

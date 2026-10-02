@@ -1,5 +1,5 @@
 # Project 环境与 CD 产品模型
-最后修改时间: 2026-09-30 12:02:59
+最后修改时间: 2026-10-02 10:42:03
 
 Doc role: living product model
 
@@ -18,7 +18,7 @@ Doc role: living product model
 
 `Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。切换当前 Project 就是切换该 Project 已保存的共用环境及关联的 CD Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
 
-Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD 使用 `<workspace_root>/deployment/<service-code>`，Gateway certificates 与 Route snapshot 也位于对应 Service 目录下。当前 CI 执行器支持通过最新 Probe 的 `local` Environment，以及受管密钥和 host-key pinning 就绪的 Windows/Linux SSH Environment；分别在本机或远端 `<workspace_root>/pipeline` 中执行。SSH 登录用户还须能写入目标的 `pipeline` 目录，且目标 Docker daemon 能挂载相应宿主路径；Environment Probe 成功不保证已存在的 `pipeline` 子目录可写。SSH 目标绝不能作为控制面 Docker 的本地挂载源，也不在 SSH 失败时回退本地。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
+Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD 使用 `<workspace_root>/deployment/<service-code>`，Gateway certificates、独立 Route 文件及发布记录也位于对应 Service 目录下。当前 CI 执行器支持通过最新 Probe 的 `local` Environment，以及受管密钥和 host-key pinning 就绪的 Windows/Linux SSH Environment；分别在本机或远端 `<workspace_root>/pipeline` 中执行。SSH 登录用户还须能写入目标的 `pipeline` 目录，且目标 Docker daemon 能挂载相应宿主路径；Environment Probe 成功不保证已存在的 `pipeline` 子目录可写。SSH 目标绝不能作为控制面 Docker 的本地挂载源，也不在 SSH 失败时回退本地。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
 
 ## Environment
 
@@ -45,9 +45,12 @@ GatewayConfig 保存控制面 REST URL/readiness、`internal_domain`、可选的
 
 | 能力 | 来源 |
 | --- | --- |
-| Traefik 端口、socket、cert/acme mount、resolver YAML | Gateway Version / Component |
+| Traefik 镜像、端口、socket、其他 provider 与 resolver YAML | Gateway Version / Component |
+| Route File provider、dynamic/certs/acme 受管目录挂载 | Gateway 有效部署计划统一覆盖，不写回 Version |
 | Component Docker label 默认 entrypoint/TLS | GatewayConfig |
 | HTTP-01 / DNS-01 可用性 | GatewayConfig profile，DNS 另需 Gateway token |
 | TCP Route listener | 选中 Gateway Version endpoint |
 
 DNS token 是 Gateway 属性，直接返回、快照并作为 `CF_DNS_API_TOKEN` 写入 DNS profile 的 Compose environment。本期不提供全局 token、secret workspace、Compose secret 或脱敏接口。
+
+Gateway 部署会写入当前受管 File provider 配置并自动重建容器，迁移脚本初始化和已部署 REST 的受管实例同样适用。首次切换通过线下传达重新部署及显式同步一次的步骤，不增加 UI 或转换旧发布快照；部署不会从业务 Route 自动发布草稿。

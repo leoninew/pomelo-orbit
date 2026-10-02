@@ -6,7 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
 	"sort"
+	"strconv"
 
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
@@ -16,68 +19,176 @@ import (
 )
 
 type syncPlan struct {
-	routes    []model.Route
-	originals []model.Route
-	updates   []model.Route
-	changes   []routedto.RouteSyncChange
+	ids          []string
+	routes       []model.Route
+	originals    []model.Route
+	updates      []model.Route
+	changes      []routedto.RouteSyncChange
+	publications map[string]routeport.Publication
+	gateway      model.GatewayConfig
+	dependencies string
 }
 
-func (s Service) buildSyncPlan(ctx context.Context, projectId string, changes []routedto.RouteSyncChange) (syncPlan, error) {
-	enabledRoutes, err := s.route.ListEnabledRoutesByProject(ctx, projectId)
-	if err != nil {
-		return syncPlan{}, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
+func (s Service) buildSyncPlan(ctx context.Context, projectId string, input routedto.RouteSyncPreviewInput, gateway model.GatewayConfig, publications []routeport.Publication) (syncPlan, error) {
+	plan := syncPlan{changes: input.Changes, gateway: gateway, publications: make(map[string]routeport.Publication)}
+	for _, item := range publications {
+		plan.publications[item.Route.Id] = item
 	}
-	byId := make(map[string]model.Route, len(enabledRoutes)+len(changes))
-	for _, route := range enabledRoutes {
-		byId[route.Id] = route
-	}
-	plan := syncPlan{changes: changes}
-	seen := make(map[string]struct{}, len(changes))
-	for _, change := range changes {
-		if change.RouteId == "" || change.Enabled == nil {
-			return syncPlan{}, apperror.New(apperror.KindValidation, "route sync change requires route_id and enabled")
+	switch input.Scope {
+	case "project":
+		if len(input.RouteIds) != 0 {
+			return plan, apperror.New(apperror.KindValidation, "project scope does not accept route_ids")
 		}
-		if _, duplicate := seen[change.RouteId]; duplicate {
-			return syncPlan{}, apperror.New(apperror.KindValidation, "a route can only appear once in sync changes")
-		}
-		seen[change.RouteId] = struct{}{}
-		original, err := s.route.Route(ctx, projectId, change.RouteId)
+		routes, err := s.route.ListAllRoutes(ctx, projectId)
 		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				return syncPlan{}, apperror.New(apperror.KindNotFound, "Route not found")
-			}
-			return syncPlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route for sync", err)
+			return plan, apperror.Wrap(apperror.KindInternal, "Failed to list routes", err)
 		}
-		desired := original
-		if change.Enabled != nil {
-			desired.Enabled = *change.Enabled
+		ids := make(map[string]bool)
+		for _, route := range routes {
+			ids[route.Id] = true
+		}
+		for id := range plan.publications {
+			ids[id] = true
+		}
+		for id := range ids {
+			plan.ids = append(plan.ids, id)
+		}
+		sort.Strings(plan.ids)
+	case "selected":
+		if len(input.RouteIds) == 0 {
+			return plan, apperror.New(apperror.KindValidation, "selected scope requires route_ids")
+		}
+		plan.ids = append([]string(nil), input.RouteIds...)
+	default:
+		return plan, apperror.New(apperror.KindValidation, "scope must be selected or project")
+	}
+	seen := make(map[string]bool)
+	for _, id := range plan.ids {
+		if id == "" || seen[id] {
+			return plan, apperror.New(apperror.KindValidation, "route_ids must contain unique nonempty identities")
+		}
+		seen[id] = true
+	}
+	changes := make(map[string]routedto.RouteSyncChange)
+	for _, change := range input.Changes {
+		if !seen[change.RouteId] || change.Enabled == nil {
+			return plan, apperror.New(apperror.KindValidation, "sync changes require an enabled value and an identity in the selected scope")
+		}
+		if _, found := changes[change.RouteId]; found {
+			return plan, apperror.New(apperror.KindValidation, "duplicate route sync change")
+		}
+		changes[change.RouteId] = change
+	}
+	for _, id := range plan.ids {
+		original, err := s.route.Route(ctx, projectId, id)
+		if errors.Is(err, repository.ErrNotFound) {
+			published, found := plan.publications[id]
+			if !found {
+				return plan, apperror.New(apperror.KindNotFound, "Route not found")
+			}
+			original = published.Route
+			original.Enabled = false
+			if _, found := changes[id]; found {
+				return plan, apperror.New(apperror.KindValidation, "a deleted Route cannot receive sync changes")
+			}
+		} else if err != nil {
+			return plan, err
 		}
 		plan.originals = append(plan.originals, original)
-		plan.updates = append(plan.updates, desired)
-		if desired.Enabled {
-			byId[desired.Id] = desired
-		} else {
-			delete(byId, desired.Id)
+		desired := original
+		if change, found := changes[id]; found {
+			desired.Enabled = *change.Enabled
+			plan.updates = append(plan.updates, desired)
 		}
+		plan.routes = append(plan.routes, desired)
 	}
-	plan.routes = make([]model.Route, 0, len(byId))
-	for _, route := range byId {
-		plan.routes = append(plan.routes, route)
-	}
-	sort.Slice(plan.routes, func(i, j int) bool { return plan.routes[i].Id < plan.routes[j].Id })
 	return plan, nil
 }
 
-func previewSyncPlan(plan syncPlan, routers []routeport.TraefikRouter, services []routeport.TraefikService) routedto.RouteSyncPreview {
-	preview := compareSyncState(plan.routes, routers, services)
-	if len(plan.changes) != 0 {
-		preview.BusinessHash = hashSyncValue(struct {
-			Snapshot  string
-			Originals []model.Route
-			Changes   []routedto.RouteSyncChange
-		}{preview.BusinessHash, plan.originals, plan.changes})
+func (plan syncPlan) routePlan(index int) syncPlan {
+	route := plan.routes[index]
+	one := syncPlan{
+		ids: []string{route.Id}, routes: []model.Route{route}, originals: []model.Route{plan.originals[index]},
+		publications: plan.publications, gateway: plan.gateway, dependencies: plan.dependencies,
 	}
+	for _, change := range plan.changes {
+		if change.RouteId == route.Id {
+			one.changes = append(one.changes, change)
+		}
+	}
+	for _, update := range plan.updates {
+		if update.Id == route.Id {
+			one.updates = append(one.updates, update)
+		}
+	}
+	return one
+}
+
+func previewSyncPlan(plan syncPlan) routedto.RouteSyncPreview {
+	preview := routedto.RouteSyncPreview{Items: make([]routedto.RouteSyncPlanItem, 0, len(plan.routes))}
+	for index, route := range plan.routes {
+		action := "publish"
+		if !route.Enabled {
+			action = "withdraw"
+			if _, found := plan.publications[route.Id]; !found {
+				action = "skip"
+			}
+		}
+		item := routedto.RouteSyncPlanItem{RouteId: route.Id, RouteName: route.Name, Action: action, Rule: plannedRouteRule(route)}
+		item.BusinessHash, item.PublicationHash = syncPlanHashes(plan.routePlan(index))
+		if route.Enabled && route.HTTPSEnabled {
+			item.CertType = route.CertType
+			item.AcmeChallenge = route.AcmeChallenge
+		}
+		preview.Items = append(preview.Items, item)
+	}
+	preview.RouteIds = append([]string(nil), plan.ids...)
+	preview.BusinessHash, preview.PublicationHash = syncPlanHashes(plan)
 	return preview
+}
+
+func syncPlanHashes(plan syncPlan) (string, string) {
+	businessHash := hashSyncValue(struct {
+		Routes    []model.Route
+		Originals []model.Route
+		Changes   []routedto.RouteSyncChange
+		Gateway   model.GatewayConfig
+		Ids       []string
+	}{plan.routes, plan.originals, append([]routedto.RouteSyncChange(nil), plan.changes...), plan.gateway, plan.ids})
+	files := make([]routeport.Publication, 0, len(plan.ids))
+	for _, id := range plan.ids {
+		if item, found := plan.publications[id]; found {
+			files = append(files, item)
+		}
+	}
+	publicationHash := hashSyncValue(struct {
+		Files        []routeport.Publication
+		Dependencies string
+	}{files, plan.dependencies})
+	return businessHash, publicationHash
+}
+
+func plannedRouteRule(route model.Route) *routedto.RouteSyncRule {
+	if route.Protocol == routeProtocolTCP {
+		match := ""
+		if route.ListenPort != nil {
+			match = fmt.Sprintf(":%d", *route.ListenPort)
+		}
+		return &routedto.RouteSyncRule{Protocol: routeProtocolTCP, Match: match, Target: net.JoinHostPort(route.TargetAddress, strconv.Itoa(route.TargetPort))}
+	}
+	protocol := routeProtocolHTTP
+	if route.HTTPSEnabled {
+		protocol = "https"
+	}
+	match := "Host(`" + route.Domain + "`)"
+	if route.PathPrefix != "" && route.PathPrefix != "/" {
+		match += " && PathPrefix(`" + route.PathPrefix + "`)"
+	}
+	target := route.TargetUrl
+	if route.TargetAddress != "" && route.TargetPort > 0 {
+		target = "http://" + net.JoinHostPort(route.TargetAddress, strconv.Itoa(route.TargetPort))
+	}
+	return &routedto.RouteSyncRule{Protocol: protocol, Match: match, Target: target}
 }
 
 func hashSyncValue(value any) string {
@@ -87,17 +198,38 @@ func hashSyncValue(value any) string {
 }
 
 func (s Service) applyRouteSyncChanges(ctx context.Context, projectId string, plan syncPlan) error {
-	for index, desired := range plan.updates {
+	for _, desired := range plan.updates {
 		current, err := s.route.Route(ctx, projectId, desired.Id)
 		if err != nil {
 			return apperror.Wrap(apperror.KindInternal, "Failed to reload route for sync", err)
 		}
-		if hashSyncValue(current) != hashSyncValue(plan.originals[index]) {
-			return apperror.NewWithCode(apperror.KindConflict, routeSyncPreviewExpiredCode, "Route sync preview is out of date. Preview the current state again.")
+		var original model.Route
+		for _, item := range plan.originals {
+			if item.Id == desired.Id {
+				original = item
+			}
+		}
+		if hashSyncValue(current) != hashSyncValue(original) {
+			return apperror.NewWithCode(apperror.KindConflict, routeSyncPreviewExpiredCode, "Route sync preview is out of date. Preview again.")
 		}
 		if err := s.route.UpdateRoute(ctx, projectId, desired); err != nil {
-			return apperror.Wrap(apperror.KindInternal, "Failed to update route sync state", err)
+			return err
 		}
 	}
 	return nil
+}
+
+func (s Service) verifyAndSaveSyncRoute(ctx context.Context, projectId string, plan syncPlan) error {
+	original := plan.originals[0]
+	current, err := s.route.Route(ctx, projectId, original.Id)
+	if errors.Is(err, repository.ErrNotFound) && len(plan.updates) == 0 && !original.Enabled {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if hashSyncValue(current) != hashSyncValue(original) {
+		return apperror.NewWithCode(apperror.KindConflict, routeSyncPreviewExpiredCode, "Route changed after preview. Preview again.")
+	}
+	return s.applyRouteSyncChanges(ctx, projectId, plan)
 }

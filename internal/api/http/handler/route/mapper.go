@@ -126,25 +126,29 @@ func routeSyncChanges(items []*routev1.RouteSyncChange) ([]routedto.RouteSyncCha
 }
 
 func routeSyncPreviewResponse(preview routedto.RouteSyncPreview) routev1.RouteSyncPreviewResp {
-	differences := make([]*routev1.RouteSyncDiffResp, 0, len(preview.Differences))
-	for _, difference := range preview.Differences {
-		differences = append(differences, &routev1.RouteSyncDiffResp{
-			Action: difference.Action, RouteName: difference.RouteName, Field: difference.Field,
-			Business: routeSyncRuleResponse(difference.Business),
-			Traefik:  routeSyncRuleResponse(difference.Traefik),
-		})
+	items := make([]*routev1.RouteSyncPlanItemResp, 0, len(preview.Items))
+	for _, item := range preview.Items {
+		items = append(items, &routev1.RouteSyncPlanItemResp{RouteId: item.RouteId, RouteName: item.RouteName, Action: item.Action, Rule: routeSyncRuleResponse(item.Rule), CertType: item.CertType, AcmeChallenge: item.AcmeChallenge, BusinessHash: item.BusinessHash, PublicationHash: item.PublicationHash})
 	}
 	return routev1.RouteSyncPreviewResp{
-		BusinessHash: preview.BusinessHash,
-		TraefikHash:  preview.TraefikHash,
-		Matched:      preview.Matched,
-		Differences:  differences,
+		RouteIds:        preview.RouteIds,
+		PublicationHash: preview.PublicationHash,
+		BusinessHash:    preview.BusinessHash,
+		Items:           items,
 	}
+}
+
+func routeSyncConfirmResponse(result routedto.RouteSyncConfirmResult) routev1.RouteSyncConfirmResp {
+	items := make([]*routev1.RouteSyncResultResp, 0, len(result.Results))
+	for _, item := range result.Results {
+		items = append(items, &routev1.RouteSyncResultResp{RouteId: item.RouteId, RouteName: item.RouteName, OperationId: item.OperationId, Code: item.Code, Error: item.Error, BusinessSave: item.BusinessSave, FileCommit: item.FileCommit, ConfigurationMatch: item.ConfigurationMatch, CertificateVerification: item.CertificateVerification, Recovery: item.Recovery, Cleanup: item.Cleanup})
+	}
+	return routev1.RouteSyncConfirmResp{Code: result.Code, Results: items}
 }
 
 func routeSyncRuleResponse(rule *routedto.RouteSyncRule) *routev1.RouteSyncRuleResp {
 	if rule == nil {
 		return nil
 	}
-	return &routev1.RouteSyncRuleResp{Match: rule.Match, Target: rule.Target}
+	return &routev1.RouteSyncRuleResp{Protocol: rule.Protocol, Match: rule.Match, Target: rule.Target}
 }

@@ -323,8 +323,9 @@
 
     <RouteSyncDialog
       v-model:open="isSyncDialogOpen"
+      scope="selected"
+      :route-ids="routeData ? [routeData.id] : []"
       :changes="syncChanges"
-      :certificate-pending="hasPendingCertificateChanges"
       @synced="handleSyncComplete"
       @saved="handleSyncSaved"
     />
@@ -354,7 +355,7 @@
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
   import { gatewayApi } from '@/api/gateway/gateway';
-  import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
+  import type { RouteResp, RouteSyncResultResp } from '@/gen/proto/orbit/v1/route/route';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import { routeApi } from '@/api/route/route';
   import { traefikRouteApi } from '@/api/route/traefik';
@@ -770,8 +771,16 @@
     await fetchRoute();
   }
 
-  async function handleSyncSaved() {
-    pendingEnabled.value = undefined;
+  async function handleSyncSaved(results: RouteSyncResultResp[]) {
+    if (
+      results.some(
+        (item) =>
+          item.route_id === routeData.value?.id &&
+          (item.business_save === 'saved' || item.code === 'route_sync_completed')
+      )
+    ) {
+      pendingEnabled.value = undefined;
+    }
     hasPendingRouteChanges.value = true;
     await fetchRoute();
   }

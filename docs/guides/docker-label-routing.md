@@ -1,5 +1,5 @@
 # Docker Label 路由指南
-最后修改时间: 2026-08-29 10:57:17
+最后修改时间: 2026-10-02 13:15:41
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -11,10 +11,10 @@ Doc role: living guide。与代码冲突时以代码为准。
 
 Pomelo Orbit 使用两种独立的 Traefik provider：
 
-- **REST Provider**: Orbit 管理的 Platform Route，通过 `PUT /api/providers/rest` 发布完整 HTTP/TCP/TLS 快照
+- **File Provider**: Orbit 管理的 Platform Route，通过显式同步独立发布 `gateway/dynamic/route-<code>.yaml`，router/service 同样使用编码，内部归属仍使用 ID
 - **Docker Provider**: 基于 Docker Labels 的路由（Traefik 自动发现）
 
-两种方式可以共存，互不干扰。
+两种方式可以共存，Route 同步保留 Docker provider 资源。TLS SNI store 仍是 Gateway 共享资源，同域证书须保持一致。
 
 ## 使用 Docker Labels 配置路由
 
@@ -81,7 +81,7 @@ labels:
 
 ## 证书管理
 
-Docker Label 只声明 Router 和 Service。Orbit 的手工和 mkcert 证书仅支持存储在已启用的 Platform HTTP Route，并通过 REST provider 的 `tls.certificates` 发布；不要为 Label 路由创建禁用占位 Route，也不要创建 `tls.yml` 或手工复制 PEM。需要独立管理 Label Router 的 TLS 时，请在该 Router 所属的 Traefik 配置中完成，而不是将其混入 Orbit 的 Route workspace。
+Docker Label 只声明 Router 和 Service。Orbit 的手工和 mkcert 证书仅支持存储在已启用的 Platform HTTP Route，并通过其独立 File provider YAML 的 `tls.certificates` 发布；不要为 Label 路由创建禁用占位 Route，也不要创建 `tls.yml` 或手工复制 PEM。需要独立管理 Label Router 的 TLS 时，请在该 Router 所属的 Traefik 配置中完成，而不是将其混入 Orbit 的 Route workspace。
 
 ## 路由发现
 
@@ -128,11 +128,11 @@ labels:
 
 ## 与 Platform Route 的对比
 
-| 特性 | Platform Route（REST provider） | Docker Label |
+| 特性 | Platform Route（File provider） | Docker Label |
 |------|--------------|--------------|
-| 配置位置 | 数据库 | `docker-compose.yml` |
-| 管理方式 | UI/MCP 后同步完整 REST snapshot | 代码管理 |
-| 动态更新 | 通过 `/routes` 同步入口预览并确认后全量 PUT 到 Traefik REST API | 容器标签变化后由 Docker provider 发现 |
+| 配置位置 | 数据库保存可编辑配置，Gateway 目录保存已发布文件 | `docker-compose.yml` |
+| 管理方式 | UI/MCP 预览并确认单条或 Project 发布清单 | 代码管理 |
+| 动态更新 | 覆盖或撤销对应 Route 文件，Traefik watcher 加载 | 标签变更需重建承载容器，由 Docker provider 发现 |
 | 证书管理 | 手工 PEM、mkcert 或 Let's Encrypt | 由 Label Router 所属 Traefik 配置负责 |
 | 适用场景 | 外部服务、静态路由 | 容器化应用 |
 | 可编辑性 | 通过 Orbit 管理 | 修改 docker-compose.yml |

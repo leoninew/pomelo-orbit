@@ -6,10 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"path"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
@@ -29,7 +27,6 @@ type RouteManager struct {
 	targetResolver     environmentport.TargetResolver
 	runtime            deploymentport.Runtime
 	runningInContainer func() bool
-	mu                 sync.Mutex
 }
 
 type restRequestFailure struct {
@@ -80,46 +77,6 @@ func (m *RouteManager) WaitUntilReady(ctx context.Context, projectId string, gat
 		case <-timer.C:
 		}
 	}
-}
-
-func (m *RouteManager) ApplySnapshot(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	target, err := m.resolveTarget(ctx, projectId)
-	if err != nil {
-		return err
-	}
-	serviceDir, err := m.runtime.ServiceDir(target, gateway.RuntimeServiceCode)
-	if err != nil {
-		return err
-	}
-	certDir := path.Join(strings.ReplaceAll(serviceDir, "\\", "/"), "gateway", "certs")
-	certFiles := make([]deploymentport.WorkspaceFile, 0)
-	for _, route := range routes {
-		if !routeHasStoredCertificate(route) {
-			continue
-		}
-		certFiles = append(certFiles,
-			deploymentport.WorkspaceFile{Path: path.Join(certDir, route.Name+".pem"), Content: []byte(*route.CertPEM), Mode: 0o600},
-			deploymentport.WorkspaceFile{Path: path.Join(certDir, route.Name+"-key.pem"), Content: []byte(*route.CertKey), Mode: 0o600},
-		)
-	}
-	if err := m.runtime.SyncFiles(ctx, target, certDir, certFiles, ".pem"); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to sync remote route certificates", err)
-	}
-	body, err := json.Marshal(buildRestSnapshot(routes))
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to marshal traefik rest snapshot", err)
-	}
-	stateDir, snapshotPath := restSnapshotLocation(serviceDir)
-	if err := m.runtime.SyncFiles(ctx, target, stateDir, []deploymentport.WorkspaceFile{{Path: snapshotPath, Content: body, Mode: 0o600}}, ""); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to stage remote traefik snapshot", err)
-	}
-	output, err := m.requestAtTarget(ctx, target, gateway, body, []string{"-fsS", "--max-time", "15", "-X", "PUT", "-H", "Content-Type: application/json", "--data-binary", "@-"}, "/api/providers/rest")
-	if err != nil {
-		return apperror.New(apperror.KindInternal, outputOrRemoteError("Failed to put traefik rest config", output, err))
-	}
-	return nil
 }
 
 func (m *RouteManager) ListRouters(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]routeport.TraefikRouter, error) {
@@ -252,12 +209,6 @@ func (m *RouteManager) TraefikUnavailableMessage(err error) (string, bool) {
 	return failure.unavailableMessage(), true
 }
 
-func restSnapshotLocation(serviceDir string) (stateDir, snapshotPath string) {
-	serviceDir = strings.ReplaceAll(strings.TrimSpace(serviceDir), "\\", "/")
-	stateDir = path.Join(serviceDir, ".orbit")
-	return stateDir, path.Join(stateDir, "traefik-rest.json")
-}
-
 func (m *RouteManager) traefikBaseUrl(target environmentport.Target, gateway model.GatewayConfig) (string, error) {
 	if target.Environment.TargetType == model.EnvironmentTargetTypeLocal && m.runningInContainer != nil && m.runningInContainer() {
 		return normalizeTraefikBaseUrl(gateway.RestApiUrl, "rest_api_url")
@@ -298,16 +249,9 @@ func normalizeJSON(raw *json.RawMessage) string {
 	return string(encoded)
 }
 
-func outputOrRemoteError(prefix string, output string, err error) string {
-	output = strings.TrimSpace(output)
-	if output != "" {
-		return prefix + ": " + output
-	}
-	return prefix + ": " + err.Error()
-}
-
-// buildRestSnapshot assembles a full providers.rest HTTP and TCP config (full replace semantics).
-func buildRestSnapshot(routes []model.Route) map[string]any {
+// buildRouteSnapshot assembles the complete dynamic configuration loaded at
+// startup and on file changes by Traefik's file provider.
+func buildRouteSnapshot(routes []model.Route) map[string]any {
 	httpRouters := map[string]any{}
 	httpServices := map[string]any{}
 	tcpRouters := map[string]any{}
@@ -321,8 +265,8 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 			if route.ListenPort == nil || route.TargetAddress == "" || route.TargetPort < 1 {
 				continue
 			}
-			serviceName := sanitizeTraefikName(route.Name) + "-service"
-			routerName := sanitizeTraefikName(route.Name) + "-route"
+			serviceName := model.GatewayRouteResourceName(route.Name) + "-service"
+			routerName := model.GatewayRouteResourceName(route.Name) + "-route"
 			tcpRouters[routerName] = map[string]any{
 				"rule": "HostSNI(`*`)", "service": serviceName,
 				"entryPoints": []string{"tcp" + strconv.Itoa(*route.ListenPort)},
@@ -343,12 +287,12 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 		}
 		if routeHasStoredCertificate(route) {
 			tlsCertificates = append(tlsCertificates, map[string]string{
-				"certFile": "/etc/traefik/certs/" + route.Name + ".pem",
-				"keyFile":  "/etc/traefik/certs/" + route.Name + "-key.pem",
+				"certFile": "/etc/traefik/certs/" + model.GatewayRouteCertificateDirectory(route.Id) + "/" + certificateRevision(route) + "/cert.pem",
+				"keyFile":  "/etc/traefik/certs/" + model.GatewayRouteCertificateDirectory(route.Id) + "/" + certificateRevision(route) + "/key.pem",
 			})
 		}
-		serviceName := sanitizeTraefikName(route.Name) + "-service"
-		routerName := sanitizeTraefikName(route.Name) + "-route"
+		serviceName := model.GatewayRouteResourceName(route.Name) + "-service"
+		routerName := model.GatewayRouteResourceName(route.Name) + "-route"
 		rule := "Host(`" + route.Domain + "`)"
 		if route.PathPrefix != "" && route.PathPrefix != "/" {
 			rule += " && PathPrefix(`" + route.PathPrefix + "`)"
@@ -378,30 +322,19 @@ func buildRestSnapshot(routes []model.Route) map[string]any {
 			},
 		}
 	}
-	// Empty maps clear the @rest namespace (unlike {} / {"http":{}}).
-	return map[string]any{
-		"http": map[string]any{
-			"routers":  httpRouters,
-			"services": httpServices,
-		},
-		"tcp": map[string]any{
-			"routers":  tcpRouters,
-			"services": tcpServices,
-		},
-		"tls": map[string]any{
-			"certificates": tlsCertificates,
-		},
+	config := map[string]any{}
+	if len(httpRouters) != 0 {
+		config["http"] = map[string]any{"routers": httpRouters, "services": httpServices}
 	}
+	if len(tcpRouters) != 0 {
+		config["tcp"] = map[string]any{"routers": tcpRouters, "services": tcpServices}
+	}
+	if len(tlsCertificates) != 0 {
+		config["tls"] = map[string]any{"certificates": tlsCertificates}
+	}
+	return config
 }
 
 func routeHasStoredCertificate(route model.Route) bool {
 	return route.HTTPSEnabled && route.CertPEM != nil && route.CertKey != nil && strings.TrimSpace(*route.CertPEM) != "" && strings.TrimSpace(*route.CertKey) != ""
-}
-
-func sanitizeTraefikName(name string) string {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return "route"
-	}
-	return name
 }

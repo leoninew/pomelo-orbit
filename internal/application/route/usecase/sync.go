@@ -2,143 +2,166 @@ package routesvc
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
+	"log/slog"
 	"os"
-	"sort"
-	"strconv"
 	"strings"
+	"time"
 
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
-	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
-	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
 const (
-	routeSyncPreviewExpiredCode      = "route_sync_preview_expired"
-	routeSyncPublishFailedCode       = "route_sync_publish_failed"
-	routeSyncPublishFailedMessage    = "Route changes were saved, but publication could not be completed. Retry sync."
-	routeSyncPermissionDeniedCode    = "route_sync_publish_permission_denied"
-	routeSyncPermissionDeniedMessage = "Route changes were saved, but the Gateway remote workspace rejected a file update (permission denied). Retry sync or check the remote workspace permissions."
+	routeSyncPreviewExpiredCode   = "route_sync_preview_expired"
+	routeSyncPublishFailedCode    = "route_sync_publish_failed"
+	routeSyncPermissionDeniedCode = "route_sync_publish_permission_denied"
 )
 
-type syncRouter struct {
-	Name       string `json:"name"`
-	Rule       string `json:"rule"`
-	Protocol   string `json:"protocol"`
-	ListenPort int    `json:"listen_port,omitempty"`
-	Service    string `json:"-"`
-}
-
-type syncService struct {
-	Name     string   `json:"name"`
-	Protocol string   `json:"protocol"`
-	Servers  []string `json:"servers"`
-}
-
-type syncSnapshot struct {
-	Routers  []syncRouter  `json:"routers"`
-	Services []syncService `json:"services"`
-}
-
-// syncRouteState keeps the router and its referenced service together for a
-// user-facing route comparison. Service references are intentionally excluded
-// from snapshot hashes because they are Traefik implementation details.
-type syncRouteState struct {
-	Router     syncRouter
-	HasRouter  bool
-	Service    syncService
-	HasService bool
-}
-
-// PreviewRouteSync compares the requested business snapshot with Traefik
-// without changing either side.
-func (s Service) PreviewRouteSync(ctx context.Context, userId string, projectId string, changes []routedto.RouteSyncChange) (routedto.RouteSyncPreview, error) {
-	plan, traefikRouters, traefikServices, err := s.loadSyncState(ctx, userId, projectId, changes)
+// PreviewRouteSync freezes a publication list without comparing runtime resources.
+func (s Service) PreviewRouteSync(ctx context.Context, userId string, projectId string, input routedto.RouteSyncPreviewInput) (routedto.RouteSyncPreview, error) {
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return routedto.RouteSyncPreview{}, err
+	}
+	unlock, err := s.LockGateway(ctx, projectId)
 	if err != nil {
 		return routedto.RouteSyncPreview{}, err
 	}
-	return previewSyncPlan(plan, traefikRouters, traefikServices), nil
+	defer unlock()
+	plan, err := s.loadSyncState(ctx, userId, projectId, input)
+	if err != nil {
+		return routedto.RouteSyncPreview{}, err
+	}
+	return previewSyncPlan(plan), nil
 }
 
-// ConfirmRouteSync applies the requested business state and publishes the
-// complete Traefik REST snapshot when needed. The database transaction ends
-// before the external PUT starts.
-func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId string, input routedto.RouteSyncConfirmInput) error {
-	if strings.TrimSpace(input.BusinessHash) == "" || strings.TrimSpace(input.TraefikHash) == "" {
-		return apperror.New(apperror.KindValidation, "business_hash and traefik_hash are required")
+// ConfirmRouteSync processes the frozen scope in order and preserves successful items.
+func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId string, input routedto.RouteSyncConfirmInput) (routedto.RouteSyncConfirmResult, error) {
+	result := routedto.RouteSyncConfirmResult{Code: "route_sync_completed", Results: []routedto.RouteSyncResult{}}
+	if strings.TrimSpace(input.BusinessHash) == "" || input.PublicationHash == "" {
+		return result, apperror.New(apperror.KindValidation, "business_hash and publication_hash are required")
 	}
-	plan, traefikRouters, traefikServices, err := s.loadSyncState(ctx, userId, projectId, input.Changes)
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return result, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, 105*time.Second)
+	defer cancel()
+	unlock, err := s.LockGateway(ctx, projectId)
 	if err != nil {
-		return err
+		return result, err
 	}
-	preview := previewSyncPlan(plan, traefikRouters, traefikServices)
-	if preview.BusinessHash != input.BusinessHash || preview.TraefikHash != input.TraefikHash {
-		return apperror.NewWithCode(
+	defer unlock()
+	plan, err := s.loadSyncState(ctx, userId, projectId, routedto.RouteSyncPreviewInput{Scope: "selected", RouteIds: input.RouteIds, Changes: input.Changes})
+	if err != nil {
+		return result, err
+	}
+	preview := previewSyncPlan(plan)
+	if preview.BusinessHash != input.BusinessHash || preview.PublicationHash != input.PublicationHash {
+		return result, apperror.NewWithCode(
 			apperror.KindConflict,
 			routeSyncPreviewExpiredCode,
 			"Route sync preview is out of date. Preview the current state again.",
 		)
 	}
 	if s.transactionRunner == nil {
-		return apperror.New(apperror.KindInternal, "route sync transaction is not configured")
+		return result, apperror.New(apperror.KindInternal, "route sync transaction is not configured")
 	}
-	if err := s.transactionRunner.RunInTransaction(ctx, func(txCtx context.Context) error {
-		return s.applyRouteSyncChanges(txCtx, projectId, plan)
-	}); err != nil {
-		return err
-	}
-	updatedRoutes, err := s.listEnabledRoutesForPublish(ctx, projectId)
-	if err != nil {
-		return apperror.WrapWithCode(apperror.KindUnavailable, routeSyncPublishFailedCode, routeSyncPublishFailedMessage, err)
-	}
-	if err := s.applyRouteSnapshot(ctx, projectId, updatedRoutes, false); err != nil {
-		if errors.Is(err, os.ErrPermission) {
-			return apperror.WrapWithCode(apperror.KindUnavailable, routeSyncPermissionDeniedCode, routeSyncPermissionDeniedMessage, err)
+	for index, route := range plan.routes {
+		item := routedto.RouteSyncResult{RouteId: route.Id, RouteName: route.Name, BusinessSave: "unchanged", FileCommit: "not_attempted", ConfigurationMatch: "unverified", CertificateVerification: "not_applicable", Recovery: "not_needed", Cleanup: "not_attempted"}
+		if route.Enabled && route.HTTPSEnabled {
+			item.CertificateVerification = "unverified"
 		}
-		return apperror.WrapWithCode(apperror.KindUnavailable, routeSyncPublishFailedCode, routeSyncPublishFailedMessage, err)
+		deadline, _ := ctx.Deadline()
+		if ctx.Err() != nil || time.Until(deadline) < 2*time.Second {
+			item.Code = "route_sync_skipped"
+			item.Error = "The batch time budget ended before this Route was processed"
+			result.Code = "route_sync_incomplete"
+			result.Results = append(result.Results, item)
+			continue
+		}
+		one := plan.routePlan(index)
+		err := s.transactionRunner.RunInTransaction(ctx, func(txCtx context.Context) error { return s.verifyAndSaveSyncRoute(txCtx, projectId, one) })
+		if err == nil {
+			if len(one.updates) != 0 {
+				item.BusinessSave = "saved"
+			}
+			fingerprint := ""
+			if publication, found := plan.publications[route.Id]; found {
+				fingerprint = hashSyncValue(publication)
+			}
+			if !route.Enabled && fingerprint == "" {
+				item.Code = "route_sync_completed"
+				item.FileCommit = "not_applicable"
+				item.ConfigurationMatch = "not_applicable"
+				item.Cleanup = "not_applicable"
+				result.Results = append(result.Results, item)
+				continue
+			}
+			published, publishErr := s.routePublisher.PublishRoute(ctx, projectId, plan.gateway, route, fingerprint)
+			item.OperationId, item.FileCommit, item.ConfigurationMatch = published.OperationId, published.FileCommit, published.ConfigurationMatch
+			item.CertificateVerification, item.Recovery, item.Cleanup = published.CertificateVerification, published.Recovery, published.Cleanup
+			err = publishErr
+		} else {
+			item.BusinessSave = "failed"
+		}
+		if err != nil {
+			slog.ErrorContext(ctx, "Route sync item failed", "project_id", projectId, "route_id", route.Id, "operation_id", item.OperationId, "recovery", item.Recovery, "error", err)
+			item.Code, item.Error = routeSyncPublishFailedCode, "Route publication could not be completed. Preview this Route again to retry."
+			if errors.Is(err, os.ErrPermission) {
+				item.Code = routeSyncPermissionDeniedCode
+				item.Error = "The target workspace rejected the file operation (permission denied)."
+			} else if classified, ok := apperror.As(err); ok {
+				if classified.Code != "" {
+					item.Code = classified.Code
+				}
+				item.Error = classified.Message
+			}
+			result.Code = "route_sync_incomplete"
+		} else {
+			item.Code = "route_sync_completed"
+		}
+		result.Results = append(result.Results, item)
 	}
-	return nil
+	return result, nil
 }
 
-func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, changes []routedto.RouteSyncChange) (syncPlan, []routeport.TraefikRouter, []routeport.TraefikService, error) {
+func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, input routedto.RouteSyncPreviewInput) (syncPlan, error) {
 	if projectId == "" {
-		return syncPlan{}, nil, nil, apperror.New(apperror.KindValidation, "project_id is required")
+		return syncPlan{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
-		return syncPlan{}, nil, nil, err
-	}
-	plan, err := s.buildSyncPlan(ctx, projectId, changes)
-	if err != nil {
-		return syncPlan{}, nil, nil, err
-	}
-	if err := s.prepareSyncRoutes(ctx, projectId, &plan); err != nil {
-		return syncPlan{}, nil, nil, err
+		return syncPlan{}, err
 	}
 	gateway, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
-		return syncPlan{}, nil, nil, err
+		return syncPlan{}, err
 	}
-	items, err := s.traefikRouterClient.ListRouters(ctx, projectId, *gateway)
+	publications, err := s.routePublisher.InspectPublications(ctx, projectId, *gateway)
 	if err != nil {
-		return syncPlan{}, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik routers")
+		return syncPlan{}, err
 	}
-	services, err := s.traefikRouterClient.ListServices(ctx, projectId, *gateway)
+	plan, err := s.buildSyncPlan(ctx, projectId, input, *gateway, publications)
 	if err != nil {
-		return syncPlan{}, nil, nil, s.traefikClientError(err, "Failed to inspect Traefik services")
+		return syncPlan{}, err
 	}
-	return plan, items, services, nil
+	if err := s.prepareSyncRoutes(ctx, projectId, &plan); err != nil {
+		return syncPlan{}, err
+	}
+	plan.dependencies, err = s.routePublisher.ValidateGateway(ctx, projectId, *gateway, plan.routes)
+	if err != nil {
+		return syncPlan{}, err
+	}
+	return plan, nil
 }
 
 func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, plan *syncPlan) error {
 	tcpPorts := make(map[int]string)
 	for index := range plan.routes {
 		route := &plan.routes[index]
+		if !route.Enabled {
+			continue
+		}
 		if route.Protocol != routeProtocolTCP {
 			if err := s.validateRoute(ctx, projectId, route, route.Id, true); err != nil {
 				return err
@@ -168,346 +191,4 @@ func (s Service) prepareSyncRoutes(ctx context.Context, projectId string, plan *
 		tcpPorts[*route.ListenPort] = route.Name
 	}
 	return nil
-}
-
-func compareSyncState(routes []model.Route, traefikRouters []routeport.TraefikRouter, traefikServices []routeport.TraefikService) routedto.RouteSyncPreview {
-	business := syncSnapshot{
-		Routers:  expectedSyncRouters(routes),
-		Services: expectedSyncServices(routes),
-	}
-	traefik := syncSnapshot{
-		Routers:  actualSyncRouters(traefikRouters),
-		Services: actualSyncServices(traefikServices),
-	}
-	certificateVersions := make([]string, 0, len(routes))
-	for _, route := range routes {
-		if route.Enabled && route.Protocol == routeProtocolHTTP {
-			certificateVersions = append(certificateVersions, hashSyncValue(struct {
-				Id            string
-				HTTPSEnabled  bool
-				CertType      string
-				AcmeChallenge string
-				CertPEM       *string
-				CertKey       *string
-			}{route.Id, route.HTTPSEnabled, route.CertType, route.AcmeChallenge, route.CertPEM, route.CertKey}))
-		}
-	}
-	sort.Strings(certificateVersions)
-	businessHash := hashSyncValue(struct {
-		Snapshot     syncSnapshot
-		Certificates []string
-	}{business, certificateVersions})
-	traefikHash := hashSyncSnapshot(traefik)
-	differences := syncDifferences(business, traefik)
-	return routedto.RouteSyncPreview{
-		BusinessHash: businessHash,
-		TraefikHash:  traefikHash,
-		Matched:      len(differences) == 0,
-		Differences:  differences,
-	}
-}
-
-func expectedSyncRouters(routes []model.Route) []syncRouter {
-	items := make([]syncRouter, 0, len(routes))
-	for _, route := range routes {
-		if !route.Enabled {
-			continue
-		}
-		name := strings.TrimSpace(route.Name)
-		if name == "" {
-			name = "route"
-		}
-		if route.Protocol == routeProtocolTCP {
-			if route.ListenPort == nil || route.TargetAddress == "" || route.TargetPort < 1 {
-				continue
-			}
-			items = append(items, syncRouter{
-				Name:       name + "-route@rest",
-				Rule:       "HostSNI(`*`)",
-				Protocol:   routeProtocolTCP,
-				ListenPort: *route.ListenPort,
-				Service:    name + "-service",
-			})
-			continue
-		}
-		if strings.TrimSpace(syncHTTPServiceTarget(route)) == "" {
-			continue
-		}
-		rule := "Host(`" + route.Domain + "`)"
-		if route.PathPrefix != "" && route.PathPrefix != "/" {
-			rule += " && PathPrefix(`" + route.PathPrefix + "`)"
-		}
-		protocol := "http"
-		if route.HTTPSEnabled {
-			protocol = "https"
-		}
-		item := syncRouter{Name: name + "-route@rest", Rule: rule, Protocol: protocol, Service: name + "-service"}
-		items = append(items, item)
-	}
-	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
-	return items
-}
-
-func actualSyncRouters(routers []routeport.TraefikRouter) []syncRouter {
-	items := make([]syncRouter, 0, len(routers))
-	for _, router := range routers {
-		if router.Provider != "rest" {
-			continue
-		}
-		items = append(items, syncRouter{
-			Name:       router.Name,
-			Rule:       router.Rule,
-			Protocol:   syncRouterProtocol(router),
-			ListenPort: syncRouterListenPort(router),
-			Service:    syncServiceName(router.Service),
-		})
-	}
-	sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
-	return items
-}
-
-func expectedSyncServices(routes []model.Route) []syncService {
-	items := make([]syncService, 0, len(routes))
-	for _, route := range routes {
-		if !route.Enabled {
-			continue
-		}
-		name := strings.TrimSpace(route.Name)
-		if name == "" {
-			name = "route"
-		}
-		var server string
-		if route.Protocol == routeProtocolTCP {
-			if route.ListenPort == nil || route.TargetAddress == "" || route.TargetPort < 1 {
-				continue
-			}
-			server = net.JoinHostPort(route.TargetAddress, strconv.Itoa(route.TargetPort))
-		} else {
-			server = syncHTTPServiceTarget(route)
-		}
-		if strings.TrimSpace(server) == "" {
-			continue
-		}
-		items = append(items, syncService{
-			Name:     name + "-service",
-			Protocol: route.Protocol,
-			Servers:  []string{server},
-		})
-	}
-	sort.Slice(items, func(i, j int) bool {
-		if items[i].Protocol == items[j].Protocol {
-			return items[i].Name < items[j].Name
-		}
-		return items[i].Protocol < items[j].Protocol
-	})
-	return items
-}
-
-func actualSyncServices(services []routeport.TraefikService) []syncService {
-	items := make([]syncService, 0, len(services))
-	for _, service := range services {
-		if service.Provider != "rest" {
-			continue
-		}
-		name := strings.TrimSuffix(service.Name, "@rest")
-		servers := append([]string(nil), service.Servers...)
-		sort.Strings(servers)
-		items = append(items, syncService{
-			Name:     name,
-			Protocol: service.Protocol,
-			Servers:  servers,
-		})
-	}
-	sort.Slice(items, func(i, j int) bool {
-		if items[i].Protocol == items[j].Protocol {
-			return items[i].Name < items[j].Name
-		}
-		return items[i].Protocol < items[j].Protocol
-	})
-	return items
-}
-
-func syncServiceKey(protocol string, name string) string {
-	return protocol + "\x00" + name
-}
-
-func syncRouterProtocol(router routeport.TraefikRouter) string {
-	if strings.HasPrefix(router.Rule, "HostSNI(") {
-		return routeProtocolTCP
-	}
-	if router.TLS {
-		return "https"
-	}
-	return "http"
-}
-
-func syncRouterListenPort(router routeport.TraefikRouter) int {
-	if syncRouterProtocol(router) != routeProtocolTCP {
-		return 0
-	}
-	for _, entrypoint := range router.Entrypoints {
-		port, err := strconv.Atoi(strings.TrimPrefix(entrypoint, "tcp"))
-		if err == nil && port > 0 {
-			return port
-		}
-	}
-	return 0
-}
-
-func syncHTTPServiceTarget(route model.Route) string {
-	if route.TargetAddress != "" && route.TargetPort > 0 {
-		return "http://" + net.JoinHostPort(route.TargetAddress, strconv.Itoa(route.TargetPort))
-	}
-	return route.TargetUrl
-}
-
-func hashSyncSnapshot(snapshot syncSnapshot) string {
-	encoded, _ := json.Marshal(snapshot)
-	digest := sha256.Sum256(encoded)
-	return hex.EncodeToString(digest[:])
-}
-
-func syncDifferences(business syncSnapshot, traefik syncSnapshot) []routedto.RouteSyncDiff {
-	businessRoutes := syncRouteStates(business)
-	traefikRoutes := syncRouteStates(traefik)
-	names := make([]string, 0, len(businessRoutes)+len(traefikRoutes))
-	seen := make(map[string]struct{}, len(businessRoutes)+len(traefikRoutes))
-	for name := range businessRoutes {
-		seen[name] = struct{}{}
-		names = append(names, name)
-	}
-	for name := range traefikRoutes {
-		if _, found := seen[name]; !found {
-			names = append(names, name)
-		}
-	}
-	sort.Strings(names)
-
-	differences := make([]routedto.RouteSyncDiff, 0, len(names))
-	for _, name := range names {
-		businessRoute, inBusiness := businessRoutes[name]
-		traefikRoute, inTraefik := traefikRoutes[name]
-		switch {
-		case inBusiness && !inTraefik:
-			differences = append(differences, routedto.RouteSyncDiff{
-				Action: "added", RouteName: name, Field: "route", Business: syncRouteRule(businessRoute),
-			})
-		case !inBusiness && inTraefik:
-			differences = append(differences, routedto.RouteSyncDiff{
-				Action: "removed", RouteName: name, Field: "route", Traefik: syncRouteRule(traefikRoute),
-			})
-		case !syncRouteStatesEqual(businessRoute, traefikRoute):
-			differences = append(differences, routedto.RouteSyncDiff{
-				Action: "modified", RouteName: name, Field: "route",
-				Business: syncRouteRule(businessRoute), Traefik: syncRouteRule(traefikRoute),
-			})
-		}
-	}
-	return differences
-}
-
-func syncRouteStates(snapshot syncSnapshot) map[string]syncRouteState {
-	services := make(map[string]syncService, len(snapshot.Services))
-	for _, service := range snapshot.Services {
-		services[syncServiceKey(service.Protocol, service.Name)] = service
-	}
-
-	routes := make(map[string]syncRouteState, len(snapshot.Routers)+len(snapshot.Services))
-	usedServices := make(map[string]struct{}, len(snapshot.Services))
-	for _, router := range snapshot.Routers {
-		name := syncRouterRouteName(router.Name)
-		state := routes[name]
-		state.Router = router
-		state.HasRouter = true
-		serviceKey := syncServiceKey(syncRouterServiceProtocol(router.Protocol), router.Service)
-		if service, found := services[serviceKey]; found {
-			state.Service = service
-			state.HasService = true
-			usedServices[serviceKey] = struct{}{}
-		}
-		routes[name] = state
-	}
-	for _, service := range snapshot.Services {
-		serviceKey := syncServiceKey(service.Protocol, service.Name)
-		if _, used := usedServices[serviceKey]; used {
-			continue
-		}
-		name := syncServiceRouteName(service.Name)
-		state := routes[name]
-		if !state.HasService {
-			state.Service = service
-			state.HasService = true
-			routes[name] = state
-		}
-	}
-	return routes
-}
-
-func syncRouterServiceProtocol(protocol string) string {
-	if protocol == routeProtocolTCP {
-		return routeProtocolTCP
-	}
-	return "http"
-}
-
-func syncRouteStatesEqual(business syncRouteState, traefik syncRouteState) bool {
-	if business.HasRouter != traefik.HasRouter || business.HasService != traefik.HasService {
-		return false
-	}
-	if business.HasRouter && (business.Router.Rule != traefik.Router.Rule || business.Router.Protocol != traefik.Router.Protocol || business.Router.ListenPort != traefik.Router.ListenPort) {
-		return false
-	}
-	if business.HasService && (business.Service.Protocol != traefik.Service.Protocol || !syncServersEqual(business.Service.Servers, traefik.Service.Servers)) {
-		return false
-	}
-	return true
-}
-
-func syncServersEqual(left []string, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index, server := range left {
-		if server != right[index] {
-			return false
-		}
-	}
-	return true
-}
-
-func syncRouterValue(router syncRouter) string {
-	if router.Protocol == routeProtocolTCP {
-		if router.ListenPort > 0 {
-			return "TCP :" + strconv.Itoa(router.ListenPort)
-		}
-		return "TCP"
-	}
-	return strings.TrimSpace(strings.ToUpper(router.Protocol) + " " + router.Rule)
-}
-
-func syncServiceField(service syncService) string {
-	return strings.Join(service.Servers, ", ")
-}
-
-func syncRouteRule(state syncRouteState) *routedto.RouteSyncRule {
-	rule := &routedto.RouteSyncRule{}
-	if state.HasRouter {
-		rule.Match = syncRouterValue(state.Router)
-	}
-	if state.HasService {
-		rule.Target = syncServiceField(state.Service)
-	}
-	return rule
-}
-
-func syncRouterRouteName(name string) string {
-	return strings.TrimSuffix(strings.TrimSuffix(name, "@rest"), "-route")
-}
-
-func syncServiceRouteName(name string) string {
-	return strings.TrimSuffix(strings.TrimSuffix(name, "@rest"), "-service")
-}
-
-func syncServiceName(name string) string {
-	return strings.TrimSuffix(name, "@rest")
 }

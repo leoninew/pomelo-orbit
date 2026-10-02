@@ -6,32 +6,30 @@ import (
 	"testing"
 	"time"
 
-	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-func TestPublishSnapshotWaitsForGatewayAndPublishesRoutes(t *testing.T) {
+func TestGatewayRecreationWaitsThenVerifiesWithoutReadingEditableRoutes(t *testing.T) {
 	events := []string{}
 	publisher := &snapshotOrderPublisher{events: &events}
 	service := Service{
-		route:               routeListFake{routes: []model.Route{{Id: "route-1", Name: "api", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "http://example:80", Enabled: true}}},
-		gateway:             gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl}},
-		routePublisher:      publisher,
-		traefikRouterClient: snapshotOrderRouterClient{events: &events},
+		route:          routeListFake{},
+		gateway:        gatewayConfigFake{cfg: model.GatewayConfig{ApplicationId: "gateway-1", RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl}},
+		routePublisher: publisher,
 	}
 
-	if err := service.PublishSnapshot(context.Background(), "project-1"); err != nil {
+	if err := service.VerifyPublishedRoutes(context.Background(), "project-1"); err != nil {
 		t.Fatal(err)
 	}
 	if publisher.readyWaits != 1 {
-		t.Fatalf("PublishSnapshot WaitUntilReady calls = %d, want 1", publisher.readyWaits)
+		t.Fatalf("VerifyPublishedRoutes WaitUntilReady calls = %d, want 1", publisher.readyWaits)
 	}
-	if len(publisher.snapshots) != 1 {
-		t.Fatalf("snapshots = %d, want 1", len(publisher.snapshots))
+	if len(publisher.published) != 0 {
+		t.Fatalf("unexpected publication: %+v", publisher.published)
 	}
-	if got, want := strings.Join(events, ","), "wait,apply"; got != want {
-		t.Fatalf("PublishSnapshot order = %q, want %q", got, want)
+	if got, want := strings.Join(events, ","), "wait,verify"; got != want {
+		t.Fatalf("VerifyPublishedRoutes order = %q, want %q", got, want)
 	}
 }
 
@@ -63,24 +61,7 @@ func (p *snapshotOrderPublisher) WaitUntilReady(ctx context.Context, projectId s
 	return p.recordingRoutePublisher.WaitUntilReady(ctx, projectId, gateway, timeout)
 }
 
-func (p *snapshotOrderPublisher) ApplySnapshot(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) error {
-	*p.events = append(*p.events, "apply")
-	return p.recordingRoutePublisher.ApplySnapshot(ctx, projectId, gateway, routes)
-}
-
-type snapshotOrderRouterClient struct {
-	events *[]string
-}
-
-func (c snapshotOrderRouterClient) ListRouters(context.Context, string, model.GatewayConfig) ([]routeport.TraefikRouter, error) {
-	*c.events = append(*c.events, "routers")
-	return nil, nil
-}
-
-func (snapshotOrderRouterClient) ListServices(context.Context, string, model.GatewayConfig) ([]routeport.TraefikService, error) {
-	return nil, nil
-}
-
-func (snapshotOrderRouterClient) TraefikUnavailableMessage(error) (string, bool) {
-	return "", false
+func (p *snapshotOrderPublisher) VerifyPublished(context.Context, string, model.GatewayConfig) error {
+	*p.events = append(*p.events, "verify")
+	return nil
 }

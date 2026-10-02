@@ -133,8 +133,9 @@ func (s Service) DeployService(ctx context.Context, userId string, projectId str
 	}
 	deployment := newDeployment(projectId, app, "deploy")
 	deployment.VersionId = &version.Id
+	forceRecreate := input.ForceRecreate || isGatewayCarrier(plan)
 	opts := deploymentdto.DeployOptionsJSON{
-		ForceRecreate:      input.ForceRecreate,
+		ForceRecreate:      forceRecreate,
 		JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
 	}
 	applyDeploymentTargetSnapshot(&deployment, target, gateway)
@@ -146,11 +147,11 @@ func (s Service) DeployService(ctx context.Context, userId string, projectId str
 	}
 	deployment.ServiceId = &service.Id
 	deployment.EffectivePlanHash = &planHash
-	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), input.ForceRecreate).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), forceRecreate).String()
 	if err := s.commandStore.CreateDeployment(ctx, projectId, deployment); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
-	if err := s.dispatcher.DispatchDeploy(ctx, deploymentdto.DeployDispatchInput{ProjectId: projectId, ApplicationId: app.Id, DeploymentId: deployment.Id, ForceRecreate: input.ForceRecreate}); err != nil {
+	if err := s.dispatcher.DispatchDeploy(ctx, deploymentdto.DeployDispatchInput{ProjectId: projectId, ApplicationId: app.Id, DeploymentId: deployment.Id, ForceRecreate: forceRecreate}); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to enqueue deployment", err)
 	}
 	return deploymentdto.DeployServiceResult{DeploymentId: deployment.Id}, nil
@@ -265,6 +266,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, projectI
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
 	restartOptions := deploymentdto.DeployOptionsJSON{
+		ForceRecreate:      isGatewayCarrier(plan),
 		JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
 	}
 	applyDeploymentTargetSnapshot(&deployment, target, gateway)
@@ -272,7 +274,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, projectI
 		return "", err
 	}
 	deployment.EffectivePlanHash = &planHash
-	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), false).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), restartOptions.ForceRecreate).String()
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}

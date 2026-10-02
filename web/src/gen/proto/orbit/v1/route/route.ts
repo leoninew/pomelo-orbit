@@ -73,32 +73,39 @@ export interface RouteSyncChange {
 
 export interface RouteSyncPreviewReq {
   changes: RouteSyncChange[];
+  scope: string;
+  route_ids: string[];
 }
 
-export interface RouteSyncDiffResp {
-  action: string;
+export interface RouteSyncPlanItemResp {
+  route_id: string;
   route_name: string;
-  field: string;
-  business: RouteSyncRuleResp | undefined;
-  traefik: RouteSyncRuleResp | undefined;
+  action: string;
+  rule: RouteSyncRuleResp | undefined;
+  cert_type: string;
+  acme_challenge: string;
+  business_hash: string;
+  publication_hash: string;
 }
 
 export interface RouteSyncRuleResp {
   match: string;
   target: string;
+  protocol: string;
 }
 
 export interface RouteSyncPreviewResp {
   business_hash: string;
-  traefik_hash: string;
-  matched: boolean;
-  differences: RouteSyncDiffResp[];
+  items: RouteSyncPlanItemResp[];
+  route_ids: string[];
+  publication_hash: string;
 }
 
 export interface RouteSyncConfirmReq {
   changes: RouteSyncChange[];
   business_hash: string;
-  traefik_hash: string;
+  route_ids: string[];
+  publication_hash: string;
 }
 
 export interface RouteLetsEncryptEnableReq {
@@ -118,6 +125,23 @@ export interface RouteDisableResp {
 
 export interface RouteSyncConfirmResp {
   message: string;
+  code: string;
+  results: RouteSyncResultResp[];
+  request_id: string;
+}
+
+export interface RouteSyncResultResp {
+  route_id: string;
+  route_name: string;
+  operation_id: string;
+  code: string;
+  error: string;
+  business_save: string;
+  file_commit: string;
+  configuration_match: string;
+  certificate_verification: string;
+  recovery: string;
+  cleanup: string;
 }
 
 export interface RoutePaginatedResp {

@@ -69,8 +69,9 @@ func buildInitialGatewayComponent(versionId, image, pullPolicy, componentName, r
 		Mounts: []model.VersionComponentMount{
 			{SourceType: "file", Source: gatewayDockerSocketPath, SourceIsHostPath: true, Target: gatewayDockerSocketPath, ReadOnly: true},
 			{SourceType: "controlled_file", Source: "./traefik.yml", Target: gatewayMountTargetTraefikYml, Content: initialTraefikStaticConfig(role, networkName), Mode: "0644"},
-			{SourceType: "directory", Source: "./gateway/certs", Target: gatewayMountTargetCertDir},
+			{SourceType: "directory", Source: "./gateway/certs", Target: gatewayMountTargetCertDir, ReadOnly: true},
 			{SourceType: "directory", Source: "./gateway/acme", Target: gatewayMountTargetAcmeDir},
+			{SourceType: "directory", Source: model.GatewayRouteConfigSource, Target: model.GatewayRouteConfigTarget, ReadOnly: true},
 		},
 	}
 }
@@ -91,8 +92,9 @@ providers:
     endpoint: "unix:///var/run/docker.sock"
     exposedByDefault: false
     network: ` + networkName + `
-  rest:
-    insecure: true
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
 
 log:
   level: INFO

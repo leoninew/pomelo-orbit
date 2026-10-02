@@ -66,32 +66,41 @@ message RouteSyncChange {
 
 message RouteSyncPreviewReq {
   repeated RouteSyncChange changes = 1;
+  string scope = 2;
+  repeated string route_ids = 3;
 }
 
-message RouteSyncDiffResp {
-  string action = 1;
+message RouteSyncPlanItemResp {
+  string route_id = 1;
   string route_name = 2;
-  string field = 3;
-  RouteSyncRuleResp business = 4;
-  RouteSyncRuleResp traefik = 5;
+  string action = 3;
+  RouteSyncRuleResp rule = 4;
+  string cert_type = 5;
+  string acme_challenge = 6;
+  string business_hash = 7;
+  string publication_hash = 8;
 }
 
 message RouteSyncRuleResp {
   string match = 1;
   string target = 2;
+  string protocol = 3;
 }
 
 message RouteSyncPreviewResp {
   string business_hash = 1;
-  string traefik_hash = 2;
-  bool matched = 3;
-  repeated RouteSyncDiffResp differences = 4;
+  reserved 2, 3;
+  repeated RouteSyncPlanItemResp items = 4;
+  repeated string route_ids = 5;
+  string publication_hash = 6;
 }
 
 message RouteSyncConfirmReq {
   repeated RouteSyncChange changes = 1;
   string business_hash = 2;
-  string traefik_hash = 3;
+  reserved 3;
+  repeated string route_ids = 4;
+  string publication_hash = 5;
 }
 
 message RouteLetsEncryptEnableReq {
@@ -110,6 +119,23 @@ message RouteDisableResp {
 
 message RouteSyncConfirmResp {
   string message = 1;
+  string code = 2;
+  repeated RouteSyncResultResp results = 3;
+  string request_id = 4;
+}
+
+message RouteSyncResultResp {
+  string route_id = 1;
+  string route_name = 2;
+  string operation_id = 3;
+  string code = 4;
+  string error = 5;
+  string business_save = 6;
+  string file_commit = 7;
+  string configuration_match = 8;
+  string certificate_verification = 9;
+  string recovery = 10;
+  string cleanup = 11;
 }
 
 message RoutePaginatedResp {

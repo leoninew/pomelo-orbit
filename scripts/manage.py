@@ -494,19 +494,20 @@ def backup(cfg: "Config", remote_dir: str) -> None:
     local_archive = local_backup_dir / f"data-{date_str}.tar.gz"
 
     logger.info(f"备份远程目录: {remote_dir}")
-    logger.info("排除: data/pipeline；data/deployment 仅保留 */docker-compose.yml")
+    logger.info(
+        "排除: data/pipeline、data/deployment/<服务>/mysql、"
+        "data/deployment/<服务>/postgres、data/deployment/mihomo-default/config、"
+        "data/deployment/sub2api-default/app/logs；保留其余部署内容"
+    )
     run_ssh_command(
         " ".join(
             [
                 f"cd {shlex.quote(remote_dir)} &&",
-                "{",
                 "find . -path ./data/pipeline -prune -o "
-                "-path ./data/deployment -prune -o -print0;",
-                "if [ -d ./data/deployment ]; then",
-                "find ./data/deployment -mindepth 2 -maxdepth 2 "
-                "-type f -name docker-compose.yml -print0;",
-                "fi;",
-                "}",
+                "-path ./data/deployment/mihomo-default/config -prune -o "
+                "-path ./data/deployment/sub2api-default/app/logs -prune -o "
+                "-type d -regex './data/deployment/[^/]*/mysql' -prune -o "
+                "-type d -regex './data/deployment/[^/]*/postgres' -prune -o -print0",
                 "| tar --ignore-failed-read --null --verbatim-files-from "
                 f"--no-recursion -czf {shlex.quote(remote_archive)} --files-from=-",
             ]

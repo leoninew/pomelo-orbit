@@ -1,6 +1,7 @@
 package sshrunner
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"unicode/utf16"
 
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -84,6 +86,60 @@ func TestNormalizeSFTPHomePathForWindowsAndLinux(t *testing.T) {
 		if got := normalizeSFTPHomePath(testCase.platform, testCase.input); got != testCase.want {
 			t.Fatalf("normalizeSFTPHomePath(%q, %q) = %q, want %q", testCase.platform, testCase.input, got, testCase.want)
 		}
+	}
+}
+
+func TestComposeMountSourceDirReturnsRemoteServicePath(t *testing.T) {
+	runtime := NewRuntime()
+	for _, testCase := range []struct {
+		name, platform, root, want string
+	}{
+		{"Linux", model.EnvironmentPlatformLinux, "/opt/pomelo-orbit/data", "/opt/pomelo-orbit/data/deployment/traefik-default"},
+		{"Windows", model.EnvironmentPlatformWindows, `D:\orbit\data`, "D:/orbit/data/deployment/traefik-default"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			target := environmentport.Target{Environment: model.Environment{
+				TargetType:    model.EnvironmentTargetTypeSSH,
+				WorkspaceRoot: testCase.root,
+				SSH:           &model.EnvironmentSSHTarget{Platform: testCase.platform},
+			}}
+			got, err := runtime.ComposeMountSourceDir(context.Background(), target, "traefik-default")
+			if err != nil {
+				t.Fatalf("ComposeMountSourceDir returned error: %v", err)
+			}
+			if got != testCase.want {
+				t.Fatalf("ComposeMountSourceDir = %q, want %q", got, testCase.want)
+			}
+		})
+	}
+}
+
+type sftpRealPathStub string
+
+func (stub sftpRealPathStub) RealPath(path string) (string, error) {
+	if path != "." {
+		return "", errors.New("unexpected SFTP path")
+	}
+	return string(stub), nil
+}
+
+func TestSFTPPathResolverExpandsRemoteHomeForMountSource(t *testing.T) {
+	for _, testCase := range []struct {
+		name, platform, home, want string
+	}{
+		{"Linux", model.EnvironmentPlatformLinux, "/home/deploy", "/home/deploy/orbit/deployment/traefik-default"},
+		{"Windows", model.EnvironmentPlatformWindows, "/C:/Users/deploy", "C:/Users/deploy/orbit/deployment/traefik-default"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			resolver := newSFTPPathResolver(sftpRealPathStub(testCase.home), testCase.platform)
+			got, err := resolver.resolve("~/orbit/deployment/traefik-default")
+			if err != nil {
+				t.Fatalf("resolve remote home: %v", err)
+			}
+			if got != testCase.want {
+				t.Fatalf("resolved path = %q, want %q", got, testCase.want)
+			}
+		})
 	}
 }
 

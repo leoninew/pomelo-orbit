@@ -1,5 +1,5 @@
 # Route 文件发布、重启恢复与独立同步验收
-最后修改时间: 2026-10-02 14:06:22
+最后修改时间: 2026-10-02 15:47:15
 
 Review status: Draft
 
@@ -182,6 +182,13 @@ Linux DooD 运行器使用挂载 Docker socket 的独立 Linux 容器，工作�
 - 独立 Docker 测试复现首次发布超时。另用与业务数据隔离的 Windows 临时目录和单个测试路由验证：启动加载 `Host(initial.test)`；宿主临时文件替换后容器读取到 `Host(updated.test)`，等待 10 秒 API 仍是 initial；重启该测试容器后 API 加载 updated。Traefik debug 日志也仅在启动/重启收到 File provider 配置。
 - 初始诊断结论限于当前 Windows/Docker Desktop 工作目录的实测通知行为，不能推广为所有 Windows 环境必然失败。后续历史调查找到原生 SIGHUP 重读配置机制，用户授权补回后已通过 Windows E2E，替代了仅将该热更新失败记作已知限制的处理。
 - 初始诊断未改产品代码或用户运行中的容器；后续 HUP 补充只验证隔离实例，不增加同步时重启整个 Gateway 的隐式行为。此前失败的候选已回滚，需通过现有入口显式同步。
+- 远程 `tencent` 只读复核发现当前运行容器 `traefik-traefik` 的三组受管挂载和 `providers.file.directory=/etc/traefik/dynamic` 均正确；误报来自 SSH runtime 的 `ComposeMountSourceDir` 返回空字符串，校验因此拿 `gateway/dynamic` 与 Docker 返回的绝对源路径比较。修复后 SSH runtime 对绝对工作区返回 `/opt/.../deployment/<service-code>`，对 `~` 工作区复用 SFTP home resolver，与 `StageWorkspace` 使用同一远端路径；未修改或重启远程环境。
+
+## SSH 挂载路径修复
+
+- `internal/infrastructure/runner/ssh/runtime.go` 的 `ComposeMountSourceDir` 不再返回空路径。绝对 Linux/Windows workspace root 直接返回规范化远端服务目录，home-relative root 通过 SFTP 解析登录用户主目录。
+- `internal/infrastructure/runner/ssh/runtime_test.go` 新增绝对 SSH workspace 回归，确认 `ComposeMountSourceDir` 返回 `/opt/pomelo-orbit/data/deployment/traefik-default`，避免 Gateway 挂载校验再次把真实挂载报告为缺失。
+- 定向命令 `go test ./internal/infrastructure/runner/ssh ./internal/infrastructure/external/traefik` 通过。
 
 ## Windows HUP implementation
 
@@ -203,6 +210,7 @@ Linux DooD 运行器使用挂载 Docker socket 的独立 Linux 容器，工作�
 - 2026-10-02：用户要求补回 Windows HUP，Linux 暂不实现主动重载并留待远程 SSH 实测；提醒 local 同时支持 Windows/Linux，要求变更组织集中。按此范围完成 Traefik 适配器补充与必要检查，更新本文实际证据，保持 Implementation 和 Draft。
 - 2026-10-02：用户要求只展示一个完成状态字段，失败原因在状态上 tip 展示；简化结果界面，保留 API/MCP 诊断数据、确认前操作清单、失败重试及草稿保存边界，补录本轮检查，保持 Implementation 和 Draft。
 - 2026-10-02：用户要求前端循环逐条处理，每条响应立即调整记录，本轮不考虑页面/弹窗关闭后的任务管理；补录单条修订、逐行反馈、失败继续和仅重试失败项的实现及检查，保持 Implementation 和 Draft。
+- 2026-10-02：远程 `orbit.preflite.cn` 重新部署后出现 SSH 挂载缺失误报；只读确认远端挂载和 Traefik File provider 正常，修复 SSH runtime 的远端 Compose 源路径返回并通过 SSH/Traefik 定向回归，未操作远程服务。
 
 ## Sync status presentation
 

@@ -1,5 +1,5 @@
 # Route 文件发布、重启恢复与独立同步
-最后修改时间: 2026-10-02 13:12:06
+最后修改时间: 2026-10-02 14:03:00
 
 Review status: Accepted
 
@@ -66,7 +66,8 @@ Orbit 当前通过 Traefik `providers.rest` 发布自定义路由。REST provide
 
 ### 持久化与发布范围
 
-- 自定义路由由 File provider 加载；REST API 保留用于运行时查询，不再作为路由发布入口。
+- 自定义路由由 File provider 加载；Traefik 管理 API 保留用于就绪检查、运行时查询及发布结果核验，不再作为路由发布入口。
+- Gateway 详情的基本信息与 Traefik API 分为独立卡片及编辑入口；API 卡片保留容器/宿主机地址和就绪超时，名称统一为 Traefik API，各表单保存对应字段。
 - 动态文件及 router/service 使用路由编码命名，例如 `route-mineru.yaml`、`route-mineru-route` 与 `route-mineru-service`；内部归属记录和证书版本目录仍使用稳定 ID。修改编码后发布须撤下旧编码文件和资源，失败恢复旧路径；撤销依据已发布编码，不遗留旧资源或影响其他路由。
 - 单条发布仅更新选定路由的配置、证书和发布状态；无其他路由的隐式发布或全目录清理。
 - 成功发布后，直接重启 Traefik 仍能访问原路由；修改、禁用、删除后再重启也不恢复旧资源。
@@ -176,6 +177,8 @@ Orbit 当前通过 Traefik `providers.rest` 发布自定义路由。REST provide
 - 2026-10-02：历史调查确认切换 REST 的 e264e6cc2 删除了 Windows SIGHUP 重载；用户要求补回该能力，提醒 local 同时支持 Windows/Linux，并要求变更集中、保持架构边界。Linux 主动重载暂不实现，远程 SSH Linux 留待后续实测。
 - 2026-10-02：用户要求只展示一个完成状态字段，失败时在状态上 tip 展示原因；据此简化结果界面，保留确认前操作清单及 API 诊断字段，不改变发布和恢复语义。
 - 2026-10-02：用户要求前端逐条循环处理，每处理一条立即反馈并更新对应记录；修订当前 Plan 后继续 Implementation。确认仍使用原预览的单条修订，不自动预览并发布尚未确认的新内容。
+
+- 2026-10-02：用户确认保留 API 地址及就绪超时，采纳界面改称 Traefik API，并要求从基本信息拆出独立卡片；在当前 Implementation 中调整共享文案、详情展示及分区编辑。
 
 ## Existing workspace draft
 

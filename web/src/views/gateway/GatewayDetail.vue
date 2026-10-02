@@ -41,10 +41,10 @@
 
     <template v-else-if="gateway">
       <DetailInfoCard
-        :title="t('gateway.sections.controlPlane')"
+        :title="t('gateway.sections.basicInfo')"
         editable
         :disabled="operating"
-        @edit="openControlPlaneEditDialog"
+        @edit="openBasicInfoEditDialog"
       >
         <template #actions>
           <button class="app-button h-9 px-3" @click="goWorkload">
@@ -63,26 +63,6 @@
           </div>
           <div class="flex gap-2">
             <dt>
-              {{ t('gateway.fields.restApiUrl') }}
-            </dt>
-            <dd class="min-w-0 break-all">
-              <a
-                :href="gateway.rest_api_url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="app-link inline-flex items-center gap-1"
-              >
-                {{ gateway.rest_api_url }}
-                <ExternalLink class="size-3.5 shrink-0" />
-              </a>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>{{ t('gateway.fields.restApiHostUrl') }}</dt>
-            <dd class="min-w-0 break-all text-foreground">{{ gateway.rest_api_host_url }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt>
               {{ t('gateway.fields.internalDomain') }}
             </dt>
             <dd class="text-foreground">{{ gateway.internal_domain }}</dd>
@@ -92,16 +72,44 @@
             <dd class="text-foreground">{{ gateway.external_domain || '-' }}</dd>
           </div>
           <div class="flex gap-2">
-            <dt>{{ t('gateway.fields.restReadyTimeout') }}</dt>
-            <dd class="text-foreground">{{ gateway.rest_ready_timeout_seconds }}s</dd>
-          </div>
-          <div class="flex gap-2">
             <dt>{{ t('common.createdAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(gateway.created_at) }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('common.updatedAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(gateway.updated_at) }}</dd>
+          </div>
+        </dl>
+      </DetailInfoCard>
+
+      <DetailInfoCard
+        :title="t('gateway.sections.traefikApi')"
+        editable
+        :disabled="operating"
+        @edit="openApiEditDialog"
+      >
+        <dl class="app-detail-info-grid">
+          <div class="flex min-w-0 flex-wrap gap-x-2 gap-y-1">
+            <dt>{{ t('gateway.fields.restApiUrl') }}</dt>
+            <dd class="min-w-0 break-all">
+              <a
+                :href="gateway.rest_api_url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="app-link inline-flex max-w-full items-center gap-1"
+              >
+                <span class="min-w-0 break-all">{{ gateway.rest_api_url }}</span>
+                <ExternalLink class="size-3.5 shrink-0" />
+              </a>
+            </dd>
+          </div>
+          <div class="flex min-w-0 flex-wrap gap-x-2 gap-y-1">
+            <dt>{{ t('gateway.fields.restApiHostUrl') }}</dt>
+            <dd class="min-w-0 break-all text-foreground">{{ gateway.rest_api_host_url }}</dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('gateway.fields.restReadyTimeout') }}</dt>
+            <dd class="text-foreground">{{ gateway.rest_ready_timeout_seconds }}s</dd>
           </div>
         </dl>
       </DetailInfoCard>
@@ -169,8 +177,8 @@
     </div>
 
     <AppDialog
-      v-model:open="isControlPlaneEditDialogOpen"
-      :title="t('gateway.dialog.editControlPlane')"
+      v-model:open="isBasicInfoEditDialogOpen"
+      :title="t('gateway.dialog.editBasicInfo')"
       width-class="w-[min(640px,calc(100vw-32px))]"
     >
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -181,15 +189,15 @@
           </label>
           <input
             id="gateway-edit-name"
-            v-model="controlPlaneForm.name"
+            v-model="basicInfoForm.name"
             type="text"
             class="app-input"
-            :class="controlPlaneErrors.name ? 'app-input-error' : ''"
-            :aria-invalid="controlPlaneErrors.name ? 'true' : undefined"
-            @input="delete controlPlaneErrors.name"
+            :class="basicInfoErrors.name ? 'app-input-error' : ''"
+            :aria-invalid="basicInfoErrors.name ? 'true' : undefined"
+            @input="delete basicInfoErrors.name"
           />
-          <p v-if="controlPlaneErrors.name" class="app-field-error" role="alert">
-            {{ validationMessage(controlPlaneErrors.name) }}
+          <p v-if="basicInfoErrors.name" class="app-field-error" role="alert">
+            {{ validationMessage(basicInfoErrors.name) }}
           </p>
         </div>
         <div class="space-y-1.5">
@@ -205,39 +213,110 @@
           />
         </div>
         <div class="space-y-1.5 sm:col-span-2">
+          <label class="app-field-label block" for="gateway-edit-internal-domain">
+            {{ t('gateway.fields.internalDomain') }}
+            <span class="text-destructive">*</span>
+          </label>
+          <input
+            id="gateway-edit-internal-domain"
+            v-model="basicInfoForm.internal_domain"
+            type="text"
+            class="app-input"
+            :class="basicInfoErrors.internal_domain ? 'app-input-error' : ''"
+            :aria-invalid="basicInfoErrors.internal_domain ? 'true' : undefined"
+            @input="delete basicInfoErrors.internal_domain"
+          />
+          <p v-if="basicInfoErrors.internal_domain" class="app-field-error" role="alert">
+            {{ validationMessage(basicInfoErrors.internal_domain) }}
+          </p>
+        </div>
+        <div class="space-y-1.5 sm:col-span-2">
+          <label class="app-field-label block" for="gateway-edit-external-domain">
+            {{ t('gateway.fields.externalDomain') }}
+          </label>
+          <input
+            id="gateway-edit-external-domain"
+            v-model="basicInfoForm.external_domain"
+            type="text"
+            class="app-input"
+            :class="basicInfoErrors.external_domain ? 'app-input-error' : ''"
+            :placeholder="t('gateway.placeholders.externalDomain')"
+            :aria-invalid="basicInfoErrors.external_domain ? 'true' : undefined"
+            @input="delete basicInfoErrors.external_domain"
+          />
+          <p v-if="basicInfoErrors.external_domain" class="app-field-error" role="alert">
+            {{ validationMessage(basicInfoErrors.external_domain) }}
+          </p>
+        </div>
+      </div>
+      <p v-if="basicInfoSubmitError" class="app-field-error mt-3" role="alert">
+        {{ basicInfoSubmitError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          @cancel="isBasicInfoEditDialogOpen = false"
+          @confirm="saveBasicInfo"
+        />
+      </template>
+    </AppDialog>
+
+    <AppDialog
+      v-model:open="isApiEditDialogOpen"
+      :title="t('gateway.dialog.editTraefikApi')"
+      width-class="w-[min(640px,calc(100vw-32px))]"
+    >
+      <div class="space-y-4">
+        <div class="space-y-1.5">
           <label class="app-field-label block" for="gateway-edit-rest-api-url">
             {{ t('gateway.fields.restApiUrl') }}
             <span class="text-destructive">*</span>
           </label>
           <input
             id="gateway-edit-rest-api-url"
-            v-model="controlPlaneForm.rest_api_url"
+            v-model="apiForm.rest_api_url"
             type="url"
             class="app-input"
-            :class="controlPlaneErrors.rest_api_url ? 'app-input-error' : ''"
-            :aria-invalid="controlPlaneErrors.rest_api_url ? 'true' : undefined"
-            @input="delete controlPlaneErrors.rest_api_url"
+            :class="apiErrors.rest_api_url ? 'app-input-error' : ''"
+            :aria-invalid="apiErrors.rest_api_url ? 'true' : undefined"
+            :aria-describedby="
+              apiErrors.rest_api_url ? 'gateway-edit-rest-api-url-error' : undefined
+            "
+            @input="delete apiErrors.rest_api_url"
           />
-          <p v-if="controlPlaneErrors.rest_api_url" class="app-field-error" role="alert">
-            {{ validationMessage(controlPlaneErrors.rest_api_url) }}
+          <p
+            v-if="apiErrors.rest_api_url"
+            id="gateway-edit-rest-api-url-error"
+            class="app-field-error"
+            role="alert"
+          >
+            {{ validationMessage(apiErrors.rest_api_url) }}
           </p>
         </div>
-        <div class="space-y-1.5 sm:col-span-2">
+        <div class="space-y-1.5">
           <label class="app-field-label block" for="gateway-edit-rest-api-host-url">
             {{ t('gateway.fields.restApiHostUrl') }}
             <span class="text-destructive">*</span>
           </label>
           <input
             id="gateway-edit-rest-api-host-url"
-            v-model="controlPlaneForm.rest_api_host_url"
+            v-model="apiForm.rest_api_host_url"
             type="url"
             class="app-input"
-            :class="controlPlaneErrors.rest_api_host_url ? 'app-input-error' : ''"
-            :aria-invalid="controlPlaneErrors.rest_api_host_url ? 'true' : undefined"
-            @input="delete controlPlaneErrors.rest_api_host_url"
+            :class="apiErrors.rest_api_host_url ? 'app-input-error' : ''"
+            :aria-invalid="apiErrors.rest_api_host_url ? 'true' : undefined"
+            :aria-describedby="
+              apiErrors.rest_api_host_url ? 'gateway-edit-rest-api-host-url-error' : undefined
+            "
+            @input="delete apiErrors.rest_api_host_url"
           />
-          <p v-if="controlPlaneErrors.rest_api_host_url" class="app-field-error" role="alert">
-            {{ validationMessage(controlPlaneErrors.rest_api_host_url) }}
+          <p
+            v-if="apiErrors.rest_api_host_url"
+            id="gateway-edit-rest-api-host-url-error"
+            class="app-field-error"
+            role="alert"
+          >
+            {{ validationMessage(apiErrors.rest_api_host_url) }}
           </p>
         </div>
         <div class="space-y-1.5">
@@ -247,68 +326,38 @@
           </label>
           <input
             id="gateway-edit-rest-ready-timeout"
-            v-model="controlPlaneForm.rest_ready_timeout_seconds"
+            v-model="apiForm.rest_ready_timeout_seconds"
             type="number"
             min="1"
             max="300"
             class="app-input"
-            :class="controlPlaneErrors.rest_ready_timeout_seconds ? 'app-input-error' : ''"
-            :aria-invalid="controlPlaneErrors.rest_ready_timeout_seconds ? 'true' : undefined"
-            @input="delete controlPlaneErrors.rest_ready_timeout_seconds"
+            :class="apiErrors.rest_ready_timeout_seconds ? 'app-input-error' : ''"
+            :aria-invalid="apiErrors.rest_ready_timeout_seconds ? 'true' : undefined"
+            :aria-describedby="
+              apiErrors.rest_ready_timeout_seconds
+                ? 'gateway-edit-rest-ready-timeout-error'
+                : undefined
+            "
+            @input="delete apiErrors.rest_ready_timeout_seconds"
           />
           <p
-            v-if="controlPlaneErrors.rest_ready_timeout_seconds"
+            v-if="apiErrors.rest_ready_timeout_seconds"
+            id="gateway-edit-rest-ready-timeout-error"
             class="app-field-error"
             role="alert"
           >
-            {{ validationMessage(controlPlaneErrors.rest_ready_timeout_seconds) }}
-          </p>
-        </div>
-        <div class="space-y-1.5 sm:col-span-2">
-          <label class="app-field-label block" for="gateway-edit-internal-domain">
-            {{ t('gateway.fields.internalDomain') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <input
-            id="gateway-edit-internal-domain"
-            v-model="controlPlaneForm.internal_domain"
-            type="text"
-            class="app-input"
-            :class="controlPlaneErrors.internal_domain ? 'app-input-error' : ''"
-            :aria-invalid="controlPlaneErrors.internal_domain ? 'true' : undefined"
-            @input="delete controlPlaneErrors.internal_domain"
-          />
-          <p v-if="controlPlaneErrors.internal_domain" class="app-field-error" role="alert">
-            {{ validationMessage(controlPlaneErrors.internal_domain) }}
-          </p>
-        </div>
-        <div class="space-y-1.5 sm:col-span-2">
-          <label class="app-field-label block" for="gateway-edit-external-domain">
-            {{ t('gateway.fields.externalDomain') }}
-          </label>
-          <input
-            id="gateway-edit-external-domain"
-            v-model="controlPlaneForm.external_domain"
-            type="text"
-            class="app-input"
-            :class="controlPlaneErrors.external_domain ? 'app-input-error' : ''"
-            :placeholder="t('gateway.placeholders.externalDomain')"
-            :aria-invalid="controlPlaneErrors.external_domain ? 'true' : undefined"
-            @input="delete controlPlaneErrors.external_domain"
-          />
-          <p v-if="controlPlaneErrors.external_domain" class="app-field-error" role="alert">
-            {{ validationMessage(controlPlaneErrors.external_domain) }}
+            {{ validationMessage(apiErrors.rest_ready_timeout_seconds) }}
           </p>
         </div>
       </div>
-      <p v-if="controlPlaneSubmitError" class="app-field-error mt-3" role="alert">
-        {{ controlPlaneSubmitError }}
+      <p v-if="apiSubmitError" class="app-field-error mt-3" role="alert">
+        {{ apiSubmitError }}
       </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
-          @cancel="isControlPlaneEditDialogOpen = false"
-          @confirm="saveControlPlane"
+          @cancel="isApiEditDialogOpen = false"
+          @confirm="saveApi"
         />
       </template>
     </AppDialog>
@@ -562,27 +611,26 @@
   }
 
   const gateway = ref<GatewayResp | null>(null);
-  const isControlPlaneEditDialogOpen = ref(false);
-  const controlPlaneForm = reactive<
-    Pick<
-      GatewayConfigForm,
-      | 'name'
-      | 'rest_api_url'
-      | 'rest_api_host_url'
-      | 'rest_ready_timeout_seconds'
-      | 'internal_domain'
-      | 'external_domain'
-    >
+  const isBasicInfoEditDialogOpen = ref(false);
+  const basicInfoForm = reactive<
+    Pick<GatewayConfigForm, 'name' | 'internal_domain' | 'external_domain'>
   >({
     name: '',
-    rest_api_url: '',
-    rest_api_host_url: '',
-    rest_ready_timeout_seconds: '',
     internal_domain: '',
     external_domain: '',
   });
-  const controlPlaneErrors = reactive<GatewayConfigFormErrors>({});
-  const controlPlaneSubmitError = ref('');
+  const basicInfoErrors = reactive<GatewayConfigFormErrors>({});
+  const basicInfoSubmitError = ref('');
+  const isApiEditDialogOpen = ref(false);
+  const apiForm = reactive<
+    Pick<GatewayConfigForm, 'rest_api_url' | 'rest_api_host_url' | 'rest_ready_timeout_seconds'>
+  >({
+    rest_api_url: '',
+    rest_api_host_url: '',
+    rest_ready_timeout_seconds: '',
+  });
+  const apiErrors = reactive<GatewayConfigFormErrors>({});
+  const apiSubmitError = ref('');
   const isIngressEditDialogOpen = ref(false);
   const ingressForm = reactive<Pick<GatewayConfigForm, 'default_entrypoint' | 'tls_mode'>>({
     default_entrypoint: '',
@@ -684,61 +732,96 @@
     return t(`gateway.validation.${error}`);
   }
 
-  function openControlPlaneEditDialog() {
+  function openBasicInfoEditDialog() {
     const current = gateway.value;
     if (!current) {
       return;
     }
     const form = gatewayConfigFormFromResponse(current);
-    Object.assign(controlPlaneForm, {
+    Object.assign(basicInfoForm, {
       name: form.name,
-      rest_api_url: form.rest_api_url,
-      rest_api_host_url: form.rest_api_host_url,
-      rest_ready_timeout_seconds: form.rest_ready_timeout_seconds,
       internal_domain: form.internal_domain,
       external_domain: form.external_domain,
     });
-    replaceErrors(controlPlaneErrors, {});
-    controlPlaneSubmitError.value = '';
-    isControlPlaneEditDialogOpen.value = true;
+    replaceErrors(basicInfoErrors, {});
+    basicInfoSubmitError.value = '';
+    isBasicInfoEditDialogOpen.value = true;
   }
 
-  async function saveControlPlane() {
+  async function saveBasicInfo() {
     const current = gateway.value;
     if (!current) {
       return;
     }
-    controlPlaneSubmitError.value = '';
+    basicInfoSubmitError.value = '';
     const form = gatewayConfigFormFromResponse(current);
-    Object.assign(form, controlPlaneForm);
+    Object.assign(form, basicInfoForm);
     const errors = validateGatewayConfigForm(form, 'edit');
-    keepSectionErrors(controlPlaneErrors, errors, [
-      'name',
-      'rest_api_url',
-      'rest_api_host_url',
-      'rest_ready_timeout_seconds',
-      'internal_domain',
-      'external_domain',
-    ]);
-    if (Object.keys(controlPlaneErrors).length > 0) {
+    keepSectionErrors(basicInfoErrors, errors, ['name', 'internal_domain', 'external_domain']);
+    if (Object.keys(basicInfoErrors).length > 0) {
       return;
     }
     try {
       await executeOp(async () => {
         gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
-          name: controlPlaneForm.name.trim(),
-          rest_api_url: controlPlaneForm.rest_api_url.trim(),
-          rest_api_host_url: controlPlaneForm.rest_api_host_url.trim(),
-          rest_ready_timeout_seconds: Number(controlPlaneForm.rest_ready_timeout_seconds),
-          internal_domain: controlPlaneForm.internal_domain.trim(),
-          external_domain: controlPlaneForm.external_domain.trim(),
+          name: basicInfoForm.name.trim(),
+          internal_domain: basicInfoForm.internal_domain.trim(),
+          external_domain: basicInfoForm.external_domain.trim(),
         });
-        isControlPlaneEditDialogOpen.value = false;
+        isBasicInfoEditDialogOpen.value = false;
         toast.success(t('gateway.toast.saveSuccess'));
       });
     } catch (error) {
-      controlPlaneSubmitError.value =
+      basicInfoSubmitError.value =
         error instanceof Error ? error.message : t('gateway.toast.saveFailed');
+    }
+  }
+
+  function openApiEditDialog() {
+    const current = gateway.value;
+    if (!current) {
+      return;
+    }
+    const form = gatewayConfigFormFromResponse(current);
+    Object.assign(apiForm, {
+      rest_api_url: form.rest_api_url,
+      rest_api_host_url: form.rest_api_host_url,
+      rest_ready_timeout_seconds: form.rest_ready_timeout_seconds,
+    });
+    replaceErrors(apiErrors, {});
+    apiSubmitError.value = '';
+    isApiEditDialogOpen.value = true;
+  }
+
+  async function saveApi() {
+    const current = gateway.value;
+    if (!current) {
+      return;
+    }
+    apiSubmitError.value = '';
+    const form = gatewayConfigFormFromResponse(current);
+    Object.assign(form, apiForm);
+    const errors = validateGatewayConfigForm(form, 'edit');
+    keepSectionErrors(apiErrors, errors, [
+      'rest_api_url',
+      'rest_api_host_url',
+      'rest_ready_timeout_seconds',
+    ]);
+    if (Object.keys(apiErrors).length > 0) {
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        gateway.value = await gatewayApi.update(selectedProjectId(), current.id, {
+          rest_api_url: apiForm.rest_api_url.trim(),
+          rest_api_host_url: apiForm.rest_api_host_url.trim(),
+          rest_ready_timeout_seconds: Number(apiForm.rest_ready_timeout_seconds),
+        });
+        isApiEditDialogOpen.value = false;
+        toast.success(t('gateway.toast.saveSuccess'));
+      });
+    } catch (error) {
+      apiSubmitError.value = error instanceof Error ? error.message : t('gateway.toast.saveFailed');
     }
   }
 

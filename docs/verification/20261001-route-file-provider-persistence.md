@@ -1,5 +1,5 @@
 # Route 文件发布、重启恢复与独立同步验收
-最后修改时间: 2026-10-02 13:19:32
+最后修改时间: 2026-10-02 14:06:22
 
 Review status: Draft
 
@@ -237,6 +237,7 @@ Linux DooD 运行器使用挂载 Docker socket 的独立 Linux 容器，工作�
 | Traefik 文件名、router/service 使用数据库 ID，难以阅读 | 动态文件和资源名使用编码，证书和内部归属仍使用 ID。改名撤旧、未同步改名撤销、三阶段失败恢复、pending 双路径恢复、编码占用和复用均有回归；真实 Windows E2E 验证旧文件消失 |
 | 删除 `gateway/dynamic` 后，部署和同步均未重建 | 原因是缺失文件触发部署依赖预检和发布前完整性拒绝。Gateway 现允许准备空目录，部署后仍报告未恢复文件；重新预览并确认同步重建选定 YAML。失败恢复空基线，不使用过期 backup；外部改写仍拒绝。真实 Windows E2E 删除完整目录后完成 staging、Gateway 重建、显式同步及 TLS 核验 |
 | 同步模态窗空间不足 | 最大宽度由 760px 扩至 960px，表格可见高度由 256px 扩至 384px；保留小屏宽度和共享弹窗高度上限。前端 lint/typecheck 通过，真实浏览器视觉验收仍未执行 |
+| 网关 API 仍称 REST API，且与基本信息混在同一卡片 | 中英文统一改称 Traefik API；容器/宿主机地址和就绪超时移至独立卡片及编辑弹窗。基本信息与 API 各自提交字段，继续复用已有校验和部分更新接口；详情及初始化相关 7 项测试通过 |
 
 本轮最终 `task check` 为 0 issues，完整 Go 回归通过，两个同步前端测试文件 16 项通过。第一次仓库检查发现新增错误字符串首字母大写（ST1005），修正后完整检查通过；该检查失败不记为通过结果。Windows E2E 耗时 27.41 秒，覆盖正常发布、改名、撤销、证书轮换、直接重启、force-recreate，以及删除动态目录后的恢复。
 
@@ -245,3 +246,11 @@ Linux DooD 运行器使用挂载 Docker socket 的独立 Linux 容器，工作�
 ## Other staged changes
 
 用户当前暂存区另包含远程目录备份脚本、测试及 Docker 部署指南，属于本次提交的附带变更，不纳入 Route 功能验收。`python -m unittest scripts.tests.test_manage` 执行 4 项，其中 3 项通过，1 项因当前 Windows 环境没有 POSIX `sh` 而跳过；实际归档内容测试不记为通过，未执行真实远端备份。
+
+## Gateway API presentation
+
+- 2026-10-02：用户采纳保留 API 地址和就绪超时、界面改称 Traefik API，并要求从基本信息拆出独立卡片。沿用当前 Implementation 补充，Intent/Plan 已记录该决定；本文保持 Draft。
+- 实际改动为 Gateway 详情的两张独立卡片和编辑弹窗、共享中英文文案，以及既有详情测试。基本信息保存名称及内外网域名；API 保存容器地址、宿主机地址和就绪超时。显示、表单状态、字段错误与请求错误分别归属各分区，复用共享组件及已有分区校验。API 控件保留必填标记和错误边框，错误文本与 aria-invalid/aria-describedby 对应。
+- 既有基本信息保存测试按当前分区更新，新增 API 独立保存测试；覆盖字段展示归属、两个请求各自的更新范围、无效 URL/超时阻止请求、修正单个字段不清除其他错误、成功后更新卡片并关闭当前弹窗。
+- `yarn --cwd web lint:fix`、`yarn --cwd web typecheck` 通过；`yarn --cwd web test src/views/gateway/gatewayNavigation.test.ts src/views/project/ProjectInitializationPage.test.ts` 两个文件、7 项测试通过；格式化和 `git diff --check` 通过。
+- 本轮变更符合已确认的界面范围，未改变后端字段契约、API 访问位置或 File provider 发布流程；没有新增迁移或运行新的后端/Traefik 实机测试。真实浏览器桌面/移动视觉验收未执行，未启动开发服务器；此前 SSH、Windows DooD 等环境覆盖缺口仍适用。

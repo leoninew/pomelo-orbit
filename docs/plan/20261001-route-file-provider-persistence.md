@@ -1,5 +1,5 @@
 # Route 文件发布、重启恢复与独立同步计划
-最后修改时间: 2026-10-02 13:15:41
+最后修改时间: 2026-10-02 14:03:00
 
 Review status: Accepted
 
@@ -115,6 +115,7 @@ tls:
 - preview 区分 `selected` 与 `project` 范围：前者要求非空 Route ID 集合；后者由一次预览解析当前 Project 的受管 ID 集合。缺失范围不隐式等同于全量。
 - preview 返回冻结、有确定顺序的 Route ID 清单和每项独立的 `business_hash`、`publication_hash`。Web 按该顺序循环，每次 confirm 只提交一个 ID、该项修订及对应启停草稿；每条返回后立即更新记录。整批修订继续供 API/MCP 的批量调用使用。确认后不重新枚举全部 enabled Route，不补入新建路由或范围外编辑。
 - preview 的 `items` 表达 `publish`、`withdraw`、`skip` 及候选规则/目标、证书方式，不查询 Traefik 全量 router/service、不计算增删改、不返回 `matched` 或 `traefik_hash`。Traefik API 查询仅用于运行时列表、readiness 与发布后加载核对。
+- Gateway 详情拆分基本信息与 Traefik API 卡片，各有独立编辑弹窗。基本信息保存名称及内外网域名；API 保存容器/宿主机地址与就绪超时，复用既有分区校验和部分更新接口。共享中英文名称改为 Traefik API，初始化页面使用同一字段文案；API 契约及目标端地址选择保持现有设计。
 - 规则返回独立 `rule.protocol`（`http`、`https`、`tcp`）、`rule.match` 和 `rule.target`；入口协议由 Route 协议及 HTTPS 开关决定，匹配表达式不再拼 HTTP/HTTPS 前缀。同步表沿用当前预览到执行的同一清单，列为名称、操作、协议、规则、状态；协议列包含 HTTP/HTTPS 和独立证书方式行（例如 `Let's Encrypt · DNS-01`），规则列只保留匹配条件与目标，只有一个处理状态字段。不改变 TCP 校验或发布逻辑。
 - `changes` 仅包含范围内的启停草稿。`business_hash` 包含选定 Route、证书配置及草稿；`publication_hash` 包含选定发布记录、实际 YAML/PEM fingerprint 及依赖修订。
 - hash 同时覆盖必要的 Gateway/Environment 依赖修订，例如 entrypoint、resolver 和 target；B 的普通独立编辑/发布不使 A 的预览过期。
@@ -355,6 +356,8 @@ yarn --cwd web test src/views/route src/components/RouteSyncDialog.test.ts src/c
 - 2026-10-02：用户要求扩大同步模态窗；最大宽度由 760px 扩至 960px，表格最大可见高度由 256px 扩至 384px，沿用共享弹窗的小屏边界和滚动。
 
 ## Implementation notes
+
+- 2026-10-02：用户采纳 Traefik API 命名，并要求把 API 从基本信息拆出独立卡片；详情展示、编辑状态、校验和提交范围按两个分区组织，补充正常保存与字段校验回归。
 
 - 已实现独立 YAML（后续按用户要求改为编码命名）、不可变证书版本、pending/previous 恢复、按 Route 清理、Gateway 声明及实际挂载核对；共用现有 target writer 与 DooD 路径 resolver，SSH 写入链路未新增权限策略。
 - 已实现显式范围与发布/撤销/跳过清单；批量预算 105 秒，单次配置匹配/恢复最多 8 秒；失败继续并返回逐项结果。列表/详情保留未保存草稿，重试只处理未完成 ID。

@@ -68,6 +68,29 @@ func TestRuntimeExpandsHomeWorkspaceRootAtUseTime(t *testing.T) {
 	}
 }
 
+func TestRuntimeSyncFilesReplacesSnapshotAndRemovesStagedFiles(t *testing.T) {
+	root := t.TempDir()
+	runtime := NewRuntime(nil)
+	target := localTarget(root)
+	directory := filepath.Join(root, "deployment", "traefik-default", "gateway", "dynamic")
+	filePath := filepath.Join(directory, "routes.yaml")
+	for _, content := range []string{"http:\n  routers: {}\n", "http:\n  routers:\n    api: {}\n"} {
+		if err := runtime.SyncFiles(context.Background(), target, directory, []deploymentport.WorkspaceFile{{
+			Path: filePath, Content: []byte(content), Mode: 0o600,
+		}}, ""); err != nil {
+			t.Fatal(err)
+		}
+		actual, err := os.ReadFile(filePath)
+		if err != nil || string(actual) != content {
+			t.Fatalf("snapshot = %q, error = %v", actual, err)
+		}
+	}
+	entries, err := os.ReadDir(directory)
+	if err != nil || len(entries) != 1 || entries[0].Name() != "routes.yaml" {
+		t.Fatalf("snapshot directory = %+v, error = %v", entries, err)
+	}
+}
+
 func TestRuntimeRejectsNonLocalTargetsAndMissingResolver(t *testing.T) {
 	sshTarget := environmentport.Target{Environment: model.Environment{
 		TargetType: model.EnvironmentTargetTypeSSH,

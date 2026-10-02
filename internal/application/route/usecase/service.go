@@ -645,18 +645,10 @@ func cloneInt(input *int) *int {
 	return &copy
 }
 
-// PublishSnapshot is the worker-facing hook used after a Gateway deployment.
-// It only pushes the dynamic HTTP/TCP REST snapshot. Static entrypoint compile
-// belongs to Route mutations and must not rewrite Version components mid-deploy.
-// compose up success is not sufficient: the Traefik REST control plane must
-// accept requests before the snapshot PUT.
-func (s Service) PublishSnapshot(ctx context.Context, projectId string) error {
+// VerifyPublishedRoutes observes persisted files after Gateway recreation.
+func (s Service) VerifyPublishedRoutes(ctx context.Context, projectId string) error {
 	if projectId == "" {
 		return apperror.New(apperror.KindValidation, "project_id is required for route publish")
-	}
-	routes, err := s.listEnabledRoutesForPublish(ctx, projectId)
-	if err != nil {
-		return err
 	}
 	gateway, err := s.resolveGatewayForRender(ctx, projectId)
 	if err != nil {
@@ -668,37 +660,14 @@ func (s Service) PublishSnapshot(ctx context.Context, projectId string) error {
 	if err := s.routePublisher.WaitUntilReady(ctx, projectId, *gateway, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
 		return err
 	}
-	return s.applyRouteSnapshot(ctx, projectId, routes, false)
+	return s.routePublisher.VerifyPublished(ctx, projectId, *gateway)
 }
 
-func (s Service) listEnabledRoutesForPublish(ctx context.Context, projectId string) ([]model.Route, error) {
-	routes, err := s.route.ListEnabledRoutesByProject(ctx, projectId)
-	if err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list enabled routes", err)
+func (s Service) LockGateway(ctx context.Context, projectId string) (func(), error) {
+	if s.routePublisher == nil {
+		return nil, apperror.New(apperror.KindInternal, "Route publisher is not configured")
 	}
-	return routes, nil
-}
-
-func (s Service) applyRouteSnapshot(ctx context.Context, projectId string, routes []model.Route, waitReady bool) error {
-	gw, err := s.resolveGatewayForRender(ctx, projectId)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(gw.RestApiUrl) == "" || strings.TrimSpace(gw.RestApiHostUrl) == "" {
-		return apperror.New(apperror.KindValidation, "gateway rest_api_url and rest_api_host_url are required for route publish")
-	}
-	if waitReady {
-		if err := s.routePublisher.WaitUntilReady(ctx, projectId, *gw, time.Duration(gw.RestReadyTimeoutSeconds)*time.Second); err != nil {
-			return err
-		}
-	}
-	if err := s.resolveManagedRouteTargets(ctx, projectId, routes); err != nil {
-		return err
-	}
-	if err := s.routePublisher.ApplySnapshot(ctx, projectId, *gw, routes); err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to publish traefik rest snapshot", err)
-	}
-	return nil
+	return s.routePublisher.LockGateway(ctx, projectId)
 }
 
 func validRouteIdentity(name string, domain string, pathPrefix string) bool {

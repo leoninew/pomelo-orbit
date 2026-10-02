@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-09-30 14:23:58
+最后修改时间: 2026-10-02 10:42:03
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -15,7 +15,7 @@ Doc role: living SoT
 | C-05 | 暴露 SoT = VersionExpose（protocol + access + ports） | 无域名列 |
 | C-06 | 域名 / REST 控制面在 GatewayConfig | `internal_domain` 用于 Docker labels 和 Gateway 派生地址；`external_domain` 仅辅助自定义 Route 表单拼接完整域名；另有 `rest_api_url` |
 | C-07 | Environment = Project 下元数据 | 无域名 / ingress 用户 SoT |
-| C-08 | 平台 Route 与应用 Expose 分流 | Route → rest；Expose → labels |
+| C-08 | 平台 Route 与应用 Expose 分流 | Route → 独立 File provider 文件；Expose → Docker labels |
 | C-09 | 单节点 API+worker；挂 Docker socket | 无独立 worker 部署角色主路径 |
 | C-10 | 单 active gateway Service | 同时仅一个 deploying/running gateway |
 | C-11 | instance_key 默认 default；产品约束以实现为准 | TCP 等路径曾钉死 default |
@@ -24,7 +24,7 @@ Doc role: living SoT
 | C-14 | 默认不修改已执行迁移文件 | 活跃开发期可重建库；Repository/Repository Credential 全局共享任务按用户明确要求就地修订既有迁移，已运行数据库须另行转换或重建 |
 | C-15 | 无兼容层 / 别名 / 新旧并存 | CLAUDE.md |
 | C-16 | 文档：活 SoT vs archive；过程库仅进行中任务 | 本整理任务 |
-| C-17 | Route 发布统一走全量同步 | 普通编辑先写 Route 数据；列表/详情启停及详情证书选择进入同步计划。预览区分路由差异与待提交证书配置，确认先保存计划再覆盖 Traefik REST；发布失败可重试，Gateway deploy/restart 成功后自动发布已保存配置的完整快照 |
+| C-17 | Route 显式按范围发布持久化文件 | 普通编辑/证书先保存业务数据，启停为前端草稿；预览发布/撤销/跳过清单并冻结 ID、业务与受管文件依赖修订，不比较运行时差异。确认逐条保存和发布，失败继续且报告未完成。Traefik 重启直接加载文件；Gateway deploy/restart 覆盖受管 provider/mount 并重建容器，只核验已发布文件，不携带业务草稿。现存 REST Gateway 线下告知重新部署后显式同步，无专用 UI 或旧快照转换；未知文件保留 |
 | C-18 | MCP 仅采用本地 stdio 与内部 actor 绑定 | Web Dialogue 为每 turn 建立固定 actor 的内存 Core；Grok/Codex stdio 用显式 MCP PAT `POMELO_ORBIT_MCP__ACCESS_TOKEN`，每次 tools/call 认证；无远程 /mcp |
 | C-19 | Project 环境/Gateway 初始化只走 Web Wizard；MCP 使用 connection-local 已就绪 Project scope | Project 创建和 identity seed 不预建 Environment/Gateway；`ProjectInitializationConfig` 只给 Wizard 初值；运行时只读库存；Grok/Codex 先 list/select，后续工具不再传 `project_id` |
 | C-20 | Repository 与 Repository Credential 全局共享，Project 只作成员校验上下文 | 仓库 `code`、凭据名称全局唯一；Application Pipeline、Run、Artifact 和 Environment 仍按 Project 归属；仓库删除检查所有现存应用流水线绑定，应用流水线删除检查其未结束 Run；历史 Run/Snapshot/Artifact 不直接阻止仓库删除 |
@@ -44,7 +44,7 @@ Doc role: living SoT
 | X-08 | Python/FastAPI 后端架构文档 | C-12；归档 designs |
 | X-09 | 独立 pomelo-orbit-worker 多角色部署 | C-09 |
 | X-10 | 以 code 或 Application.kind 推断 Gateway 行为 | C-04 + GatewayConfig |
-| X-11 | Route 写操作直接增量发布，或发现未知 REST router 即阻断全量覆盖 | C-17；同步预览展示差异，用户确认后以业务快照覆盖 Traefik |
+| X-11 | Route 普通写操作立即发布，或同步时覆盖整个 REST provider | C-17；保存与发布分离，只处理确认范围内的独立文件，未知资源保留 |
 | X-12 | MCP 浏览器 grant、loopback callback、token file、HTTP /mcp Bearer transport | C-18；显式进程凭据与内存 Core |
 | X-13 | Project 创建时自动预建 local Environment，空库预置 Gateway/Service | C-19；Project 与 membership 创建后由 Web Wizard 配置 Environment、Probe 与 Gateway |
 | X-14 | local Environment 工作目录来自 `workspace.deployment` 或运行时 YAML 回退 | `Environment.workspace_root` 为已保存的唯一工作区根；当前 CI 只在 local 执行，CD 按 local/ssh 目标执行 |

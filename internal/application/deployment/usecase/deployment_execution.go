@@ -101,6 +101,12 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, projectId string,
 		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
+	unlock, err := s.coordinateRouteDeployment(executionCtx, projectId, plan)
+	if err != nil {
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	defer unlock()
 	if err := s.renderAndDeployWithOptions(executionCtx, target, plan, deployment.Id, opts.ForceRecreate); err != nil {
 		if s.deploymentCanceled(ctx, projectId, deployment.Id) {
 			s.reconcileCanceledService(ctx, projectId, target, app, svc)
@@ -113,7 +119,7 @@ func (s Service) ExecuteApplicationDeploy(ctx context.Context, projectId string,
 	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, projectId, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
-	if err := s.publishGatewayRoutes(ctx, projectId, plan); err != nil {
+	if err := s.verifyGatewayRoutes(ctx, projectId, plan); err != nil {
 		_ = s.executionStore.UpdateServiceStatus(ctx, projectId, svc.Id, status.ServiceStatusFaulted)
 		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -202,7 +208,13 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, projectId string
 		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	if err := s.renderAndDeployWithOptions(executionCtx, target, plan, deployment.Id, false); err != nil {
+	unlock, err := s.coordinateRouteDeployment(executionCtx, projectId, plan)
+	if err != nil {
+		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
+		return err
+	}
+	defer unlock()
+	if err := s.renderAndDeployWithOptions(executionCtx, target, plan, deployment.Id, restartOpts.ForceRecreate); err != nil {
 		if s.deploymentCanceled(ctx, projectId, deployment.Id) {
 			s.reconcileCanceledService(ctx, projectId, target, app, svc)
 			return nil
@@ -214,7 +226,7 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, projectId string
 	if err := s.executionStore.UpdateServiceAfterDeploy(ctx, projectId, svc.Id, status.ServiceStatusRunning, version.Id); err != nil {
 		return err
 	}
-	if err := s.publishGatewayRoutes(ctx, projectId, plan); err != nil {
+	if err := s.verifyGatewayRoutes(ctx, projectId, plan); err != nil {
 		_ = s.executionStore.UpdateServiceStatus(ctx, projectId, svc.Id, status.ServiceStatusFaulted)
 		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
@@ -222,17 +234,35 @@ func (s Service) ExecuteApplicationRestart(ctx context.Context, projectId string
 	return s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusRanToCompletion, "")
 }
 
-func (s Service) publishGatewayRoutes(ctx context.Context, projectId string, plan model.EffectiveServicePlan) error {
+func (s Service) verifyGatewayRoutes(ctx context.Context, projectId string, plan model.EffectiveServicePlan) error {
 	if !isGatewayCarrier(plan) {
 		return nil
 	}
 	if s.gatewayRoutePublisher == nil {
 		return fmt.Errorf("gateway route publisher is not configured")
 	}
-	if err := s.gatewayRoutePublisher.PublishSnapshot(ctx, projectId); err != nil {
-		return fmt.Errorf("publish gateway route snapshot: %w", err)
+	if err := s.gatewayRoutePublisher.VerifyPublishedRoutes(ctx, projectId); err != nil {
+		return fmt.Errorf("verify published gateway routes: %w", err)
 	}
 	return nil
+}
+
+func (s Service) coordinateRouteDeployment(ctx context.Context, projectId string, plan model.EffectiveServicePlan) (func(), error) {
+	if s.gatewayRoutePublisher == nil {
+		if plan.Gateway == nil {
+			return func() {}, nil
+		}
+		return nil, fmt.Errorf("gateway Route coordinator is not configured")
+	}
+	unlock, err := s.gatewayRoutePublisher.LockGateway(ctx, projectId)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.gatewayRoutePublisher.CheckRouteDependencies(ctx, projectId, plan); err != nil {
+		unlock()
+		return nil, err
+	}
+	return unlock, nil
 }
 
 func (s Service) ExecuteApplicationStop(ctx context.Context, projectId string, applicationId string, deploymentId string, removeVolumes bool) error {
@@ -451,7 +481,8 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 		return err
 	}
 	projectName := composeProjectName(svc.Code)
-	command := deployComposeCommand(projectName, deploymentPullPolicy(plan), forceRecreate)
+	// Recreate Gateway containers so replaced static config bind mounts are reloaded.
+	command := deployComposeCommand(projectName, deploymentPullPolicy(plan), forceRecreate || isGatewayCarrier(plan))
 	if _, err := fmt.Fprintln(logWriter, "Starting services"); err != nil {
 		return err
 	}

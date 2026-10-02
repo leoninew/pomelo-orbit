@@ -13,19 +13,41 @@ type TransactionRunner interface {
 	RunInTransaction(context.Context, func(context.Context) error) error
 }
 
-// RouteConfigPublisher publishes the platform route snapshot to Traefik providers.rest.
+// RouteConfigPublisher publishes independently owned Route files.
 type RouteConfigPublisher interface {
 	// WaitUntilReady blocks until the Traefik control-plane REST API accepts
 	// requests, or until ctx ends / the readiness deadline elapses. Gateway
 	// deploy uses this after compose up because process start lags the container.
 	WaitUntilReady(ctx context.Context, projectId string, gateway model.GatewayConfig, timeout time.Duration) error
-	ApplySnapshot(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) error
+	LockGateway(context.Context, string) (func(), error)
+	InspectPublications(context.Context, string, model.GatewayConfig) ([]Publication, error)
+	PublishRoute(context.Context, string, model.GatewayConfig, model.Route, string) (PublicationResult, error)
+	VerifyPublished(context.Context, string, model.GatewayConfig) error
+	ValidateGateway(context.Context, string, model.GatewayConfig, []model.Route) (string, error)
 }
 
-// SnapshotPublisher republishes the full enabled Route configuration after a
-// Gateway runtime has been recreated.
-type SnapshotPublisher interface {
-	PublishSnapshot(ctx context.Context, projectId string) error
+type Publication struct {
+	Route                     model.Route  `json:"route"`
+	Fingerprint               string       `json:"fingerprint"`
+	CertificateRevision       string       `json:"certificate_revision"`
+	CertificateFingerprint    string       `json:"certificate_fingerprint"`
+	OperationId               string       `json:"operation_id"`
+	Phase                     string       `json:"phase"`
+	PreviousFingerprint       string       `json:"previous_fingerprint"`
+	Previous                  *Publication `json:"previous,omitempty"`
+	TargetRevision            string       `json:"target_revision"`
+	GatewayApplicationId      string       `json:"gateway_application_id"`
+	ActualFingerprint         string       `json:"actual_fingerprint"`
+	ActualCertificateRevision string       `json:"actual_certificate_revision"`
+}
+
+type PublicationResult struct {
+	OperationId             string
+	FileCommit              string
+	ConfigurationMatch      string
+	CertificateVerification string
+	Recovery                string
+	Cleanup                 string
 }
 
 type RouteCertificateGenerator interface {

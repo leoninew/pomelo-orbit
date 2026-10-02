@@ -89,18 +89,6 @@ func (s Service) validateRoute(ctx context.Context, projectId string, route *mod
 	return nil
 }
 
-func (s Service) resolveManagedRouteTargets(ctx context.Context, projectId string, routes []model.Route) error {
-	for index := range routes {
-		if !hasManagedRouteTarget(routes[index]) {
-			continue
-		}
-		if err := s.resolveManagedRouteTarget(ctx, projectId, &routes[index]); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (s Service) resolveManagedRouteTarget(ctx context.Context, projectId string, route *model.Route) error {
 	if route.ProjectId == nil || route.ServiceId == nil || route.ComponentName == nil || route.EndpointProtocol == nil || route.EndpointContainerPort == nil {
 		return apperror.New(apperror.KindValidation, "managed route target is required")

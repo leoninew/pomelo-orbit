@@ -8,14 +8,15 @@ import (
 )
 
 func TestRouteSyncPreviewResponseKeepsRulePartsSeparate(t *testing.T) {
-	response := routeSyncPreviewResponse(routedto.RouteSyncPreview{Differences: []routedto.RouteSyncDiff{{
-		Action: "added", RouteName: "api", Field: "route",
-		Business: &routedto.RouteSyncRule{Match: "HTTPS Host(`api.example.test`)", Target: "http://api:8080"},
+	response := routeSyncPreviewResponse(routedto.RouteSyncPreview{Items: []routedto.RouteSyncPlanItem{{
+		Action: "publish", RouteId: "a", RouteName: "api",
+		BusinessHash: "item-business", PublicationHash: "item-publication",
+		Rule: &routedto.RouteSyncRule{Protocol: "https", Match: "Host(`api.example.test`)", Target: "http://api:8080"},
 	}}})
-	if len(response.Differences) != 1 || response.Differences[0].Business == nil ||
-		response.Differences[0].Business.Match != "HTTPS Host(`api.example.test`)" ||
-		response.Differences[0].Business.Target != "http://api:8080" || response.Differences[0].Traefik != nil {
-		t.Fatalf("preview response = %+v", response.Differences)
+	if len(response.Items) != 1 || response.Items[0].Rule == nil || response.Items[0].Action != "publish" || response.Items[0].RouteId != "a" ||
+		response.Items[0].Rule.Protocol != "https" || response.Items[0].Rule.Match != "Host(`api.example.test`)" || response.Items[0].Rule.Target != "http://api:8080" ||
+		response.Items[0].BusinessHash != "item-business" || response.Items[0].PublicationHash != "item-publication" {
+		t.Fatalf("preview response = %+v", response.Items)
 	}
 }
 

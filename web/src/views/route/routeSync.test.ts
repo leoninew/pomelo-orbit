@@ -83,11 +83,41 @@ beforeEach(() => {
   vi.mocked(routeApi.update).mockResolvedValue({ ...route, name: 'api-route-edited' });
   vi.mocked(routeApi.previewSync).mockResolvedValue({
     business_hash: 'business-hash',
-    traefik_hash: 'traefik-hash',
-    matched: false,
-    differences: [],
+    route_ids: ['route-1'],
+    publication_hash: 'publication-hash',
+    items: [
+      {
+        route_id: 'route-1',
+        route_name: 'api',
+        action: 'publish',
+        rule: { protocol: 'http', match: 'Host(`api.example.test`)', target: 'http://api:8080' },
+        cert_type: '',
+        acme_challenge: '',
+        business_hash: 'business-hash',
+        publication_hash: 'publication-hash',
+      },
+    ],
   });
-  vi.mocked(routeApi.confirmSync).mockResolvedValue({ message: 'Routes synced successfully' });
+  vi.mocked(routeApi.confirmSync).mockResolvedValue({
+    message: '',
+    code: 'route_sync_completed',
+    request_id: '',
+    results: [
+      {
+        route_id: route.id,
+        route_name: route.name,
+        operation_id: 'operation-1',
+        code: 'route_sync_completed',
+        error: '',
+        business_save: 'unchanged',
+        file_commit: 'committed',
+        configuration_match: 'matched',
+        certificate_verification: 'not_applicable',
+        recovery: 'not_needed',
+        cleanup: 'completed',
+      },
+    ],
+  });
   vi.mocked(serviceApi.list).mockResolvedValue({ items: [], pages: 1 } as never);
 });
 
@@ -100,6 +130,88 @@ afterEach(() => {
 });
 
 describe('Route synchronization', () => {
+  it.each([
+    { path: '/routes', component: RoutePage, scope: 'project', routeIds: [] },
+    { path: '/route/route-1', component: RouteDetail, scope: 'selected', routeIds: ['route-1'] },
+  ] as const)(
+    'retains an unsaved enable draft after closing failed sync on $path',
+    async ({ path, component, scope, routeIds }) => {
+      vi.mocked(routeApi.confirmSync).mockResolvedValueOnce({
+        message: '',
+        code: 'route_sync_incomplete',
+        request_id: 'request-1',
+        results: [
+          {
+            route_id: route.id,
+            route_name: route.name,
+            operation_id: '',
+            code: 'route_sync_skipped',
+            error: '',
+            business_save: 'unchanged',
+            file_commit: 'not_attempted',
+            configuration_match: 'unverified',
+            certificate_verification: 'not_applicable',
+            recovery: 'not_needed',
+            cleanup: 'not_attempted',
+          },
+        ],
+      });
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [{ path, component }],
+      });
+      await router.push(path);
+      await router.isReady();
+      target = document.createElement('div');
+      document.body.append(target);
+      mountedApp = createApp(RouterView);
+      mountedApp.use(pinia);
+      mountedApp.use(router);
+      mountedApp.use(i18n);
+      mountedApp.mount(target);
+      await vi.waitFor(() => expect(target?.textContent).toContain(route.name));
+      await flushRender();
+      const disable = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+        (button) => button.textContent?.trim() === i18n.global.t('route.status.disabled')
+      );
+      expect(disable).toBeDefined();
+      disable?.click();
+      await flushRender();
+      const openSync = () =>
+        [...(target?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((button) =>
+          button.textContent?.trim().startsWith(i18n.global.t('route.syncAll'))
+        );
+      await vi.waitFor(() => expect(openSync()?.disabled).toBe(false));
+      openSync()?.click();
+      await vi.waitFor(() => expect(routeApi.previewSync).toHaveBeenCalledOnce());
+      const dialogButton = (key: string) =>
+        [...document.querySelectorAll<HTMLButtonElement>('.app-dialog-content button')].find(
+          (button) => button.textContent?.trim() === i18n.global.t(key)
+        );
+      await vi.waitFor(() => expect(dialogButton('route.syncAll')?.disabled).toBe(false));
+      dialogButton('route.syncAll')?.click();
+      await vi.waitFor(() => {
+        const status = document.querySelector<HTMLElement>(
+          '.app-dialog-content tbody td:last-child span'
+        );
+        expect(status?.textContent?.trim()).toBe(i18n.global.t('route.syncStatuses.failed'));
+        expect(status?.title).toBe(i18n.global.t('route.syncErrorCodes.route_sync_skipped'));
+      });
+      await vi.waitFor(() => expect(dialogButton('common.cancel')?.disabled).toBe(false));
+      dialogButton('common.cancel')?.click();
+      await flushRender();
+      openSync()?.click();
+      await vi.waitFor(() =>
+        expect(routeApi.previewSync).toHaveBeenLastCalledWith('project-1', {
+          scope,
+          route_ids: [...routeIds],
+          changes: [{ route_id: route.id, enabled: false }],
+        })
+      );
+      expect(routeApi.previewSync).toHaveBeenCalledTimes(2);
+    }
+  );
+
   it('marks an edit as pending and only confirms after manual sync', async () => {
     const router = createRouter({
       history: createMemoryHistory(),
@@ -158,7 +270,11 @@ describe('Route synchronization', () => {
     await vi.waitFor(() => expect(syncButton?.disabled).toBe(false));
     syncButton?.click();
     await vi.waitFor(() =>
-      expect(routeApi.previewSync).toHaveBeenCalledWith('project-1', { changes: [] })
+      expect(routeApi.previewSync).toHaveBeenCalledWith('project-1', {
+        scope: 'selected',
+        route_ids: ['route-1'],
+        changes: [],
+      })
     );
 
     const syncConfirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
@@ -171,7 +287,8 @@ describe('Route synchronization', () => {
       expect(routeApi.confirmSync).toHaveBeenCalledWith('project-1', {
         changes: [],
         business_hash: 'business-hash',
-        traefik_hash: 'traefik-hash',
+        route_ids: ['route-1'],
+        publication_hash: 'publication-hash',
       })
     );
   });
@@ -214,6 +331,8 @@ describe('Route synchronization', () => {
     syncButton?.click();
     await vi.waitFor(() =>
       expect(routeApi.previewSync).toHaveBeenCalledWith('project-1', {
+        scope: 'project',
+        route_ids: [],
         changes: [{ route_id: route.id, enabled: false }],
       })
     );
@@ -229,7 +348,8 @@ describe('Route synchronization', () => {
       expect(routeApi.confirmSync).toHaveBeenCalledWith('project-1', {
         changes: [{ route_id: route.id, enabled: false }],
         business_hash: 'business-hash',
-        traefik_hash: 'traefik-hash',
+        route_ids: ['route-1'],
+        publication_hash: 'publication-hash',
       })
     );
   });

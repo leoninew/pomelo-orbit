@@ -247,8 +247,25 @@ func (r *Runtime) writeFile(serviceDir string, file deploymentport.WorkspaceFile
 	if mode == 0 {
 		mode = 0o644
 	}
-	if err := os.WriteFile(path, file.Content, mode); err != nil {
-		return fmt.Errorf("write local workspace file: %w", err)
+	staged, err := os.CreateTemp(filepath.Dir(path), ".orbit-*.tmp")
+	if err != nil {
+		return fmt.Errorf("create local staged file: %w", err)
+	}
+	defer func() { _ = os.Remove(staged.Name()) }()
+	if err := staged.Chmod(mode); err != nil {
+		_ = staged.Close()
+		return fmt.Errorf("set local staged file mode: %w", err)
+	}
+	_, writeErr := staged.Write(file.Content)
+	closeErr := staged.Close()
+	if writeErr != nil {
+		return fmt.Errorf("write local staged file: %w", writeErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("close local staged file: %w", closeErr)
+	}
+	if err := os.Rename(staged.Name(), path); err != nil {
+		return fmt.Errorf("commit local staged file: %w", err)
 	}
 	return nil
 }

@@ -2,55 +2,62 @@
   <AppDialog
     :open="open"
     :title="t('route.syncTitle')"
-    width-class="w-[min(760px,calc(100vw-32px))]"
+    width-class="w-[min(960px,calc(100vw-32px))]"
     @update:open="handleOpenChange"
   >
-    <AppLoadingState v-if="previewLoading" size="compact" />
-    <div v-else-if="preview" class="space-y-3">
-      <p v-if="preview.matched" class="text-sm text-muted-foreground">
-        {{ t(certificatePending ? 'route.syncCertificatePending' : 'route.syncMatched') }}
-      </p>
-      <div v-else class="max-h-64 overflow-auto">
-        <table class="app-data-table min-w-[600px] table-fixed">
-          <colgroup>
-            <col class="w-[16%]" />
-            <col class="w-[20%]" />
-            <col class="w-[64%]" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>{{ t('route.syncAction') }}</th>
-              <th>{{ t('route.syncSource') }}</th>
-              <th>{{ t('route.syncRule') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in previewRows" :key="row.key">
-              <td
-                v-if="row.showAction"
-                :rowspan="row.actionRowspan"
-                class="align-top break-words text-foreground"
+    <AppLoadingState v-if="previewLoading && !syncRows.length" size="compact" />
+    <div v-else-if="preview || syncRows.length" class="max-h-96 overflow-auto" aria-live="polite">
+      <table v-if="syncRows.length" class="app-data-table min-w-[680px] table-fixed">
+        <colgroup>
+          <col class="w-[18%]" />
+          <col class="w-[14%]" />
+          <col class="w-[22%]" />
+          <col class="w-[30%]" />
+          <col class="w-[16%]" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>{{ t('route.fields.name') }}</th>
+            <th>{{ t('route.syncAction') }}</th>
+            <th>{{ t('route.fields.protocol') }}</th>
+            <th>{{ t('route.syncRule') }}</th>
+            <th>{{ t('route.syncStatus') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in syncRows" :key="item.route_id">
+            <td class="align-top break-words">{{ item.route_name || item.route_id }}</td>
+            <td class="align-top break-words">{{ t(`route.syncActions.${item.action}`) }}</td>
+            <td class="align-top break-words">
+              <p>{{ item.rule?.protocol.toUpperCase() }}</p>
+              <p v-if="item.cert_type" class="text-muted-foreground">
+                {{ certificateLabel(item.cert_type, item.acme_challenge) }}
+              </p>
+            </td>
+            <td class="align-top break-words">
+              <p v-if="item.rule?.match">{{ item.rule.match }}</p>
+              <p v-if="item.rule?.target">-&gt; {{ item.rule.target }}</p>
+            </td>
+            <td class="align-top break-words">
+              <AppBadge
+                variant="status"
+                :tone="syncStatusTone(item.status)"
+                :title="item.status === 'failed' ? item.reason : undefined"
+                :tabindex="item.status === 'failed' ? 0 : undefined"
               >
-                <p>{{ t(`route.syncActions.${row.action}`) }}</p>
-              </td>
-              <td class="align-top break-words text-foreground">
-                <p>{{ t(`route.syncSources.${row.source}`) }}</p>
-              </td>
-              <td class="align-top break-words text-foreground">
-                <p v-if="row.rule.match">{{ row.rule.match }}</p>
-                <p v-if="row.rule.target">{{ row.rule.match ? '-> ' : '' }}{{ row.rule.target }}</p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                {{ t(`route.syncStatuses.${item.status}`) }}
+              </AppBadge>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="text-sm text-muted-foreground">{{ t('route.syncEmpty') }}</p>
     </div>
-    <p v-if="syncError" class="app-field-error break-words" role="alert">{{ syncError }}</p>
     <p v-if="previewError" class="app-field-error break-words" role="alert">
       {{ previewError }}
     </p>
     <button
-      v-if="!preview && !previewLoading && (needsFreshPreview || previewError)"
+      v-if="!syncOperating && !preview && !previewLoading && (needsFreshPreview || previewError)"
       type="button"
       class="app-button h-9 px-3"
       @click="loadPreview(needsFreshPreview)"
@@ -60,21 +67,26 @@
     </button>
     <template #footer>
       <AppDialogActions
+        v-if="syncOperating || !syncRows.length || needsFreshPreview || preview"
         :busy="syncOperating"
-        :confirm-disabled="!preview || previewLoading"
+        :confirm-disabled="!preview || previewLoading || preview.route_ids.length === 0"
         :confirm-label="t('route.syncAll')"
         @cancel="close"
         @confirm="confirm"
       />
+      <button v-else type="button" class="app-button" @click="close">
+        {{ t('common.close') }}
+      </button>
     </template>
   </AppDialog>
 </template>
 
 <script setup lang="ts">
-  import { computed, ref, watch } from 'vue';
+  import { ref, watch } from 'vue';
   import { RefreshCw } from '@lucide/vue';
   import { useI18n } from 'vue-i18n';
   import { routeApi } from '@/api/route/route';
+  import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
@@ -82,53 +94,44 @@
   import type {
     RouteSyncChange,
     RouteSyncPreviewResp,
-    RouteSyncRuleResp,
+    RouteSyncPlanItemResp,
+    RouteSyncResultResp,
   } from '@/gen/proto/orbit/v1/route/route';
   import { useProjectStore } from '@/stores/project';
   import { useToast } from '@/composables/useToast';
   import { ApiError } from '@/utils/request';
+  import type { BadgeTone } from '@/utils/status';
+
+  type SyncStatus = 'pending' | 'processing' | 'completed' | 'failed';
+  interface SyncRow extends RouteSyncPlanItemResp {
+    status: SyncStatus;
+    reason?: string;
+  }
 
   const props = defineProps<{
     open: boolean;
+    scope: 'selected' | 'project';
+    routeIds?: string[];
     changes: RouteSyncChange[];
-    certificatePending?: boolean;
   }>();
 
   const emit = defineEmits<{
     'update:open': [open: boolean];
     synced: [];
-    saved: [];
+    saved: [results: RouteSyncResultResp[]];
   }>();
 
-  const { t } = useI18n();
+  const { t, te } = useI18n();
   const toast = useToast();
   const projectStore = useProjectStore();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
   const { loading: syncOperating, execute: executeSync } = useStatusAsync();
   const preview = ref<RouteSyncPreviewResp>();
   const previewError = ref('');
-  const syncError = ref('');
   const needsFreshPreview = ref(false);
   const syncChanges = ref<RouteSyncChange[]>([]);
-  const previewRows = computed(() =>
-    (preview.value?.differences ?? []).flatMap((difference) => {
-      const rows: Array<{ source: 'customRoute' | 'dockerLabel'; rule: RouteSyncRuleResp }> = [];
-      if (difference.business) {
-        rows.push({ source: 'customRoute', rule: difference.business });
-      }
-      if (difference.traefik) {
-        rows.push({ source: 'dockerLabel', rule: difference.traefik });
-      }
-      return rows.map((row, index) => ({
-        ...row,
-        key: `${difference.route_name}-${difference.field}-${row.source}`,
-        action: difference.action,
-        showAction: index === 0,
-        actionRowspan: rows.length,
-      }));
-    })
-  );
-
+  const syncRows = ref<SyncRow[]>([]);
+  const retryRouteIds = ref<string[]>();
   watch(
     () => props.open,
     (open) => {
@@ -144,13 +147,16 @@
   function reset() {
     preview.value = undefined;
     previewError.value = '';
-    syncError.value = '';
     needsFreshPreview.value = false;
     syncChanges.value = [];
+    syncRows.value = [];
+    retryRouteIds.value = undefined;
   }
 
   function close() {
-    emit('update:open', false);
+    if (!syncOperating.value) {
+      emit('update:open', false);
+    }
   }
 
   function handleOpenChange(open: boolean) {
@@ -166,15 +172,28 @@
       close();
       return;
     }
-    syncChanges.value = savedState ? [] : props.changes.map((change) => ({ ...change }));
+    if (!savedState) {
+      syncChanges.value = props.changes.map((change) => ({ ...change }));
+    }
     preview.value = undefined;
     previewError.value = '';
     try {
       await executePreview(async () => {
-        preview.value = await routeApi.previewSync(projectId, { changes: syncChanges.value });
+        preview.value = await routeApi.previewSync(projectId, {
+          scope: retryRouteIds.value ? 'selected' : props.scope,
+          route_ids: retryRouteIds.value ?? props.routeIds ?? [],
+          changes: syncChanges.value,
+        });
+        for (const item of preview.value.items) {
+          const row = syncRows.value.find((existing) => existing.route_id === item.route_id);
+          if (row) {
+            Object.assign(row, item);
+          } else {
+            syncRows.value.push({ ...item, status: 'pending' });
+          }
+        }
       });
       needsFreshPreview.value = false;
-      syncError.value = '';
     } catch (error) {
       previewError.value = error instanceof Error ? error.message : t('route.syncPreviewFailed');
     }
@@ -183,45 +202,93 @@
   async function confirm() {
     const projectId = projectStore.activeProjectId;
     const currentPreview = preview.value;
-    if (!projectId || !currentPreview) {
+    if (!projectId || !currentPreview || syncOperating.value) {
       return;
     }
     previewError.value = '';
-    syncError.value = '';
-    try {
-      await executeSync(async () => {
-        await routeApi.confirmSync(projectId, {
-          changes: syncChanges.value,
-          business_hash: currentPreview.business_hash,
-          traefik_hash: currentPreview.traefik_hash,
-        });
-        toast.success(t('route.syncSuccess'));
-        emit('synced');
-        close();
-      });
-    } catch (error) {
-      if (
-        error instanceof ApiError &&
-        (error.code === 'route_sync_publish_failed' ||
-          error.code === 'route_sync_publish_permission_denied')
-      ) {
-        syncError.value = t(
-          error.code === 'route_sync_publish_permission_denied'
-            ? 'route.syncPermissionDenied'
-            : 'route.syncPublishFailed'
-        );
-        if (error.requestId) {
-          syncError.value += ` (${t('route.syncRequestId')}: ${error.requestId})`;
-        }
-        preview.value = undefined;
-        needsFreshPreview.value = true;
-        emit('saved');
-      } else if (error instanceof ApiError && error.code === 'route_sync_preview_expired') {
-        syncError.value = error.message;
-        await loadPreview();
+    preview.value = undefined;
+    const currentRows: SyncRow[] = [];
+    for (const item of currentPreview.items) {
+      let row = syncRows.value.find((existing) => existing.route_id === item.route_id);
+      if (row) {
+        row.status = 'pending';
+        row.reason = undefined;
       } else {
-        syncError.value = error instanceof Error ? error.message : t('route.syncFailed');
+        row = { ...item, status: 'pending' };
+        syncRows.value.push(row);
       }
+      currentRows.push(row);
     }
+    await executeSync(async () => {
+      for (const row of currentRows) {
+        row.status = 'processing';
+        try {
+          const response = await routeApi.confirmSync(projectId, {
+            route_ids: [row.route_id],
+            publication_hash: row.publication_hash,
+            changes: syncChanges.value.filter((change) => change.route_id === row.route_id),
+            business_hash: row.business_hash,
+          });
+          const result = response.results.find((entry) => entry.route_id === row.route_id);
+          if (!result) {
+            throw new Error(t('route.syncFailed'));
+          }
+          row.status = result.code === 'route_sync_completed' ? 'completed' : 'failed';
+          if (row.status === 'failed') {
+            row.reason = syncFailureReason(result.code, result.error, result.cleanup);
+          }
+          if (result.business_save === 'saved' || row.status === 'completed') {
+            syncChanges.value = syncChanges.value.filter(
+              (change) => change.route_id !== row.route_id
+            );
+          }
+          emit('saved', [result]);
+        } catch (error) {
+          row.status = 'failed';
+          row.reason = syncFailureReason(
+            error instanceof ApiError ? (error.code ?? '') : '',
+            error instanceof Error ? error.message : t('route.syncFailed')
+          );
+        }
+      }
+      retryRouteIds.value = syncRows.value
+        .filter((item) => item.status === 'failed')
+        .map((item) => item.route_id);
+      needsFreshPreview.value = retryRouteIds.value.length > 0;
+      if (needsFreshPreview.value) {
+        toast.error(t('route.syncIncomplete'));
+      } else {
+        toast.success(t('route.syncConfigurationComplete'));
+        emit('synced');
+      }
+    });
+  }
+
+  function certificateLabel(type: string, challenge: string) {
+    if (type === 'manual') {
+      return 'PEM';
+    }
+    if (type === 'mkcert') {
+      return 'mkcert';
+    }
+    return `Let's Encrypt · ${challenge === 'dns' ? 'DNS-01' : 'HTTP-01'}`;
+  }
+
+  function syncStatusTone(status: SyncStatus): BadgeTone {
+    const tones: Record<SyncStatus, BadgeTone> = {
+      pending: 'default',
+      processing: 'info',
+      completed: 'success',
+      failed: 'error',
+    };
+    return tones[status];
+  }
+
+  function syncFailureReason(code: string, error: string, cleanup?: string) {
+    if (cleanup === 'failed') {
+      return t('route.syncCleanupFailed');
+    }
+    const key = `route.syncErrorCodes.${code}`;
+    return te(key) ? t(key) : error || t('route.syncFailed');
   }
 </script>

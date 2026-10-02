@@ -5,7 +5,14 @@ import "time"
 const (
 	GatewayRestApiContainerUrl = "http://traefik:8080"
 	GatewayRestApiHostUrl      = "http://127.0.0.1:8080"
+	GatewayRouteConfigSource   = "./gateway/dynamic"
+	GatewayRouteConfigTarget   = "/etc/traefik/dynamic"
+	GatewayRouteProvider       = "file"
 )
+
+func GatewayRouteResourceName(routeCode string) string { return "route-" + routeCode }
+
+func GatewayRouteCertificateDirectory(routeId string) string { return "route-" + routeId }
 
 // GatewayConfig is the configuration owned by a gateway application.
 type GatewayConfig struct {

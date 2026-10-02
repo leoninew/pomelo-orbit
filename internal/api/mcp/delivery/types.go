@@ -118,8 +118,8 @@ type RouteService interface {
 	UpdateRoute(context.Context, string, string, string, routedto.RouteUpdateInput) (model.Route, error)
 	EnableRoute(context.Context, string, string, string) (model.Route, error)
 	DisableRoute(context.Context, string, string, string) (model.Route, error)
-	PreviewRouteSync(context.Context, string, string, []routedto.RouteSyncChange) (routedto.RouteSyncPreview, error)
-	ConfirmRouteSync(context.Context, string, string, routedto.RouteSyncConfirmInput) error
+	PreviewRouteSync(context.Context, string, string, routedto.RouteSyncPreviewInput) (routedto.RouteSyncPreview, error)
+	ConfirmRouteSync(context.Context, string, string, routedto.RouteSyncConfirmInput) (routedto.RouteSyncConfirmResult, error)
 }
 
 var (

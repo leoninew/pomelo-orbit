@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-09-30 14:23:58
+最后修改时间: 2026-10-02 13:06:45
 
 Doc role: living architecture
 
@@ -22,7 +22,7 @@ Project
 
 Environment target 是 Project 的独占部署边界：local target 全局唯一，SSH target 按精确 host + port 唯一。这样固定 Gateway 端口和共享 `traefik` 网络不会被多个 Project 同时占用。
 
-Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、证书同步和 Traefik REST 通过同一个 target runtime 执行。Service 目录统一为 `<workspace_root>/deployment/<service-code>`；Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 使用 Environment binding 的受管私钥验证认证、pinned host key 和目标 Docker prerequisites。
+Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、Route 文件/证书发布和 Traefik API 查询通过同一个 target runtime 执行。Service 目录统一为 `<workspace_root>/deployment/<service-code>`；Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 使用 Environment binding 的受管私钥验证认证、pinned host key 和目标 Docker prerequisites。
 
 Deployment 将 `environment_id`、Environment `target_type`、target revision 与可选 Gateway Application identity 保存为正式不可变列。SSH deployment 额外保存 SSH Credential identity/revision；local deployment 的 SSH snapshot 为空。`options_json` 只保存命令选项和 Gateway 配置快照；worker 在执行前以正式列核对当前 Environment，目标变更后的排队任务直接失败，不能落到其他 Project 或新目标。
 
@@ -34,7 +34,7 @@ SSH 初始化命令是普通 HTTP 写事务内的无远端 I/O 动作：它以�
 
 ## GatewayConfig 与部署
 
-Gateway 创建四个可编辑的普通 Version：`base`、`http`、`dns`、`http-dns`。每个 Version 固化 Traefik component、Docker socket、证书/ACME directory mount、TCP 80/443 与 local HTTP 8080；profile Version 还固化对应 resolver YAML。`gateway_acme_profile_version` 记录四个角色到 Version 的 binding。
+Gateway 创建四个可编辑的普通 Version：`base`、`http`、`dns`、`http-dns`。每个 Version 固化 Traefik component、Docker socket、File provider watch、dynamic/certs 只读目录挂载、ACME 读写目录挂载、TCP 80/443 与 local HTTP 8080；profile Version 还固化对应 resolver YAML。`gateway_acme_profile_version` 记录四个角色到 Version 的 binding。
 
 Gateway Compose 创建或复用部署宿主上的 Docker bridge network `traefik`。普通 Service 在声明加入 Traefik 网络时以 external 方式接入该共享网络；缺少 Gateway 网络配置时渲染失败。网络名固定为 `traefik`，不由 Environment code 派生。
 
@@ -42,20 +42,32 @@ GatewayConfig 保存 REST URL/readiness、`internal_domain`、可选的 `externa
 
 创建 Gateway deployment 前，默认 Service 切换到保存 profile 所绑定的普通 Version，并持久化该 Version ID。worker 只执行该 ID，不能因之后的 profile 更新重新选择 Version。
 
-worker 对有效计划仅作窄范围处理：
+API 计划/hash、worker 与 Compose 渲染共用 Gateway enrichment，在有效计划中处理：
 
 - profile Version 的已声明 `/etc/traefik/traefik.yml` 中写入已有 resolver 的 `acme.email`。
 - DNS profile 为 Traefik component 的有效 environment 设置 `CF_DNS_API_TOKEN`。
+- 静态 YAML 移除 REST provider，覆盖 File provider 为 `/etc/traefik/dynamic`、`watch=true`，保留其他 provider、entrypoint 和 resolver；静态受控文件始终覆盖现有内容。
+- 按 target 覆盖或补齐 dynamic/certs 只读与 acme 读写目录挂载，沿用 local/SSH/DooD 的路径与文件机制。
 
-它不新增、删除或重写 Version/Service 的拓扑。email 与 token 在 Gateway deployment snapshot 和 rendered Compose 中可见，这是本期明确的产品边界。
+受管部分只改变有效计划，不写回 Version/Service；其他拓扑仍由 Version 声明。Gateway 部署和 Orbit 发起的 restart 自动 force-recreate，确保静态受控文件替换和挂载变更生效。迁移脚本初始化或已部署 REST 的受管 Gateway 使用同一流程，不修改已执行迁移、不转换旧路由快照、不新增 UI。首次切换后由用户显式同步路由，操作通过线下传达，切换期间可能暂不可用。email 与 token 在 Gateway deployment snapshot 和 rendered Compose 中可见。
 
 ## Route 发布
 
-自定义 HTTP/TCP Route 继续通过 Traefik `providers.rest` 全量发布。普通 Route 创建、编辑、删除先写入业务数据；列表页和详情页启停均为前端草稿。详情页的 HTTP/HTTPS 与证书方式通过证书接口直接保存，不触发发布。同步预览和确认共用期望状态校验；前者比较业务 Route 与全部 REST router/service，自定义 Route 按域名、路径、目标地址、协议和 TCP 监听端口对比，未受管 REST 配置以可读规则和上游展示。已保存的证书配置参与预览过期校验；Traefik API 不提供可靠的证书内容对比，故不把证书差异伪装成运行时路由差异。
+自定义 HTTP/TCP Route 通过 Traefik File provider 持久化发布，每条 Route 使用 `gateway/dynamic/route-<code>.yaml`，router/service 名称也由编码派生。手工证书仍为 `gateway/certs/route-<id>/<sha256-revision>/{cert.pem,key.pem}`；发布记录与旧文件位于未挂载的 `.orbit/route-publication/<id>/`。发布适配器按记录中的编码跟踪候选与旧路径，改名须撤下旧文件并在一次观测中确认新资源与旧资源缺席；失败及中断恢复共用文件转换逻辑，拒绝占用的编码与无归属的目标文件，已确认撤销的编码可复用。文件提交复用 WorkspaceFile/SyncFiles 和 target writer，不对整个证书目录 prune。SSH 写远端路径；local DooD 写 logical path，挂载经既有 resolver 转为 daemon 可见 physical path。
 
-Route snapshot 与端口冲突检查始终限定在当前 Project。确认同步或 Gateway deploy/restart 成功后，通过当前 Environment target runtime 调用该 Gateway 的 Traefik REST API 发布完整快照。HTTP-01 仅在 `http`/`http-dns` 可用；DNS-01 仅在 `dns`/`http-dns` 且 Gateway token 非空时可用。手工 PEM、mkcert 与 ACME account data 使用 Version 已声明的 cert/acme mount。
+普通创建、编辑、删除与证书接口先保存业务配置；列表/详情启停为前端草稿。preview 明确 `selected` 或 `project` 范围，显示发布/撤销/跳过清单，返回冻结 ID 顺序、整批及每项独立的 `business_hash` 和 `publication_hash`；后者覆盖选定记录、实际 YAML/PEM fingerprint 与 Gateway/Environment 依赖。预览不查询运行时 router/service 差异，也不提交 `traefik_hash`。Project 范围取业务记录与已知发布记录的并集，已删除 ID 仍可撤销；未知文件及其他 provider 保留。禁用且从未发布的 Route 跳过文件操作。
 
-同步确认先在数据库事务内保存启停草稿，再执行外部 Traefik 发布。若发布失败，业务配置已保存，API 返回 `route_sync_publish_failed`，前端重新预览并保留同步提示供重试；不承诺跨数据库和 Traefik 的原子提交。证书接口只保存证书配置；已启用 Route 的证书更新在下一次显式同步时随完整快照发布，未启用 Route 的证书配置在启用并同步后发布。
+Web 按冻结顺序在前端循环，每次只确认一个 ID，提交其原预览修订和对应草稿；每条响应立即更新状态及已保存草稿，失败继续，成功记录保留。不同项的独立发布不会使下一项过期，同一项或共享依赖变化仍须重新预览。界面只显示待处理/处理中/完成/失败和失败原因提示；不增加异步后台任务或页面/弹窗关闭后的续跑管理。API/MCP 保留显式批量能力。
+
+预览规则直接返回 `protocol`、`match`、`target`；HTTP/HTTPS 由入口配置决定，与上游 URL 的协议分开。同步清单的协议列展示入口协议及证书方式，规则列展示匹配条件和目标，预览、处理中及完成后沿用同一表格。
+
+确认在短事务内复核并保存单条启停草稿，再在事务外提交该 Route 的文件并等待 `@file` 资源匹配。响应 HTTP 200 携带 `route_sync_completed`/`route_sync_incomplete` 及逐项保存、文件、配置、证书、恢复/清理状态与原因编码；执行前的鉴权、范围或过期错误沿用通用 HTTP 错误契约。每个确认请求预算 105 秒，配置匹配及恢复各最多 8 秒；API/MCP 批量请求内未执行项明确报告，Web 的多条请求不共享整批预算。业务保存不因外部失败回滚。中断后先核对 pending 记录、活动/备份 YAML 和 PEM，确认或恢复该操作后才接受新的发布，不以业务草稿重建。
+
+Windows 文件提交后的加载收敛在 Traefik 发布适配器：SSH 使用声明的目标平台，local 使用现有 resolver 返回的 daemon mount source 区分 Windows/Linux 与 DooD。发布、撤销、失败恢复和 pending 恢复共用必要时 SIGHUP 重载再核对配置的路径；容器定位复用 Gateway Service 内的 Compose 查询，信号通过目标 Runtime 执行，不重启 Gateway，不改变其他 Route 文件。重载与配置匹配共用 8 秒预算，失败以 route_sync_reload_failed 进入既有逐项报告和恢复机制。Linux 继续依赖 watcher，远程 SSH Linux 实测留待后续；应用层和文件 writer 不加入平台分支或新接口。
+
+配置匹配与实际 TLS 证书验证独立。router/service API 不能证明新 PEM 生效，当前 HTTPS 正常同步报告 `unverified`，不强制握手或因此自动回滚配置。HTTP-01 仅在 `http`/`http-dns` 可用；DNS-01 仅在 `dns`/`http-dns` 且 Gateway token 非空时可用。同域名候选必须与其他 Route 的已发布证书配置一致，不携带其他 Route 尚未同步的证书编辑。
+
+API 与 worker 通过同进程、按 Project/Gateway 的协调器串行化发布和部署。部署前检查已发布上游、网络、entrypoint/resolver 引用；Gateway deploy/restart 后只核对持久化文件与加载结果，不重发当前数据库配置。Traefik 直接重启自行加载持久化文件，Orbit 离线时也能恢复。已确认 YAML 缺失不阻止 Gateway staging 创建空目录，部署后仍报告缺失；重新预览并确认 Route 同步可重建选中文件。文件不存在时保留空恢复基线，不恢复过期 backup；外部修改、损坏的证书或 pending 仍报告问题。新建 Gateway 可先部署空目录，再显式同步 Route。
 
 TCP Route 的 entrypoint/host port 由选中 Gateway Version 的 Component endpoint 声明。Route 不创建 Gateway listener，也不改变 Gateway Version。
 

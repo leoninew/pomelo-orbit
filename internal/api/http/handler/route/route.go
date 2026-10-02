@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 
 	"github.com/gin-gonic/gin"
@@ -143,7 +144,7 @@ func (h Handler) PreviewRouteSync(c *gin.Context) {
 		transport.WriteError(c, err)
 		return
 	}
-	preview, err := h.service.PreviewRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), changes)
+	preview, err := h.service.PreviewRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routedto.RouteSyncPreviewInput{Scope: req.Scope, RouteIds: req.RouteIds, Changes: changes})
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -167,15 +168,19 @@ func (h Handler) ConfirmRouteSync(c *gin.Context) {
 		transport.WriteError(c, err)
 		return
 	}
-	if err := h.service.ConfirmRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routedto.RouteSyncConfirmInput{
-		Changes:      changes,
-		BusinessHash: req.BusinessHash,
-		TraefikHash:  req.TraefikHash,
-	}); err != nil {
+	result, err := h.service.ConfirmRouteSync(c.Request.Context(), current.Id, c.Request.URL.Query().Get("project_id"), routedto.RouteSyncConfirmInput{
+		RouteIds:        req.RouteIds,
+		PublicationHash: req.PublicationHash,
+		Changes:         changes,
+		BusinessHash:    req.BusinessHash,
+	})
+	if err != nil {
 		transport.WriteError(c, err)
 		return
 	}
-	transport.WriteProtoJSON(c, http.StatusOK, &routev1.RouteSyncConfirmResp{Message: "Routes synced successfully"})
+	response := routeSyncConfirmResponse(result)
+	response.RequestId = requestid.FromGinContext(c)
+	transport.WriteProtoJSON(c, http.StatusOK, &response)
 }
 
 func (h Handler) UploadRouteCert(c *gin.Context) {

@@ -42,3 +42,30 @@ uv --directory scripts run --locked ruff check .
 uv --directory scripts run --locked mypy
 uv --directory scripts run --locked pytest
 ```
+
+## Release versions
+
+From the repository root:
+
+```bash
+task version        # calculate from Git history without writing files
+task version:apply  # write the calculated version to release metadata
+```
+
+The calculator walks all commits reachable from `HEAD`, oldest first, starting
+at `0.0.0`. A subject starting with `feat` (case-insensitive) increases the minor
+version and resets the patch version. Every other commit, including fixes,
+refactors, documentation and merge commits, increases the patch version. The
+major version stays at `0`. Uncommitted changes do not affect the calculation.
+Complete Git history is required; for a shallow clone, fetch it with
+`git fetch --unshallow` first.
+
+`task version` prints the candidate version and leaves all metadata untouched.
+`task version:apply` updates `VERSION`, `configs/config.yaml` (`app.version`),
+`.env.example` and `web/package.json`, validating every target before writing.
+It does not stage, commit or tag the changes.
+
+`VERSION` records the selected release version. Package names, Docker release
+tags and release CI continue to use that file, so run `task version:apply` when
+preparing a release. The Git history calculation can advance after further
+commits while the stored release version remains unchanged.

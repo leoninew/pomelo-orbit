@@ -53,11 +53,24 @@ func (r *Runtime) ServiceDir(target environmentport.Target, serviceCode string) 
 	return workspacepath.RemoteServiceRoot(root, serviceCode), nil
 }
 
-func (r *Runtime) ComposeMountSourceDir(_ context.Context, target environmentport.Target, serviceCode string) (string, error) {
-	if _, err := r.ServiceDir(target, serviceCode); err != nil {
+func (r *Runtime) ComposeMountSourceDir(ctx context.Context, target environmentport.Target, serviceCode string) (string, error) {
+	serviceDir, err := r.ServiceDir(target, serviceCode)
+	if err != nil {
 		return "", err
 	}
-	return "", nil
+	// Compose is executed on the SSH target, so its bind source must use the
+	// same remote path that StageWorkspace writes to. Absolute workspace roots
+	// already have the target's path semantics; only home-relative roots need
+	// an SFTP lookup to expand the remote login user's home directory.
+	if !isRemoteHomePath(serviceDir) {
+		return serviceDir, nil
+	}
+	client, cleanup, err := r.openSFTP(ctx, target)
+	if err != nil {
+		return "", err
+	}
+	defer cleanup()
+	return newSFTPPathResolver(client, target.Environment.SSH.Platform).resolve(serviceDir)
 }
 
 func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error) {
@@ -405,13 +418,17 @@ func normalizeRemotePath(value string) string {
 	return path.Clean(value)
 }
 
+type sftpHomeResolver interface {
+	RealPath(string) (string, error)
+}
+
 type sftpPathResolver struct {
-	client   *sftp.Client
+	client   sftpHomeResolver
 	platform string
 	home     string
 }
 
-func newSFTPPathResolver(client *sftp.Client, platform string) *sftpPathResolver {
+func newSFTPPathResolver(client sftpHomeResolver, platform string) *sftpPathResolver {
 	return &sftpPathResolver{client: client, platform: platform}
 }
 

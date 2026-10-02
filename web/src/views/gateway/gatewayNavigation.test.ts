@@ -109,7 +109,7 @@ describe('Gateway detail editing', () => {
     expect(target.textContent).toContain(i18n.global.t('common.noData'));
   });
 
-  it('saves control-plane fields in the detail dialog without a render error', async () => {
+  it('saves basic information independently of Traefik API settings', async () => {
     pinia = createPinia();
     setActivePinia(pinia);
     useProjectStore().setActiveProject('project-1');
@@ -163,14 +163,112 @@ describe('Gateway detail editing', () => {
 
     expect(gatewayApi.update).toHaveBeenCalledWith('project-1', 'gateway-1', {
       name: 'Traefik edge',
-      rest_api_url: gateway.rest_api_url,
-      rest_api_host_url: gateway.rest_api_host_url,
-      rest_ready_timeout_seconds: gateway.rest_ready_timeout_seconds,
       internal_domain: gateway.internal_domain,
       external_domain: gateway.external_domain,
     });
     expect(gatewayApi.list).toHaveBeenCalledWith('project-1');
     expect(target.textContent).toContain('Traefik edge');
     expect(renderErrors).toEqual([]);
+  });
+
+  it('validates and saves Traefik API settings in their own card and dialog', async () => {
+    pinia = createPinia();
+    setActivePinia(pinia);
+    useProjectStore().setActiveProject('project-1');
+    vi.mocked(gatewayApi.list).mockResolvedValue({
+      items: [gateway],
+      total: 1,
+      page: 1,
+      per_page: 1,
+      pages: 1,
+    });
+    vi.mocked(gatewayApi.update).mockResolvedValue({
+      ...gateway,
+      rest_api_url: 'http://edge:8080',
+      rest_api_host_url: 'http://127.0.0.1:9090',
+      rest_ready_timeout_seconds: 45,
+    });
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/gateway', component: GatewayDetail }],
+    });
+    await router.push('/gateway');
+    target = document.createElement('div');
+    document.body.append(target);
+    mountedApp = createApp({ template: '<RouterView />' });
+    mountedApp.use(pinia);
+    mountedApp.use(router);
+    mountedApp.use(i18n);
+    mountedApp.mount(target);
+    await flushRender();
+
+    const cards = [...target.querySelectorAll<HTMLElement>('.app-detail-card')];
+    const basicCard = cards.find(
+      (card) =>
+        card.querySelector('h2')?.textContent === i18n.global.t('gateway.sections.basicInfo')
+    );
+    const apiCard = cards.find(
+      (card) =>
+        card.querySelector('h2')?.textContent === i18n.global.t('gateway.sections.traefikApi')
+    );
+    expect(basicCard).toBeDefined();
+    expect(apiCard).toBeDefined();
+    expect(basicCard?.textContent).not.toContain(gateway.rest_api_url);
+    expect(basicCard?.textContent).not.toContain(gateway.rest_api_host_url);
+    expect(apiCard?.textContent).toContain(gateway.rest_api_url);
+    expect(apiCard?.textContent).toContain(gateway.rest_api_host_url);
+    expect(apiCard?.textContent).toContain(i18n.global.t('gateway.fields.restReadyTimeout'));
+    apiCard?.querySelector<HTMLButtonElement>('.app-button-primary')?.click();
+    await flushRender();
+
+    expect(document.querySelector('#gateway-edit-name')).toBeNull();
+    expect(document.querySelector('#gateway-edit-internal-domain')).toBeNull();
+    const urlInput = document.querySelector<HTMLInputElement>('#gateway-edit-rest-api-url');
+    const hostInput = document.querySelector<HTMLInputElement>('#gateway-edit-rest-api-host-url');
+    const timeoutInput = document.querySelector<HTMLInputElement>(
+      '#gateway-edit-rest-ready-timeout'
+    );
+    if (!urlInput || !hostInput || !timeoutInput) {
+      throw new Error('Traefik API inputs are missing');
+    }
+    const confirmButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.textContent?.trim() === i18n.global.t('common.confirm')
+    );
+    expect(confirmButton).toBeDefined();
+    hostInput.value = 'invalid';
+    hostInput.dispatchEvent(new Event('input', { bubbles: true }));
+    timeoutInput.value = '0';
+    timeoutInput.dispatchEvent(new Event('input', { bubbles: true }));
+    confirmButton?.click();
+    await flushRender();
+
+    expect(gatewayApi.update).not.toHaveBeenCalled();
+    expect(hostInput.getAttribute('aria-invalid')).toBe('true');
+    expect(hostInput.classList.contains('app-input-error')).toBe(true);
+    expect(document.querySelector('#gateway-edit-rest-api-host-url-error')?.textContent).toContain(
+      i18n.global.t('gateway.validation.restApiHostUrlInvalid')
+    );
+    expect(timeoutInput.getAttribute('aria-invalid')).toBe('true');
+
+    hostInput.value = 'http://127.0.0.1:9090';
+    hostInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushRender();
+    expect(hostInput.hasAttribute('aria-invalid')).toBe(false);
+    expect(timeoutInput.getAttribute('aria-invalid')).toBe('true');
+    urlInput.value = 'http://edge:8080';
+    urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+    timeoutInput.value = '45';
+    timeoutInput.dispatchEvent(new Event('input', { bubbles: true }));
+    confirmButton?.click();
+    await flushRender();
+
+    expect(gatewayApi.update).toHaveBeenCalledWith('project-1', 'gateway-1', {
+      rest_api_url: 'http://edge:8080',
+      rest_api_host_url: 'http://127.0.0.1:9090',
+      rest_ready_timeout_seconds: 45,
+    });
+    expect(target.textContent).toContain('http://edge:8080');
+    expect(target.textContent).toContain(gateway.name);
+    expect(document.querySelector('#gateway-edit-rest-api-url')).toBeNull();
   });
 });

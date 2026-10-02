@@ -110,12 +110,12 @@ tasks:
         printf "image built: pomelo-orbit:%s\n" "$TAG"
 
   version:
-    desc: Print the release version from VERSION
+    desc: Calculate the version from complete Git history
     cmds:
       - uv --directory scripts run version-calc.py
 
   version:apply:
-    desc: Synchronize the release version to tracked metadata
+    desc: Write the calculated version to release metadata
     cmds:
       - uv --directory scripts run version-calc.py --no-dry-run
 

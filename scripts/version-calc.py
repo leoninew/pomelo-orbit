@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Print or synchronize release version metadata from ``VERSION``.
+"""Calculate release versions from complete Git history.
 
-By default, print the repository version without writing files. Pass
-``--no-dry-run`` to synchronize the version metadata consumed by the app.
-The script never invokes Git.
+Walk commits reachable from HEAD from oldest to newest, starting at 0.0.0.
+Subjects starting with "feat" (case-insensitive) increase the minor version
+and reset the patch version; every other commit increases the patch version.
+The major version remains 0.
+
+By default, print the calculated version without writing files. Pass
+``--no-dry-run`` to update VERSION and the app's release metadata.
+Git is used only to read history, never to commit or tag changes.
 
     uv --directory scripts run version-calc.py
     uv --directory scripts run version-calc.py --no-dry-run
@@ -13,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -22,7 +28,6 @@ CONFIG_FILE = REPO_ROOT / "configs" / "config.yaml"
 ENV_EXAMPLE_FILE = REPO_ROOT / ".env.example"
 PACKAGE_JSON = REPO_ROOT / "web" / "package.json"
 
-VERSION_RE = re.compile(r"\d+\.\d+\.\d+")
 APP_VERSION_RE = re.compile(
     rb"^(app:\r?\n(?:^[ \t]+[^\r\n]*\r?\n)*?^[ \t]+version:[ \t]*)([^\s#\r\n]+)",
     re.MULTILINE,
@@ -37,17 +42,40 @@ ENV_APP_VERSION_RE = re.compile(
 )
 
 
-def read_version() -> str:
-    """Read the release version from the repository source of truth."""
-    version = VERSION_FILE.read_text(encoding="utf-8").strip()
-    if not VERSION_RE.fullmatch(version):
-        raise ValueError(f"invalid version in {VERSION_FILE}: {version!r}")
-    return version
+def run_git(*args: str) -> str:
+    return subprocess.run(
+        ["git", *args],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=True,
+        encoding="utf-8",
+    ).stdout
+
+
+def calculate_version() -> str:
+    """Derive the version from commits, refusing incomplete history."""
+    if run_git("rev-parse", "--is-shallow-repository").strip() == "true":
+        raise RuntimeError(
+            "cannot calculate a version from shallow Git history; "
+            "run git fetch --unshallow first"
+        )
+    subjects = run_git(
+        "log", "--reverse", "--encoding=UTF-8", "--format=%s", "HEAD"
+    ).splitlines()
+    minor = patch = 0
+    for subject in subjects:
+        if subject.lstrip().lower().startswith("feat"):
+            minor += 1
+            patch = 0
+        else:
+            patch += 1
+    return f"0.{minor}.{patch}"
 
 
 def apply_version(version: str) -> None:
-    """Synchronize the version metadata that derives from ``VERSION``."""
+    """Write the calculated version to the release metadata files."""
     replacements = (
+        (VERSION_FILE, (version + "\n").encode("utf-8")),
         _prepare_version_replacement(
             CONFIG_FILE, APP_VERSION_RE, version, "app.version"
         ),
@@ -81,19 +109,19 @@ def _prepare_version_replacement(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Print or synchronize release version")
+    parser = argparse.ArgumentParser(description="Calculate a version from Git history")
     parser.add_argument(
         "--no-dry-run",
         action="store_false",
         dest="dry_run",
-        help="synchronize version metadata files",
+        help="write the calculated version to VERSION and app metadata",
     )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    version = read_version()
+    version = calculate_version()
     print(f"version: {version}")
     if not args.dry_run:
         apply_version(version)
@@ -103,6 +131,9 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
+    except subprocess.CalledProcessError as exc:
+        sys.stderr.write(f"git failed: {exc.stderr.strip() or exc}\n")
+        sys.exit(1)
     except (OSError, RuntimeError, ValueError, re.error) as exc:
         sys.stderr.write(f"{exc}\n")
         sys.exit(1)

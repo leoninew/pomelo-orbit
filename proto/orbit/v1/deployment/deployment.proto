@@ -6,6 +6,7 @@ package orbit.v1.deployment;
 
 
 message DeploymentResp {
+  optional string working_directory = 20;
   string id = 1;
   optional string project_id = 2;
   optional string application_id = 3;

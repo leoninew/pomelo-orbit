@@ -30,19 +30,23 @@ type ServiceResp struct {
 	CreatedAt     string                 `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt     string                 `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	// Display labels (filled on project-scoped list; empty on bare app-scoped list).
-	ApplicationName   string                  `protobuf:"bytes,9,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
-	ApplicationCode   string                  `protobuf:"bytes,10,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
-	ApplicationKind   string                  `protobuf:"bytes,11,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
-	VersionLabel      string                  `protobuf:"bytes,12,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
-	Components        []*ServiceComponentResp `protobuf:"bytes,14,rep,name=components,proto3" json:"components,omitempty"`
-	PendingDeploy     bool                    `protobuf:"varint,15,opt,name=pending_deploy,json=pendingDeploy,proto3" json:"pending_deploy,omitempty"`
-	EffectivePlanHash string                  `protobuf:"bytes,16,opt,name=effective_plan_hash,json=effectivePlanHash,proto3" json:"effective_plan_hash,omitempty"`
-	Env               []*ServiceEnv           `protobuf:"bytes,17,rep,name=env,proto3" json:"env,omitempty"`
-	EffectiveError    string                  `protobuf:"bytes,18,opt,name=effective_error,json=effectiveError,proto3" json:"effective_error,omitempty"`
-	ActiveDeployment  bool                    `protobuf:"varint,19,opt,name=active_deployment,json=activeDeployment,proto3" json:"active_deployment,omitempty"`
-	Code              string                  `protobuf:"bytes,20,opt,name=code,proto3" json:"code,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	ApplicationName         string                  `protobuf:"bytes,9,opt,name=application_name,json=applicationName,proto3" json:"application_name,omitempty"`
+	ApplicationCode         string                  `protobuf:"bytes,10,opt,name=application_code,json=applicationCode,proto3" json:"application_code,omitempty"`
+	ApplicationKind         string                  `protobuf:"bytes,11,opt,name=application_kind,json=applicationKind,proto3" json:"application_kind,omitempty"`
+	VersionLabel            string                  `protobuf:"bytes,12,opt,name=version_label,json=versionLabel,proto3" json:"version_label,omitempty"`
+	Components              []*ServiceComponentResp `protobuf:"bytes,14,rep,name=components,proto3" json:"components,omitempty"`
+	PendingDeploy           bool                    `protobuf:"varint,15,opt,name=pending_deploy,json=pendingDeploy,proto3" json:"pending_deploy,omitempty"`
+	EffectivePlanHash       string                  `protobuf:"bytes,16,opt,name=effective_plan_hash,json=effectivePlanHash,proto3" json:"effective_plan_hash,omitempty"`
+	Env                     []*ServiceEnv           `protobuf:"bytes,17,rep,name=env,proto3" json:"env,omitempty"`
+	EffectiveError          string                  `protobuf:"bytes,18,opt,name=effective_error,json=effectiveError,proto3" json:"effective_error,omitempty"`
+	ActiveDeployment        bool                    `protobuf:"varint,19,opt,name=active_deployment,json=activeDeployment,proto3" json:"active_deployment,omitempty"`
+	Code                    string                  `protobuf:"bytes,20,opt,name=code,proto3" json:"code,omitempty"`
+	DeploymentDirectory     string                  `protobuf:"bytes,21,opt,name=deployment_directory,json=deploymentDirectory,proto3" json:"deployment_directory,omitempty"`
+	DirectoryTargetRevision int64                   `protobuf:"varint,22,opt,name=directory_target_revision,json=directoryTargetRevision,proto3" json:"directory_target_revision,omitempty"`
+	RuntimeDirectory        string                  `protobuf:"bytes,23,opt,name=runtime_directory,json=runtimeDirectory,proto3" json:"runtime_directory,omitempty"`
+	RuntimeTargetRevision   int64                   `protobuf:"varint,24,opt,name=runtime_target_revision,json=runtimeTargetRevision,proto3" json:"runtime_target_revision,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
 }
 
 func (x *ServiceResp) Reset() {
@@ -192,6 +196,34 @@ func (x *ServiceResp) GetCode() string {
 		return x.Code
 	}
 	return ""
+}
+
+func (x *ServiceResp) GetDeploymentDirectory() string {
+	if x != nil {
+		return x.DeploymentDirectory
+	}
+	return ""
+}
+
+func (x *ServiceResp) GetDirectoryTargetRevision() int64 {
+	if x != nil {
+		return x.DirectoryTargetRevision
+	}
+	return 0
+}
+
+func (x *ServiceResp) GetRuntimeDirectory() string {
+	if x != nil {
+		return x.RuntimeDirectory
+	}
+	return ""
+}
+
+func (x *ServiceResp) GetRuntimeTargetRevision() int64 {
+	if x != nil {
+		return x.RuntimeTargetRevision
+	}
+	return 0
 }
 
 type ServiceListResp struct {
@@ -1658,11 +1690,14 @@ func (x *ServicePreviewResp) GetComposeYaml() string {
 }
 
 type ServiceDeployReq struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	ForceRecreate      bool                   `protobuf:"varint,1,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
-	JoinTraefikNetwork *bool                  `protobuf:"varint,2,opt,name=join_traefik_network,json=joinTraefikNetwork,proto3,oneof" json:"join_traefik_network,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	ForceRecreate             bool                   `protobuf:"varint,1,opt,name=force_recreate,json=forceRecreate,proto3" json:"force_recreate,omitempty"`
+	JoinTraefikNetwork        *bool                  `protobuf:"varint,2,opt,name=join_traefik_network,json=joinTraefikNetwork,proto3,oneof" json:"join_traefik_network,omitempty"`
+	VersionId                 *string                `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3,oneof" json:"version_id,omitempty"`
+	DeploymentDirectory       string                 `protobuf:"bytes,4,opt,name=deployment_directory,json=deploymentDirectory,proto3" json:"deployment_directory,omitempty"`
+	EnvironmentTargetRevision int64                  `protobuf:"varint,5,opt,name=environment_target_revision,json=environmentTargetRevision,proto3" json:"environment_target_revision,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
 }
 
 func (x *ServiceDeployReq) Reset() {
@@ -1707,6 +1742,27 @@ func (x *ServiceDeployReq) GetJoinTraefikNetwork() bool {
 		return *x.JoinTraefikNetwork
 	}
 	return false
+}
+
+func (x *ServiceDeployReq) GetVersionId() string {
+	if x != nil && x.VersionId != nil {
+		return *x.VersionId
+	}
+	return ""
+}
+
+func (x *ServiceDeployReq) GetDeploymentDirectory() string {
+	if x != nil {
+		return x.DeploymentDirectory
+	}
+	return ""
+}
+
+func (x *ServiceDeployReq) GetEnvironmentTargetRevision() int64 {
+	if x != nil {
+		return x.EnvironmentTargetRevision
+	}
+	return 0
 }
 
 type ServiceDeployResp struct {
@@ -1845,7 +1901,7 @@ var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\x98\x05\n" +
+	"\x1eorbit/v1/service/service.proto\x12\x10orbit.v1.service\"\xec\x06\n" +
 	"\vServiceResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12\x1d\n" +
@@ -1869,7 +1925,11 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03env\x18\x11 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\x12'\n" +
 	"\x0feffective_error\x18\x12 \x01(\tR\x0eeffectiveError\x12+\n" +
 	"\x11active_deployment\x18\x13 \x01(\bR\x10activeDeployment\x12\x12\n" +
-	"\x04code\x18\x14 \x01(\tR\x04code\"F\n" +
+	"\x04code\x18\x14 \x01(\tR\x04code\x121\n" +
+	"\x14deployment_directory\x18\x15 \x01(\tR\x13deploymentDirectory\x12:\n" +
+	"\x19directory_target_revision\x18\x16 \x01(\x03R\x17directoryTargetRevision\x12+\n" +
+	"\x11runtime_directory\x18\x17 \x01(\tR\x10runtimeDirectory\x126\n" +
+	"\x17runtime_target_revision\x18\x18 \x01(\x03R\x15runtimeTargetRevision\"F\n" +
 	"\x0fServiceListResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.service.ServiceRespR\x05items\"\xa6\x01\n" +
 	"\x14ServicePaginatedResp\x123\n" +
@@ -2041,11 +2101,16 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x14join_traefik_network\x18\x01 \x01(\bH\x00R\x12joinTraefikNetwork\x88\x01\x01B\x17\n" +
 	"\x15_join_traefik_network\"7\n" +
 	"\x12ServicePreviewResp\x12!\n" +
-	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\x89\x01\n" +
+	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\xaf\x02\n" +
 	"\x10ServiceDeployReq\x12%\n" +
 	"\x0eforce_recreate\x18\x01 \x01(\bR\rforceRecreate\x125\n" +
-	"\x14join_traefik_network\x18\x02 \x01(\bH\x00R\x12joinTraefikNetwork\x88\x01\x01B\x17\n" +
-	"\x15_join_traefik_network\"T\n" +
+	"\x14join_traefik_network\x18\x02 \x01(\bH\x00R\x12joinTraefikNetwork\x88\x01\x01\x12\"\n" +
+	"\n" +
+	"version_id\x18\x03 \x01(\tH\x01R\tversionId\x88\x01\x01\x121\n" +
+	"\x14deployment_directory\x18\x04 \x01(\tR\x13deploymentDirectory\x12>\n" +
+	"\x1benvironment_target_revision\x18\x05 \x01(\x03R\x19environmentTargetRevisionB\x17\n" +
+	"\x15_join_traefik_networkB\r\n" +
+	"\v_version_id\"T\n" +
 	"\x11ServiceDeployResp\x12#\n" +
 	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\x12\x1a\n" +
 	"\bwarnings\x18\x02 \x03(\tR\bwarnings\"7\n" +

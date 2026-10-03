@@ -21,6 +21,10 @@ message ServiceResp {
   string effective_error = 18;
   bool active_deployment = 19;
   string code = 20;
+  string deployment_directory = 21;
+  int64 directory_target_revision = 22;
+  string runtime_directory = 23;
+  int64 runtime_target_revision = 24;
 }
 
 message ServiceListResp {
@@ -185,6 +189,9 @@ message ServicePreviewResp {
 message ServiceDeployReq {
   bool force_recreate = 1;
   optional bool join_traefik_network = 2;
+  optional string version_id = 3;
+  string deployment_directory = 4;
+  int64 environment_target_revision = 5;
 }
 
 message ServiceDeployResp {

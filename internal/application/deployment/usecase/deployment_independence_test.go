@@ -76,7 +76,7 @@ func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *ind
 	projectId := "project-1"
 	store := &independentDeploymentStore{runtimeQueryStore: &runtimeQueryStore{
 		application: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo", Kind: status.ApplicationKindStandard},
-		service:     model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-base", Code: "demo-default"},
+		service:     model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-base", Code: "demo-default", ProjectId: projectId, DeploymentDirectory: "/custom/demo", DirectoryTargetRevision: 1},
 		version:     model.Version{Id: "version-base", ApplicationId: "app-1"},
 		components:  []model.VersionComponent{{Id: "component-1", VersionId: "version-base", Name: "web", Image: "nginx:latest"}},
 		serviceComponents: []model.ServiceComponent{{
@@ -91,6 +91,7 @@ func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *ind
 	if gateway {
 		config.ApplicationId = store.application.Id
 		store.application.Code = "traefik"
+		store.application.Kind = status.ApplicationKindGateway
 		store.service.Code = "traefik-default"
 		store.components[0].Name, store.components[0].Image = "traefik", "traefik:3.6"
 		store.serviceComponents[0].ComponentName = "traefik"
@@ -113,8 +114,10 @@ func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *ind
 		t.Fatal(err)
 	}
 	optionsJSON := string(options)
+	workingDirectory := store.service.DeploymentDirectory
 	store.deployment = model.Deployment{
-		Id: "deployment-1", ServiceId: &store.service.Id, VersionId: &store.version.Id,
+		WorkingDirectory: &workingDirectory,
+		Id:               "deployment-1", ServiceId: &store.service.Id, VersionId: &store.version.Id,
 		OptionsJSON: &optionsJSON, EffectivePlanHash: &planHash,
 	}
 	target := deploymentTestTarget(1)
@@ -128,6 +131,11 @@ func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *ind
 type independentDeploymentStore struct {
 	*runtimeQueryStore
 	deployment model.Deployment
+}
+
+func (s *independentDeploymentStore) CreateDeployment(_ context.Context, _ string, deployment model.Deployment) error {
+	s.deployment = deployment
+	return nil
 }
 
 func (s *independentDeploymentStore) BeginDeployment(context.Context, string, string) (bool, error) {

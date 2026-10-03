@@ -242,17 +242,19 @@ func TestHistoricalTargetRevisionAllowsExplicitRepublish(t *testing.T) {
 	oldRecord := string(runtime.files[publicationRecordPath(route.Id)])
 	resolver.target.Environment.TargetType, resolver.target.Environment.SSH = model.EnvironmentTargetTypeLocal, nil
 	resolver.target.Environment.TargetRevision = 2
+	gateway := testGateway()
+	gateway.RuntimeTargetRevision = 2
 	runtime.writes = nil
 	ctx, closeSession, err := m.OpenSession(context.Background(), "project-1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer closeSession()
-	item, err := m.InspectPublication(ctx, "project-1", testGateway(), route)
+	item, err := m.InspectPublication(ctx, "project-1", gateway, route)
 	if err != nil || item == nil || len(runtime.writes) != 0 || string(runtime.files[publicationRecordPath(route.Id)]) != oldRecord {
 		t.Fatalf("historical record was rejected or modified on inspection: item=%v err=%v", item, err)
 	}
-	result, err := m.PublishRoute(ctx, "project-1", testGateway(), route, publicationFingerprint(*item))
+	result, err := m.PublishRoute(ctx, "project-1", gateway, route, publicationFingerprint(*item))
 	var current routeport.Publication
 	_ = json.Unmarshal(runtime.files[publicationRecordPath(route.Id)], &current)
 	if err != nil || result.FileCommit != "committed" || current.TargetRevision != "environment-1:2" {
@@ -261,6 +263,30 @@ func TestHistoricalTargetRevisionAllowsExplicitRepublish(t *testing.T) {
 	resolver.target.Environment.TargetRevision++
 	if _, err := m.InspectPublication(ctx, "project-1", testGateway(), route); apperror.Classify(err).Code != "route_sync_preview_expired" {
 		t.Fatalf("in-flight target change was accepted: %v", err)
+	}
+}
+
+func TestGatewayPublicationTracksCustomRuntimeDirectory(t *testing.T) {
+	runtime := newRouteRuntimeFake()
+	m := newRouteManager(routeTargetResolver{workspaceRoot: "/environment"}, runtime, testRouteTimeouts(), func() bool { return false })
+	ctx, closeSession, err := m.OpenSession(context.Background(), "project-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeSession()
+	gateway := testGateway()
+	gateway.RuntimeDirectory = "/outside/gateway"
+	target, _, base, err := m.publicationWorkspace(ctx, "project-1", gateway)
+	if err != nil || base != gateway.RuntimeDirectory || target.FileScope != base {
+		t.Fatalf("publication scope=%s base=%s err=%v", target.FileScope, base, err)
+	}
+	item, err := m.InspectPublication(ctx, "project-1", gateway, publicationTestRoute("a"))
+	if err != nil || item != nil || len(runtime.writes) != 0 {
+		t.Fatalf("new directory was populated automatically: item=%v err=%v", item, err)
+	}
+	gateway.RuntimeDirectory = "/changed/gateway"
+	if _, err := m.InspectPublication(ctx, "project-1", gateway, publicationTestRoute("a")); apperror.Classify(err).Code != "route_sync_preview_expired" {
+		t.Fatalf("changed directory did not expire publication session: %v", err)
 	}
 }
 

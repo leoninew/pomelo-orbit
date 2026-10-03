@@ -11,6 +11,38 @@ import (
 	"time"
 )
 
+const bindServiceRuntimeDirectory = `-- name: BindServiceRuntimeDirectory :execrows
+UPDATE service SET runtime_directory = ?, runtime_target_revision = ?, updated_at = ?
+WHERE service.id = ? AND service.project_id = ?
+  AND EXISTS (SELECT 1 FROM environment e WHERE e.project_id = service.project_id AND e.target_revision = ?)
+  AND EXISTS (SELECT 1 FROM deployment d WHERE d.id = ? AND d.service_id = service.id AND d.status = 'running')
+`
+
+type BindServiceRuntimeDirectoryParams struct {
+	Directory      string    `db:"directory"`
+	TargetRevision int64     `db:"target_revision"`
+	UpdatedAt      time.Time `db:"updated_at"`
+	Id             string    `db:"id"`
+	ProjectId      string    `db:"project_id"`
+	DeploymentId   string    `db:"deployment_id"`
+}
+
+func (q *Queries) BindServiceRuntimeDirectory(ctx context.Context, arg BindServiceRuntimeDirectoryParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, bindServiceRuntimeDirectory,
+		arg.Directory,
+		arg.TargetRevision,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+		arg.TargetRevision,
+		arg.DeploymentId,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const countServicesByProject = `-- name: CountServicesByProject :one
 SELECT COUNT(*)
 FROM service s
@@ -193,6 +225,46 @@ type DeleteServiceEnvParams struct {
 func (q *Queries) DeleteServiceEnv(ctx context.Context, arg DeleteServiceEnvParams) error {
 	_, err := q.db.ExecContext(ctx, deleteServiceEnv, arg.ServiceId, arg.ProjectId)
 	return err
+}
+
+const directoryServices = `-- name: DirectoryServices :many
+SELECT service.deployment_directory, service.directory_target_revision, service.runtime_directory, service.runtime_target_revision, service.id, service.project_id, service.application_id, service.code, service.version_id, service.status, service.created_at, service.updated_at FROM service WHERE project_id = ?
+`
+
+func (q *Queries) DirectoryServices(ctx context.Context, projectID string) ([]Service, error) {
+	rows, err := q.db.QueryContext(ctx, directoryServices, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Service
+	for rows.Next() {
+		var i Service
+		if err := rows.Scan(
+			&i.DeploymentDirectory,
+			&i.DirectoryTargetRevision,
+			&i.RuntimeDirectory,
+			&i.RuntimeTargetRevision,
+			&i.Id,
+			&i.ProjectId,
+			&i.ApplicationId,
+			&i.Code,
+			&i.VersionId,
+			&i.Status,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const insertService = `-- name: InsertService :exec
@@ -448,7 +520,7 @@ func (q *Queries) InsertServiceEnv(ctx context.Context, arg InsertServiceEnvPara
 }
 
 const listServicesByApplication = `-- name: ListServicesByApplication :many
-SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
+SELECT service.deployment_directory, service.directory_target_revision, service.runtime_directory, service.runtime_target_revision, service.id, service.project_id, service.application_id, service.code, service.version_id, service.status, service.created_at, service.updated_at
 FROM service
 WHERE application_id = ?
   AND project_id = ?
@@ -470,6 +542,10 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, arg ListService
 	for rows.Next() {
 		var i Service
 		if err := rows.Scan(
+			&i.DeploymentDirectory,
+			&i.DirectoryTargetRevision,
+			&i.RuntimeDirectory,
+			&i.RuntimeTargetRevision,
 			&i.Id,
 			&i.ProjectId,
 			&i.ApplicationId,
@@ -493,7 +569,7 @@ func (q *Queries) ListServicesByApplication(ctx context.Context, arg ListService
 }
 
 const listServicesByProject = `-- name: ListServicesByProject :many
-SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at, s.deployment_directory, s.directory_target_revision, s.runtime_directory, s.runtime_target_revision,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -527,18 +603,22 @@ type ListServicesByProjectParams struct {
 }
 
 type ListServicesByProjectRow struct {
-	Id              string    `db:"id"`
-	ProjectId       string    `db:"project_id"`
-	ApplicationId   string    `db:"application_id"`
-	Code            string    `db:"code"`
-	VersionId       string    `db:"version_id"`
-	Status          string    `db:"status"`
-	CreatedAt       time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at"`
-	ApplicationName string    `db:"application_name"`
-	ApplicationCode string    `db:"application_code"`
-	ApplicationKind string    `db:"application_kind"`
-	VersionLabel    string    `db:"version_label"`
+	Id                      string    `db:"id"`
+	ProjectId               string    `db:"project_id"`
+	ApplicationId           string    `db:"application_id"`
+	Code                    string    `db:"code"`
+	VersionId               string    `db:"version_id"`
+	Status                  string    `db:"status"`
+	CreatedAt               time.Time `db:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at"`
+	DeploymentDirectory     string    `db:"deployment_directory"`
+	DirectoryTargetRevision int64     `db:"directory_target_revision"`
+	RuntimeDirectory        string    `db:"runtime_directory"`
+	RuntimeTargetRevision   int64     `db:"runtime_target_revision"`
+	ApplicationName         string    `db:"application_name"`
+	ApplicationCode         string    `db:"application_code"`
+	ApplicationKind         string    `db:"application_kind"`
+	VersionLabel            string    `db:"version_label"`
 }
 
 func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error) {
@@ -570,6 +650,10 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.DeploymentDirectory,
+			&i.DirectoryTargetRevision,
+			&i.RuntimeDirectory,
+			&i.RuntimeTargetRevision,
 			&i.ApplicationName,
 			&i.ApplicationCode,
 			&i.ApplicationKind,
@@ -589,7 +673,7 @@ func (q *Queries) ListServicesByProject(ctx context.Context, arg ListServicesByP
 }
 
 const listServicesByVersion = `-- name: ListServicesByVersion :many
-SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
+SELECT service.deployment_directory, service.directory_target_revision, service.runtime_directory, service.runtime_target_revision, service.id, service.project_id, service.application_id, service.code, service.version_id, service.status, service.created_at, service.updated_at
 FROM service
 WHERE version_id = ?
   AND project_id = ?
@@ -611,6 +695,10 @@ func (q *Queries) ListServicesByVersion(ctx context.Context, arg ListServicesByV
 	for rows.Next() {
 		var i Service
 		if err := rows.Scan(
+			&i.DeploymentDirectory,
+			&i.DirectoryTargetRevision,
+			&i.RuntimeDirectory,
+			&i.RuntimeTargetRevision,
 			&i.Id,
 			&i.ProjectId,
 			&i.ApplicationId,
@@ -634,7 +722,7 @@ func (q *Queries) ListServicesByVersion(ctx context.Context, arg ListServicesByV
 }
 
 const serviceById = `-- name: ServiceById :one
-SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
+SELECT service.deployment_directory, service.directory_target_revision, service.runtime_directory, service.runtime_target_revision, service.id, service.project_id, service.application_id, service.code, service.version_id, service.status, service.created_at, service.updated_at
 FROM service
 WHERE service.id = ?
   AND project_id = ?
@@ -649,6 +737,10 @@ func (q *Queries) ServiceById(ctx context.Context, arg ServiceByIdParams) (Servi
 	row := q.db.QueryRowContext(ctx, serviceById, arg.Id, arg.ProjectId)
 	var i Service
 	err := row.Scan(
+		&i.DeploymentDirectory,
+		&i.DirectoryTargetRevision,
+		&i.RuntimeDirectory,
+		&i.RuntimeTargetRevision,
 		&i.Id,
 		&i.ProjectId,
 		&i.ApplicationId,
@@ -662,7 +754,7 @@ func (q *Queries) ServiceById(ctx context.Context, arg ServiceByIdParams) (Servi
 }
 
 const serviceByProjectAndCode = `-- name: ServiceByProjectAndCode :one
-SELECT id, project_id, application_id, code, version_id, status, created_at, updated_at
+SELECT service.deployment_directory, service.directory_target_revision, service.runtime_directory, service.runtime_target_revision, service.id, service.project_id, service.application_id, service.code, service.version_id, service.status, service.created_at, service.updated_at
 FROM service
 WHERE project_id = ?
   AND code = ?
@@ -677,6 +769,10 @@ func (q *Queries) ServiceByProjectAndCode(ctx context.Context, arg ServiceByProj
 	row := q.db.QueryRowContext(ctx, serviceByProjectAndCode, arg.ProjectId, arg.Code)
 	var i Service
 	err := row.Scan(
+		&i.DeploymentDirectory,
+		&i.DirectoryTargetRevision,
+		&i.RuntimeDirectory,
+		&i.RuntimeTargetRevision,
 		&i.Id,
 		&i.ProjectId,
 		&i.ApplicationId,
@@ -1001,7 +1097,7 @@ func (q *Queries) ServiceEnvByService(ctx context.Context, arg ServiceEnvByServi
 }
 
 const serviceListItemById = `-- name: ServiceListItemById :one
-SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at,
+SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at, s.deployment_directory, s.directory_target_revision, s.runtime_directory, s.runtime_target_revision,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -1017,18 +1113,22 @@ type ServiceListItemByIdParams struct {
 }
 
 type ServiceListItemByIdRow struct {
-	Id              string    `db:"id"`
-	ProjectId       string    `db:"project_id"`
-	ApplicationId   string    `db:"application_id"`
-	Code            string    `db:"code"`
-	VersionId       string    `db:"version_id"`
-	Status          string    `db:"status"`
-	CreatedAt       time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at"`
-	ApplicationName string    `db:"application_name"`
-	ApplicationCode string    `db:"application_code"`
-	ApplicationKind string    `db:"application_kind"`
-	VersionLabel    string    `db:"version_label"`
+	Id                      string    `db:"id"`
+	ProjectId               string    `db:"project_id"`
+	ApplicationId           string    `db:"application_id"`
+	Code                    string    `db:"code"`
+	VersionId               string    `db:"version_id"`
+	Status                  string    `db:"status"`
+	CreatedAt               time.Time `db:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at"`
+	DeploymentDirectory     string    `db:"deployment_directory"`
+	DirectoryTargetRevision int64     `db:"directory_target_revision"`
+	RuntimeDirectory        string    `db:"runtime_directory"`
+	RuntimeTargetRevision   int64     `db:"runtime_target_revision"`
+	ApplicationName         string    `db:"application_name"`
+	ApplicationCode         string    `db:"application_code"`
+	ApplicationKind         string    `db:"application_kind"`
+	VersionLabel            string    `db:"version_label"`
 }
 
 func (q *Queries) ServiceListItemById(ctx context.Context, arg ServiceListItemByIdParams) (ServiceListItemByIdRow, error) {
@@ -1043,6 +1143,10 @@ func (q *Queries) ServiceListItemById(ctx context.Context, arg ServiceListItemBy
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DeploymentDirectory,
+		&i.DirectoryTargetRevision,
+		&i.RuntimeDirectory,
+		&i.RuntimeTargetRevision,
 		&i.ApplicationName,
 		&i.ApplicationCode,
 		&i.ApplicationKind,
@@ -1205,6 +1309,30 @@ type UpdateServiceConfigurationParams struct {
 func (q *Queries) UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error {
 	_, err := q.db.ExecContext(ctx, updateServiceConfiguration,
 		arg.VersionId,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+	)
+	return err
+}
+
+const updateServiceDeploymentDirectory = `-- name: UpdateServiceDeploymentDirectory :exec
+UPDATE service SET deployment_directory = ?, directory_target_revision = ?, updated_at = ?
+WHERE id = ? AND project_id = ?
+`
+
+type UpdateServiceDeploymentDirectoryParams struct {
+	Directory      string    `db:"directory"`
+	TargetRevision int64     `db:"target_revision"`
+	UpdatedAt      time.Time `db:"updated_at"`
+	Id             string    `db:"id"`
+	ProjectId      string    `db:"project_id"`
+}
+
+func (q *Queries) UpdateServiceDeploymentDirectory(ctx context.Context, arg UpdateServiceDeploymentDirectoryParams) error {
+	_, err := q.db.ExecContext(ctx, updateServiceDeploymentDirectory,
+		arg.Directory,
+		arg.TargetRevision,
 		arg.UpdatedAt,
 		arg.Id,
 		arg.ProjectId,

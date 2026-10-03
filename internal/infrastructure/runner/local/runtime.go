@@ -32,19 +32,32 @@ func NewRuntime(pathResolver PhysicalPathResolver) *Runtime {
 	return &Runtime{pathResolver: pathResolver}
 }
 
-func (r *Runtime) ServiceDir(target environmentport.Target, serviceCode string) (string, error) {
-	root, err := r.localWorkspaceRoot(target)
+func (r *Runtime) ServiceDir(target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	if !target.Environment.IsLocal() {
+		return "", errors.New("local deployment runtime received a non-local environment")
+	}
+	if !safePathSegment(location.Code) {
+		return "", errors.New("invalid service code")
+	}
+	directory, err := workspacepath.NormalizeServiceDirectory(location.Directory, "")
 	if err != nil {
 		return "", err
 	}
-	if !safePathSegment(serviceCode) {
-		return "", errors.New("invalid service code")
+	return workspacepath.ExpandLocalHomePath(directory)
+}
+func (r *Runtime) ResolveDirectory(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
 	}
-	return workspacepath.ServiceRoot(root, serviceCode), nil
+	directory, err := r.ServiceDir(target, location)
+	if err != nil {
+		return "", err
+	}
+	return canonicalLocalPath(directory)
 }
 
-func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error) {
-	serviceDir, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (bool, error) {
+	serviceDir, err := r.ServiceDir(target, location)
 	if err != nil {
 		return false, err
 	}
@@ -58,19 +71,23 @@ func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.T
 	return false, err
 }
 
-func (r *Runtime) ComposeMountSourceDir(ctx context.Context, target environmentport.Target, serviceCode string) (string, error) {
-	serviceDir, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) ComposeMountSourceDir(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	serviceDir, err := r.ServiceDir(target, location)
 	if err != nil {
 		return "", err
 	}
 	if r.pathResolver == nil {
 		return "", errors.New("local Docker daemon path resolver is not configured")
 	}
+	serviceDir, err = canonicalLocalPath(serviceDir)
+	if err != nil {
+		return "", err
+	}
 	return r.pathResolver(ctx, serviceDir)
 }
 
 func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Target, workspace deploymentport.Workspace) error {
-	serviceDir, err := r.ServiceDir(target, workspace.ServiceCode)
+	serviceDir, err := r.ServiceDir(target, workspace.Location)
 	if err != nil {
 		return err
 	}
@@ -78,6 +95,36 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 	defer unlock()
 	if err := os.MkdirAll(serviceDir, 0o750); err != nil {
 		return fmt.Errorf("create local service workspace: %w", err)
+	}
+	ownerPath := filepath.Join(serviceDir, ".orbit-service-owner")
+	if err := ensureWorkspacePath(serviceDir, ownerPath); err != nil {
+		return err
+	}
+	owner := target.Environment.Id + "\n" + workspace.Location.Code
+	if body, err := os.ReadFile(ownerPath); err == nil {
+		if string(body) != owner {
+			return errors.New("deployment directory belongs to another service")
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	} else {
+		if _, err := os.Stat(filepath.Join(serviceDir, "docker-compose.yml")); err == nil && !workspace.AdoptExisting {
+			return errors.New("deployment directory contains an unowned Compose configuration")
+		} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		file, err := os.OpenFile(ownerPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err != nil {
+			return err
+		}
+		_, writeErr := file.WriteString(owner)
+		closeErr := file.Close()
+		if writeErr != nil {
+			return writeErr
+		}
+		if closeErr != nil {
+			return closeErr
+		}
 	}
 	for _, directory := range workspace.Directories {
 		if err := ensureWorkspacePath(serviceDir, directory); err != nil {
@@ -92,22 +139,22 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 			return err
 		}
 	}
-	if err := os.WriteFile(filepath.Join(serviceDir, "docker-compose.yml"), []byte(workspace.Compose), 0o644); err != nil {
+	if err := r.writeFile(serviceDir, deploymentport.WorkspaceFile{Path: filepath.Join(serviceDir, "docker-compose.yml"), Content: []byte(workspace.Compose), Mode: 0o644}); err != nil {
 		return fmt.Errorf("write local compose configuration: %w", err)
 	}
 	return nil
 }
 
-func (r *Runtime) Run(ctx context.Context, target environmentport.Target, serviceCode string, log io.Writer, name string, args ...string) error {
-	serviceDir, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) Run(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, log io.Writer, name string, args ...string) error {
+	serviceDir, err := r.ServiceDir(target, location)
 	if err != nil {
 		return err
 	}
 	return run(ctx, serviceDir, log, name, args...)
 }
 
-func (r *Runtime) Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error) {
-	serviceDir, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) Query(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, name string, args ...string) (string, error) {
+	serviceDir, err := r.ServiceDir(target, location)
 	if err != nil {
 		return "", err
 	}
@@ -137,11 +184,14 @@ func (r *Runtime) QueryAtEnvironmentRootInput(ctx context.Context, target enviro
 }
 
 func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []deploymentport.WorkspaceFile, pruneSuffix string) error {
-	root, err := r.localWorkspaceRoot(target)
-	if err != nil {
-		return err
+	root := target.FileScope
+	if root == "" {
+		return errors.New("explicit service file scope is required")
 	}
 	directory = filepath.Clean(directory)
+	if err := ensureWorkspacePath(root, directory); err != nil {
+		return err
+	}
 	if directory == "." || !pathWithin(root, directory) {
 		return errors.New("local sync directory is outside the deployment workspace")
 	}
@@ -278,7 +328,15 @@ func (r *Runtime) lock(key string) func() {
 }
 
 func ensureWorkspacePath(root, value string) error {
-	if !pathWithin(root, value) {
+	canonicalRoot, err := canonicalLocalPath(root)
+	if err != nil {
+		return err
+	}
+	canonicalValue, err := canonicalLocalPath(value)
+	if err != nil {
+		return err
+	}
+	if !pathWithin(root, value) || !pathWithin(canonicalRoot, canonicalValue) {
 		return errors.New("local workspace path is outside the service directory")
 	}
 	return nil
@@ -327,4 +385,27 @@ func query(ctx context.Context, cwd string, stdin []byte, name string, args ...s
 	command.Stderr = &output
 	err := command.Run()
 	return output.String(), err
+}
+
+func canonicalLocalPath(value string) (string, error) {
+	value = filepath.Clean(value)
+	suffix := []string{}
+	for {
+		resolved, err := filepath.EvalSymlinks(value)
+		if err == nil {
+			for index := len(suffix) - 1; index >= 0; index-- {
+				resolved = filepath.Join(resolved, suffix[index])
+			}
+			return resolved, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+		parent := filepath.Dir(value)
+		if parent == value {
+			return "", err
+		}
+		suffix = append(suffix, filepath.Base(value))
+		value = parent
+	}
 }

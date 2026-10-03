@@ -831,6 +831,15 @@ export default {
       saved: 'Service created',
     },
     deploy: {
+      directory: 'Deployment directory',
+      directoryInvalid:
+        'Enter an absolute path or ~/ path for the target platform, without parent segments.',
+      gatewayEntry: 'Deploy from the Gateway page',
+      directoryWarning:
+        'Changing the directory changes mount paths. Existing data is not migrated; assess the impact before proceeding.',
+      gatewayDirectoryWarning:
+        'Changing the directory changes data, routes, certificates and ACME files. Existing data is not migrated; the gateway may be recreated and traffic interrupted. Synchronize routes separately.',
+
       dialogTitle: 'Deploy service',
       description:
         'Deploy the selected version to this service. Deploy updates its runtime configuration.',

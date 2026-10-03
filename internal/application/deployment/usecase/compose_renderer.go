@@ -15,6 +15,7 @@ import (
 // RenderInput contains the already-merged desired state for one Service.
 // Rendering never reads Version defaults and Service overlays independently.
 type RenderInput struct {
+	ResolveMountSource    func(context.Context, string) (string, error)
 	Plan                  model.EffectiveServicePlan
 	LogicalSvcDir         string
 	ComposeMountSourceDir string
@@ -55,6 +56,24 @@ func (s Service) RenderComposeDetailed(ctx context.Context, input RenderInput) (
 		service, mounts, err := renderVersionComponentServiceForPaths(component, input.Plan.Application.Code, input.LogicalSvcDir, input.ComposeMountSourceDir, nil, false)
 		if err != nil {
 			return RenderResult{}, fmt.Errorf("component %s: %w", component.Name, err)
+		}
+		if input.ResolveMountSource != nil {
+			volumes := make([]string, 0, len(mounts))
+			for index := range mounts {
+				mount := &mounts[index]
+				if mount.Relative {
+					mapped, err := input.ResolveMountSource(ctx, mount.LogicalSource)
+					if err != nil {
+						return RenderResult{}, err
+					}
+					mount.Compose = mapped + strings.TrimPrefix(mount.Compose, mount.HostSource)
+					mount.HostSource = mapped
+				}
+				volumes = append(volumes, mount.Compose)
+			}
+			if len(volumes) > 0 {
+				service["volumes"] = volumes
+			}
 		}
 		services[component.Name] = service
 		resolved = append(resolved, mounts...)

@@ -20,16 +20,17 @@ import (
 )
 
 type Service struct {
-	project        repository.ProjectReader
-	application    repository.ApplicationStore
-	service        repository.ServiceStore
-	deployment     repository.DeploymentStore
-	logStore       deploymentport.ExecutionLogStore
-	targetResolver environmentport.TargetResolver
-	runtime        deploymentport.Runtime
-	store          *stores
-	executionStore deploymentport.ExecutionStore
-	dispatcher     deploymentport.Dispatcher
+	versionSelector deploymentport.ServiceVersionSelector
+	project         repository.ProjectReader
+	application     repository.ApplicationStore
+	service         repository.ServiceStore
+	deployment      repository.DeploymentStore
+	logStore        deploymentport.ExecutionLogStore
+	targetResolver  environmentport.TargetResolver
+	runtime         deploymentport.Runtime
+	store           *stores
+	executionStore  deploymentport.ExecutionStore
+	dispatcher      deploymentport.Dispatcher
 
 	logger       *slog.Logger
 	pollInterval time.Duration

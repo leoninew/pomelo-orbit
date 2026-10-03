@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"strings"
 
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/pkg/sftp"
@@ -17,11 +16,11 @@ func (r *Runtime) workspaceFileClient(ctx context.Context, target environmentpor
 		return nil, "", nil, err
 	}
 	resolver := newSFTPPathResolver(client, target.Environment.SSH.Platform)
-	root, err := resolver.resolve(target.Environment.WorkspaceRoot)
+	root, err := resolver.resolve(target.FileScope)
 	if err == nil {
-		value, err = resolver.resolve(value)
+		value, err = resolver.scoped(root, value)
 	}
-	if err == nil && !strings.HasPrefix(value, strings.TrimRight(root, "/")+"/") {
+	if err == nil && value == root {
 		err = errors.New("file operation is outside the deployment workspace")
 	}
 	if err != nil {

@@ -779,3 +779,10 @@ func serviceReadError(kind, id string, err error) error {
 	}
 	return apperror.Wrap(apperror.KindInternal, "Failed to load "+strings.ToLower(kind), err)
 }
+
+func (s Service) SelectServiceDeploymentVersion(ctx context.Context, userId, projectId, serviceId, versionId string) (model.Service, error) {
+	if _, err := s.UpdateServiceBasic(ctx, userId, projectId, serviceId, servicedto.ServiceBasicUpdateInput{VersionId: versionId}); err != nil {
+		return model.Service{}, err
+	}
+	return s.service.Service(ctx, projectId, serviceId)
+}

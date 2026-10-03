@@ -217,7 +217,7 @@ func TestWindowsSSHRuntimeComposeIntegration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	workspace := deploymentport.Workspace{
-		ServiceCode:  serviceCode,
+		Location:     deploymentport.ServiceLocation{Code: serviceCode, Directory: target.Environment.WorkspaceRoot + "/deployment/" + serviceCode},
 		DeploymentId: testId,
 		Compose: `services:
   smoke:
@@ -228,7 +228,7 @@ func TestWindowsSSHRuntimeComposeIntegration(t *testing.T) {
 	if err := runtime.StageWorkspace(ctx, target, workspace); err != nil {
 		t.Fatalf("stage remote Compose workspace: %v", err)
 	}
-	serviceDir, err := runtime.ServiceDir(target, serviceCode)
+	serviceDir, err := runtime.ServiceDir(target, deploymentport.ServiceLocation{Code: serviceCode, Directory: target.Environment.WorkspaceRoot + "/deployment/" + serviceCode})
 	if err != nil {
 		t.Fatalf("resolve remote service directory: %v", err)
 	}
@@ -236,17 +236,17 @@ func TestWindowsSSHRuntimeComposeIntegration(t *testing.T) {
 	t.Cleanup(func() {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cleanupCancel()
-		if err := runtime.Run(cleanupCtx, target, serviceCode, io.Discard, "docker", "compose", "-p", composeProject, "down", "--volumes", "--remove-orphans"); err != nil {
+		if err := runtime.Run(cleanupCtx, target, deploymentport.ServiceLocation{Code: serviceCode, Directory: target.Environment.WorkspaceRoot + "/deployment/" + serviceCode}, io.Discard, "docker", "compose", "-p", composeProject, "down", "--volumes", "--remove-orphans"); err != nil {
 			t.Errorf("clean up remote Compose project: %v", err)
 		}
 	})
 
-	exists, err := runtime.ServiceDirExists(ctx, target, serviceCode)
+	exists, err := runtime.ServiceDirExists(ctx, target, deploymentport.ServiceLocation{Code: serviceCode, Directory: target.Environment.WorkspaceRoot + "/deployment/" + serviceCode})
 	if err != nil || !exists {
 		t.Fatalf("inspect staged remote service directory: exists=%t err=%v", exists, err)
 	}
 	var log bytes.Buffer
-	if err := runtime.Run(ctx, target, serviceCode, &log, "docker", "compose", "-p", composeProject, "up", "--abort-on-container-exit", "--exit-code-from", "smoke", "--no-color"); err != nil {
+	if err := runtime.Run(ctx, target, deploymentport.ServiceLocation{Code: serviceCode, Directory: target.Environment.WorkspaceRoot + "/deployment/" + serviceCode}, &log, "docker", "compose", "-p", composeProject, "up", "--abort-on-container-exit", "--exit-code-from", "smoke", "--no-color"); err != nil {
 		t.Fatalf("run remote Compose smoke service: %v\n%s", err, log.String())
 	}
 	if !strings.Contains(log.String(), "Running: docker compose") {

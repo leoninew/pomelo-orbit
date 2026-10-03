@@ -176,6 +176,10 @@
     @apply !text-xs !font-normal !leading-4 !text-destructive;
   }
 
+  .app-field-warning {
+    @apply !text-xs !font-normal !leading-4 !text-amber-700 dark:!text-amber-400;
+  }
+
   .app-field-hint {
     @apply text-xs text-muted-foreground;
   }

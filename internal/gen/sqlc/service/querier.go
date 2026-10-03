@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	BindServiceRuntimeDirectory(ctx context.Context, arg BindServiceRuntimeDirectoryParams) (int64, error)
 	CountServicesByProject(ctx context.Context, arg CountServicesByProjectParams) (int64, error)
 	DeleteService(ctx context.Context, arg DeleteServiceParams) error
 	DeleteServiceComponentEndpoints(ctx context.Context, arg DeleteServiceComponentEndpointsParams) error
@@ -17,6 +18,7 @@ type Querier interface {
 	DeleteServiceComponentResource(ctx context.Context, arg DeleteServiceComponentResourceParams) error
 	DeleteServiceComponents(ctx context.Context, arg DeleteServiceComponentsParams) error
 	DeleteServiceEnv(ctx context.Context, arg DeleteServiceEnvParams) error
+	DirectoryServices(ctx context.Context, projectID string) ([]Service, error)
 	InsertService(ctx context.Context, arg InsertServiceParams) error
 	InsertServiceComponent(ctx context.Context, arg InsertServiceComponentParams) error
 	InsertServiceComponentEndpoint(ctx context.Context, arg InsertServiceComponentEndpointParams) error
@@ -43,6 +45,7 @@ type Querier interface {
 	UpdateServiceComponentOverlayFields(ctx context.Context, arg UpdateServiceComponentOverlayFieldsParams) error
 	UpdateServiceComponentSource(ctx context.Context, arg UpdateServiceComponentSourceParams) error
 	UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error
+	UpdateServiceDeploymentDirectory(ctx context.Context, arg UpdateServiceDeploymentDirectoryParams) error
 	UpdateServiceStatus(ctx context.Context, arg UpdateServiceStatusParams) error
 }
 

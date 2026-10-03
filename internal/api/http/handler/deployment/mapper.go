@@ -30,7 +30,7 @@ func deploymentResponses(items []model.Deployment) []deploymentv1.DeploymentResp
 }
 
 func deploymentResponse(item model.Deployment) deploymentv1.DeploymentResp {
-	return deploymentv1.DeploymentResp{
+	return deploymentv1.DeploymentResp{WorkingDirectory: item.WorkingDirectory,
 		Id:                       item.Id,
 		ProjectId:                item.ProjectId,
 		ApplicationId:            item.ApplicationId,

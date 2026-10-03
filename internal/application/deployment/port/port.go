@@ -24,6 +24,7 @@ type Dispatcher interface {
 
 // CommandStore is the narrow persistence view used to create deployment commands.
 type CommandStore interface {
+	UpdateServiceDeploymentDirectory(ctx context.Context, projectId, id, directory string, targetRevision int64) error
 	Project(ctx context.Context, id string) (model.Project, error)
 	IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error)
 	Application(ctx context.Context, projectId string, id string) (model.Application, error)
@@ -41,6 +42,8 @@ type CommandStore interface {
 // ExecutionStore is the worker's narrow persistence view. It deliberately
 // exposes domain models rather than generated SQLC or transport types.
 type ExecutionStore interface {
+	DirectoryServices(ctx context.Context, projectId string) ([]model.Service, error)
+	BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, targetRevision int64) error
 	Application(ctx context.Context, projectId string, id string) (model.Application, error)
 	Deployment(ctx context.Context, projectId string, id string) (model.Deployment, error)
 	Version(ctx context.Context, projectId string, id string) (model.Version, error)
@@ -81,24 +84,35 @@ type RuntimeSessions interface {
 	OpenSession(context.Context, environmentport.Target) (context.Context, func(), error)
 }
 
+type ServiceLocation struct {
+	Code      string
+	Directory string
+}
+
+type ServiceVersionSelector interface {
+	SelectServiceDeploymentVersion(ctx context.Context, userId, projectId, serviceId, versionId string) (model.Service, error)
+}
+
 type Workspace struct {
-	ServiceCode  string
-	Directories  []string
-	Files        []WorkspaceFile
-	Compose      string
-	DeploymentId string
+	Location      ServiceLocation
+	AdoptExisting bool
+	Directories   []string
+	Files         []WorkspaceFile
+	Compose       string
+	DeploymentId  string
 }
 
 // Runtime is the only deployment execution boundary. Every operation receives
 // an explicit Project Environment target and dispatches only by target type.
 type Runtime interface {
-	Stream(ctx context.Context, target environmentport.Target, serviceCode string, output io.Writer, name string, args ...string) error
-	ServiceDir(target environmentport.Target, serviceCode string) (string, error)
-	ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error)
-	ComposeMountSourceDir(ctx context.Context, target environmentport.Target, serviceCode string) (string, error)
+	Stream(ctx context.Context, target environmentport.Target, location ServiceLocation, output io.Writer, name string, args ...string) error
+	ServiceDir(target environmentport.Target, location ServiceLocation) (string, error)
+	ServiceDirExists(ctx context.Context, target environmentport.Target, location ServiceLocation) (bool, error)
+	ResolveDirectory(ctx context.Context, target environmentport.Target, location ServiceLocation) (string, error)
+	ComposeMountSourceDir(ctx context.Context, target environmentport.Target, location ServiceLocation) (string, error)
 	StageWorkspace(ctx context.Context, target environmentport.Target, workspace Workspace) error
-	Run(ctx context.Context, target environmentport.Target, serviceCode string, log io.Writer, name string, args ...string) error
-	Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error)
+	Run(ctx context.Context, target environmentport.Target, location ServiceLocation, log io.Writer, name string, args ...string) error
+	Query(ctx context.Context, target environmentport.Target, location ServiceLocation, name string, args ...string) (string, error)
 	QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error)
 	QueryAtEnvironmentRootInput(ctx context.Context, target environmentport.Target, stdin []byte, name string, args ...string) (string, error)
 	SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []WorkspaceFile, pruneSuffix string) error

@@ -233,7 +233,7 @@ func equalStrings(left, right []string) bool {
 }
 
 func testGateway() model.GatewayConfig {
-	return model.GatewayConfig{RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, RuntimeServiceCode: "traefik-default"}
+	return model.GatewayConfig{RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: model.GatewayRestApiHostUrl, RuntimeServiceCode: "traefik-default", RuntimeDirectory: "/srv/orbit/traefik-default", RuntimeTargetRevision: 1}
 }
 
 type routeTargetResolver struct {
@@ -247,7 +247,7 @@ func (r routeTargetResolver) ResolveProjectTarget(_ context.Context, projectId s
 	if targetType == "" {
 		targetType = model.EnvironmentTargetTypeLocal
 	}
-	environment := model.Environment{Id: "environment-1", ProjectId: projectId, TargetType: targetType, WorkspaceRoot: r.workspaceRoot}
+	environment := model.Environment{Id: "environment-1", ProjectId: projectId, TargetRevision: 1, TargetType: targetType, WorkspaceRoot: r.workspaceRoot}
 	if targetType == model.EnvironmentTargetTypeSSH {
 		environment.SSH = &model.EnvironmentSSHTarget{Platform: r.platform}
 	}
@@ -295,29 +295,29 @@ func (r *routeRuntimeFake) OpenSession(ctx context.Context, _ environmentport.Ta
 	return ctx, func() {}, nil
 }
 
-func (r *routeRuntimeFake) ServiceDir(_ environmentport.Target, serviceCode string) (string, error) {
-	return "/srv/orbit/" + serviceCode, nil
+func (r *routeRuntimeFake) ServiceDir(_ environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	return location.Directory, nil
 }
-func (r *routeRuntimeFake) ServiceDirExists(context.Context, environmentport.Target, string) (bool, error) {
+func (r *routeRuntimeFake) ServiceDirExists(context.Context, environmentport.Target, deploymentport.ServiceLocation) (bool, error) {
 	return true, nil
 }
-func (r *routeRuntimeFake) ComposeMountSourceDir(_ context.Context, target environmentport.Target, serviceCode string) (string, error) {
+func (r *routeRuntimeFake) ComposeMountSourceDir(_ context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
 	if r.physicalBase != "" {
 		return r.physicalBase, nil
 	}
-	return r.ServiceDir(target, serviceCode)
+	return r.ServiceDir(target, location)
 }
 func (r *routeRuntimeFake) StageWorkspace(context.Context, environmentport.Target, deploymentport.Workspace) error {
 	return nil
 }
-func (r *routeRuntimeFake) Run(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
+func (r *routeRuntimeFake) Run(context.Context, environmentport.Target, deploymentport.ServiceLocation, io.Writer, string, ...string) error {
 	return nil
 }
-func (r *routeRuntimeFake) Stream(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
+func (r *routeRuntimeFake) Stream(context.Context, environmentport.Target, deploymentport.ServiceLocation, io.Writer, string, ...string) error {
 	return nil
 }
-func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error) {
-	r.commands = append(r.commands, routeRuntimeCommand{target: target, serviceCode: serviceCode, name: name, args: append([]string(nil), args...)})
+func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.Target, location deploymentport.ServiceLocation, name string, args ...string) (string, error) {
+	r.commands = append(r.commands, routeRuntimeCommand{target: target, serviceCode: location.Code, name: name, args: append([]string(nil), args...)})
 	if name == "docker" && strings.Join(args, " ") == "compose ps -q traefik" {
 		if r.containerError != nil {
 			return r.containerDiagnostic, r.containerError
@@ -345,7 +345,7 @@ func (r *routeRuntimeFake) QueryAtEnvironmentRoot(_ context.Context, target envi
 }
 func (r *routeRuntimeFake) QueryAtEnvironmentRootInput(ctx context.Context, target environmentport.Target, _ []byte, name string, args ...string) (string, error) {
 	r.environmentQueries++
-	return r.Query(ctx, target, "", name, args...)
+	return r.Query(ctx, target, deploymentport.ServiceLocation{}, name, args...)
 }
 func (r *routeRuntimeFake) query(target environmentport.Target, args ...string) (string, error) {
 	r.lastTarget = target
@@ -467,4 +467,8 @@ func (r *routeRuntimeFake) configurationResponse(endpoint string) string {
 	}
 	body, _ := json.Marshal(items)
 	return string(body)
+}
+
+func (r *routeRuntimeFake) ResolveDirectory(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	return r.ServiceDir(target, location)
 }

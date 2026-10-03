@@ -13,7 +13,7 @@ func TestRuntimeDispatchesOnlyByExplicitTargetType(t *testing.T) {
 	ssh := &runtimeFake{serviceDir: "ssh"}
 	runtime := New(local, ssh)
 
-	localDir, err := runtime.ServiceDir(environmentport.Target{Environment: model.Environment{TargetType: model.EnvironmentTargetTypeLocal}}, "service")
+	localDir, err := runtime.ServiceDir(environmentport.Target{Environment: model.Environment{TargetType: model.EnvironmentTargetTypeLocal}}, deploymentport.ServiceLocation{Code: "service", Directory: "/custom/service"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +24,7 @@ func TestRuntimeDispatchesOnlyByExplicitTargetType(t *testing.T) {
 	sshDir, err := runtime.ServiceDir(environmentport.Target{Environment: model.Environment{
 		TargetType: model.EnvironmentTargetTypeSSH,
 		SSH:        &model.EnvironmentSSHTarget{Host: "127.0.0.1"},
-	}}, "service")
+	}}, deploymentport.ServiceLocation{Code: "service", Directory: "/custom/service"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ type runtimeFake struct {
 	calls      int
 }
 
-func (r *runtimeFake) ServiceDir(environmentport.Target, string) (string, error) {
+func (r *runtimeFake) ServiceDir(environmentport.Target, deploymentport.ServiceLocation) (string, error) {
 	r.calls++
 	return r.serviceDir, nil
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -44,7 +45,11 @@ func (s Service) ResolveRuntimeTarget(ctx context.Context, userId, projectId, se
 	if err != nil {
 		return deploymentdto.RuntimeTarget{}, err
 	}
-	workingDirectory, err := s.runtime.ServiceDir(target, service.Code)
+	location, err := runtimeServiceLocation(target, service)
+	if err != nil {
+		return deploymentdto.RuntimeTarget{}, err
+	}
+	workingDirectory, err := s.runtime.ResolveDirectory(ctx, target, location)
 	if err != nil {
 		return deploymentdto.RuntimeTarget{}, apperror.Wrap(apperror.KindInternal, "Failed to resolve remote runtime directory", err)
 	}
@@ -245,14 +250,14 @@ func (s Service) runRuntimeCommand(ctx context.Context, target deploymentdto.Run
 	if err != nil {
 		return "", err
 	}
-	exists, err := s.runtime.ServiceDirExists(ctx, sshTarget, target.ServiceCode)
+	exists, err := s.runtime.ServiceDirExists(ctx, sshTarget, deploymentport.ServiceLocation{Code: target.ServiceCode, Directory: target.WorkingDirectory})
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to inspect remote service workspace", err)
 	}
 	if !exists {
 		return "", apperror.New(apperror.KindNotFound, "managed runtime workspace does not exist")
 	}
-	output, err := s.runtime.Query(ctx, sshTarget, target.ServiceCode, command.Name, command.Args...)
+	output, err := s.runtime.Query(ctx, sshTarget, deploymentport.ServiceLocation{Code: target.ServiceCode, Directory: target.WorkingDirectory}, command.Name, command.Args...)
 	if err != nil {
 		return output, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}

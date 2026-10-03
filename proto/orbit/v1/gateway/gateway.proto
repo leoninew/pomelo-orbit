@@ -80,6 +80,10 @@ message GatewayResp {
   repeated GatewayVersionBinding version_bindings = 23;
   string rest_api_host_url = 24;
   string external_domain = 25;
+  string deployment_directory = 26;
+  int64 directory_target_revision = 27;
+  string runtime_directory = 28;
+  int64 runtime_target_revision = 29;
 }
 
 message GatewayPaginatedResp {

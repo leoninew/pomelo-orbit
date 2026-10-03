@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -40,6 +41,8 @@ func TestGatewayDeploymentOverwritesStaticConfigAndRecreatesContainer(t *testing
 			service := Service{runtime: workspace, logStore: workspace}
 			plan := testGatewayEnrichmentPlan("", "", "")
 			plan.Service.Code = "traefik-default"
+			plan.Service.DeploymentDirectory = "/custom/traefik"
+			service.executionStore = &runtimeQueryStore{service: plan.Service}
 			plan.Components[0].Image = "traefik:3.6"
 			plan.Components[0].Mounts = plan.Components[0].Mounts[:1]
 			plan.Components[0].Mounts[0].Content = "providers:\n  rest:\n    insecure: true\n"
@@ -73,7 +76,7 @@ type gatewayDeploymentRuntimeFake struct {
 	command string
 }
 
-func (f *gatewayDeploymentRuntimeFake) Run(_ context.Context, _ environmentport.Target, _ string, _ io.Writer, command string, args ...string) error {
+func (f *gatewayDeploymentRuntimeFake) Run(_ context.Context, _ environmentport.Target, _ deploymentport.ServiceLocation, _ io.Writer, command string, args ...string) error {
 	f.command = command + " " + strings.Join(args, " ")
 	return nil
 }
@@ -88,7 +91,10 @@ func (f *gatewayDeploymentCoordinatorFake) GatewayForDeployment(context.Context,
 	return f.gateway, nil
 }
 
-func (f *gatewayDeploymentCoordinatorFake) SelectGatewayDeploymentVersion(_ context.Context, _ string, _ model.Application, _ model.Service) (model.Service, error) {
+func (f *gatewayDeploymentCoordinatorFake) SelectGatewayDeploymentVersion(_ context.Context, _ string, _ model.Application, service model.Service) (model.Service, error) {
 	f.selectCalls++
+	if f.selected.Id == "" {
+		return service, nil
+	}
 	return f.selected, nil
 }

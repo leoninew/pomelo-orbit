@@ -68,6 +68,7 @@ func (r Repository) CreateDeployment(ctx context.Context, projectId string, depl
 		startedAt = time.Now().UTC()
 	}
 	err := r.q(ctx).CreateDeployment(ctx, deploymentsqlc.CreateDeploymentParams{
+		WorkingDirectory:          dbmodel.NullString(deployment.WorkingDirectory),
 		Id:                        deployment.Id,
 		ProjectId:                 projectScopeId(projectId),
 		ApplicationId:             dbmodel.NullString(deployment.ApplicationId),
@@ -157,7 +158,7 @@ func (r Repository) ListDeployments(ctx context.Context, projectId string, appli
 	for _, row := range rows {
 		items = append(items, deploymentFrom(
 			row.Id, row.ProjectId, row.ApplicationId, row.ApplicationName, row.VersionId, row.ServiceId,
-			row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId,
+			row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId, row.WorkingDirectory,
 			row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 			row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentId,
 		))
@@ -172,7 +173,7 @@ func (r Repository) Deployment(ctx context.Context, projectId string, id string)
 	}
 	return deploymentFrom(
 		row.Id, row.ProjectId, row.ApplicationId, row.ApplicationName, row.VersionId, row.ServiceId,
-		row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId,
+		row.EnvironmentId, row.EnvironmentTargetType, row.EnvironmentTargetRevision, row.SSHCredentialId, row.SshCredentialRevision, row.GatewayApplicationId, row.WorkingDirectory,
 		row.OptionsJson, row.EffectivePlanHash, row.OperationType, row.TriggerType, row.CommandText, row.Status, row.StartedAt, row.FinishedAt,
 		row.DurationMs, row.LogText, row.ErrorMessage, row.IsRollback, row.RollbackFromDeploymentId,
 	), nil
@@ -264,12 +265,13 @@ func deploymentFrom(
 	id string, projectId, applicationId sql.NullString, applicationName string,
 	versionId, serviceId, environmentId, environmentTargetType sql.NullString,
 	environmentTargetRevision sql.NullInt64, sshCredentialId sql.NullString, sshCredentialRevision sql.NullInt64,
-	gatewayApplicationId, optionsJSON, effectivePlanHash sql.NullString,
+	gatewayApplicationId, workingDirectory, optionsJSON, effectivePlanHash sql.NullString,
 	operationType, triggerType, commandText, deployStatus string,
 	startedAt time.Time, finishedAt sql.NullTime, durationMs sql.NullInt64,
 	logText, errorMessage sql.NullString, isRollback int64, rollbackFrom sql.NullString,
 ) model.Deployment {
 	return model.Deployment{
+		WorkingDirectory:          dbmodel.StringPtr(workingDirectory),
 		Id:                        id,
 		ProjectId:                 dbmodel.StringPtr(projectId),
 		ApplicationId:             dbmodel.StringPtr(applicationId),

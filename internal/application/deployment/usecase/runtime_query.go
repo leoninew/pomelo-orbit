@@ -6,6 +6,7 @@ import (
 	"path"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -25,7 +26,14 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, projectId
 	if err != nil {
 		return nil, err
 	}
-	exists, err := s.runtime.ServiceDirExists(ctx, target, service.Code)
+	location, err := runtimeServiceLocation(target, service)
+	if errors.Is(err, deploymentport.ErrLogNotReady) {
+		return []deploymentdto.RuntimeContainer{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	exists, err := s.runtime.ServiceDirExists(ctx, target, location)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to inspect service workspace", err)
 	}
@@ -33,7 +41,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, projectId
 		return []deploymentdto.RuntimeContainer{}, nil
 	}
 	command := containerPsCommand(composeProjectName(service.Code))
-	output, err := s.runtime.Query(ctx, target, service.Code, command.Name, command.Args...)
+	output, err := s.runtime.Query(ctx, target, location, command.Name, command.Args...)
 	if err != nil {
 		return nil, apperror.New(apperror.KindInternal, outputOrError(output, err))
 	}

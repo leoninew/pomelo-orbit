@@ -660,7 +660,7 @@ func TestMountToolDocumentsAndMapsControlledFile(t *testing.T) {
 	}
 }
 
-func TestDeployToolDocumentsServiceBoundVersion(t *testing.T) {
+func TestDeployToolDocumentsConfirmedDirectoryAndOptionalVersion(t *testing.T) {
 	server, err := NewServer(Dependencies{ActorUserId: "actor"})
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
@@ -671,7 +671,7 @@ func TestDeployToolDocumentsServiceBoundVersion(t *testing.T) {
 	}
 	for _, tool := range tools.Tools {
 		if tool.Name == "orbit_deploy" {
-			if !strings.Contains(tool.Description, "Service's currently selected Version") {
+			if !strings.Contains(tool.Description, "confirmed full deployment directory") || !strings.Contains(tool.Description, "Optionally select a Version") {
 				t.Fatalf("deploy description = %q", tool.Description)
 			}
 			return

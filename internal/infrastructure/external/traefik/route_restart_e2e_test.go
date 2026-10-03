@@ -33,11 +33,11 @@ func TestFileProviderRestoresRoutesAfterTraefikRestart(t *testing.T) {
 	manager := newRouteManager(resolver, runtime, testRouteTimeouts(), func() bool { return false })
 	gateway := testGateway()
 	target, _ := resolver.ResolveProjectTarget(ctx, "project-1")
-	base, err := runtime.ServiceDir(target, gateway.RuntimeServiceCode)
+	base, err := runtime.ServiceDir(target, gatewayLocation(gateway))
 	if err != nil {
 		t.Fatal(err)
 	}
-	physicalBase, err := runtime.ComposeMountSourceDir(ctx, target, gateway.RuntimeServiceCode)
+	physicalBase, err := runtime.ComposeMountSourceDir(ctx, target, gatewayLocation(gateway))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestFileProviderRestoresRoutesAfterTraefikRestart(t *testing.T) {
 	composeFile := filepath.Join(base, "docker-compose.yml")
 	compose := fmt.Sprintf("name: %s\nservices:\n  traefik:\n    image: traefik:3.6\n    container_name: %s\n    ports: [\"127.0.0.1::80\", \"127.0.0.1::443\", \"127.0.0.1::8080\"]\n    volumes:\n      - '%s/traefik.yml:/etc/traefik/traefik.yml:ro'\n      - '%s/gateway/dynamic:/etc/traefik/dynamic:ro'\n      - '%s/gateway/certs:/etc/traefik/certs:ro'\n      - '%s/gateway/acme:/letsencrypt'\n", container, container, filepath.ToSlash(physicalBase), filepath.ToSlash(physicalBase), filepath.ToSlash(physicalBase), filepath.ToSlash(physicalBase))
 	static := "api:\n  insecure: true\nentryPoints:\n  web:\n    address: :80\n  websecure:\n    address: :443\nproviders:\n  file:\n    directory: /etc/traefik/dynamic\n    watch: true\n"
-	if err := runtime.StageWorkspace(ctx, target, deploymentport.Workspace{ServiceCode: gateway.RuntimeServiceCode, Compose: compose, Directories: []string{filepath.Join(base, "gateway", "dynamic"), filepath.Join(base, "gateway", "certs"), filepath.Join(base, "gateway", "acme")}, Files: []deploymentport.WorkspaceFile{{Path: filepath.Join(base, "traefik.yml"), Content: []byte(static), Mode: 0o644}}}); err != nil {
+	if err := runtime.StageWorkspace(ctx, target, deploymentport.Workspace{Location: gatewayLocation(gateway), Compose: compose, Directories: []string{filepath.Join(base, "gateway", "dynamic"), filepath.Join(base, "gateway", "certs"), filepath.Join(base, "gateway", "acme")}, Files: []deploymentport.WorkspaceFile{{Path: filepath.Join(base, "traefik.yml"), Content: []byte(static), Mode: 0o644}}}); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -203,7 +203,7 @@ func TestFileProviderRestoresRoutesAfterTraefikRestart(t *testing.T) {
 	if err := os.Remove(dynamicDirectory); err != nil {
 		t.Fatal(err)
 	}
-	if err := runtime.StageWorkspace(ctx, target, deploymentport.Workspace{ServiceCode: gateway.RuntimeServiceCode, Compose: compose, Directories: []string{dynamicDirectory}}); err != nil {
+	if err := runtime.StageWorkspace(ctx, target, deploymentport.Workspace{Location: gatewayLocation(gateway), Compose: compose, Directories: []string{dynamicDirectory}}); err != nil {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(dynamicDirectory)

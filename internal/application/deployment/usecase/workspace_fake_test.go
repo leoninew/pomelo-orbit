@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"io/fs"
-	"path/filepath"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
@@ -33,16 +32,16 @@ func testWorkspace(dataRoot string) *workspaceFake {
 	return &workspaceFake{dataRoot: dataRoot}
 }
 
-func (w *workspaceFake) ServiceDir(_ environmentport.Target, serviceCode string) (string, error) {
-	return filepath.ToSlash(filepath.Join(w.dataRoot, "cd", serviceCode)), nil
+func (w *workspaceFake) ServiceDir(_ environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	return location.Directory, nil
 }
 
-func (w *workspaceFake) ServiceDirExists(context.Context, environmentport.Target, string) (bool, error) {
+func (w *workspaceFake) ServiceDirExists(context.Context, environmentport.Target, deploymentport.ServiceLocation) (bool, error) {
 	return w.hasServiceDir, nil
 }
 
-func (w *workspaceFake) ComposeMountSourceDir(_ context.Context, target environmentport.Target, serviceCode string) (string, error) {
-	return w.ServiceDir(target, serviceCode)
+func (w *workspaceFake) ComposeMountSourceDir(_ context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	return w.ServiceDir(target, location)
 }
 
 func (w *workspaceFake) StageWorkspace(_ context.Context, _ environmentport.Target, workspace deploymentport.Workspace) error {
@@ -50,11 +49,11 @@ func (w *workspaceFake) StageWorkspace(_ context.Context, _ environmentport.Targ
 	return nil
 }
 
-func (w *workspaceFake) Run(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
+func (w *workspaceFake) Run(context.Context, environmentport.Target, deploymentport.ServiceLocation, io.Writer, string, ...string) error {
 	return w.queryErr
 }
 
-func (w *workspaceFake) Stream(context.Context, environmentport.Target, string, io.Writer, string, ...string) error {
+func (w *workspaceFake) Stream(context.Context, environmentport.Target, deploymentport.ServiceLocation, io.Writer, string, ...string) error {
 	return w.queryErr
 }
 
@@ -67,7 +66,7 @@ type emptyLogReader struct{}
 func (emptyLogReader) Read(context.Context, int64, int) ([]byte, bool, error) { return nil, false, nil }
 func (emptyLogReader) Close() error                                           { return nil }
 
-func (w *workspaceFake) Query(context.Context, environmentport.Target, string, string, ...string) (string, error) {
+func (w *workspaceFake) Query(context.Context, environmentport.Target, deploymentport.ServiceLocation, string, ...string) (string, error) {
 	w.queryCalled = true
 	return w.queryOutput, w.queryErr
 }
@@ -131,4 +130,8 @@ func testSSHTarget(projectId string) environmentport.Target {
 
 func (w *workspaceFake) SyncFiles(context.Context, environmentport.Target, string, []deploymentport.WorkspaceFile, string) error {
 	return nil
+}
+
+func (w *workspaceFake) ResolveDirectory(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	return w.ServiceDir(target, location)
 }

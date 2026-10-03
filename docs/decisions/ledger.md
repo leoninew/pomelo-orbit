@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-10-03 10:40:00
+最后修改时间: 2026-10-04 00:16:31
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -11,7 +11,7 @@ Doc role: living SoT
 | C-01 | Version = 结构化业务规格，经 Render 生成 compose | 非 compose 全文当 Version 存储 |
 | C-02 | 运行态 SoT = Service（app+env+instance） | 非 Application undeployed/deployed 状态机 |
 | C-03 | Deployment = 操作流水 + 任务状态 | worker 执行 Docker |
-| C-04 | Gateway 身份由 `gateway_config` 关联表达，不由 Application.kind 决定 | Application/Version/Component/Service 保持通用；历史 kind 枚举不承载 Gateway 行为 |
+| C-04 | Application.kind 明确区分 `standard` 与 `gateway` | Gateway 创建写入 `gateway`，已有类型按 `gateway_config` 真实关联纠正；服务入口依据应用类型禁用 Gateway 部署。GatewayConfig 保存配置，Environment binding 校验归属，Gateway 从专属入口部署 |
 | C-05 | 暴露 SoT = VersionExpose（protocol + access + ports） | 无域名列 |
 | C-06 | 域名 / REST 控制面在 GatewayConfig | `internal_domain` 用于 Docker labels 和 Gateway 派生地址；`external_domain` 仅辅助自定义 Route 表单拼接完整域名；另有 `rest_api_url` |
 | C-07 | Environment = Project 下元数据 | 无域名 / ingress 用户 SoT |
@@ -43,7 +43,7 @@ Doc role: living SoT
 | X-07 | 全局 env `traefik.api_url` / `domain_suffix` 产品路径 | C-06 |
 | X-08 | Python/FastAPI 后端架构文档 | C-12；归档 designs |
 | X-09 | 独立 pomelo-orbit-worker 多角色部署 | C-09 |
-| X-10 | 以 code 或 Application.kind 推断 Gateway 行为 | C-04 + GatewayConfig |
+| X-10 | 以名称、code 或镜像推断 Gateway 身份 | C-04：明确的 Application.kind + GatewayConfig 配置及 Environment binding |
 | X-11 | Route 普通写操作立即发布，或同步时覆盖整个 REST provider | C-17；保存与发布分离，只处理确认范围内的独立文件，未知资源保留 |
 | X-12 | MCP 浏览器 grant、loopback callback、token file、HTTP /mcp Bearer transport | C-18；显式进程凭据与内存 Core |
 | X-13 | Project 创建时自动预建 local Environment，空库预置 Gateway/Service | C-19；Project 与 membership 创建后由 Web Wizard 配置 Environment、Probe 与 Gateway |

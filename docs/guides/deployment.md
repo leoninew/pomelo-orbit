@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-10-03 10:40:00
+最后修改时间: 2026-10-04 00:16:31
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -18,7 +18,7 @@ Application + Version + Service
 
 一个 Environment 只能部署一个 Gateway。Environment 与已绑定 Gateway 不能删除；它们与 Project、Gateway Application 的关系均为逻辑外键。
 
-Service 是 Application 下的独立运行绑定。一个 Application 可以按需要创建多条 Service；`service.code` 在当前 Project 内唯一，并作为部署工作目录、Compose project、日志目录和派生路由名的稳定标识。创建页面可建议 `<application-code>-default`，但该 code 可编辑且 `default` 不表示实例或默认 Service。部署、停止和运行时查询均以显式 `service_id` 定位目标。
+Service 是 Application 下的独立运行绑定。一个 Application 可以按需要创建多条 Service；`service.code` 在当前 Project 内唯一，并作为 Compose project、日志目录和派生路由名的稳定标识。创建页面可建议 `<application-code>-default`，但该 code 可编辑且 `default` 不表示实例或默认 Service。部署、停止和运行时查询均以显式 `service_id` 定位目标。
 
 ## Environment target
 
@@ -59,3 +59,11 @@ Service deploy/restart 不读取自定义 Route 的业务配置、发布记录�
 迁移脚本初始化或已部署 REST 的受管 Gateway，无需修改 YAML：线下告知用户重新部署 Gateway 一次，再从现有入口显式同步路由。首次切换不转换旧 REST 快照，重建后到同步完成前路由可能暂不可用，应安排维护时间；不增加迁移 UI，也不改写已执行迁移。
 
 TCP entrypoint/host port 是 Gateway Version Component endpoint。需要新的 TCP 端口时，在 Version 中声明、部署该 Version，再创建 TCP Route。
+
+## 确认部署目录
+
+普通服务部署弹窗同时选择版本并确认完整目录；默认根据当前 Environment 拼出 `<workspace_root>/deployment/<service-code>`。输入可覆盖为平台绝对路径或 `~` / `~/...`，也可位于工作区之外，不再追加服务编码。Gateway 使用 `kind=gateway`，只从网关入口部署；网关弹窗使用同样的路径控件，版本仍按保存的 ACME profile 选择。
+
+已部署服务改目录会警告相对挂载数据、重建和中断风险，但允许直接提交。系统不迁移或清理旧目录。Gateway 改目录还会改变路由、证书和 ACME 文件位置，需要另行显式同步 Route。环境配置发生变化时重新打开弹窗确认目录。
+
+升级到目录快照模型前，应完成或取消活动部署，升级后重新提交需要执行的任务；新的配置 hash 包含目录和目标修订，旧任务可能因 hash 不匹配而失败。迁移按环境原布局回填确认目录，仅在目标修订匹配的运行或成功任务历史存在时回填运行目录；未知历史的 Deployment 不补写目录。历史被清空而无法确认运行位置的服务需要重新部署；若原目录存在无归属的 Compose，先核对文件来源和保留的数据，再处理归属，不会自动覆盖或搬迁。

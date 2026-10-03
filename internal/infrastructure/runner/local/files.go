@@ -13,11 +13,14 @@ func (r *Runtime) workspaceFilePath(ctx context.Context, target environmentport.
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	root, err := r.localWorkspaceRoot(target)
-	if err != nil {
-		return "", err
+	root := target.FileScope
+	if !target.Environment.IsLocal() || root == "" {
+		return "", errors.New("explicit service file scope is required")
 	}
 	value = filepath.Clean(value)
+	if err := ensureWorkspacePath(root, value); err != nil {
+		return "", err
+	}
 	if value == root || !pathWithin(root, value) {
 		return "", errors.New("file operation is outside the deployment workspace")
 	}

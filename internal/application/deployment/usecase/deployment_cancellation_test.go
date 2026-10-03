@@ -69,3 +69,7 @@ func (s *canceledServiceStore) UpdateServiceStatus(_ context.Context, _, _ strin
 	s.status = value
 	return nil
 }
+
+func (s *canceledServiceStore) Service(context.Context, string, string) (model.Service, error) {
+	return model.Service{Id: "service-1", Code: "demo-default", RuntimeDirectory: "/custom/demo"}, nil
+}

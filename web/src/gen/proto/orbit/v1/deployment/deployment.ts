@@ -9,6 +9,7 @@
 export const protobufPackage = "orbit.v1.deployment";
 
 export interface DeploymentResp {
+  working_directory?: string | undefined;
   id: string;
   project_id?: string | undefined;
   application_id?: string | undefined;

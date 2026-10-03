@@ -18,7 +18,7 @@ ORDER BY CASE profile
 END;
 
 -- name: GatewayRuntimeServiceCode :one
-SELECT code
+SELECT code, deployment_directory, directory_target_revision, runtime_directory, runtime_target_revision
 FROM service
 WHERE application_id = ?
 ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END,

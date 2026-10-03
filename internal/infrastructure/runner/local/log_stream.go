@@ -13,8 +13,8 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/stream"
 )
 
-func (r *Runtime) Stream(ctx context.Context, target environmentport.Target, serviceCode string, output io.Writer, name string, args ...string) error {
-	directory, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) Stream(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, output io.Writer, name string, args ...string) error {
+	directory, err := r.ServiceDir(target, location)
 	if err != nil {
 		return err
 	}

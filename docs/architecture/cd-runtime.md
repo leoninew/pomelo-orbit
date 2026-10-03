@@ -1,11 +1,11 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-03 12:59:03
+最后修改时间: 2026-10-04 00:16:31
 
 Doc role: living architecture
 
 ## 运行时模型
 
-Project 的共用 Environment 是 CD 的部署运行边界：当前初始化向导完成后的 Project 有一个 Environment 和一个默认 Gateway；新建 Project 不预置这两项。Application、Version、Component、Service 与 Deployment 仍是 Compose 拓扑的唯一来源；Gateway 是关联 `GatewayConfig` 的普通 Application。
+Project 的共用 Environment 是 CD 的部署运行边界：当前初始化向导完成后的 Project 有一个 Environment 和一个默认 Gateway；新建 Project 不预置这两项。Application、Version、Component、Service 与 Deployment 仍是 Compose 拓扑的唯一来源；Gateway 是 `kind=gateway` 且关联 `GatewayConfig` 的 Application。
 
 ```text
 Project
@@ -14,15 +14,15 @@ Project
   -> Deployment snapshot
   -> Version/Component effective plan
   -> target runtime
-     local -> Environment.workspace_root/{pipeline,deployment} + control-plane Docker daemon
-     ssh   -> Environment.workspace_root/deployment + docker compose over SSH
+     local -> explicit Service directory + control-plane Docker daemon
+     ssh   -> explicit remote Service directory + docker compose over SSH
 ```
 
-组合根按持久化的 `target_type` 注入 local 与 SSH runtime dispatcher；不会根据 hostname、空 SSH 字段或执行失败猜测另一种 runtime。两类 runtime 都从 Environment 保存的 `workspace_root` materialize Service workspace，保存值可以是绝对路径或 `~` / `~/...`；local 使用时把 `~` 展开为控制面进程用户主目录并交给 Docker daemon，SSH 在远端把 `~` 展开为登录用户主目录后执行。SSH 支持 Linux OpenSSH + Docker，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers，并维持私钥与 host-key pinning。`ssh` 到 loopback 也走 SSH runtime。控制面部署执行日志使用独立的 `logging.deployment_root`，不属于 Environment workspace。
+组合根按持久化的 `target_type` 注入 local 与 SSH runtime dispatcher；不会根据 hostname、空 SSH 字段或执行失败猜测另一种 runtime。两类 runtime 使用 Service 确认的目录 materialize workspace，首次候选来自 Environment 的 `workspace_root`。保存值可以是绝对路径或 `~` / `~/...`；local 使用时把 `~` 展开为控制面进程用户主目录并交给 Docker daemon，SSH 在远端把 `~` 展开为登录用户主目录后执行。SSH 支持 Linux OpenSSH + Docker，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers，并维持私钥与 host-key pinning。`ssh` 到 loopback 也走 SSH runtime。控制面部署执行日志使用独立的 `logging.deployment_root`，不属于 Environment workspace。
 
 Environment target 是 Project 的独占部署边界：local target 全局唯一，SSH target 按精确 host + port 唯一。这样固定 Gateway 端口和共享 `traefik` 网络不会被多个 Project 同时占用。
 
-Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、Route 文件/证书发布和 Traefik API 查询通过同一个 target runtime 执行。Service 目录统一为 `<workspace_root>/deployment/<service-code>`；Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 使用 Environment binding 的受管私钥验证认证、pinned host key 和目标 Docker prerequisites。
+Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、Route 文件/证书发布和 Traefik API 查询通过同一个 target runtime 执行。Service 首次目录默认为 `<workspace_root>/deployment/<service-code>`，运行时接收显式服务编码与目录；Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 使用 Environment binding 的受管私钥验证认证、pinned host key 和目标 Docker prerequisites。
 
 Deployment 将 `environment_id`、Environment `target_type`、target revision 与可选 Gateway Application identity 保存为正式不可变列。SSH deployment 额外保存 SSH Credential identity/revision；local deployment 的 SSH snapshot 为空。`options_json` 只保存命令选项和 Gateway 配置快照；worker 在执行前以正式列核对当前 Environment，目标变更后的排队任务直接失败，不能落到其他 Project 或新目标。
 
@@ -88,3 +88,13 @@ CI/CD 日志统一通过 Fetch + SSE 读取，所有入口沿用 Bearer 与 Proj
 容器日志在操作进行中订阅；容器或 Compose 配置尚未出现时保持 waiting。以非 PTY 的 `docker compose logs --follow --timestamps --no-color` 传递 stdout，命令 stderr 单独保留最多 32 KiB 诊断。两秒复核成员、资源、目标/凭据修订与 Docker 容器 ID；容器重建时刷新来源，取消旧读取命令后继续。部署结束不会结束容器日志；stop 操作继续不展示容器日志。
 
 文件日志采用精确字节游标；容器日志按时间戳重叠两秒补读，前端采用有界记录次数去重。来源变化和不能保证补齐的恢复显示缺口；Docker 删除的历史无法恢复。客户端断开仅取消读取命令/session，不停止部署任务或容器。SSE 心跳 15 秒，慢连接单次写入超时 10 秒；新增日志 SSE 路由关闭响应正文捕获，保留请求元信息。
+
+## 部署目录与执行边界
+
+部署请求在现有写事务中保存确认目录与 Deployment 的 `working_directory` 快照。Worker 在目标修订校验后展开目标主目录，检查目录归属、写入权限和挂载映射，准备 Compose 与受控文件；准备成功且即将执行 Compose 时用短数据库更新绑定运行目录。绑定前失败保留旧目录，命令执行中失败或取消保留新运行操作目录。状态更新不得覆盖目录绑定。部署不移动、复制或删除旧数据。
+
+local 在 Orbit 可见路径写文件，DooD 将每个具体相对 bind source 映射到 Docker daemon 可见路径，按最长挂载前缀处理嵌套挂载；未映射路径在命令前失败。SSH 使用远端路径与 SFTP，Linux 沿用 shell 引号，Windows 沿用非交互 PowerShell 和 `Set-Location -LiteralPath`，不通过本地 DooD resolver。
+
+Gateway 路由、证书、ACME 及发布记录沿用运行目录；文件接口限制在显式服务范围。目录与目标修订属于 publication preview 依赖，目录变更使旧预览失效，不自动发布业务 Route。
+
+目录准备写入 `.orbit-service-owner`，以 Environment ID 和服务编码标记归属；拒绝其他服务的目录和无归属的既有 Compose。当前目标修订下有运行目录依据的旧服务可以认领原目录。local 与 SSH 文件范围同时检查解析后的路径，防止符号链接越界；部署期间复用已有 target session。

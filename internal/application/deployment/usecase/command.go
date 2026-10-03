@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
+
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
@@ -31,6 +33,7 @@ func NewCommandService(
 	runtime deploymentport.Runtime,
 	logStore deploymentport.ExecutionLogStore,
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
+	versionSelector deploymentport.ServiceVersionSelector,
 ) Service {
 	store := &stores{
 		project: project, application: application,
@@ -41,7 +44,7 @@ func NewCommandService(
 		service: service, deployment: deployment, store: store, executionStore: store,
 		dispatcher: dispatcher, commandStore: store, logger: logger,
 		targetResolver: targetResolver, runtime: runtime, logStore: logStore,
-		gatewayCoordinator: gatewayCoordinator,
+		gatewayCoordinator: gatewayCoordinator, versionSelector: versionSelector,
 	}
 }
 
@@ -81,6 +84,34 @@ func (s Service) DeployService(ctx context.Context, userId string, projectId str
 	if err := s.ensureNoActiveDeployment(ctx, projectId, service.Id); err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
+	target, err := s.resolveProjectTarget(ctx, projectId)
+	if err != nil {
+		return deploymentdto.DeployServiceResult{}, err
+	}
+	if input.EnvironmentTargetRevision != target.Environment.TargetRevision {
+		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindConflict, "Environment changed. Confirm the deployment directory again.")
+	}
+	platform := ""
+	if target.Environment.IsSSH() {
+		platform = target.Environment.SSH.Platform
+	}
+	directory, err := workspacepath.NormalizeServiceDirectory(input.DeploymentDirectory, platform)
+	if err != nil {
+		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
+	}
+	if input.VersionId != nil && app.Kind != status.ApplicationKindGateway {
+		if s.versionSelector == nil {
+			return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindInternal, "service version selector is not configured")
+		}
+		service, err = s.versionSelector.SelectServiceDeploymentVersion(ctx, userId, projectId, service.Id, *input.VersionId)
+		if err != nil {
+			return deploymentdto.DeployServiceResult{}, err
+		}
+	}
+	if err := s.commandStore.UpdateServiceDeploymentDirectory(ctx, projectId, service.Id, directory, target.Environment.TargetRevision); err != nil {
+		return deploymentdto.DeployServiceResult{}, err
+	}
+	service.DeploymentDirectory, service.DirectoryTargetRevision = directory, target.Environment.TargetRevision
 	service, err = s.selectGatewayVersionForDeployment(ctx, projectId, app, service)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, err
@@ -123,15 +154,12 @@ func (s Service) DeployService(ctx context.Context, userId string, projectId str
 	if err := enrichGatewayPlan(&plan); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
-	if err != nil {
-		return deploymentdto.DeployServiceResult{}, err
-	}
 	planHash, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to hash deployment plan", err)
 	}
 	deployment := newDeployment(projectId, app, "deploy")
+	deployment.WorkingDirectory = &directory
 	deployment.VersionId = &version.Id
 	forceRecreate := input.ForceRecreate || isGatewayCarrier(plan)
 	opts := deploymentdto.DeployOptionsJSON{
@@ -177,7 +205,12 @@ func (s Service) StopApplication(ctx context.Context, userId string, projectId s
 	if err != nil {
 		return "", err
 	}
+	location, err := runtimeServiceLocation(target, service)
+	if err != nil {
+		return "", err
+	}
 	deployment := newDeployment(projectId, app, "stop")
+	deployment.WorkingDirectory = &location.Directory
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &service.VersionId
 	options := deploymentdto.DeployOptionsJSON{RemoveVolumes: input.RemoveVolumes}
@@ -224,6 +257,15 @@ func (s Service) RestartApplication(ctx context.Context, userId string, projectI
 	if service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusFaulted {
 		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法重启")
 	}
+	target, err := s.resolveProjectTarget(ctx, projectId)
+	if err != nil {
+		return "", err
+	}
+	location, err := runtimeServiceLocation(target, service)
+	if err != nil {
+		return "", err
+	}
+	service.DeploymentDirectory, service.DirectoryTargetRevision = location.Directory, target.Environment.TargetRevision
 	version, err := s.commandStore.Version(ctx, projectId, service.VersionId)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to load version", err)
@@ -254,15 +296,12 @@ func (s Service) RestartApplication(ctx context.Context, userId string, projectI
 	if err := enrichGatewayPlan(&plan); err != nil {
 		return "", apperror.New(apperror.KindValidation, err.Error())
 	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
-	if err != nil {
-		return "", err
-	}
 	planHash, err := EffectiveServicePlanHash(plan)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to hash deployment plan", err)
 	}
 	deployment := newDeployment(projectId, app, "restart")
+	deployment.WorkingDirectory = &location.Directory
 	deployment.ServiceId = &service.Id
 	deployment.VersionId = &version.Id
 	restartOptions := deploymentdto.DeployOptionsJSON{

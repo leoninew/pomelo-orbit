@@ -312,7 +312,7 @@ func serviceOutput(value servicedto.ServiceView) map[string]any {
 	for _, item := range value.Components {
 		components = append(components, serviceComponentOutput(item))
 	}
-	return map[string]any{"id": value.Service.Id, "application_id": value.Service.ApplicationId, "code": value.Service.Code, "version_id": value.Service.VersionId, "status": value.Service.Status, "application_name": value.ApplicationName, "application_code": value.ApplicationCode, "application_kind": value.ApplicationKind, "version_label": value.VersionLabel, "pending_deploy": value.PendingDeploy, "effective_plan_hash": value.EffectivePlanHash, "env": env, "components": components, "created_at": formatTime(value.Service.CreatedAt), "updated_at": formatTime(value.Service.UpdatedAt)}
+	return map[string]any{"deployment_directory": value.Service.DeploymentDirectory, "directory_target_revision": value.Service.DirectoryTargetRevision, "runtime_directory": value.Service.RuntimeDirectory, "runtime_target_revision": value.Service.RuntimeTargetRevision, "id": value.Service.Id, "application_id": value.Service.ApplicationId, "code": value.Service.Code, "version_id": value.Service.VersionId, "status": value.Service.Status, "application_name": value.ApplicationName, "application_code": value.ApplicationCode, "application_kind": value.ApplicationKind, "version_label": value.VersionLabel, "pending_deploy": value.PendingDeploy, "effective_plan_hash": value.EffectivePlanHash, "env": env, "components": components, "created_at": formatTime(value.Service.CreatedAt), "updated_at": formatTime(value.Service.UpdatedAt)}
 }
 
 func serviceComponentOutput(value model.ServiceComponent) map[string]any {
@@ -327,7 +327,7 @@ func optionalCommandOutput(value []string) any {
 }
 
 func deploymentOutput(value model.Deployment) map[string]any {
-	result := map[string]any{"id": value.Id, "project_id": value.ProjectId, "application_id": value.ApplicationId, "application_name": value.ApplicationName, "operation_type": value.OperationType, "trigger_type": value.TriggerType, "command_text": value.CommandText, "status": value.Status, "started_at": formatTime(value.StartedAt), "log_text": value.LogText, "error_message": value.ErrorMessage, "is_rollback": value.IsRollback, "rollback_from_deployment_id": value.RollbackFromDeploymentId, "version_id": value.VersionId, "service_id": value.ServiceId, "options_json": value.OptionsJSON}
+	result := map[string]any{"working_directory": value.WorkingDirectory, "id": value.Id, "project_id": value.ProjectId, "application_id": value.ApplicationId, "application_name": value.ApplicationName, "operation_type": value.OperationType, "trigger_type": value.TriggerType, "command_text": value.CommandText, "status": value.Status, "started_at": formatTime(value.StartedAt), "log_text": value.LogText, "error_message": value.ErrorMessage, "is_rollback": value.IsRollback, "rollback_from_deployment_id": value.RollbackFromDeploymentId, "version_id": value.VersionId, "service_id": value.ServiceId, "options_json": value.OptionsJSON}
 	if value.FinishedAt != nil {
 		result["finished_at"] = formatTime(*value.FinishedAt)
 	}
@@ -370,7 +370,7 @@ func provisionGatewayOutput(value gatewaydto.ProvisionGatewayResult) map[string]
 }
 
 func gatewayServiceOutput(value model.Service) map[string]any {
-	return map[string]any{"id": value.Id, "application_id": value.ApplicationId, "code": value.Code, "version_id": value.VersionId, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
+	return map[string]any{"deployment_directory": value.DeploymentDirectory, "directory_target_revision": value.DirectoryTargetRevision, "runtime_directory": value.RuntimeDirectory, "runtime_target_revision": value.RuntimeTargetRevision, "id": value.Id, "application_id": value.ApplicationId, "code": value.Code, "version_id": value.VersionId, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
 func routeOutput(value model.Route) map[string]any {

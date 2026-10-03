@@ -14,7 +14,7 @@ type Querier interface {
 	DeleteGatewayVersionBindings(ctx context.Context, applicationID string) error
 	GatewayBindingByProjectId(ctx context.Context, projectID string) (string, error)
 	GatewayConfigByApplication(ctx context.Context, applicationID string) (GatewayConfig, error)
-	GatewayRuntimeServiceCode(ctx context.Context, applicationID string) (string, error)
+	GatewayRuntimeServiceCode(ctx context.Context, applicationID string) (GatewayRuntimeServiceCodeRow, error)
 	GatewayVersionBindingsByApplication(ctx context.Context, applicationID string) ([]GatewayAcmeProfileVersion, error)
 	InsertGatewayConfig(ctx context.Context, arg InsertGatewayConfigParams) error
 	InsertGatewayVersionBinding(ctx context.Context, arg InsertGatewayVersionBindingParams) error

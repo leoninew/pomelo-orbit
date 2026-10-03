@@ -76,7 +76,7 @@ func (q *Queries) GatewayConfigByApplication(ctx context.Context, applicationID 
 }
 
 const gatewayRuntimeServiceCode = `-- name: GatewayRuntimeServiceCode :one
-SELECT code
+SELECT code, deployment_directory, directory_target_revision, runtime_directory, runtime_target_revision
 FROM service
 WHERE application_id = ?
 ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END,
@@ -85,11 +85,25 @@ ORDER BY CASE WHEN status = 'running' THEN 0 ELSE 1 END,
 LIMIT 1
 `
 
-func (q *Queries) GatewayRuntimeServiceCode(ctx context.Context, applicationID string) (string, error) {
+type GatewayRuntimeServiceCodeRow struct {
+	Code                    string `db:"code"`
+	DeploymentDirectory     string `db:"deployment_directory"`
+	DirectoryTargetRevision int64  `db:"directory_target_revision"`
+	RuntimeDirectory        string `db:"runtime_directory"`
+	RuntimeTargetRevision   int64  `db:"runtime_target_revision"`
+}
+
+func (q *Queries) GatewayRuntimeServiceCode(ctx context.Context, applicationID string) (GatewayRuntimeServiceCodeRow, error) {
 	row := q.db.QueryRowContext(ctx, gatewayRuntimeServiceCode, applicationID)
-	var code string
-	err := row.Scan(&code)
-	return code, err
+	var i GatewayRuntimeServiceCodeRow
+	err := row.Scan(
+		&i.Code,
+		&i.DeploymentDirectory,
+		&i.DirectoryTargetRevision,
+		&i.RuntimeDirectory,
+		&i.RuntimeTargetRevision,
+	)
+	return i, err
 }
 
 const gatewayVersionBindingsByApplication = `-- name: GatewayVersionBindingsByApplication :many

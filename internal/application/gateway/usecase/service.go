@@ -363,7 +363,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 	}
 
 	app := model.Application{
-		Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: status.ApplicationKindStandard,
+		Id: idutil.NewId(), ProjectId: &projectId, Name: name, Code: code, Kind: status.ApplicationKindGateway,
 	}
 	cfg := model.GatewayConfig{
 		ApplicationId:           app.Id,

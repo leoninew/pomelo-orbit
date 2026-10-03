@@ -98,13 +98,23 @@
           <div
             class="mt-auto flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm"
           >
-            <button
-              class="app-link"
-              :disabled="operating || svc.active_deployment"
-              @click="openDeployDialog(svc)"
+            <AppTooltip
+              :content="
+                svc.application_kind === 'gateway' ? t('service.deploy.gatewayEntry') : undefined
+              "
             >
-              {{ t('service.actions.deploy') }}
-            </button>
+              <span :tabindex="svc.application_kind === 'gateway' ? 0 : undefined">
+                <button
+                  class="app-link"
+                  :disabled="
+                    operating || svc.active_deployment || svc.application_kind === 'gateway'
+                  "
+                  @click="openDeployDialog(svc)"
+                >
+                  {{ t('service.actions.deploy') }}
+                </button>
+              </span>
+            </AppTooltip>
             <button
               class="app-link-danger"
               :disabled="operating || !canStop(svc)"
@@ -167,13 +177,25 @@
               <td class="whitespace-nowrap text-foreground">{{ formatTime(svc.updated_at) }}</td>
               <td>
                 <div class="flex flex-wrap items-center gap-3">
-                  <button
-                    class="app-link"
-                    :disabled="operating || svc.active_deployment"
-                    @click="openDeployDialog(svc)"
+                  <AppTooltip
+                    :content="
+                      svc.application_kind === 'gateway'
+                        ? t('service.deploy.gatewayEntry')
+                        : undefined
+                    "
                   >
-                    {{ t('service.actions.deploy') }}
-                  </button>
+                    <span :tabindex="svc.application_kind === 'gateway' ? 0 : undefined">
+                      <button
+                        class="app-link"
+                        :disabled="
+                          operating || svc.active_deployment || svc.application_kind === 'gateway'
+                        "
+                        @click="openDeployDialog(svc)"
+                      >
+                        {{ t('service.actions.deploy') }}
+                      </button>
+                    </span>
+                  </AppTooltip>
                   <button
                     class="app-link-danger"
                     :disabled="operating || !canStop(svc)"
@@ -200,9 +222,6 @@
 
     <AppDialog v-model:open="isDeployDialogOpen" :title="t('service.deploy.dialogTitle')">
       <div class="space-y-4">
-        <p class="text-sm text-muted-foreground">
-          {{ deployTargetLabel }}
-        </p>
         <div class="space-y-1.5">
           <label class="app-field-label mb-1.5 block">
             {{ t('service.deploy.selectVersion') }}
@@ -220,6 +239,13 @@
             {{ deployVersionError }}
           </p>
         </div>
+        <DeploymentDirectoryField
+          v-model="directoryState.directory"
+          :platform="directoryState.platform"
+          :runtime-directory="directoryState.runtimeDirectory"
+          :error="directoryState.error"
+          @update:model-value="directoryState.error = ''"
+        />
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
@@ -239,6 +265,7 @@
         <AppDialogActions
           :busy="operating"
           :confirm-label="t('common.deploy')"
+          :confirm-disabled="!directoryState.ready"
           @cancel="isDeployDialogOpen = false"
           @confirm="handleDeployOk"
         />
@@ -332,7 +359,6 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <div class="space-y-4">
-        <p class="text-sm text-muted-foreground">{{ stopTargetLabel }}</p>
         <p class="text-sm text-muted-foreground">{{ t('service.stop.confirm') }}</p>
         <label class="flex items-center gap-2">
           <input v-model="stopRemoveVolumes" type="checkbox" class="app-checkbox" />
@@ -367,6 +393,9 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
+  import AppTooltip from '@/components/AppTooltip.vue';
+  import DeploymentDirectoryField from '@/components/DeploymentDirectoryField.vue';
+  import { useDeploymentDirectory } from '@/composables/useDeploymentDirectory';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
@@ -403,6 +432,8 @@
   const versions = ref<VersionResp[]>([]);
   const deployVersions = ref<VersionResp[]>([]);
   const isDeployDialogOpen = ref(false);
+  const deploymentDirectory = useDeploymentDirectory(() => projectStore.activeProjectId);
+  const directoryState = deploymentDirectory.state;
   const deployForm = reactive({
     version_id: '',
     force_recreate: false,
@@ -444,9 +475,6 @@
       description: version.status,
     }))
   );
-
-  const deployTargetLabel = computed(() => serviceTargetLabel(selectedService.value));
-  const stopTargetLabel = computed(() => serviceTargetLabel(selectedService.value));
 
   async function fetchServices() {
     const projectId = projectStore.activeProjectId;
@@ -611,16 +639,6 @@
     return true;
   }
 
-  function serviceTargetLabel(service: ServiceResp | null) {
-    if (!service) {
-      return '';
-    }
-    return t('service.detail.subtitle', {
-      code: service.code,
-      version: service.version_label,
-    });
-  }
-
   function canStop(service: ServiceResp) {
     return (
       !service.active_deployment && (service.status === 'running' || service.status === 'faulted')
@@ -629,7 +647,7 @@
 
   async function openDeployDialog(service: ServiceResp) {
     const projectId = projectStore.activeProjectId;
-    if (!projectId) {
+    if (!projectId || service.application_kind === 'gateway') {
       return;
     }
     selectedService.value = service;
@@ -638,6 +656,9 @@
         per_page: 100,
       });
       if (projectStore.activeProjectId !== projectId) {
+        return;
+      }
+      if (!(await deploymentDirectory.load(projectId, service, service.code))) {
         return;
       }
       deployVersions.value = page.items ?? [];
@@ -663,12 +684,15 @@
   async function handleDeployOk() {
     const service = selectedService.value;
     const projectId = projectStore.activeProjectId;
-    if (!service || !projectId) {
+    if (!service || !projectId || service.application_kind === 'gateway') {
       return;
     }
     deploySubmitError.value = '';
     deployVersionError.value = deployForm.version_id ? '' : t('service.deploy.versionRequired');
-    if (deployVersionError.value) {
+    if (
+      !deploymentDirectory.validate(t('service.deploy.directoryInvalid')) ||
+      deployVersionError.value
+    ) {
       return;
     }
     try {
@@ -676,18 +700,9 @@
         if (!(await ensureProjectExecutionReady(projectId, router, 'cd'))) {
           return;
         }
-        let serviceForDeploy = service;
-        if (deployForm.version_id !== service.version_id) {
-          serviceForDeploy = await serviceApi.updateBasic(projectId, service.id, {
-            version_id: deployForm.version_id,
-          });
-          selectedService.value = serviceForDeploy;
-          const index = services.value.findIndex((item) => item.id === serviceForDeploy.id);
-          if (index >= 0) {
-            services.value[index] = serviceForDeploy;
-          }
-        }
-        const result = await serviceApi.deploy(projectId, serviceForDeploy.id, {
+        const result = await serviceApi.deploy(projectId, service.id, {
+          version_id: deployForm.version_id,
+          ...deploymentDirectory.payload(),
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });

@@ -57,12 +57,16 @@ func gatewayResponse(view gatewaydto.GatewayView) gatewayv1.GatewayResp {
 		bindings = append(bindings, &gatewayv1.GatewayVersionBinding{Profile: binding.Profile, VersionId: binding.VersionId})
 	}
 	serviceId, serviceCode, serviceStatus := "", "", ""
+	var deploymentDirectory, runtimeDirectory string
+	var directoryRevision, runtimeRevision int64
 	if view.Service != nil {
 		serviceId = view.Service.Id
 		serviceCode = view.Service.Code
 		serviceStatus = view.Service.Status
+		deploymentDirectory, directoryRevision = view.Service.DeploymentDirectory, view.Service.DirectoryTargetRevision
+		runtimeDirectory, runtimeRevision = view.Service.RuntimeDirectory, view.Service.RuntimeTargetRevision
 	}
-	return gatewayv1.GatewayResp{
+	return gatewayv1.GatewayResp{DeploymentDirectory: deploymentDirectory, DirectoryTargetRevision: directoryRevision, RuntimeDirectory: runtimeDirectory, RuntimeTargetRevision: runtimeRevision,
 		Id:                      app.Id,
 		ProjectId:               projectId,
 		Code:                    app.Code,

@@ -33,28 +33,28 @@ func (r Runtime) OpenSession(ctx context.Context, target environmentport.Target)
 	return sessions.OpenSession(ctx, target)
 }
 
-func (r Runtime) ServiceDir(target environmentport.Target, serviceCode string) (string, error) {
+func (r Runtime) ServiceDir(target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
 	runtime, err := r.forTarget(target)
 	if err != nil {
 		return "", err
 	}
-	return runtime.ServiceDir(target, serviceCode)
+	return runtime.ServiceDir(target, location)
 }
 
-func (r Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error) {
+func (r Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (bool, error) {
 	runtime, err := r.forTarget(target)
 	if err != nil {
 		return false, err
 	}
-	return runtime.ServiceDirExists(ctx, target, serviceCode)
+	return runtime.ServiceDirExists(ctx, target, location)
 }
 
-func (r Runtime) ComposeMountSourceDir(ctx context.Context, target environmentport.Target, serviceCode string) (string, error) {
+func (r Runtime) ComposeMountSourceDir(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
 	runtime, err := r.forTarget(target)
 	if err != nil {
 		return "", err
 	}
-	return runtime.ComposeMountSourceDir(ctx, target, serviceCode)
+	return runtime.ComposeMountSourceDir(ctx, target, location)
 }
 
 func (r Runtime) StageWorkspace(ctx context.Context, target environmentport.Target, workspace deploymentport.Workspace) error {
@@ -65,28 +65,28 @@ func (r Runtime) StageWorkspace(ctx context.Context, target environmentport.Targ
 	return runtime.StageWorkspace(ctx, target, workspace)
 }
 
-func (r Runtime) Run(ctx context.Context, target environmentport.Target, serviceCode string, log io.Writer, name string, args ...string) error {
+func (r Runtime) Run(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, log io.Writer, name string, args ...string) error {
 	runtime, err := r.forTarget(target)
 	if err != nil {
 		return err
 	}
-	return runtime.Run(ctx, target, serviceCode, log, name, args...)
+	return runtime.Run(ctx, target, location, log, name, args...)
 }
 
-func (r Runtime) Stream(ctx context.Context, target environmentport.Target, serviceCode string, output io.Writer, name string, args ...string) error {
+func (r Runtime) Stream(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, output io.Writer, name string, args ...string) error {
 	runtime, err := r.forTarget(target)
 	if err != nil {
 		return err
 	}
-	return runtime.Stream(ctx, target, serviceCode, output, name, args...)
+	return runtime.Stream(ctx, target, location, output, name, args...)
 }
 
-func (r Runtime) Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error) {
+func (r Runtime) Query(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, name string, args ...string) (string, error) {
 	runtime, err := r.forTarget(target)
 	if err != nil {
 		return "", err
 	}
-	return runtime.Query(ctx, target, serviceCode, name, args...)
+	return runtime.Query(ctx, target, location, name, args...)
 }
 
 func (r Runtime) QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error) {
@@ -128,4 +128,12 @@ func (r Runtime) forTarget(target environmentport.Target) (deploymentport.Runtim
 	default:
 		return nil, errors.New("environment target type is invalid")
 	}
+}
+
+func (r Runtime) ResolveDirectory(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	runtime, err := r.forTarget(target)
+	if err != nil {
+		return "", err
+	}
+	return runtime.ResolveDirectory(ctx, target, location)
 }

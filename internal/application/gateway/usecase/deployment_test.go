@@ -27,7 +27,7 @@ func TestGatewayForDeploymentDoesNotRequireGatewayForInternalTCPEndpoint(t *test
 func TestGatewayForDeploymentFindsCarrierEvenWhenNetworkWasRequestedDisabled(t *testing.T) {
 	disabled := false
 	projectId := "project-1"
-	app := model.Application{Id: "gateway-app", ProjectId: &projectId, Kind: status.ApplicationKindStandard}
+	app := model.Application{Id: "gateway-app", ProjectId: &projectId, Kind: status.ApplicationKindGateway}
 	plan := model.EffectiveServicePlan{
 		Application: app, JoinTraefikNetwork: &disabled,
 	}

@@ -29,6 +29,8 @@ type GatewayConfig struct {
 	DNSApiToken             string                  `db:"dns_api_token"`
 	VersionBindings         []GatewayVersionBinding `db:"-"`
 	RuntimeServiceCode      string                  `db:"-" json:"-"`
+	RuntimeDirectory        string                  `db:"-" json:"-"`
+	RuntimeTargetRevision   int64                   `db:"-" json:"-"`
 	NetworkName             string                  `db:"-" json:"-"`
 	CreatedAt               time.Time               `db:"created_at"`
 	UpdatedAt               time.Time               `db:"updated_at"`

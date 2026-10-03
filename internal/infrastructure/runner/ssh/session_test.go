@@ -138,6 +138,7 @@ func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 	host, port, _ := net.SplitHostPort(listener.Addr().String())
 	portNumber, _ := strconv.Atoi(port)
 	return environmentport.Target{
+		FileScope: "workspace",
 		Environment: model.Environment{Id: "test-env", ProjectId: "test-project", TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "workspace",
 			SSH: &model.EnvironmentSSHTarget{Platform: model.EnvironmentPlatformLinux, Host: host, Port: portNumber, Username: "managed-user", HostKeyFingerprint: ssh.FingerprintSHA256(signer.PublicKey())}},
 		PrivateKey: &environmentdto.DeploymentSSHPrivateKey{PrivateKey: string(pem.EncodeToMemory(block))},

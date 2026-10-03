@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -269,7 +270,7 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, projectId string, a
 		_ = s.completeDeployment(ctx, projectId, deployment.Id, status.WorkStatusFaulted, err.Error())
 		return err
 	}
-	serviceDir, err := s.runtime.ServiceDir(target, svc.Code)
+	serviceDir, err := s.runtime.ResolveDirectory(ctx, target, plannedServiceLocation(svc))
 	if err != nil {
 		return err
 	}
@@ -294,7 +295,7 @@ func (s Service) ExecuteApplicationStop(ctx context.Context, projectId string, a
 	}
 	projectName := composeProjectName(svc.Code)
 	command := stopComposeCommand(projectName, removeVolumes)
-	if err := s.runtime.Run(executionCtx, target, svc.Code, logWriter, command.Name, command.Args...); err != nil {
+	if err := s.runtime.Run(executionCtx, target, deploymentport.ServiceLocation{Code: svc.Code, Directory: serviceDir}, logWriter, command.Name, command.Args...); err != nil {
 		if s.deploymentCanceled(ctx, projectId, deployment.Id) {
 			s.reconcileCanceledService(ctx, projectId, target, app, svc)
 			return nil
@@ -316,14 +317,22 @@ func (s Service) deploymentCanceled(ctx context.Context, projectId string, deplo
 // reconcileCanceledService records the actual Compose runtime after a canceled
 // command. The Deployment remains canceled regardless of observation failures.
 func (s Service) reconcileCanceledService(ctx context.Context, projectId string, target environmentport.Target, app model.Application, svc model.Service) {
+	current, err := s.executionStore.Service(ctx, projectId, svc.Id)
+	if err != nil {
+		return
+	}
+	location, err := runtimeServiceLocation(target, current)
+	if err != nil {
+		return
+	}
 	serviceStatus := status.ServiceStatusFaulted
 	if s.runtime != nil {
-		exists, err := s.runtime.ServiceDirExists(ctx, target, svc.Code)
+		exists, err := s.runtime.ServiceDirExists(ctx, target, location)
 		if err == nil && !exists {
 			serviceStatus = status.ServiceStatusStopped
 		} else if err == nil {
 			command := containerPsCommand(composeProjectName(svc.Code))
-			output, runErr := s.runtime.Query(ctx, target, svc.Code, command.Name, command.Args...)
+			output, runErr := s.runtime.Query(ctx, target, location, command.Name, command.Args...)
 			if runErr == nil {
 				containers, parseErr := parseComposePsOutput(output)
 				if parseErr == nil {
@@ -405,6 +414,10 @@ func (s Service) resolveServiceFromDeployment(ctx context.Context, projectId, ap
 	if svc.ApplicationId != applicationId {
 		return model.Service{}, fmt.Errorf("deployment %s service_id does not belong to application", deployment.Id)
 	}
+	if deployment.WorkingDirectory == nil || *deployment.WorkingDirectory == "" || deployment.EnvironmentTargetRevision == nil {
+		return model.Service{}, fmt.Errorf("deployment %s missing working_directory snapshot", deployment.Id)
+	}
+	svc.DeploymentDirectory, svc.DirectoryTargetRevision = *deployment.WorkingDirectory, *deployment.EnvironmentTargetRevision
 	return svc, nil
 }
 
@@ -413,7 +426,16 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 	if s.runtime == nil {
 		return fmt.Errorf("deployment runtime is not configured")
 	}
-	serviceDir, err := s.runtime.ServiceDir(target, svc.Code)
+	if sessions, ok := s.runtime.(deploymentport.RuntimeSessions); ok {
+		var closeSession func()
+		var err error
+		ctx, closeSession, err = sessions.OpenSession(ctx, target)
+		if err != nil {
+			return err
+		}
+		defer closeSession()
+	}
+	serviceDir, err := s.runtime.ResolveDirectory(ctx, target, plannedServiceLocation(svc))
 	if err != nil {
 		return err
 	}
@@ -432,16 +454,32 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 		version.Label, version.Id, len(plan.Components), svc.Code); err != nil {
 		return err
 	}
-	composeMountSourceDir, err := s.runtime.ComposeMountSourceDir(ctx, target, svc.Code)
+	composeMountSourceDir, err := s.runtime.ComposeMountSourceDir(ctx, target, plannedServiceLocation(svc))
 	if err != nil {
 		return err
 	}
-	result, err := s.RenderComposeDetailed(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir, ComposeMountSourceDir: composeMountSourceDir})
+	result, err := s.RenderComposeDetailed(ctx, RenderInput{Plan: plan, LogicalSvcDir: serviceDir, ComposeMountSourceDir: composeMountSourceDir, ResolveMountSource: func(ctx context.Context, source string) (string, error) {
+		return s.runtime.ComposeMountSourceDir(ctx, target, deploymentport.ServiceLocation{Code: svc.Code, Directory: filepath.ToSlash(source)})
+	}})
 	if err != nil {
 		return err
 	}
-	workspace, err := remoteWorkspaceFromRender(svc.Code, deploymentId, result)
+	workspace, err := remoteWorkspaceFromRender(deploymentport.ServiceLocation{Code: svc.Code, Directory: serviceDir}, deploymentId, result)
 	if err != nil {
+		return err
+	}
+	current, err := s.executionStore.Service(ctx, svc.ProjectId, svc.Id)
+	if err != nil {
+		return err
+	}
+	if current.RuntimeTargetRevision == target.Environment.TargetRevision && current.RuntimeDirectory != "" {
+		oldDir, err := s.runtime.ResolveDirectory(ctx, target, deploymentport.ServiceLocation{Code: svc.Code, Directory: current.RuntimeDirectory})
+		if err != nil {
+			return err
+		}
+		workspace.AdoptExisting = oldDir == serviceDir
+	}
+	if err := s.checkDirectoryOwnership(ctx, target, svc, serviceDir, result.ResolvedMounts); err != nil {
 		return err
 	}
 	if _, err := fmt.Fprintln(logWriter, "Staging deployment configuration on project environment"); err != nil {
@@ -456,11 +494,17 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 	if _, err := fmt.Fprintln(logWriter, "Starting services"); err != nil {
 		return err
 	}
-	return s.runtime.Run(ctx, target, svc.Code, logWriter, command.Name, command.Args...)
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := s.executionStore.BindServiceRuntimeDirectory(ctx, svc.ProjectId, svc.Id, deploymentId, svc.DeploymentDirectory, target.Environment.TargetRevision); err != nil {
+		return err
+	}
+	return s.runtime.Run(ctx, target, deploymentport.ServiceLocation{Code: svc.Code, Directory: serviceDir}, logWriter, command.Name, command.Args...)
 }
 
-func remoteWorkspaceFromRender(serviceCode string, deploymentId string, result RenderResult) (deploymentport.Workspace, error) {
-	workspace := deploymentport.Workspace{ServiceCode: serviceCode, DeploymentId: deploymentId, Compose: result.Compose}
+func remoteWorkspaceFromRender(location deploymentport.ServiceLocation, deploymentId string, result RenderResult) (deploymentport.Workspace, error) {
+	workspace := deploymentport.Workspace{Location: location, DeploymentId: deploymentId, Compose: result.Compose}
 	for _, item := range result.ResolvedMounts {
 		if !item.ShouldMaterialize {
 			continue

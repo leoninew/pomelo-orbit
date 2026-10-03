@@ -39,42 +39,34 @@ func NewRuntime() *Runtime {
 	return &Runtime{dialContext: dialer.DialContext}
 }
 
-func (r *Runtime) ServiceDir(target environmentport.Target, serviceCode string) (string, error) {
+func (r *Runtime) ServiceDir(target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
 	if !target.Environment.IsSSH() {
 		return "", errors.New("SSH deployment runtime received a non-SSH environment")
 	}
-	if !safePathSegment(serviceCode) {
+	if !safePathSegment(location.Code) {
 		return "", errors.New("invalid service code")
 	}
-	root := normalizeRemotePath(target.Environment.WorkspaceRoot)
-	if root == "" {
-		return "", errors.New("environment workspace root is required")
-	}
-	return workspacepath.RemoteServiceRoot(root, serviceCode), nil
+	return workspacepath.NormalizeServiceDirectory(location.Directory, target.Environment.SSH.Platform)
 }
-
-func (r *Runtime) ComposeMountSourceDir(ctx context.Context, target environmentport.Target, serviceCode string) (string, error) {
-	serviceDir, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) ResolveDirectory(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	serviceDir, err := r.ServiceDir(target, location)
 	if err != nil {
 		return "", err
-	}
-	// Compose is executed on the SSH target, so its bind source must use the
-	// same remote path that StageWorkspace writes to. Absolute workspace roots
-	// already have the target's path semantics; only home-relative roots need
-	// an SFTP lookup to expand the remote login user's home directory.
-	if !isRemoteHomePath(serviceDir) {
-		return serviceDir, nil
 	}
 	client, cleanup, err := r.openSFTP(ctx, target)
 	if err != nil {
 		return "", err
 	}
 	defer cleanup()
-	return newSFTPPathResolver(client, target.Environment.SSH.Platform).resolve(serviceDir)
+	return newSFTPPathResolver(client, target.Environment.SSH.Platform).canonical(serviceDir)
 }
 
-func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, serviceCode string) (bool, error) {
-	serviceDir, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) ComposeMountSourceDir(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {
+	return r.ResolveDirectory(ctx, target, location)
+}
+
+func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (bool, error) {
+	serviceDir, err := r.ServiceDir(target, location)
 	if err != nil {
 		return false, err
 	}
@@ -98,11 +90,11 @@ func (r *Runtime) ServiceDirExists(ctx context.Context, target environmentport.T
 }
 
 func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Target, workspace deploymentport.Workspace) error {
-	logicalServiceDir, err := r.ServiceDir(target, workspace.ServiceCode)
+	logicalServiceDir, err := r.ServiceDir(target, workspace.Location)
 	if err != nil {
 		return err
 	}
-	unlock := r.lock(target.Environment.Id + "\x00" + workspace.ServiceCode)
+	unlock := r.lock(target.Environment.Id + "\x00" + workspace.Location.Directory)
 	defer unlock()
 
 	client, cleanup, err := r.openSFTP(ctx, target)
@@ -111,15 +103,51 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 	}
 	defer cleanup()
 	pathResolver := newSFTPPathResolver(client, target.Environment.SSH.Platform)
-	serviceDir, err := pathResolver.resolve(logicalServiceDir)
+	serviceDir, err := pathResolver.canonical(logicalServiceDir)
 	if err != nil {
 		return err
 	}
 	if err := client.MkdirAll(serviceDir); err != nil {
 		return fmt.Errorf("create remote service workspace: %w", err)
 	}
+	ownerPath, err := pathResolver.scoped(serviceDir, path.Join(serviceDir, ".orbit-service-owner"))
+	if err != nil {
+		return err
+	}
+	owner := target.Environment.Id + "\n" + workspace.Location.Code
+	file, readErr := client.Open(ownerPath)
+	if readErr == nil {
+		body, err := io.ReadAll(file)
+		_ = file.Close()
+		if err != nil {
+			return err
+		}
+		if string(body) != owner {
+			return errors.New("deployment directory belongs to another service")
+		}
+	} else if !os.IsNotExist(readErr) {
+		return readErr
+	} else {
+		if _, err := client.Stat(path.Join(serviceDir, "docker-compose.yml")); err == nil && !workspace.AdoptExisting {
+			return errors.New("deployment directory contains an unowned Compose configuration")
+		} else if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		file, err := client.OpenFile(ownerPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY)
+		if err != nil {
+			return err
+		}
+		_, writeErr := file.Write([]byte(owner))
+		closeErr := file.Close()
+		if writeErr != nil {
+			return writeErr
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+	}
 	for _, directory := range workspace.Directories {
-		directory, err = pathResolver.resolve(directory)
+		directory, err = pathResolver.scoped(serviceDir, directory)
 		if err != nil {
 			return err
 		}
@@ -128,7 +156,7 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 		}
 	}
 	for _, file := range workspace.Files {
-		file.Path, err = pathResolver.resolve(file.Path)
+		file.Path, err = pathResolver.scoped(serviceDir, file.Path)
 		if err != nil {
 			return err
 		}
@@ -136,16 +164,18 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 			return err
 		}
 	}
-	composePath := path.Join(serviceDir, "docker-compose.yml")
-	compose := strings.ReplaceAll(workspace.Compose, logicalServiceDir, serviceDir)
-	if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, composePath, []byte(compose), 0o644, false, workspace.DeploymentId); err != nil {
+	composePath, err := pathResolver.scoped(serviceDir, path.Join(serviceDir, "docker-compose.yml"))
+	if err != nil {
+		return err
+	}
+	if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, composePath, []byte(workspace.Compose), 0o644, false, workspace.DeploymentId); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *Runtime) Run(ctx context.Context, target environmentport.Target, serviceCode string, log io.Writer, name string, args ...string) error {
-	serviceDir, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) Run(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, log io.Writer, name string, args ...string) error {
+	serviceDir, err := r.ServiceDir(target, location)
 	if err != nil {
 		return err
 	}
@@ -179,8 +209,8 @@ func (r *Runtime) Run(ctx context.Context, target environmentport.Target, servic
 	return nil
 }
 
-func (r *Runtime) Query(ctx context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error) {
-	serviceDir, err := r.ServiceDir(target, serviceCode)
+func (r *Runtime) Query(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, name string, args ...string) (string, error) {
+	serviceDir, err := r.ServiceDir(target, location)
 	if err != nil {
 		return "", err
 	}
@@ -451,6 +481,9 @@ func normalizeRemotePath(value string) string {
 	if value == "" {
 		return ""
 	}
+	if strings.HasPrefix(value, "//") {
+		return "//" + strings.TrimPrefix(path.Clean(value), "/")
+	}
 	return path.Clean(value)
 }
 
@@ -490,6 +523,59 @@ func (r *sftpPathResolver) resolve(value string) (string, error) {
 		return r.home, nil
 	}
 	return path.Join(r.home, strings.TrimPrefix(value, "~/")), nil
+}
+
+// Resolve existing ancestors before appending children that staging will create.
+func (r *sftpPathResolver) canonical(value string) (string, error) {
+	value, err := r.resolve(value)
+	if err != nil {
+		return "", err
+	}
+	var suffix []string
+	for {
+		resolved, err := r.client.RealPath(value)
+		if err == nil {
+			resolved = normalizeSFTPHomePath(r.platform, resolved)
+			if resolved == "" {
+				return "", errors.New("remote canonical path is empty")
+			}
+			for i := len(suffix) - 1; i >= 0; i-- {
+				resolved = path.Join(resolved, suffix[i])
+			}
+			return resolved, nil
+		}
+		if !os.IsNotExist(err) || path.Dir(value) == value {
+			return "", fmt.Errorf("resolve remote deployment path: %w", err)
+		}
+		suffix = append(suffix, path.Base(value))
+		value = path.Dir(value)
+	}
+}
+
+func (r *sftpPathResolver) scoped(root, value string) (string, error) {
+	root, err := r.resolve(root)
+	if err != nil {
+		return "", err
+	}
+	value, err = r.resolve(value)
+	if err != nil {
+		return "", err
+	}
+	if !remotePathWithin(root, value, r.platform) {
+		return "", errors.New("remote path is outside the service scope")
+	}
+	canonicalRoot, err := r.canonical(root)
+	if err != nil {
+		return "", err
+	}
+	canonicalValue, err := r.canonical(value)
+	if err != nil {
+		return "", err
+	}
+	if !remotePathWithin(canonicalRoot, canonicalValue, r.platform) {
+		return "", errors.New("remote path is outside the service scope")
+	}
+	return value, nil
 }
 
 func normalizeSFTPHomePath(platform, home string) string {
@@ -616,7 +702,7 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 	}
 	defer cleanup()
 	pathResolver := newSFTPPathResolver(client, target.Environment.SSH.Platform)
-	directory, err = pathResolver.resolve(directory)
+	directory, err = pathResolver.scoped(target.FileScope, directory)
 	if err != nil {
 		return err
 	}
@@ -625,7 +711,7 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 	}
 	keep := make(map[string]struct{}, len(files))
 	for _, file := range files {
-		file.Path, err = pathResolver.resolve(file.Path)
+		file.Path, err = pathResolver.scoped(target.FileScope, file.Path)
 		if err != nil {
 			return err
 		}
@@ -656,4 +742,12 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 		}
 	}
 	return nil
+}
+
+func remotePathWithin(root, value, platform string) bool {
+	root, value = normalizeRemotePath(root), normalizeRemotePath(value)
+	if platform == model.EnvironmentPlatformWindows {
+		root, value = strings.ToLower(root), strings.ToLower(value)
+	}
+	return root != "" && (value == root || strings.HasPrefix(value, strings.TrimRight(root, "/")+"/"))
 }

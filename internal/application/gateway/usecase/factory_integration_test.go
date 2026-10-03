@@ -52,6 +52,9 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	if created.Application.Code != "traefik" {
 		t.Fatalf("application code = %q", created.Application.Code)
 	}
+	if created.Application.Kind != status.ApplicationKindGateway {
+		t.Fatalf("application kind = %q", created.Application.Kind)
+	}
 	listed, err := service.ListGateways(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, 1, 1, "")
 	if err != nil {
 		t.Fatal(err)

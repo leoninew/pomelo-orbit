@@ -184,7 +184,9 @@ func (r Repository) gatewayFrom(ctx context.Context, row gatewaysqlc.GatewayConf
 	}
 	serviceCode, err := r.q(ctx).GatewayRuntimeServiceCode(ctx, row.ApplicationId)
 	if err == nil {
-		result.RuntimeServiceCode = serviceCode
+		result.RuntimeServiceCode = serviceCode.Code
+		result.RuntimeDirectory = serviceCode.RuntimeDirectory
+		result.RuntimeTargetRevision = serviceCode.RuntimeTargetRevision
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		return model.GatewayConfig{}, fmt.Errorf("load gateway service code %s: %w", row.ApplicationId, sqlcommon.TranslateError(err))
 	}

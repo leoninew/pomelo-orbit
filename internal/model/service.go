@@ -4,14 +4,18 @@ import "time"
 
 // Service is one runtime binding of an application.
 type Service struct {
-	Id            string    `db:"id"`
-	ProjectId     string    `db:"project_id"`
-	ApplicationId string    `db:"application_id"`
-	Code          string    `db:"code"`
-	VersionId     string    `db:"version_id"`
-	Status        string    `db:"status"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
+	Id                      string    `db:"id"`
+	ProjectId               string    `db:"project_id"`
+	ApplicationId           string    `db:"application_id"`
+	Code                    string    `db:"code"`
+	VersionId               string    `db:"version_id"`
+	DeploymentDirectory     string    `db:"deployment_directory"`
+	DirectoryTargetRevision int64     `db:"directory_target_revision"`
+	RuntimeDirectory        string    `db:"runtime_directory"`
+	RuntimeTargetRevision   int64     `db:"runtime_target_revision"`
+	Status                  string    `db:"status"`
+	CreatedAt               time.Time `db:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at"`
 }
 
 // ServiceComponent maps one runtime service to a component declaration in the
@@ -83,29 +87,35 @@ type ServiceComponentEndpoint struct {
 
 // ServiceListItem is Service plus application and version labels.
 type ServiceListItem struct {
-	Id              string    `db:"id"`
-	ProjectId       string    `db:"project_id"`
-	ApplicationId   string    `db:"application_id"`
-	Code            string    `db:"code"`
-	VersionId       string    `db:"version_id"`
-	Status          string    `db:"status"`
-	CreatedAt       time.Time `db:"created_at"`
-	UpdatedAt       time.Time `db:"updated_at"`
-	ApplicationName string    `db:"application_name"`
-	ApplicationCode string    `db:"application_code"`
-	ApplicationKind string    `db:"application_kind"`
-	VersionLabel    string    `db:"version_label"`
+	Id                      string    `db:"id"`
+	ProjectId               string    `db:"project_id"`
+	ApplicationId           string    `db:"application_id"`
+	Code                    string    `db:"code"`
+	VersionId               string    `db:"version_id"`
+	DeploymentDirectory     string    `db:"deployment_directory"`
+	DirectoryTargetRevision int64     `db:"directory_target_revision"`
+	RuntimeDirectory        string    `db:"runtime_directory"`
+	RuntimeTargetRevision   int64     `db:"runtime_target_revision"`
+	Status                  string    `db:"status"`
+	CreatedAt               time.Time `db:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at"`
+	ApplicationName         string    `db:"application_name"`
+	ApplicationCode         string    `db:"application_code"`
+	ApplicationKind         string    `db:"application_kind"`
+	VersionLabel            string    `db:"version_label"`
 }
 
 // Service returns the base runtime binding row.
 func (item ServiceListItem) Service() Service {
 	return Service{
 		Id: item.Id, ProjectId: item.ProjectId,
-		ApplicationId: item.ApplicationId,
-		Code:          item.Code,
-		VersionId:     item.VersionId,
-		Status:        item.Status,
-		CreatedAt:     item.CreatedAt,
-		UpdatedAt:     item.UpdatedAt,
+		ApplicationId:       item.ApplicationId,
+		Code:                item.Code,
+		VersionId:           item.VersionId,
+		DeploymentDirectory: item.DeploymentDirectory, DirectoryTargetRevision: item.DirectoryTargetRevision,
+		RuntimeDirectory: item.RuntimeDirectory, RuntimeTargetRevision: item.RuntimeTargetRevision,
+		Status:    item.Status,
+		CreatedAt: item.CreatedAt,
+		UpdatedAt: item.UpdatedAt,
 	}
 }

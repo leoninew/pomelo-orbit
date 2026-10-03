@@ -8,6 +8,7 @@ import (
 
 // ServiceReader provides runtime service binding queries to other domains.
 type ServiceReader interface {
+	DirectoryServices(ctx context.Context, projectId string) ([]model.Service, error)
 	ListServicesByApplication(ctx context.Context, projectId string, applicationId string) ([]model.Service, error)
 	ListServicesByVersion(ctx context.Context, projectId string, versionId string) ([]model.Service, error)
 	ListServicesByProject(ctx context.Context, projectId string, applicationId string, status string, search string, page int, perPage int) (Page[model.ServiceListItem], error)
@@ -21,6 +22,8 @@ type ServiceReader interface {
 
 // ServiceStore persists runtime service bindings.
 type ServiceStore interface {
+	UpdateServiceDeploymentDirectory(ctx context.Context, projectId, id, directory string, targetRevision int64) error
+	BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, targetRevision int64) error
 	ServiceReader
 	UpsertService(ctx context.Context, projectId string, svc model.Service) error
 	CreateServiceWithComponents(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error

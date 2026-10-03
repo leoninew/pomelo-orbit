@@ -83,7 +83,7 @@ func (h Handler) DeployService(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	result, err := h.service.DeployService(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), deploymentdto.DeployServiceInput{ForceRecreate: req.ForceRecreate, JoinTraefikNetwork: req.JoinTraefikNetwork})
+	result, err := h.service.DeployService(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("service_id"), deploymentdto.DeployServiceInput{VersionId: req.VersionId, DeploymentDirectory: req.DeploymentDirectory, EnvironmentTargetRevision: req.EnvironmentTargetRevision, ForceRecreate: req.ForceRecreate, JoinTraefikNetwork: req.JoinTraefikNetwork})
 	if err != nil {
 		transport.WriteError(c, err)
 		return

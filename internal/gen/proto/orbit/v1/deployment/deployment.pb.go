@@ -23,6 +23,7 @@ const (
 
 type DeploymentResp struct {
 	state                    protoimpl.MessageState `protogen:"open.v1"`
+	WorkingDirectory         *string                `protobuf:"bytes,20,opt,name=working_directory,json=workingDirectory,proto3,oneof" json:"working_directory,omitempty"`
 	Id                       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ProjectId                *string                `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3,oneof" json:"project_id,omitempty"`
 	ApplicationId            *string                `protobuf:"bytes,3,opt,name=application_id,json=applicationId,proto3,oneof" json:"application_id,omitempty"`
@@ -74,6 +75,13 @@ func (x *DeploymentResp) ProtoReflect() protoreflect.Message {
 // Deprecated: Use DeploymentResp.ProtoReflect.Descriptor instead.
 func (*DeploymentResp) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_deployment_deployment_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *DeploymentResp) GetWorkingDirectory() string {
+	if x != nil && x.WorkingDirectory != nil {
+		return *x.WorkingDirectory
+	}
+	return ""
 }
 
 func (x *DeploymentResp) GetId() string {
@@ -433,12 +441,13 @@ var File_orbit_v1_deployment_deployment_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_deployment_deployment_proto_rawDesc = "" +
 	"\n" +
-	"$orbit/v1/deployment/deployment.proto\x12\x13orbit.v1.deployment\"\xf9\x06\n" +
-	"\x0eDeploymentResp\x12\x0e\n" +
+	"$orbit/v1/deployment/deployment.proto\x12\x13orbit.v1.deployment\"\xc1\a\n" +
+	"\x0eDeploymentResp\x120\n" +
+	"\x11working_directory\x18\x14 \x01(\tH\x00R\x10workingDirectory\x88\x01\x01\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\"\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\tH\x00R\tprojectId\x88\x01\x01\x12*\n" +
-	"\x0eapplication_id\x18\x03 \x01(\tH\x01R\rapplicationId\x88\x01\x01\x12)\n" +
+	"project_id\x18\x02 \x01(\tH\x01R\tprojectId\x88\x01\x01\x12*\n" +
+	"\x0eapplication_id\x18\x03 \x01(\tH\x02R\rapplicationId\x88\x01\x01\x12)\n" +
 	"\x10application_name\x18\x04 \x01(\tR\x0fapplicationName\x12%\n" +
 	"\x0eoperation_type\x18\x05 \x01(\tR\roperationType\x12!\n" +
 	"\ftrigger_type\x18\x06 \x01(\tR\vtriggerType\x12!\n" +
@@ -447,22 +456,24 @@ const file_orbit_v1_deployment_deployment_proto_rawDesc = "" +
 	"\n" +
 	"started_at\x18\t \x01(\tR\tstartedAt\x12$\n" +
 	"\vfinished_at\x18\n" +
-	" \x01(\tH\x02R\n" +
+	" \x01(\tH\x03R\n" +
 	"finishedAt\x88\x01\x01\x12$\n" +
-	"\vduration_ms\x18\v \x01(\x05H\x03R\n" +
+	"\vduration_ms\x18\v \x01(\x05H\x04R\n" +
 	"durationMs\x88\x01\x01\x12\x1e\n" +
-	"\blog_text\x18\f \x01(\tH\x04R\alogText\x88\x01\x01\x12(\n" +
-	"\rerror_message\x18\r \x01(\tH\x05R\ferrorMessage\x88\x01\x01\x12\x1f\n" +
+	"\blog_text\x18\f \x01(\tH\x05R\alogText\x88\x01\x01\x12(\n" +
+	"\rerror_message\x18\r \x01(\tH\x06R\ferrorMessage\x88\x01\x01\x12\x1f\n" +
 	"\vis_rollback\x18\x0e \x01(\bR\n" +
 	"isRollback\x12B\n" +
-	"\x1brollback_from_deployment_id\x18\x0f \x01(\tH\x06R\x18rollbackFromDeploymentId\x88\x01\x01\x12\x1d\n" +
+	"\x1brollback_from_deployment_id\x18\x0f \x01(\tH\aR\x18rollbackFromDeploymentId\x88\x01\x01\x12\x1d\n" +
 	"\n" +
 	"created_at\x18\x10 \x01(\tR\tcreatedAt\x12\"\n" +
 	"\n" +
-	"version_id\x18\x11 \x01(\tH\aR\tversionId\x88\x01\x01\x12\"\n" +
+	"version_id\x18\x11 \x01(\tH\bR\tversionId\x88\x01\x01\x12\"\n" +
 	"\n" +
-	"service_id\x18\x12 \x01(\tH\bR\tserviceId\x88\x01\x01\x12&\n" +
-	"\foptions_json\x18\x13 \x01(\tH\tR\voptionsJson\x88\x01\x01B\r\n" +
+	"service_id\x18\x12 \x01(\tH\tR\tserviceId\x88\x01\x01\x12&\n" +
+	"\foptions_json\x18\x13 \x01(\tH\n" +
+	"R\voptionsJson\x88\x01\x01B\x14\n" +
+	"\x12_working_directoryB\r\n" +
 	"\v_project_idB\x11\n" +
 	"\x0f_application_idB\x0e\n" +
 	"\f_finished_atB\x0e\n" +

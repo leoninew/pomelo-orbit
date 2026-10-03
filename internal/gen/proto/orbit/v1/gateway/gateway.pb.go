@@ -498,6 +498,10 @@ type GatewayResp struct {
 	VersionBindings         []*GatewayVersionBinding `protobuf:"bytes,23,rep,name=version_bindings,json=versionBindings,proto3" json:"version_bindings,omitempty"`
 	RestApiHostUrl          string                   `protobuf:"bytes,24,opt,name=rest_api_host_url,json=restApiHostUrl,proto3" json:"rest_api_host_url,omitempty"`
 	ExternalDomain          string                   `protobuf:"bytes,25,opt,name=external_domain,json=externalDomain,proto3" json:"external_domain,omitempty"`
+	DeploymentDirectory     string                   `protobuf:"bytes,26,opt,name=deployment_directory,json=deploymentDirectory,proto3" json:"deployment_directory,omitempty"`
+	DirectoryTargetRevision int64                    `protobuf:"varint,27,opt,name=directory_target_revision,json=directoryTargetRevision,proto3" json:"directory_target_revision,omitempty"`
+	RuntimeDirectory        string                   `protobuf:"bytes,28,opt,name=runtime_directory,json=runtimeDirectory,proto3" json:"runtime_directory,omitempty"`
+	RuntimeTargetRevision   int64                    `protobuf:"varint,29,opt,name=runtime_target_revision,json=runtimeTargetRevision,proto3" json:"runtime_target_revision,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -700,6 +704,34 @@ func (x *GatewayResp) GetExternalDomain() string {
 	return ""
 }
 
+func (x *GatewayResp) GetDeploymentDirectory() string {
+	if x != nil {
+		return x.DeploymentDirectory
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetDirectoryTargetRevision() int64 {
+	if x != nil {
+		return x.DirectoryTargetRevision
+	}
+	return 0
+}
+
+func (x *GatewayResp) GetRuntimeDirectory() string {
+	if x != nil {
+		return x.RuntimeDirectory
+	}
+	return ""
+}
+
+func (x *GatewayResp) GetRuntimeTargetRevision() int64 {
+	if x != nil {
+		return x.RuntimeTargetRevision
+	}
+	return 0
+}
+
 type GatewayPaginatedResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*GatewayResp         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -852,7 +884,7 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\finternal_dns\x18\t \x01(\tR\vinternalDns\x12\x1f\n" +
 	"\vclient_hint\x18\n" +
 	" \x01(\tR\n" +
-	"clientHint\"\x9d\a\n" +
+	"clientHint\"\xf1\b\n" +
 	"\vGatewayResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -884,7 +916,11 @@ const file_orbit_v1_gateway_gateway_proto_rawDesc = "" +
 	"\rdns_api_token\x18\x16 \x01(\tR\vdnsApiToken\x12R\n" +
 	"\x10version_bindings\x18\x17 \x03(\v2'.orbit.v1.gateway.GatewayVersionBindingR\x0fversionBindings\x12)\n" +
 	"\x11rest_api_host_url\x18\x18 \x01(\tR\x0erestApiHostUrl\x12'\n" +
-	"\x0fexternal_domain\x18\x19 \x01(\tR\x0eexternalDomain\"\xa6\x01\n" +
+	"\x0fexternal_domain\x18\x19 \x01(\tR\x0eexternalDomain\x121\n" +
+	"\x14deployment_directory\x18\x1a \x01(\tR\x13deploymentDirectory\x12:\n" +
+	"\x19directory_target_revision\x18\x1b \x01(\x03R\x17directoryTargetRevision\x12+\n" +
+	"\x11runtime_directory\x18\x1c \x01(\tR\x10runtimeDirectory\x126\n" +
+	"\x17runtime_target_revision\x18\x1d \x01(\x03R\x15runtimeTargetRevision\"\xa6\x01\n" +
 	"\x14GatewayPaginatedResp\x123\n" +
 	"\x05items\x18\x01 \x03(\v2\x1d.orbit.v1.gateway.GatewayRespR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +

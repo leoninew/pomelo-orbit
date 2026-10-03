@@ -179,9 +179,11 @@ func syncPlanHashes(plan syncPlan) (string, string) {
 		}
 	}
 	publicationHash := hashSyncValue(struct {
-		Files        []routeport.Publication
-		Dependencies string
-	}{files, plan.dependencies})
+		Files                 []routeport.Publication
+		Dependencies          string
+		RuntimeDirectory      string
+		RuntimeTargetRevision int64
+	}{files, plan.dependencies, plan.gateway.RuntimeDirectory, plan.gateway.RuntimeTargetRevision})
 	return businessHash, publicationHash
 }
 

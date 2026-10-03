@@ -217,13 +217,14 @@ func (q *Queries) CountDeployments(ctx context.Context, arg CountDeploymentsPara
 
 const createDeployment = `-- name: CreateDeployment :exec
 INSERT INTO deployment (
-  id, project_id, application_id, application_name, version_id, service_id,
+  working_directory, id, project_id, application_id, application_name, version_id, service_id,
   environment_id, environment_target_type, environment_target_revision, ssh_credential_id, ssh_credential_revision, gateway_application_id,
   options_json, effective_plan_hash, operation_type, trigger_type, command_text, status, started_at, is_rollback, rollback_from_deployment_id
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateDeploymentParams struct {
+	WorkingDirectory          sql.NullString `db:"working_directory"`
 	Id                        string         `db:"id"`
 	ProjectId                 sql.NullString `db:"project_id"`
 	ApplicationId             sql.NullString `db:"application_id"`
@@ -249,6 +250,7 @@ type CreateDeploymentParams struct {
 
 func (q *Queries) CreateDeployment(ctx context.Context, arg CreateDeploymentParams) error {
 	_, err := q.db.ExecContext(ctx, createDeployment,
+		arg.WorkingDirectory,
 		arg.Id,
 		arg.ProjectId,
 		arg.ApplicationId,
@@ -291,7 +293,7 @@ func (q *Queries) DeleteDeployment(ctx context.Context, arg DeleteDeploymentPara
 }
 
 const deploymentById = `-- name: DeploymentById :one
-SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
+SELECT d.working_directory, d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
        d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
        d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
@@ -307,6 +309,7 @@ type DeploymentByIdParams struct {
 }
 
 type DeploymentByIdRow struct {
+	WorkingDirectory          sql.NullString `db:"working_directory"`
 	Id                        string         `db:"id"`
 	ProjectId                 sql.NullString `db:"project_id"`
 	ApplicationId             sql.NullString `db:"application_id"`
@@ -338,6 +341,7 @@ func (q *Queries) DeploymentById(ctx context.Context, arg DeploymentByIdParams) 
 	row := q.db.QueryRowContext(ctx, deploymentById, arg.Id, arg.ProjectId)
 	var i DeploymentByIdRow
 	err := row.Scan(
+		&i.WorkingDirectory,
 		&i.Id,
 		&i.ProjectId,
 		&i.ApplicationId,
@@ -410,7 +414,7 @@ func (q *Queries) LatestSuccessfulDeploymentPlanHash(ctx context.Context, arg La
 }
 
 const listDeployments = `-- name: ListDeployments :many
-SELECT d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
+SELECT d.working_directory, d.id, d.project_id, d.application_id, d.application_name, d.version_id, d.service_id,
        d.environment_id, d.environment_target_type, d.environment_target_revision, d.ssh_credential_id, d.ssh_credential_revision, d.gateway_application_id,
        d.options_json, d.effective_plan_hash,
        d.operation_type, d.trigger_type, d.command_text, d.status, d.started_at, d.finished_at, d.duration_ms,
@@ -447,6 +451,7 @@ type ListDeploymentsParams struct {
 }
 
 type ListDeploymentsRow struct {
+	WorkingDirectory          sql.NullString `db:"working_directory"`
 	Id                        string         `db:"id"`
 	ProjectId                 sql.NullString `db:"project_id"`
 	ApplicationId             sql.NullString `db:"application_id"`
@@ -498,6 +503,7 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 	for rows.Next() {
 		var i ListDeploymentsRow
 		if err := rows.Scan(
+			&i.WorkingDirectory,
 			&i.Id,
 			&i.ProjectId,
 			&i.ApplicationId,

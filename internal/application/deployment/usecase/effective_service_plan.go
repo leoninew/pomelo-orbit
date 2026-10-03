@@ -343,13 +343,15 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 		Endpoints     []model.VersionComponentEndpoint
 	}
 	type fingerprint struct {
-		AppCode            string
-		AppKind            string
-		VersionLabel       string
-		ServiceCode        string
-		JoinTraefikNetwork bool
-		GatewayNetworkName string
-		Components         []fingerprintComponent
+		AppCode                 string
+		AppKind                 string
+		VersionLabel            string
+		ServiceCode             string
+		DeploymentDirectory     string
+		DirectoryTargetRevision int64
+		JoinTraefikNetwork      bool
+		GatewayNetworkName      string
+		Components              []fingerprintComponent
 	}
 	components := make([]fingerprintComponent, 0, len(plan.Components))
 	for _, component := range plan.Components {
@@ -360,7 +362,7 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 	if plan.JoinsTraefikNetwork() && plan.Gateway != nil {
 		gatewayNetworkName = plan.Gateway.NetworkName
 	}
-	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, ServiceCode: plan.Service.Code, JoinTraefikNetwork: plan.JoinsTraefikNetwork(), GatewayNetworkName: gatewayNetworkName, Components: components}
+	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, ServiceCode: plan.Service.Code, DeploymentDirectory: plan.Service.DeploymentDirectory, DirectoryTargetRevision: plan.Service.DirectoryTargetRevision, JoinTraefikNetwork: plan.JoinsTraefikNetwork(), GatewayNetworkName: gatewayNetworkName, Components: components}
 	raw, err := json.Marshal(data)
 	if err != nil {
 		return "", fmt.Errorf("encode effective service plan: %w", err)

@@ -508,6 +508,15 @@
     >
       <div class="space-y-4">
         <p class="text-sm text-muted-foreground">{{ t('gateway.deploy.description') }}</p>
+        <DeploymentDirectoryField
+          v-model="directoryState.directory"
+          :platform="directoryState.platform"
+          :runtime-directory="directoryState.runtimeDirectory"
+          :error="directoryState.error"
+          :gateway="true"
+          @update:model-value="directoryState.error = ''"
+        />
+
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('gateway.deploy.forceRecreate') }}</span>
@@ -519,6 +528,7 @@
       <template #footer>
         <AppDialogActions
           :busy="operating"
+          :confirm-disabled="!directoryState.ready"
           @cancel="isDeployDialogOpen = false"
           @confirm="handleDeployOk"
         />
@@ -574,6 +584,8 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
+  import DeploymentDirectoryField from '@/components/DeploymentDirectoryField.vue';
+  import { useDeploymentDirectory } from '@/composables/useDeploymentDirectory';
   import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
   import { provideLogStreamCache } from '@/composables/useLogStream';
   import AppLoadingState from '@/components/AppLoadingState.vue';
@@ -650,6 +662,8 @@
   const certificateSubmitError = ref('');
   const isCertificateTokenVisible = ref(false);
   const isDeployDialogOpen = ref(false);
+  const deploymentDirectory = useDeploymentDirectory(() => projectStore.activeProjectId);
+  const directoryState = deploymentDirectory.state;
   const deploySubmitError = ref('');
   const deployForm = reactive({
     force_recreate: false,
@@ -951,7 +965,14 @@
       toast.error(t('gateway.toast.noService'));
       return;
     }
-    isDeployDialogOpen.value = true;
+    try {
+      if (!(await deploymentDirectory.load(selectedProjectId(), current, current.service_code))) {
+        return;
+      }
+      isDeployDialogOpen.value = true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
+    }
   }
 
   async function handleDeployOk() {
@@ -964,6 +985,9 @@
       deploySubmitError.value = t('gateway.toast.deployServiceRequired');
       return;
     }
+    if (!deploymentDirectory.validate(t('service.deploy.directoryInvalid'))) {
+      return;
+    }
     try {
       await executeOp(async () => {
         const projectId = selectedProjectId();
@@ -971,6 +995,7 @@
           return;
         }
         const result = await serviceApi.deploy(projectId, current.service_id, {
+          ...deploymentDirectory.payload(),
           force_recreate: deployForm.force_recreate,
         });
         for (const warning of result.warnings) {

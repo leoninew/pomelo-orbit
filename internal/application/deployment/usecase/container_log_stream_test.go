@@ -76,7 +76,7 @@ func (r *containerStreamRuntime) QueryAtEnvironmentRoot(context.Context, environ
 	}
 	return fmt.Sprintf(`{"ID":%q}`, r.id), nil
 }
-func (r *containerStreamRuntime) Stream(ctx context.Context, _ environmentport.Target, _ string, output io.Writer, _ string, args ...string) error {
+func (r *containerStreamRuntime) Stream(ctx context.Context, _ environmentport.Target, _ deploymentport.ServiceLocation, output io.Writer, _ string, args ...string) error {
 	r.mu.Lock()
 	id := r.id
 	r.commands = append(r.commands, strings.Join(args, " "))
@@ -94,7 +94,8 @@ func newContainerStreamService() (Service, *containerStreamStore, *containerStre
 	queryStore.service.ProjectId = "project-1"
 	appId, serviceId := "app-1", "service-1"
 	options := "{}"
-	store := &containerStreamStore{runtimeQueryStore: queryStore, member: true, deployment: model.Deployment{Id: "deployment-1", ApplicationId: &appId, ServiceId: &serviceId, Status: status.WorkStatusRunning, StartedAt: time.Date(2026, 9, 30, 0, 0, 0, 0, time.UTC)}}
+	queryStore.service.RuntimeDirectory, queryStore.service.RuntimeTargetRevision = "/custom/demo", 1
+	store := &containerStreamStore{runtimeQueryStore: queryStore, member: true, deployment: model.Deployment{WorkingDirectory: &queryStore.service.RuntimeDirectory, Id: "deployment-1", ApplicationId: &appId, ServiceId: &serviceId, Status: status.WorkStatusRunning, StartedAt: time.Date(2026, 9, 30, 0, 0, 0, 0, time.UTC)}}
 	target := testSSHTarget("project-1")
 	store.deployment.OptionsJSON = &options
 	applyDeploymentTargetSnapshot(&store.deployment, target, nil)

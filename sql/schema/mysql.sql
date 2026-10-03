@@ -503,6 +503,10 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
 );
 
 CREATE TABLE IF NOT EXISTS service (
+    deployment_directory VARCHAR(2048) NOT NULL DEFAULT '',
+    directory_target_revision BIGINT NOT NULL DEFAULT 0,
+    runtime_directory VARCHAR(2048) NOT NULL DEFAULT '',
+    runtime_target_revision BIGINT NOT NULL DEFAULT 0,
     id TEXT PRIMARY KEY,
     project_id VARCHAR(26) NOT NULL,
     application_id TEXT NOT NULL,
@@ -603,6 +607,7 @@ CREATE TABLE IF NOT EXISTS service_component_endpoint (
 
 
 CREATE TABLE IF NOT EXISTS deployment (
+    working_directory VARCHAR(2048),
     id TEXT PRIMARY KEY,
     application_id TEXT,
     application_name TEXT NOT NULL,

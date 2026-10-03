@@ -190,3 +190,15 @@ func TestApplyContainerComponentIds(t *testing.T) {
 		t.Fatalf("unexpected ComponentId for %+v", containers[1])
 	}
 }
+
+func (s *runtimeQueryStore) UpdateServiceDeploymentDirectory(_ context.Context, _, _, directory string, revision int64) error {
+	s.service.DeploymentDirectory, s.service.DirectoryTargetRevision = directory, revision
+	return nil
+}
+func (s *runtimeQueryStore) BindServiceRuntimeDirectory(_ context.Context, _, _, _, directory string, revision int64) error {
+	s.service.RuntimeDirectory, s.service.RuntimeTargetRevision = directory, revision
+	return nil
+}
+func (s *runtimeQueryStore) DirectoryServices(context.Context, string) ([]model.Service, error) {
+	return []model.Service{s.service}, nil
+}

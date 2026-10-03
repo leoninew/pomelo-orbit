@@ -1,5 +1,5 @@
 # Project 环境与 CD 产品模型
-最后修改时间: 2026-10-02 10:42:03
+最后修改时间: 2026-10-04 00:16:31
 
 Doc role: living product model
 
@@ -18,7 +18,7 @@ Doc role: living product model
 
 `Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。切换当前 Project 就是切换该 Project 已保存的共用环境及关联的 CD Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
 
-Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD 使用 `<workspace_root>/deployment/<service-code>`，Gateway certificates、独立 Route 文件及发布记录也位于对应 Service 目录下。当前 CI 执行器支持通过最新 Probe 的 `local` Environment，以及受管密钥和 host-key pinning 就绪的 Windows/Linux SSH Environment；分别在本机或远端 `<workspace_root>/pipeline` 中执行。SSH 登录用户还须能写入目标的 `pipeline` 目录，且目标 Docker daemon 能挂载相应宿主路径；Environment Probe 成功不保证已存在的 `pipeline` 子目录可写。SSH 目标绝不能作为控制面 Docker 的本地挂载源，也不在 SSH 失败时回退本地。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
+Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD 首次部署默认使用 `<workspace_root>/deployment/<service-code>`，用户可确认或修改完整部署目录，Gateway certificates、独立 Route 文件及发布记录也位于对应 Service 目录下。当前 CI 执行器支持通过最新 Probe 的 `local` Environment，以及受管密钥和 host-key pinning 就绪的 Windows/Linux SSH Environment；分别在本机或远端 `<workspace_root>/pipeline` 中执行。SSH 登录用户还须能写入目标的 `pipeline` 目录，且目标 Docker daemon 能挂载相应宿主路径；Environment Probe 成功不保证已存在的 `pipeline` 子目录可写。SSH 目标绝不能作为控制面 Docker 的本地挂载源，也不在 SSH 失败时回退本地。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
 
 ## Environment
 
@@ -37,7 +37,7 @@ Environment 的 target type 是显式联合：
 
 ## Gateway
 
-Gateway 是一个绑定到 Project Environment 的普通 Application。每个 Environment 仅允许一个 Gateway 和一个受管 Service。Application name/code 是 Project 内唯一的产品身份 `Traefik` / `traefik`，不把 Project code 拼进名称；受管 Service 的既有 code 为 Project 内唯一的 `traefik-default`，但该字面量只是一项稳定编码，不表示默认实例。工作目录和 Compose project 都使用 Service code。普通 Application 可以拥有多条 Service；每条 Service 以 Project 内唯一 code 区分。创建时生成 `base`、`http`、`dns`、`http-dns` 四个普通 Version；它们与普通 Version/Component 一样可以查看、编辑、fork 和部署。
+Gateway 是一个绑定到 Project Environment、`kind=gateway` 的 Application。每个 Environment 仅允许一个 Gateway 和一个受管 Service。Application name/code 是 Project 内唯一的产品身份 `Traefik` / `traefik`，不把 Project code 拼进名称；受管 Service 的既有 code 为 Project 内唯一的 `traefik-default`，但该字面量只是一项稳定编码，不表示默认实例。Compose project 使用 Service code；工作目录使用 Service 保存的运行目录。普通 Application 可以拥有多条 Service；每条 Service 以 Project 内唯一 code 区分。创建时生成 `base`、`http`、`dns`、`http-dns` 四个普通 Version；它们与普通 Version/Component 一样可以查看、编辑和 fork；Gateway 从网关入口部署，服务入口禁用部署按钮。
 
 GatewayConfig 保存控制面 REST URL/readiness、`internal_domain`、可选的 `external_domain`、Component label 默认策略、ACME profile、email 和 DNS token。`internal_domain` 沿用原有域名机制，供 gateway mode 的 Docker labels 和 Gateway 派生地址使用；`external_domain` 只为创建、编辑自定义 Route 时拼接域名提供后缀，不管理 DNS 记录，也不改变已有 Route。未配置外网域名时，Route 创建表单的域名控件留空。它不保存 Component 名称、镜像、mount、endpoint、TCP listener 或 resolver 布局。profile 选择对应的绑定 Version；空 profile 使用 `base` Version。
 
@@ -54,3 +54,9 @@ GatewayConfig 保存控制面 REST URL/readiness、`internal_domain`、可选的
 DNS token 是 Gateway 属性，直接返回、快照并作为 `CF_DNS_API_TOKEN` 写入 DNS profile 的 Compose environment。本期不提供全局 token、secret workspace、Compose secret 或脱敏接口。
 
 Gateway 部署会写入当前受管 File provider 配置并自动重建容器，迁移脚本初始化和已部署 REST 的受管实例同样适用。首次切换通过线下传达重新部署及显式同步一次的步骤，不增加 UI 或转换旧发布快照；部署不会从业务 Route 自动发布草稿。
+
+## 服务部署目录
+
+Service 保存确认目录 `deployment_directory` 和运行目录 `runtime_directory`，分别绑定 Environment target revision。首次根据环境根目录拼接，后续按当前修订回填；允许完整目录位于环境工作区之外。部署一次提交版本与目录，Deployment 冻结版本、工作目录和目标修订。重启、停止、状态与日志使用运行目录。
+
+已部署服务（包括已停止的服务）改目录只警告：相对挂载位置改变、旧数据不会迁移，可能重建容器并中断服务。Gateway 还需注意路由、证书和 ACME 数据，并另行显式同步 Route。警告不阻止提交。

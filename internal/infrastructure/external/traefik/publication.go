@@ -78,7 +78,11 @@ func (m *RouteManager) publicationWorkspace(ctx context.Context, projectId strin
 	if !ok {
 		return target, nil, "", errors.New("target workspace file operations are not configured")
 	}
-	base, err := m.runtime.ServiceDir(target, gateway.RuntimeServiceCode)
+	if gateway.RuntimeDirectory == "" || gateway.RuntimeTargetRevision != target.Environment.TargetRevision {
+		return target, nil, "", apperror.New(apperror.KindConflict, "Gateway runtime directory is unavailable for this Environment. Deploy Gateway again.")
+	}
+	base, err := m.runtime.ResolveDirectory(ctx, target, gatewayLocation(gateway))
+	target.FileScope = base
 	base = strings.ReplaceAll(base, "\\", "/")
 	if err == nil {
 		if session := m.session(ctx); session != nil {
@@ -257,19 +261,25 @@ func (m *RouteManager) ValidateGateway(ctx context.Context, projectId string, ga
 	if err := json.Unmarshal([]byte(output), &mounts); err != nil {
 		return "", err
 	}
-	physical, err := m.runtime.ComposeMountSourceDir(ctx, target, gateway.RuntimeServiceCode)
+	physical, err := m.runtime.ComposeMountSourceDir(ctx, target, gatewayLocation(gateway))
 	if err != nil {
 		return "", err
 	}
+	managedSources := []string{physical}
 	for _, spec := range []struct {
 		source, target string
 		writable       bool
 	}{
 		{"gateway/dynamic", model.GatewayRouteConfigTarget, false}, {"gateway/certs", "/etc/traefik/certs", false}, {"gateway/acme", "/letsencrypt", true},
 	} {
+		expected, err := m.runtime.ComposeMountSourceDir(ctx, target, deploymentport.ServiceLocation{Code: gateway.RuntimeServiceCode, Directory: path.Join(gateway.RuntimeDirectory, spec.source)})
+		if err != nil {
+			return "", err
+		}
+		managedSources = append(managedSources, expected)
 		found := false
 		for _, mount := range mounts {
-			if mount.Destination == spec.target && strings.EqualFold(strings.ReplaceAll(mount.Source, "\\", "/"), path.Join(strings.ReplaceAll(physical, "\\", "/"), spec.source)) && mount.RW == spec.writable {
+			if mount.Destination == spec.target && strings.EqualFold(strings.ReplaceAll(mount.Source, "\\", "/"), strings.ReplaceAll(expected, "\\", "/")) && mount.RW == spec.writable {
 				found = true
 			}
 		}
@@ -277,11 +287,11 @@ func (m *RouteManager) ValidateGateway(ctx context.Context, projectId string, ga
 			return "", apperror.New(apperror.KindValidation, "Gateway is missing the declared managed directory mount: "+spec.target)
 		}
 	}
-	return digest([]byte(target.Environment.Id + ":" + strconv.FormatInt(target.Environment.TargetRevision, 10) + "\x00" + content + "\x00" + physical)), nil
+	return digest([]byte(target.Environment.Id + ":" + strconv.FormatInt(target.Environment.TargetRevision, 10) + "\x00" + content + "\x00" + strings.Join(managedSources, "\x00"))), nil
 }
 
 func (m *RouteManager) gatewayContainer(ctx context.Context, target environmentport.Target, gateway model.GatewayConfig) (string, error) {
-	container, err := m.runtime.Query(ctx, target, gateway.RuntimeServiceCode, "docker", "compose", "ps", "-q", model.GatewayComponentName())
+	container, err := m.runtime.Query(ctx, target, gatewayLocation(gateway), "docker", "compose", "ps", "-q", model.GatewayComponentName())
 	if err != nil {
 		cause := fmt.Errorf("resolve running Gateway container: %w", err)
 		if diagnostic := strings.TrimSpace(container); diagnostic != "" {
@@ -305,7 +315,7 @@ func (m *RouteManager) reloadFileProvider(ctx context.Context, target environmen
 	defer func() { resultErr = finish(resultErr) }()
 	required := target.Environment.IsSSH() && target.Environment.SSH.Platform == model.EnvironmentPlatformWindows
 	if target.Environment.IsLocal() {
-		physical, err := m.runtime.ComposeMountSourceDir(ctx, target, gateway.RuntimeServiceCode)
+		physical, err := m.runtime.ComposeMountSourceDir(ctx, target, gatewayLocation(gateway))
 		if err != nil {
 			return apperror.WrapWithCode(apperror.KindInternal, "route_sync_reload_failed", "Failed to resolve the Gateway mount source for configuration reload", err)
 		}
@@ -869,4 +879,8 @@ func matchesConfiguration(expected dynamicConfiguration, absent []routeResource,
 		}
 	}
 	return true
+}
+
+func gatewayLocation(gateway model.GatewayConfig) deploymentport.ServiceLocation {
+	return deploymentport.ServiceLocation{Code: gateway.RuntimeServiceCode, Directory: gateway.RuntimeDirectory}
 }

@@ -19,8 +19,11 @@ type DeploymentListInput struct {
 
 // DeployServiceInput describes a user-requested deployment of saved Service configuration.
 type DeployServiceInput struct {
-	ForceRecreate      bool
-	JoinTraefikNetwork *bool
+	VersionId                 *string
+	DeploymentDirectory       string
+	EnvironmentTargetRevision int64
+	ForceRecreate             bool
+	JoinTraefikNetwork        *bool
 }
 
 // PreviewComposeInput controls a Compose preview without persisting a

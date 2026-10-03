@@ -10,6 +10,8 @@ import (
 // Target is the fully resolved, revision-pinned deployment target for one
 // Project. PrivateKey is present only for SSH and is never persisted or logged.
 type Target struct {
+	// FileScope confines managed file operations to an explicit service directory.
+	FileScope   string
 	Environment model.Environment
 	PrivateKey  *environmentdto.DeploymentSSHPrivateKey
 }

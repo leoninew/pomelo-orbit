@@ -131,3 +131,14 @@ func (s stores) UpsertGatewayConfig(ctx context.Context, cfg model.GatewayConfig
 func (s stores) ReplaceGatewayVersionBindings(ctx context.Context, applicationId string, bindings []model.GatewayVersionBinding) error {
 	return s.gateway.ReplaceGatewayVersionBindings(ctx, applicationId, bindings)
 }
+
+func (s stores) UpdateServiceDeploymentDirectory(ctx context.Context, projectId, id, directory string, revision int64) error {
+	return s.service.UpdateServiceDeploymentDirectory(ctx, projectId, id, directory, revision)
+}
+func (s stores) BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, revision int64) error {
+	return s.service.BindServiceRuntimeDirectory(ctx, projectId, id, deploymentId, directory, revision)
+}
+
+func (s stores) DirectoryServices(ctx context.Context, projectId string) ([]model.Service, error) {
+	return s.service.DirectoryServices(ctx, projectId)
+}

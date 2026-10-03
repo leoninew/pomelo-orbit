@@ -52,7 +52,10 @@ func (s Service) OpenDeploymentContainerLogStream(ctx context.Context, userId, p
 	if deployment.ApplicationId == nil {
 		return logstream.Subscription{}, apperror.New(apperror.KindNotFound, "Deployment application not found")
 	}
-	service, err := s.resolveServiceFromDeployment(ctx, projectId, *deployment.ApplicationId, deployment)
+	if deployment.ServiceId == nil {
+		return logstream.Subscription{}, apperror.New(apperror.KindNotFound, "Deployment service not found")
+	}
+	service, err := s.resolveServiceTarget(ctx, projectId, *deployment.ApplicationId, deploymentdto.ServiceTargetInput{ServiceId: *deployment.ServiceId})
 	if err != nil {
 		return logstream.Subscription{}, apperror.New(apperror.KindNotFound, "Deployment service not found")
 	}
@@ -187,6 +190,7 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 			if !sameLogTarget(target.Environment, currentTarget.Environment) {
 				return apperror.New(apperror.KindConflict, "Container log target changed")
 			}
+			service = currentService
 			source, err = s.logContainerSource(ctx, target, service, component, scope)
 			if err != nil {
 				return err
@@ -242,6 +246,9 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 				if err != nil {
 					return err
 				}
+				if current.RuntimeDirectory != service.RuntimeDirectory || current.RuntimeTargetRevision != service.RuntimeTargetRevision {
+					return errRuntimeLocationChanged
+				}
 				if current.Code != service.Code {
 					return apperror.New(apperror.KindConflict, "Container log service changed")
 				}
@@ -267,7 +274,10 @@ func (s Service) followContainerCommand(ctx context.Context, target environmentp
 	defer func() { _ = reader.Close() }()
 	done := make(chan error, 1)
 	go func() {
-		err := s.runtime.Stream(commandCtx, target, service.Code, writer, command.Name, command.Args...)
+		location, err := runtimeServiceLocation(target, service)
+		if err == nil {
+			err = s.runtime.Stream(commandCtx, target, location, writer, command.Name, command.Args...)
+		}
 		_ = writer.CloseWithError(err)
 		done <- err
 	}()
@@ -325,6 +335,9 @@ func (s Service) followContainerCommand(ctx context.Context, target environmentp
 			}
 		case <-ticker.C:
 			if err := check(ctx); err != nil {
+				if errors.Is(err, errRuntimeLocationChanged) {
+					return true, nil
+				}
 				return false, err
 			}
 			current, err := s.resolveProjectTarget(ctx, service.ProjectId)

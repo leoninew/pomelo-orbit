@@ -10,15 +10,26 @@
           <FileCode2 class="size-4" />
           {{ t('application.detail.actions.preview') }}
         </button>
-        <button
+        <AppTooltip
           v-if="service"
-          class="app-button-primary h-9 px-3"
-          :disabled="operating || service.active_deployment"
-          @click="openDeployDialog"
+          :content="
+            service.application_kind === 'gateway' ? t('service.deploy.gatewayEntry') : undefined
+          "
         >
-          <Rocket class="size-4" />
-          {{ t('service.actions.deploy') }}
-        </button>
+          <span :tabindex="service.application_kind === 'gateway' ? 0 : undefined">
+            <button
+              v-if="service"
+              class="app-button-primary h-9 px-3"
+              :disabled="
+                operating || service.active_deployment || service.application_kind === 'gateway'
+              "
+              @click="openDeployDialog"
+            >
+              <Rocket class="size-4" />
+              {{ t('service.actions.deploy') }}
+            </button>
+          </span>
+        </AppTooltip>
         <button
           v-if="service"
           class="app-button-danger h-9 px-3"
@@ -161,9 +172,6 @@
       @update:open="handleDeployDialogOpenChange"
     >
       <div class="space-y-4">
-        <p class="text-sm text-muted-foreground">
-          {{ deployTargetLabel }}
-        </p>
         <div class="space-y-1.5">
           <label class="app-field-label mb-1.5 block">
             {{ t('service.deploy.selectVersion') }}
@@ -181,6 +189,13 @@
             {{ deployVersionError }}
           </p>
         </div>
+        <DeploymentDirectoryField
+          v-model="directoryState.directory"
+          :platform="directoryState.platform"
+          :runtime-directory="directoryState.runtimeDirectory"
+          :error="directoryState.error"
+          @update:model-value="directoryState.error = ''"
+        />
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
@@ -197,6 +212,7 @@
         <AppDialogActions
           :busy="operating"
           :confirm-label="t('common.deploy')"
+          :confirm-disabled="!directoryState.ready"
           @cancel="closeDeployDialog"
           @confirm="handleDeployOk"
         />
@@ -209,7 +225,6 @@
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <div class="space-y-4">
-        <p class="text-sm text-muted-foreground">{{ deployTargetLabel }}</p>
         <p class="text-sm text-muted-foreground">{{ t('service.stop.confirm') }}</p>
         <label class="flex items-center gap-2">
           <input v-model="stopRemoveVolumes" type="checkbox" class="app-checkbox" />
@@ -311,6 +326,9 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
+  import AppTooltip from '@/components/AppTooltip.vue';
+  import DeploymentDirectoryField from '@/components/DeploymentDirectoryField.vue';
+  import { useDeploymentDirectory } from '@/composables/useDeploymentDirectory';
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
@@ -357,6 +375,8 @@
   });
   const basicEditSubmitError = ref('');
   const isDeployDialogOpen = ref(false);
+  const deploymentDirectory = useDeploymentDirectory(() => projectStore.activeProjectId);
+  const directoryState = deploymentDirectory.state;
   const deployVersions = ref<VersionResp[]>([]);
   const deployForm = reactive({
     version_id: '',
@@ -388,16 +408,6 @@
   const environmentKeyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
   const logsDrawerOpen = ref(false);
   const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
-  const deployTargetLabel = computed(() => {
-    const current = service.value;
-    if (!current) {
-      return '';
-    }
-    return t('service.detail.subtitle', {
-      code: current.code,
-      version: current.version_label,
-    });
-  });
   const canStopService = computed(
     () =>
       !!service.value &&
@@ -583,13 +593,17 @@
 
   async function openDeployDialog() {
     const current = service.value;
-    if (!current) {
+    const projectId = selectedProjectId();
+    if (!current || current.application_kind === 'gateway') {
       return;
     }
     try {
       const page = await applicationApi.listVersions(selectedProjectId(), current.application_id, {
         per_page: 100,
       });
+      if (!(await deploymentDirectory.load(projectId, current, current.code))) {
+        return;
+      }
       deployVersions.value = page.items ?? [];
       Object.assign(deployForm, {
         version_id: current.version_id,
@@ -626,12 +640,15 @@
 
   async function handleDeployOk() {
     const current = service.value;
-    if (!current) {
+    if (!current || current.application_kind === 'gateway') {
       return;
     }
     deploySubmitError.value = '';
     deployVersionError.value = deployForm.version_id ? '' : t('service.deploy.versionRequired');
-    if (deployVersionError.value) {
+    if (
+      !deploymentDirectory.validate(t('service.deploy.directoryInvalid')) ||
+      deployVersionError.value
+    ) {
       return;
     }
     try {
@@ -640,14 +657,9 @@
         if (!(await ensureProjectExecutionReady(projectId, router, 'cd'))) {
           return;
         }
-        let serviceForDeploy = current;
-        if (deployForm.version_id !== current.version_id) {
-          serviceForDeploy = await serviceApi.updateBasic(selectedProjectId(), serviceId, {
-            version_id: deployForm.version_id,
-          });
-          setService(serviceForDeploy);
-        }
-        const result = await serviceApi.deploy(selectedProjectId(), serviceForDeploy.id, {
+        const result = await serviceApi.deploy(projectId, current.id, {
+          version_id: deployForm.version_id,
+          ...deploymentDirectory.payload(),
           force_recreate: deployForm.force_recreate,
           join_traefik_network: deployForm.join_traefik_network,
         });

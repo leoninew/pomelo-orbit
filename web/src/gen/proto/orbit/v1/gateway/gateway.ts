@@ -88,6 +88,10 @@ export interface GatewayResp {
   version_bindings: GatewayVersionBinding[];
   rest_api_host_url: string;
   external_domain: string;
+  deployment_directory: string;
+  directory_target_revision: number;
+  runtime_directory: string;
+  runtime_target_revision: number;
 }
 
 export interface GatewayPaginatedResp {

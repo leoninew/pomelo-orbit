@@ -814,6 +814,13 @@ export default {
       saved: '服务已创建',
     },
     deploy: {
+      directory: '部署目录',
+      directoryInvalid: '请输入目标平台的绝对路径或 ~/ 路径，不包含上级目录。',
+      gatewayEntry: '请从网关入口部署',
+      directoryWarning: '修改目录将改变挂载路径，旧数据不会自动迁移，请自行评估影响。',
+      gatewayDirectoryWarning:
+        '修改目录将改变数据、路由、证书和 ACME 文件位置，旧数据不会自动迁移，可能重建网关并中断入口。请另行显式同步路由。',
+
       dialogTitle: '部署服务',
       description: '向当前服务部署所选版本；部署时会维护服务运行配置。',
       selectVersion: '选择版本',

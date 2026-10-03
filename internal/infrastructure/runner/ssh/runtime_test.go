@@ -1,7 +1,6 @@
 package sshrunner
 
 import (
-	"context"
 	"encoding/base64"
 	"errors"
 	"os"
@@ -9,6 +8,7 @@ import (
 	"testing"
 	"unicode/utf16"
 
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -89,7 +89,7 @@ func TestNormalizeSFTPHomePathForWindowsAndLinux(t *testing.T) {
 	}
 }
 
-func TestComposeMountSourceDirReturnsRemoteServicePath(t *testing.T) {
+func TestServiceDirUsesTargetPlatformPaths(t *testing.T) {
 	runtime := NewRuntime()
 	for _, testCase := range []struct {
 		name, platform, root, want string
@@ -103,7 +103,7 @@ func TestComposeMountSourceDirReturnsRemoteServicePath(t *testing.T) {
 				WorkspaceRoot: testCase.root,
 				SSH:           &model.EnvironmentSSHTarget{Platform: testCase.platform},
 			}}
-			got, err := runtime.ComposeMountSourceDir(context.Background(), target, "traefik-default")
+			got, err := runtime.ServiceDir(target, deploymentport.ServiceLocation{Code: "traefik-default", Directory: strings.TrimRight(target.Environment.WorkspaceRoot, "/") + "/deployment/traefik-default"})
 			if err != nil {
 				t.Fatalf("ComposeMountSourceDir returned error: %v", err)
 			}
@@ -121,6 +121,38 @@ func (stub sftpRealPathStub) RealPath(path string) (string, error) {
 		return "", errors.New("unexpected SFTP path")
 	}
 	return string(stub), nil
+}
+
+type sftpCanonicalPathStub map[string]string
+
+func (stub sftpCanonicalPathStub) RealPath(value string) (string, error) {
+	if resolved, ok := stub[value]; ok {
+		return resolved, nil
+	}
+	return "", os.ErrNotExist
+}
+
+func TestRemoteCanonicalPathsKeepFileOperationsInServiceScope(t *testing.T) {
+	for _, tc := range []struct{ platform, root, alias, escaped string }{
+		{"linux", "/srv/api", "/alias/api", "/srv/other"},
+		{"windows", "D:/Services/api", "D:/Alias/api", "/D:/Services/other"},
+	} {
+		t.Run(tc.platform, func(t *testing.T) {
+			resolver := newSFTPPathResolver(sftpCanonicalPathStub{
+				tc.root: tc.root, tc.alias: tc.root, tc.root + "/linked": tc.escaped,
+			}, tc.platform)
+			got, err := resolver.canonical(tc.alias + "/new/config")
+			if err != nil || got != tc.root+"/new/config" {
+				t.Fatalf("canonical=%s err=%v", got, err)
+			}
+			if _, err := resolver.scoped(tc.root, tc.root+"/new/config"); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := resolver.scoped(tc.root, tc.root+"/linked/config"); err == nil {
+				t.Fatal("symlink escaped the service scope")
+			}
+		})
+	}
 }
 
 func TestSFTPPathResolverExpandsRemoteHomeForMountSource(t *testing.T) {

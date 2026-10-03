@@ -57,6 +57,7 @@ type BackgroundTask struct {
 }
 
 type Deployment struct {
+	WorkingDirectory          sql.NullString `db:"working_directory"`
 	Id                        string         `db:"id"`
 	ApplicationId             sql.NullString `db:"application_id"`
 	ApplicationName           string         `db:"application_name"`
@@ -391,14 +392,18 @@ type Route struct {
 }
 
 type Service struct {
-	Id            string    `db:"id"`
-	ProjectId     string    `db:"project_id"`
-	ApplicationId string    `db:"application_id"`
-	Code          string    `db:"code"`
-	VersionId     string    `db:"version_id"`
-	Status        string    `db:"status"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
+	DeploymentDirectory     string    `db:"deployment_directory"`
+	DirectoryTargetRevision int64     `db:"directory_target_revision"`
+	RuntimeDirectory        string    `db:"runtime_directory"`
+	RuntimeTargetRevision   int64     `db:"runtime_target_revision"`
+	Id                      string    `db:"id"`
+	ProjectId               string    `db:"project_id"`
+	ApplicationId           string    `db:"application_id"`
+	Code                    string    `db:"code"`
+	VersionId               string    `db:"version_id"`
+	Status                  string    `db:"status"`
+	CreatedAt               time.Time `db:"created_at"`
+	UpdatedAt               time.Time `db:"updated_at"`
 }
 
 type ServiceComponent struct {

@@ -260,6 +260,7 @@ func toolInputSchema(t *testing.T, tool *mcp.Tool) (schema struct {
 	t.Helper()
 	if tool == nil {
 		t.Fatal("tool is nil")
+		return schema
 	}
 	encoded, err := json.Marshal(tool.InputSchema)
 	if err != nil {

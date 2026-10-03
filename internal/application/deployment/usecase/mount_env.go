@@ -34,6 +34,7 @@ type EnvVar struct {
 }
 
 type ResolvedMount struct {
+	Relative          bool
 	Compose           string
 	HostSource        string
 	LogicalSource     string
@@ -187,7 +188,7 @@ func resolveMountSpecsForPaths(mounts []MountSpec, logicalServiceDir string, com
 		if err := validateMountSpec(mount); err != nil {
 			return nil, err
 		}
-		item := ResolvedMount{SourceType: mount.SourceType, Content: mount.Content, IgnoreIfExists: mount.IgnoreIfExists}
+		item := ResolvedMount{Relative: strings.HasPrefix(mount.Source, "./"), SourceType: mount.SourceType, Content: mount.Content, IgnoreIfExists: mount.IgnoreIfExists}
 		if mount.SourceType == mountSourceControlledFile {
 			mode, err := parseUnixFileMode(mount.Mode)
 			if err != nil {

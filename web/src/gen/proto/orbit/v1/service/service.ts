@@ -27,6 +27,10 @@ export interface ServiceResp {
   effective_error: string;
   active_deployment: boolean;
   code: string;
+  deployment_directory: string;
+  directory_target_revision: number;
+  runtime_directory: string;
+  runtime_target_revision: number;
 }
 
 export interface ServiceListResp {
@@ -197,6 +201,9 @@ export interface ServicePreviewResp {
 export interface ServiceDeployReq {
   force_recreate: boolean;
   join_traefik_network?: boolean | undefined;
+  version_id?: string | undefined;
+  deployment_directory: string;
+  environment_target_revision: number;
 }
 
 export interface ServiceDeployResp {

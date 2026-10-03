@@ -328,6 +328,7 @@
       :changes="syncChanges"
       @synced="handleSyncComplete"
       @saved="handleSyncSaved"
+      @finished="handleSyncFinished"
     />
     <RouteCertificateDialog
       v-if="routeData?.protocol === 'http'"
@@ -494,7 +495,7 @@
     };
   });
 
-  async function fetchRoute() {
+  async function fetchRoute(refreshGateway = true) {
     try {
       await execute(async () => {
         const data = await routeApi.get(selectedProjectId(), routeId);
@@ -512,7 +513,9 @@
           endpoint_protocol: data.endpoint_protocol ?? '',
           endpoint_container_port: data.endpoint_container_port,
         });
-        await loadGatewayForLogs(data.gateway_application_id);
+        if (refreshGateway) {
+          await loadGatewayForLogs(data.gateway_application_id);
+        }
       });
     } catch {
       toast.error(t('route.toast.loadDetailFailed'));
@@ -764,14 +767,13 @@
     void router.push('/routes');
   }
 
-  async function handleSyncComplete() {
+  function handleSyncComplete() {
     pendingEnabled.value = undefined;
     hasPendingRouteChanges.value = false;
     hasPendingCertificateChanges.value = false;
-    await fetchRoute();
   }
 
-  async function handleSyncSaved(results: RouteSyncResultResp[]) {
+  function handleSyncSaved(results: RouteSyncResultResp[]) {
     if (
       results.some(
         (item) =>
@@ -779,10 +781,16 @@
           (item.business_save === 'saved' || item.code === 'route_sync_completed')
       )
     ) {
+      if (routeData.value && pendingEnabled.value !== undefined) {
+        routeData.value = { ...routeData.value, enabled: pendingEnabled.value };
+      }
       pendingEnabled.value = undefined;
     }
     hasPendingRouteChanges.value = true;
-    await fetchRoute();
+  }
+
+  async function handleSyncFinished() {
+    await fetchRoute(false);
   }
 
   async function handleCertificateSaved(updated: RouteResp) {

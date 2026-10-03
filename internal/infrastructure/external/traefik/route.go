@@ -14,6 +14,7 @@ import (
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/common/operation"
 	localstorage "github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -112,7 +113,7 @@ func (m *RouteManager) listRouters(ctx context.Context, projectId string, gatewa
 	items := make([]routeport.TraefikRouter, 0, len(routers))
 	for _, router := range routers {
 		tlsConfig := normalizeJSON(router.TLS)
-		items = append(items, routeport.TraefikRouter{Name: router.Name, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: append([]string(nil), router.Entrypoints...), TLS: tlsConfig != "", TLSConfig: tlsConfig})
+		items = append(items, routeport.TraefikRouter{Name: router.Name, Protocol: protocol, Provider: router.Provider, Status: router.Status, Rule: router.Rule, Service: router.Service, Entrypoints: append([]string(nil), router.Entrypoints...), TLS: tlsConfig != "", TLSConfig: tlsConfig})
 	}
 	return items, nil
 }
@@ -169,9 +170,9 @@ func (m *RouteManager) get(ctx context.Context, projectId string, gateway model.
 	return m.request(ctx, projectId, gateway, nil, []string{"-fsS", "--max-time", strconv.FormatFloat(m.timeouts.ApiRequest.Seconds(), 'f', -1, 64)}, endpoint)
 }
 
-func (m *RouteManager) request(ctx context.Context, projectId string, gateway model.GatewayConfig, input []byte, curlArgs []string, endpoint string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, m.timeouts.ApiRequest)
-	defer cancel()
+func (m *RouteManager) request(ctx context.Context, projectId string, gateway model.GatewayConfig, input []byte, curlArgs []string, endpoint string) (output string, resultErr error) {
+	ctx, finish := operation.StartStage(ctx, "Traefik API", "request", m.timeouts.ApiRequest, "endpoint", endpoint)
+	defer func() { resultErr = finish(resultErr) }()
 	target, err := m.resolveTarget(ctx, projectId)
 	if err != nil {
 		return "", err
@@ -201,7 +202,13 @@ func (m *RouteManager) resolveTarget(ctx context.Context, projectId string) (env
 	if m == nil || m.targetResolver == nil || m.runtime == nil {
 		return environmentport.Target{}, apperror.New(apperror.KindInternal, "remote Traefik client is not configured")
 	}
-	return m.targetResolver.ResolveProjectTarget(ctx, projectId)
+	target, err := m.targetResolver.ResolveProjectTarget(ctx, projectId)
+	if err == nil {
+		if session := m.session(ctx); session != nil && (session.target.Environment.Id != target.Environment.Id || session.target.Environment.TargetRevision != target.Environment.TargetRevision) {
+			return target, apperror.NewWithCode(apperror.KindConflict, "route_sync_preview_expired", "Route target changed during synchronization. Preview again.")
+		}
+	}
+	return target, err
 }
 
 func (m *RouteManager) TraefikUnavailableMessage(err error) (string, bool) {

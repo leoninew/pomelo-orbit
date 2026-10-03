@@ -1091,6 +1091,11 @@ export default {
     syncEmpty: 'No routes to sync',
     syncErrorCodes: {
       route_sync_publish_failed: 'Failed to publish Route files',
+      route_sync_publish_timeout: 'Route file publication timed out',
+      route_sync_gateway_unavailable:
+        'Cannot query the Gateway container. Check Docker, Docker Compose, and the Gateway deployment on the target host.',
+      route_sync_gateway_not_running:
+        'The Gateway container is not running. Start or deploy the Gateway before syncing Routes.',
       route_sync_publish_permission_denied: 'Target workspace permission denied',
       route_sync_preview_expired: 'Configuration changed; preview again',
       route_sync_file_changed: 'Managed configuration file changed or is missing',

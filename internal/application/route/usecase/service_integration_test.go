@@ -866,6 +866,9 @@ type recordingRoutePublisher struct {
 	failures     map[string]error
 	attempts     []string
 	dependencies string
+	inspected    []model.Route
+	lists        int
+	listedIds    []string
 	err          error
 }
 
@@ -875,12 +878,25 @@ func (p *recordingRoutePublisher) LockGateway(context.Context, string) (func(), 
 func (p *recordingRoutePublisher) ValidateGateway(context.Context, string, model.GatewayConfig, []model.Route) (string, error) {
 	return p.dependencies, nil
 }
-func (p *recordingRoutePublisher) InspectPublications(context.Context, string, model.GatewayConfig) ([]routeport.Publication, error) {
-	items := []routeport.Publication{}
-	for _, item := range p.publications {
-		items = append(items, item)
+func (p *recordingRoutePublisher) OpenSession(ctx context.Context, _ string) (context.Context, func(), error) {
+	return ctx, func() {}, nil
+}
+
+func (p *recordingRoutePublisher) ListPublicationRouteIds(context.Context, string, model.GatewayConfig) ([]string, error) {
+	p.lists++
+	ids := append([]string(nil), p.listedIds...)
+	for id := range p.publications {
+		ids = append(ids, id)
 	}
-	return items, nil
+	return ids, nil
+}
+
+func (p *recordingRoutePublisher) InspectPublication(_ context.Context, _ string, _ model.GatewayConfig, route model.Route) (*routeport.Publication, error) {
+	p.inspected = append(p.inspected, route)
+	if item, found := p.publications[route.Id]; found {
+		return &item, nil
+	}
+	return nil, nil
 }
 func (p *recordingRoutePublisher) PublishRoute(_ context.Context, _ string, _ model.GatewayConfig, route model.Route, _ string) (routeport.PublicationResult, error) {
 	p.attempts = append(p.attempts, route.Id)

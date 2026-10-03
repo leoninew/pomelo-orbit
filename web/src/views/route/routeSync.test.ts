@@ -4,6 +4,7 @@ import { createApp, nextTick, type App } from 'vue';
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { projectInitializationApi } from '@/api/project/initialization';
+import { gatewayApi } from '@/api/gateway/gateway';
 import { routeApi } from '@/api/route/route';
 import { traefikRouteApi } from '@/api/route/traefik';
 import { serviceApi } from '@/api/service/service';
@@ -16,6 +17,10 @@ import RoutePage from './RoutePage.vue';
 
 vi.mock('@/api/project/initialization', () => ({
   projectInitializationApi: { getStatus: vi.fn() },
+}));
+
+vi.mock('@/api/gateway/gateway', () => ({
+  gatewayApi: { get: vi.fn() },
 }));
 
 vi.mock('@/api/route/route', () => ({
@@ -51,7 +56,7 @@ const route: RouteResp = {
   updated_at: '2026-01-01T00:00:00Z',
   protocol: 'http',
   acme_challenge: 'http',
-  gateway_application_id: '',
+  gateway_application_id: 'gateway-1',
   http01_available: false,
   dns01_available: false,
   acme_challenge_hint: '',
@@ -76,6 +81,7 @@ beforeEach(() => {
   useProjectStore().setActiveProject('project-1');
   vi.mocked(projectInitializationApi.getStatus).mockResolvedValue({ status: 'ready' } as never);
   vi.mocked(routeApi.get).mockResolvedValue(route);
+  vi.mocked(gatewayApi.get).mockResolvedValue({ id: 'gateway-1' } as never);
   vi.mocked(traefikRouteApi.getConfig).mockResolvedValue({
     dashboard_domain: '',
     https_enabled: false,
@@ -240,6 +246,14 @@ describe('Route synchronization', () => {
         expect(toasts.value).toEqual([
           expect.objectContaining({ type: 'error', text: `${route.name}: ${failureReason}` }),
         ]);
+      });
+      await vi.waitFor(() => {
+        if (scope === 'project') {
+          expect(routeApi.list).toHaveBeenCalledTimes(2);
+        } else {
+          expect(routeApi.get).toHaveBeenCalledTimes(2);
+          expect(gatewayApi.get).toHaveBeenCalledOnce();
+        }
       });
       const failureStatus = document.querySelector<HTMLElement>(
         '.app-dialog-content tbody td:last-child span'
@@ -410,5 +424,86 @@ describe('Route synchronization', () => {
         publication_hash: 'publication-hash',
       })
     );
+  });
+
+  it('refreshes the batch list once after every item has reported its result', async () => {
+    const secondRoute = { ...route, id: 'route-2', name: 'second-route' };
+    vi.mocked(routeApi.list).mockResolvedValue({ items: [route, secondRoute], total: 2 } as never);
+    vi.mocked(routeApi.previewSync).mockResolvedValue({
+      business_hash: 'batch-business',
+      publication_hash: 'batch-publication',
+      route_ids: [route.id, secondRoute.id],
+      items: [route, secondRoute].map((item) => ({
+        route_id: item.id,
+        route_name: item.name,
+        action: 'publish',
+        rule: { protocol: 'http', match: item.domain, target: item.target_url },
+        cert_type: '',
+        acme_challenge: '',
+        business_hash: `business-${item.id}`,
+        publication_hash: `publication-${item.id}`,
+      })),
+    });
+    let finishSecond: (() => void) | undefined;
+    const secondPending = new Promise<void>((resolve) => {
+      finishSecond = resolve;
+    });
+    vi.mocked(routeApi.confirmSync).mockImplementation(async (_project, input) => {
+      const routeId = input.route_ids[0];
+      if (routeId === secondRoute.id) {
+        await secondPending;
+      }
+      return {
+        message: '',
+        code: 'route_sync_completed',
+        request_id: '',
+        results: [
+          {
+            route_id: routeId,
+            route_name: routeId,
+            operation_id: 'operation',
+            code: 'route_sync_completed',
+            error: '',
+            business_save: 'saved',
+            file_commit: 'committed',
+            configuration_match: 'matched',
+            certificate_verification: 'not_applicable',
+            recovery: 'not_needed',
+            cleanup: 'completed',
+          },
+        ],
+      };
+    });
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/routes', component: RoutePage }],
+    });
+    await router.push('/routes');
+    await router.isReady();
+    target = document.createElement('div');
+    document.body.append(target);
+    mountedApp = createApp(RouterView).use(pinia).use(router).use(i18n);
+    mountedApp.mount(target);
+    const sync = () =>
+      [...(target?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find(
+        (button) => button.textContent?.trim() === i18n.global.t('route.syncAll')
+      );
+    await vi.waitFor(() => expect(sync()?.disabled).toBe(false));
+    const initialRefreshes = vi.mocked(routeApi.list).mock.calls.length;
+    sync()?.click();
+    const confirm = () =>
+      [...document.querySelectorAll<HTMLButtonElement>('.app-dialog-content button')].find(
+        (button) => button.textContent?.trim() === i18n.global.t('route.syncAll')
+      );
+    await vi.waitFor(() => expect(confirm()?.disabled).toBe(false));
+    confirm()?.click();
+    await vi.waitFor(() => expect(routeApi.confirmSync).toHaveBeenCalledTimes(2));
+    expect(routeApi.list).toHaveBeenCalledTimes(initialRefreshes);
+    expect(document.querySelector('.app-dialog-content tbody tr')?.textContent).toContain(
+      i18n.global.t('route.syncStatuses.completed')
+    );
+    finishSecond?.();
+    await vi.waitFor(() => expect(routeApi.list).toHaveBeenCalledTimes(initialRefreshes + 1));
+    expect(toasts.value.at(-1)?.type).toBe('success');
   });
 });

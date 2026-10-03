@@ -8,7 +8,7 @@ import type {
   RouteSyncPreviewResp,
   RouteUpdateReq,
 } from '@/gen/proto/orbit/v1/route/route';
-import request, { remoteRequestConfig } from '@/utils/request';
+import request from '@/utils/request';
 
 export const routeApi = {
   list(
@@ -61,22 +61,16 @@ export const routeApi = {
   },
 
   previewSync(projectId: string, data: RouteSyncPreviewReq): Promise<RouteSyncPreviewResp> {
-    return request.post(
-      '/api/route/sync/preview',
-      data,
-      remoteRequestConfig({
-        params: { project_id: projectId },
-      })
-    );
+    return request.post('/api/route/sync/preview', data, {
+      params: { project_id: projectId },
+      timeout: 0,
+    });
   },
 
   confirmSync(projectId: string, data: RouteSyncConfirmReq): Promise<RouteSyncConfirmResp> {
-    return request.post(
-      '/api/route/sync/confirm',
-      data,
-      remoteRequestConfig({
-        params: { project_id: projectId },
-      })
-    );
+    return request.post('/api/route/sync/confirm', data, {
+      params: { project_id: projectId },
+      timeout: 0,
+    });
   },
 };

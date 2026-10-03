@@ -1066,6 +1066,10 @@ export default {
     syncEmpty: '没有待同步路由',
     syncErrorCodes: {
       route_sync_publish_failed: '路由文件发布失败',
+      route_sync_publish_timeout: '路由文件发布阶段超时',
+      route_sync_gateway_unavailable:
+        '无法查询 Gateway 容器，请检查目标主机的 Docker 是否运行、Docker Compose 是否可用，以及 Gateway 是否已部署',
+      route_sync_gateway_not_running: 'Gateway 容器未运行，请先启动或部署 Gateway，再同步路由',
       route_sync_publish_permission_denied: '目标目录权限不足',
       route_sync_preview_expired: '配置已变化，请重新预览',
       route_sync_file_changed: '受管配置文件已变化或丢失',

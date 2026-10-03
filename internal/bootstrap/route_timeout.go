@@ -7,7 +7,8 @@ import (
 
 func routeSyncTimeouts(cfg config.RouteConfig) routeport.SyncTimeouts {
 	return routeport.SyncTimeouts{
-		Total: cfg.SyncTimeout, ApiRequest: cfg.ApiRequestTimeout, Reload: cfg.ReloadTimeout,
+		GatewayLock: cfg.GatewayLockTimeout, StateLoad: cfg.StateLoadTimeout, FilePublication: cfg.FilePublicationTimeout,
+		ApiRequest: cfg.ApiRequestTimeout, Reload: cfg.ReloadTimeout,
 		ConfigurationMatch: cfg.ConfigurationMatchTimeout, Recovery: cfg.RecoveryTimeout,
 	}
 }

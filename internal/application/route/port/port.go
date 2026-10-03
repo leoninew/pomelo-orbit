@@ -8,7 +8,9 @@ import (
 )
 
 type SyncTimeouts struct {
-	Total              time.Duration
+	GatewayLock        time.Duration
+	StateLoad          time.Duration
+	FilePublication    time.Duration
 	ApiRequest         time.Duration
 	Reload             time.Duration
 	ConfigurationMatch time.Duration
@@ -24,7 +26,9 @@ type TransactionRunner interface {
 // RouteConfigPublisher publishes independently owned Route files.
 type RouteConfigPublisher interface {
 	LockGateway(context.Context, string) (func(), error)
-	InspectPublications(context.Context, string, model.GatewayConfig) ([]Publication, error)
+	OpenSession(context.Context, string) (context.Context, func(), error)
+	ListPublicationRouteIds(context.Context, string, model.GatewayConfig) ([]string, error)
+	InspectPublication(context.Context, string, model.GatewayConfig, model.Route) (*Publication, error)
 	PublishRoute(context.Context, string, model.GatewayConfig, model.Route, string) (PublicationResult, error)
 	ValidateGateway(context.Context, string, model.GatewayConfig, []model.Route) (string, error)
 }
@@ -60,6 +64,7 @@ type RouteCertificateGenerator interface {
 // TraefikRouter is the router data exposed by the Traefik integration.
 type TraefikRouter struct {
 	Name        string
+	Protocol    string
 	Provider    string
 	Status      string
 	Rule        string

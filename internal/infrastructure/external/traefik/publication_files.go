@@ -45,30 +45,33 @@ func inspectPublicationFile(ctx context.Context, target environmentport.Target, 
 	return err
 }
 
-func validateRouteCodeOwnership(route model.Route, publications []routeport.Publication) error {
-	if !route.Enabled {
-		return nil
-	}
-	for _, published := range publications {
-		if published.Route.Id == route.Id {
-			continue
-		}
-		owners := []routeport.Publication{published}
-		if published.Phase == "pending" && published.Previous != nil {
-			owners = append(owners, *published.Previous)
-		}
-		for _, owner := range owners {
-			if owner.Route.Enabled && owner.Route.Name == route.Name {
-				return apperror.New(apperror.KindConflict, "The Route code is still owned by another publication. Withdraw or rename it first.")
-			}
-		}
+func retiredRouteCodes(item routeport.Publication) []string {
+	if item.Previous != nil && item.Previous.Route.Enabled && (!item.Route.Enabled || item.Route.Name != item.Previous.Route.Name) {
+		return []string{item.Previous.Route.Name}
 	}
 	return nil
 }
 
-func retiredRouteCodes(item routeport.Publication) []string {
-	if item.Previous != nil && item.Previous.Route.Enabled && (!item.Route.Enabled || item.Route.Name != item.Previous.Route.Name) {
-		return []string{item.Previous.Route.Name}
+type routeResource struct {
+	code     string
+	protocol string
+}
+
+func publicationUnchanged(previous, desired routeport.Publication) bool {
+	return previous.Phase == "confirmed" && previous.TargetRevision == desired.TargetRevision &&
+		previous.Route.Enabled == desired.Route.Enabled && previous.Route.Name == desired.Route.Name &&
+		previous.Fingerprint == desired.Fingerprint && previous.ActualFingerprint == desired.Fingerprint &&
+		previous.CertificateRevision == desired.CertificateRevision &&
+		(!desired.Route.Enabled || previous.ActualCertificateRevision == desired.CertificateRevision)
+}
+
+func routeResourceFor(route model.Route) routeResource {
+	return routeResource{code: route.Name, protocol: route.Protocol}
+}
+
+func retiredRouteResources(item routeport.Publication) []routeResource {
+	if item.Previous != nil && item.Previous.Route.Enabled && (!item.Route.Enabled || item.Route.Name != item.Previous.Route.Name || item.Route.Protocol != item.Previous.Route.Protocol) {
+		return []routeResource{routeResourceFor(item.Previous.Route)}
 	}
 	return nil
 }
@@ -168,12 +171,12 @@ func (m *RouteManager) rollbackPublication(ctx context.Context, projectId string
 	if err := m.restorePublicationFiles(ctx, target, files, base, item, oldBody); err != nil {
 		return err
 	}
-	var absent []string
-	if item.Route.Enabled && (!previousFileAvailable(item) || item.Previous.Route.Name != item.Route.Name) {
-		absent = []string{item.Route.Name}
+	var absent []routeResource
+	if item.Route.Enabled && (!previousFileAvailable(item) || item.Previous.Route.Name != item.Route.Name || item.Previous.Route.Protocol != item.Route.Protocol) {
+		absent = []routeResource{routeResourceFor(item.Route)}
 	}
 	if !previousFileAvailable(item) && item.Previous != nil && item.Previous.Route.Enabled && (!item.Route.Enabled || item.Route.Name != item.Previous.Route.Name) {
-		absent = append(absent, item.Previous.Route.Name)
+		absent = append(absent, routeResourceFor(item.Previous.Route))
 	}
 	if err := m.loadFileConfiguration(ctx, projectId, gateway, target, oldBody, absent...); err != nil {
 		return err

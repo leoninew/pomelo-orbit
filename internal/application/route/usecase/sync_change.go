@@ -29,11 +29,8 @@ type syncPlan struct {
 	dependencies string
 }
 
-func (s Service) buildSyncPlan(ctx context.Context, projectId string, input routedto.RouteSyncPreviewInput, gateway model.GatewayConfig, publications []routeport.Publication) (syncPlan, error) {
+func (s Service) buildSyncPlan(ctx context.Context, projectId string, input routedto.RouteSyncPreviewInput, gateway model.GatewayConfig) (syncPlan, error) {
 	plan := syncPlan{changes: input.Changes, gateway: gateway, publications: make(map[string]routeport.Publication)}
-	for _, item := range publications {
-		plan.publications[item.Route.Id] = item
-	}
 	switch input.Scope {
 	case "project":
 		if len(input.RouteIds) != 0 {
@@ -47,7 +44,11 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, input rout
 		for _, route := range routes {
 			ids[route.Id] = true
 		}
-		for id := range plan.publications {
+		publishedIds, err := s.routePublisher.ListPublicationRouteIds(ctx, projectId, gateway)
+		if err != nil {
+			return plan, err
+		}
+		for _, id := range publishedIds {
 			ids[id] = true
 		}
 		for id := range ids {
@@ -79,11 +80,27 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, input rout
 		}
 		changes[change.RouteId] = change
 	}
+	processedIds := make([]string, 0, len(plan.ids))
 	for _, id := range plan.ids {
 		original, err := s.route.Route(ctx, projectId, id)
-		if errors.Is(err, repository.ErrNotFound) {
-			published, found := plan.publications[id]
-			if !found {
+		deleted := errors.Is(err, repository.ErrNotFound)
+		if deleted {
+			original = model.Route{Id: id}
+		} else if err != nil {
+			return plan, err
+		}
+		published, err := s.routePublisher.InspectPublication(ctx, projectId, gateway, original)
+		if err != nil {
+			return plan, err
+		}
+		if published != nil {
+			plan.publications[id] = *published
+		}
+		if deleted {
+			if published == nil {
+				if input.Scope == "project" {
+					continue
+				}
 				return plan, apperror.New(apperror.KindNotFound, "Route not found")
 			}
 			original = published.Route
@@ -91,9 +108,8 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, input rout
 			if _, found := changes[id]; found {
 				return plan, apperror.New(apperror.KindValidation, "a deleted Route cannot receive sync changes")
 			}
-		} else if err != nil {
-			return plan, err
 		}
+		processedIds = append(processedIds, id)
 		plan.originals = append(plan.originals, original)
 		desired := original
 		if change, found := changes[id]; found {
@@ -102,6 +118,7 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, input rout
 		}
 		plan.routes = append(plan.routes, desired)
 	}
+	plan.ids = processedIds
 	return plan, nil
 }
 

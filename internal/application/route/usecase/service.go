@@ -51,20 +51,26 @@ func New(
 }
 
 func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {
-	if _, err := s.project.Project(ctx, projectId); err != nil {
+	_, err := s.projectForMember(ctx, projectId, userId)
+	return err
+}
+
+func (s Service) projectForMember(ctx context.Context, projectId string, userId string) (model.Project, error) {
+	project, err := s.project.Project(ctx, projectId)
+	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
+			return model.Project{}, apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
-		return apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
+		return model.Project{}, apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
 	member, err := s.project.IsProjectMember(ctx, projectId, userId)
 	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to check project member", err)
+		return model.Project{}, apperror.Wrap(apperror.KindInternal, "Failed to check project member", err)
 	}
 	if !member {
-		return apperror.New(apperror.KindForbidden, "Permission denied")
+		return model.Project{}, apperror.New(apperror.KindForbidden, "Permission denied")
 	}
-	return nil
+	return project, nil
 }
 
 func (s Service) resolveGatewayForRender(ctx context.Context, projectId string) (*model.GatewayConfig, error) {

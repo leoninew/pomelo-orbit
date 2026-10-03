@@ -22,6 +22,7 @@ import (
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/common/operation"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
@@ -78,56 +79,120 @@ func (m *RouteManager) publicationWorkspace(ctx context.Context, projectId strin
 		return target, nil, "", errors.New("target workspace file operations are not configured")
 	}
 	base, err := m.runtime.ServiceDir(target, gateway.RuntimeServiceCode)
-	return target, files, strings.ReplaceAll(base, "\\", "/"), err
+	base = strings.ReplaceAll(base, "\\", "/")
+	if err == nil {
+		if session := m.session(ctx); session != nil {
+			if session.base != "" && (session.base != base || session.gatewayId != gateway.ApplicationId) {
+				return target, nil, "", apperror.NewWithCode(apperror.KindConflict, "route_sync_preview_expired", "Gateway publication workspace changed. Preview again.")
+			}
+			session.base, session.gatewayId = base, gateway.ApplicationId
+		}
+	}
+	return target, files, base, err
 }
 
-func (m *RouteManager) InspectPublications(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]routeport.Publication, error) {
+func (m *RouteManager) ListPublicationRouteIds(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]string, error) {
+	ctx, closeSession, err := m.ensureSession(ctx, projectId)
+	if err != nil {
+		return nil, err
+	}
+	defer closeSession()
 	target, files, base, err := m.publicationWorkspace(ctx, projectId, gateway)
 	if err != nil {
 		return nil, err
 	}
-	root := path.Join(base, ".orbit", "route-publication")
-	names, err := files.ListFiles(ctx, target, root)
+	names, err := files.ListFiles(ctx, target, path.Join(base, ".orbit", "route-publication"))
 	if err != nil {
 		return nil, err
 	}
-	sort.Strings(names)
-	items := make([]routeport.Publication, 0, len(names))
+	ids := make([]string, 0, len(names))
 	for _, id := range names {
-		if !validPublicationId(id) {
-			continue
+		if validPublicationId(id) {
+			ids = append(ids, id)
 		}
-		data, err := files.ReadFile(ctx, target, path.Join(root, id, "state.json"))
-		if err != nil {
-			return nil, fmt.Errorf("read Route %s publication record: %w", id, err)
-		}
-		var item routeport.Publication
-		if err := json.Unmarshal(data, &item); err != nil {
-			return nil, fmt.Errorf("decode Route %s publication record: %w", id, err)
-		}
-		if item.Route.Id != id || item.Route.ProjectId == nil || *item.Route.ProjectId != projectId || item.GatewayApplicationId != gateway.ApplicationId {
-			return nil, errors.New("route publication ownership does not match the Gateway")
-		}
-		if item.TargetRevision != target.Environment.Id+":"+strconv.FormatInt(target.Environment.TargetRevision, 10) {
-			return nil, errors.New("route publication target revision has changed")
-		}
-		if err := inspectPublicationFile(ctx, target, files, base, &item); err != nil {
-			return nil, err
-		}
-		if item.Phase == "pending" && item.Previous != nil {
-			if item.Previous.Route.Id != id {
-				return nil, errors.New("previous Route publication ownership does not match")
-			}
-			if err := inspectPublicationFile(ctx, target, files, base, item.Previous); err != nil {
-				return nil, err
-			}
-		}
-		items = append(items, item)
 	}
-	return items, nil
+	sort.Strings(ids)
+	return ids, nil
 }
 
-func (m *RouteManager) ValidateGateway(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) (string, error) {
+func (m *RouteManager) InspectPublication(ctx context.Context, projectId string, gateway model.GatewayConfig, route model.Route) (item *routeport.Publication, resultErr error) {
+	ctx, closeSession, err := m.ensureSession(ctx, projectId)
+	if err != nil {
+		return nil, err
+	}
+	defer closeSession()
+	if route.Name != "" {
+		ctx = operation.WithLogAttrs(ctx, slog.String("route_code", route.Name))
+	}
+	ctx, finish := operation.StartStage(ctx, "Route sync", "inspect_publication", m.timeouts.StateLoad)
+	defer func() { resultErr = finish(resultErr) }()
+	target, files, base, err := m.publicationWorkspace(ctx, projectId, gateway)
+	if err != nil {
+		return nil, err
+	}
+	item, err = readPublicationRecord(ctx, projectId, gateway, target, files, base, route)
+	if err != nil || item == nil {
+		return item, err
+	}
+	if err := inspectPublication(ctx, target, files, base, item); err != nil {
+		return nil, err
+	}
+	return item, nil
+}
+
+func readPublicationRecord(ctx context.Context, projectId string, gateway model.GatewayConfig, target environmentport.Target, files deploymentport.WorkspaceFiles, base string, route model.Route) (item *routeport.Publication, resultErr error) {
+	if !validPublicationId(route.Id) {
+		return nil, errors.New("invalid Route publication identity")
+	}
+	attrs := []any{}
+	if route.Name == "" {
+		attrs = append(attrs, "record_path", path.Join(base, ".orbit", "route-publication", route.Id, "state.json"))
+	} else {
+		ctx = operation.WithLogAttrs(ctx, slog.String("route_code", route.Name))
+	}
+	ctx, finish := operation.StartStage(ctx, "Route sync", "read_publication_record", 0, attrs...)
+	defer func() {
+		if route.Name == "" && item != nil {
+			resultErr = finish(resultErr, "route_code", item.Route.Name)
+		} else {
+			resultErr = finish(resultErr)
+		}
+	}()
+	data, err := files.ReadFile(ctx, target, path.Join(base, ".orbit", "route-publication", route.Id, "state.json"))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read Route %s publication record: %w", route.Name, err)
+	}
+	var record routeport.Publication
+	if err := json.Unmarshal(data, &record); err != nil {
+		return nil, fmt.Errorf("decode Route %s publication record: %w", route.Name, err)
+	}
+	if record.Route.Id != route.Id || record.Route.ProjectId == nil || *record.Route.ProjectId != projectId || record.GatewayApplicationId != gateway.ApplicationId || !validPublicationId(record.Route.Name) {
+		return nil, errors.New("route publication ownership does not match the Gateway")
+	}
+	if record.Previous != nil && record.Previous.Route.Id != route.Id {
+		return nil, errors.New("previous Route publication ownership does not match")
+	}
+	return &record, nil
+}
+
+func inspectPublication(ctx context.Context, target environmentport.Target, files deploymentport.WorkspaceFiles, base string, item *routeport.Publication) error {
+	if err := inspectPublicationFile(ctx, target, files, base, item); err != nil {
+		return err
+	}
+	if item.Phase == "pending" && item.Previous != nil {
+		previous := *item.Previous
+		item.Previous = &previous
+		return inspectPublicationFile(ctx, target, files, base, item.Previous)
+	}
+	return nil
+}
+
+func (m *RouteManager) ValidateGateway(ctx context.Context, projectId string, gateway model.GatewayConfig, routes []model.Route) (fingerprint string, resultErr error) {
+	ctx, finish := operation.StartStage(ctx, "Route sync", "validate_gateway", m.timeouts.StateLoad)
+	defer func() { resultErr = finish(resultErr) }()
 	target, err := m.resolveTarget(ctx, projectId)
 	if err != nil {
 		return "", err
@@ -218,18 +283,26 @@ func (m *RouteManager) ValidateGateway(ctx context.Context, projectId string, ga
 func (m *RouteManager) gatewayContainer(ctx context.Context, target environmentport.Target, gateway model.GatewayConfig) (string, error) {
 	container, err := m.runtime.Query(ctx, target, gateway.RuntimeServiceCode, "docker", "compose", "ps", "-q", model.GatewayComponentName())
 	if err != nil {
-		return "", fmt.Errorf("resolve running Gateway container: %w", err)
+		cause := fmt.Errorf("resolve running Gateway container: %w", err)
+		if diagnostic := strings.TrimSpace(container); diagnostic != "" {
+			const maxDiagnosticBytes = 4 * 1024
+			if len(diagnostic) > maxDiagnosticBytes {
+				diagnostic = "...\n" + diagnostic[len(diagnostic)-maxDiagnosticBytes:]
+			}
+			cause = fmt.Errorf("%w\n%s", cause, diagnostic)
+		}
+		return "", apperror.WrapWithCode(apperror.KindUnavailable, "route_sync_gateway_unavailable", "Failed to query the Gateway container. Check Docker, Docker Compose, and the Gateway deployment on the target host.", cause)
 	}
 	container = strings.TrimSpace(container)
 	if container == "" || strings.ContainsAny(container, "\r\n ") {
-		return "", apperror.New(apperror.KindUnavailable, "Gateway container is not running")
+		return "", apperror.NewWithCode(apperror.KindUnavailable, "route_sync_gateway_not_running", "The Gateway container is not running. Start or deploy the Gateway before syncing Routes.")
 	}
 	return container, nil
 }
 
-func (m *RouteManager) reloadFileProvider(ctx context.Context, target environmentport.Target, gateway model.GatewayConfig) error {
-	ctx, cancel := context.WithTimeout(ctx, m.timeouts.Reload)
-	defer cancel()
+func (m *RouteManager) reloadFileProvider(ctx context.Context, target environmentport.Target, gateway model.GatewayConfig) (resultErr error) {
+	ctx, finish := operation.StartStage(ctx, "Route sync", "reload", m.timeouts.Reload)
+	defer func() { resultErr = finish(resultErr) }()
 	required := target.Environment.IsSSH() && target.Environment.SSH.Platform == model.EnvironmentPlatformWindows
 	if target.Environment.IsLocal() {
 		physical, err := m.runtime.ComposeMountSourceDir(ctx, target, gateway.RuntimeServiceCode)
@@ -265,13 +338,11 @@ func isWindowsMountSource(source string) bool {
 	return false
 }
 
-func (m *RouteManager) loadFileConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, target environmentport.Target, body []byte, absentCodes ...string) error {
-	started := time.Now()
+func (m *RouteManager) loadFileConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, target environmentport.Target, body []byte, absent ...routeResource) error {
 	if err := m.reloadFileProvider(ctx, target, gateway); err != nil {
-		slog.WarnContext(ctx, "Route publication stage failed", "project_id", projectId, "phase", "reload", "elapsed", time.Since(started), "timeout", m.timeouts.Reload, "error", err)
 		return err
 	}
-	return m.waitConfiguration(ctx, projectId, gateway, body, absentCodes...)
+	return m.waitConfiguration(ctx, projectId, gateway, body, absent...)
 }
 
 func (m *RouteManager) savePublication(ctx context.Context, target environmentport.Target, base string, item routeport.Publication) error {
@@ -283,34 +354,32 @@ func (m *RouteManager) savePublication(ctx context.Context, target environmentpo
 	return m.runtime.SyncFiles(ctx, target, path.Dir(name), []deploymentport.WorkspaceFile{{Path: name, Content: data, Mode: 0o600}}, "")
 }
 
-func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gateway model.GatewayConfig, route model.Route, expectedFingerprint string) (routeport.PublicationResult, error) {
-	deadline := time.Now().Add(m.timeouts.Total)
-	if parentDeadline, found := ctx.Deadline(); found && parentDeadline.Before(deadline) {
-		deadline = parentDeadline
-	}
-	ctx, cancel := context.WithDeadline(ctx, deadline.Add(-m.timeouts.Recovery))
-	defer cancel()
-	result := routeport.PublicationResult{OperationId: idutil.NewId(), FileCommit: "not_attempted", ConfigurationMatch: "unverified", CertificateVerification: "not_applicable", Recovery: "not_needed", Cleanup: "not_attempted"}
+func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gateway model.GatewayConfig, route model.Route, expectedFingerprint string) (result routeport.PublicationResult, resultErr error) {
+	result = routeport.PublicationResult{OperationId: idutil.NewId(), FileCommit: "not_attempted", ConfigurationMatch: "unverified", CertificateVerification: "not_applicable", Recovery: "not_needed", Cleanup: "not_attempted"}
 	if route.HTTPSEnabled && route.Enabled {
 		result.CertificateVerification = "unverified"
 	}
 	if !validPublicationId(route.Id) || !validPublicationId(route.Name) {
 		return result, errors.New("invalid Route publication identity")
 	}
+	ctx, closeSession, err := m.ensureSession(ctx, projectId)
+	if err != nil {
+		return result, err
+	}
+	defer closeSession()
+	ctx = operation.WithLogAttrs(ctx, slog.String("route_code", route.Name))
 	target, files, base, err := m.publicationWorkspace(ctx, projectId, gateway)
 	if err != nil {
 		return result, err
 	}
-	publications, err := m.InspectPublications(ctx, projectId, gateway)
+	checkCtx, finishCheck := operation.StartStage(ctx, "Route sync", "verify_publication", m.timeouts.StateLoad, "operation_id", result.OperationId)
+	previous, err := readPublicationRecord(checkCtx, projectId, gateway, target, files, base, route)
+	if err == nil && previous != nil {
+		err = inspectPublication(checkCtx, target, files, base, previous)
+	}
+	err = finishCheck(err)
 	if err != nil {
 		return result, err
-	}
-	var previous *routeport.Publication
-	for i := range publications {
-		if publications[i].Route.Id == route.Id {
-			copy := publications[i]
-			previous = &copy
-		}
 	}
 	actual := ""
 	if previous != nil {
@@ -322,8 +391,13 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 	if previous != nil && previous.ActualFingerprint != "" && previous.ActualFingerprint != previous.Fingerprint && previous.Phase != "pending" {
 		return result, apperror.NewWithCode(apperror.KindConflict, "route_sync_file_changed", "The managed Route file was modified.")
 	}
+	pendingVerified := false
 	if previous != nil && previous.Phase == "pending" {
-		previous, err = m.reconcilePending(ctx, projectId, gateway, target, files, base, *previous)
+		recoveryCtx, stopRecovery := m.recoveryContext(ctx)
+		recoveryCtx, finishRecovery := operation.StartStage(recoveryCtx, "Route sync", "pending_recovery", 0, "operation_id", result.OperationId, "timeout_ms", m.timeouts.Recovery.Milliseconds())
+		previous, err = m.reconcilePending(recoveryCtx, projectId, gateway, target, files, base, *previous)
+		err = finishRecovery(err)
+		stopRecovery()
 		if err != nil {
 			result.Recovery = "failed"
 			if _, classified := apperror.As(err); !classified {
@@ -332,10 +406,20 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 			return result, err
 		}
 		result.Recovery = "restored"
+		pendingVerified = true
 	}
-	if err := validateRouteCodeOwnership(route, publications); err != nil {
-		return result, err
+	requestCtx := ctx
+	ctx, finishFile := operation.StartStage(ctx, "Route sync", "file_publication", m.timeouts.FilePublication, "operation_id", result.OperationId)
+	fileFinished := false
+	completeFile := func(err error) error {
+		fileFinished = true
+		return finishFile(err)
 	}
+	defer func() {
+		if !fileFinished {
+			resultErr = completeFile(resultErr)
+		}
+	}()
 	active := routeConfigurationPath(base, route)
 	if route.Enabled && (previous == nil || !previous.Route.Enabled || previous.Route.Name != route.Name) {
 		_, readErr := files.ReadFile(ctx, target, active)
@@ -364,22 +448,6 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 		}
 		certificateFingerprint = digest(pair.Certificate[0])
 	}
-	if route.Enabled && route.HTTPSEnabled {
-		for _, published := range publications {
-			items := []routeport.Publication{published}
-			if published.Previous != nil && published.Phase == "pending" {
-				items = append(items, *published.Previous)
-			}
-			for _, item := range items {
-				if item.Route.Id == route.Id || !item.Route.Enabled || !item.Route.HTTPSEnabled || !strings.EqualFold(item.Route.Domain, route.Domain) {
-					continue
-				}
-				if item.Route.CertType != route.CertType && (item.Route.CertType == "letsencrypt" || route.CertType == "letsencrypt") || item.CertificateFingerprint != certificateFingerprint || route.CertType == "letsencrypt" && route.AcmeChallenge != item.Route.AcmeChallenge {
-					return result, apperror.NewWithCode(apperror.KindConflict, "route_sync_certificate_conflict", "The domain conflicts with another published Route certificate")
-				}
-			}
-		}
-	}
 	var body []byte
 	if route.Enabled {
 		body, err = yaml.Marshal(buildRouteSnapshot([]model.Route{route}))
@@ -403,6 +471,24 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 		item.Fingerprint = digest(body)
 	}
 	item.CertificateFingerprint = certificateFingerprint
+	if previous != nil && publicationUnchanged(*previous, item) {
+		if err := completeFile(nil); err != nil {
+			return result, err
+		}
+		result.FileCommit = "unchanged"
+		if !pendingVerified {
+			matched, err := m.checkConfiguration(requestCtx, projectId, gateway, body, previous.Route.Protocol)
+			if err == nil && !matched {
+				err = m.loadFileConfiguration(requestCtx, projectId, gateway, target, body)
+			}
+			if err != nil {
+				return result, err
+			}
+		}
+		result.ConfigurationMatch = "matched"
+		result.Cleanup = "not_applicable"
+		return result, nil
+	}
 	backup := path.Join(base, ".orbit", "route-publication", route.Id, "previous.yaml")
 	if previousFileAvailable(item) {
 		if err := m.runtime.SyncFiles(ctx, target, path.Dir(backup), []deploymentport.WorkspaceFile{{Path: backup, Content: oldBody, Mode: 0o600}}, ""); err != nil {
@@ -414,10 +500,13 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 	}
 	if route.Enabled && routeHasStoredCertificate(route) {
 		if err := m.ensureCertificateVersion(ctx, target, files, base, route); err != nil {
+			err = completeFile(err)
 			result.Recovery = "restored"
-			recoveryCtx, stopRecovery := m.recoveryContext(ctx, deadline)
+			recoveryCtx, stopRecovery := m.recoveryContext(requestCtx)
 			defer stopRecovery()
+			recoveryCtx, finishRecovery := operation.StartStage(recoveryCtx, "Route sync", "recovery", 0, "operation_id", result.OperationId, "timeout_ms", m.timeouts.Recovery.Milliseconds())
 			restoreErr := m.restoreRecord(recoveryCtx, target, base, previous, item, nil)
+			restoreErr = finishRecovery(restoreErr)
 			if restoreErr != nil {
 				result.Recovery = "failed"
 			}
@@ -425,9 +514,11 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 		}
 	}
 	err = m.commitPublicationFiles(ctx, target, files, base, item, body)
+	err = completeFile(err)
+	ctx = requestCtx
 	if err == nil {
 		result.FileCommit = "committed"
-		err = m.loadFileConfiguration(ctx, projectId, gateway, target, body, retiredRouteCodes(item)...)
+		err = m.loadFileConfiguration(ctx, projectId, gateway, target, body, retiredRouteResources(item)...)
 	}
 	if err != nil {
 		result.ConfigurationMatch = "unverified"
@@ -435,13 +526,11 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 			result.ConfigurationMatch = "mismatched"
 		}
 		result.Recovery = "failed"
-		recoveryCtx, stopRecovery := m.recoveryContext(ctx, deadline)
+		recoveryCtx, stopRecovery := m.recoveryContext(ctx)
 		defer stopRecovery()
-		started := time.Now()
+		recoveryCtx, finishRecovery := operation.StartStage(recoveryCtx, "Route sync", "recovery", 0, "operation_id", result.OperationId, "timeout_ms", m.timeouts.Recovery.Milliseconds())
 		restoreErr := m.rollbackPublication(recoveryCtx, projectId, gateway, target, files, base, item, oldBody)
-		if restoreErr != nil {
-			slog.WarnContext(recoveryCtx, "Route publication stage failed", "project_id", projectId, "route_id", route.Id, "phase", "recovery", "elapsed", time.Since(started), "timeout", m.timeouts.Recovery, "error", restoreErr)
-		}
+		restoreErr = finishRecovery(restoreErr)
 		if restoreErr == nil {
 			result.Recovery = "restored"
 			result.FileCommit = "restored"
@@ -454,6 +543,8 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 	if route.Enabled {
 		item.ActualCertificateRevision = item.CertificateRevision
 	}
+	ctx, finish := operation.StartStage(ctx, "Route sync", "finalize_publication", m.timeouts.FilePublication, "operation_id", result.OperationId)
+	defer func() { resultErr = finish(resultErr) }()
 	if err := m.savePublication(ctx, target, base, item); err != nil {
 		return result, err
 	}
@@ -492,7 +583,7 @@ func (m *RouteManager) reconcilePending(ctx context.Context, projectId string, g
 		if item.Route.Enabled {
 			body, err = files.ReadFile(ctx, target, routeConfigurationPath(base, item.Route))
 		}
-		if err == nil && m.loadFileConfiguration(ctx, projectId, gateway, target, body, retiredRouteCodes(item)...) == nil {
+		if err == nil && m.loadFileConfiguration(ctx, projectId, gateway, target, body, retiredRouteResources(item)...) == nil {
 			item.Phase = "confirmed"
 			item.ActualFingerprint = item.Fingerprint
 			if err := m.savePublication(ctx, target, base, item); err != nil {
@@ -631,40 +722,80 @@ type dynamicConfiguration struct {
 	TCP  dynamicProtocol `yaml:"tcp"`
 }
 
-func (m *RouteManager) recoveryContext(ctx context.Context, deadline time.Time) (context.Context, context.CancelFunc) {
-	if recoveryDeadline := time.Now().Add(m.timeouts.Recovery); recoveryDeadline.Before(deadline) {
-		deadline = recoveryDeadline
-	}
-	return context.WithDeadline(context.WithoutCancel(ctx), deadline)
+func (m *RouteManager) recoveryContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), m.timeouts.Recovery)
 }
 
-func (m *RouteManager) waitConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, body []byte, absentCodes ...string) (resultErr error) {
-	started := time.Now()
-	defer func() {
-		if resultErr != nil {
-			slog.WarnContext(ctx, "Route publication stage failed", "project_id", projectId, "phase", "configuration_match", "elapsed", time.Since(started), "timeout", m.timeouts.ConfigurationMatch, "error", resultErr)
-		}
-	}()
-	ctx, cancel := context.WithTimeout(ctx, m.timeouts.ConfigurationMatch)
-	defer cancel()
+func parseConfiguration(body []byte) (dynamicConfiguration, error) {
 	var expected dynamicConfiguration
 	if len(body) != 0 {
 		if err := yaml.Unmarshal(body, &expected); err != nil {
-			return err
+			return expected, err
 		}
 		if len(expected.HTTP.Routers)+len(expected.TCP.Routers) != 1 {
-			return errors.New("route configuration must contain one router")
+			return expected, errors.New("route configuration must contain one router")
 		}
+	}
+	return expected, nil
+}
+
+func (m *RouteManager) queryConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, expected dynamicConfiguration, absent []routeResource, observeProtocols ...string) (bool, error) {
+	protocols := map[string]bool{
+		"http": len(expected.HTTP.Routers) > 0,
+		"tcp":  len(expected.TCP.Routers) > 0,
+	}
+	for _, resource := range absent {
+		protocols[resource.protocol] = true
+	}
+	for _, protocol := range observeProtocols {
+		protocols[protocol] = true
+	}
+	var routers []routeport.TraefikRouter
+	var services []routeport.TraefikService
+	for _, protocol := range []string{"http", "tcp"} {
+		if !protocols[protocol] {
+			continue
+		}
+		observedRouters, err := m.listRouters(ctx, projectId, gateway, protocol)
+		if err != nil {
+			return false, err
+		}
+		observedServices, err := m.listServices(ctx, projectId, gateway, protocol)
+		if err != nil {
+			return false, err
+		}
+		routers = append(routers, observedRouters...)
+		services = append(services, observedServices...)
+	}
+	return matchesConfiguration(expected, absent, routers, services), nil
+}
+
+func (m *RouteManager) checkConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, body []byte, protocol string, absent ...routeResource) (matched bool, resultErr error) {
+	ctx, finish := operation.StartStage(ctx, "Route sync", "configuration_match", m.timeouts.ConfigurationMatch)
+	defer func() { resultErr = finish(resultErr) }()
+	expected, err := parseConfiguration(body)
+	if err != nil {
+		return false, err
+	}
+	matched, err = m.queryConfiguration(ctx, projectId, gateway, expected, absent, protocol)
+	if err != nil {
+		return false, apperror.WrapWithCode(apperror.KindUnavailable, "route_sync_configuration_unavailable", "Traefik API queries failed before the Route configuration could be confirmed", err)
+	}
+	return matched, nil
+}
+
+func (m *RouteManager) waitConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, body []byte, absent ...routeResource) (resultErr error) {
+	ctx, finish := operation.StartStage(ctx, "Route sync", "configuration_match", m.timeouts.ConfigurationMatch)
+	defer func() { resultErr = finish(resultErr) }()
+	expected, err := parseConfiguration(body)
+	if err != nil {
+		return err
 	}
 	observed := false
 	var lastErr error
 	for {
-		routers, err := m.ListRouters(ctx, projectId, gateway)
-		var services []routeport.TraefikService
-		if err == nil {
-			services, err = m.ListServices(ctx, projectId, gateway)
-		}
-		if err == nil && matchesConfiguration(expected, absentCodes, routers, services) {
+		matched, err := m.queryConfiguration(ctx, projectId, gateway, expected, absent)
+		if err == nil && matched {
 			return nil
 		}
 		if err == nil {
@@ -683,17 +814,17 @@ func (m *RouteManager) waitConfiguration(ctx context.Context, projectId string, 
 	}
 }
 
-func matchesConfiguration(expected dynamicConfiguration, absentCodes []string, routers []routeport.TraefikRouter, services []routeport.TraefikService) bool {
-	for _, code := range absentCodes {
-		routerName := model.GatewayRouteResourceName(code) + "-route@file"
-		serviceName := model.GatewayRouteResourceName(code) + "-service@file"
+func matchesConfiguration(expected dynamicConfiguration, absent []routeResource, routers []routeport.TraefikRouter, services []routeport.TraefikService) bool {
+	for _, resource := range absent {
+		routerName := model.GatewayRouteResourceName(resource.code) + "-route@file"
+		serviceName := model.GatewayRouteResourceName(resource.code) + "-service@file"
 		for _, router := range routers {
-			if router.Provider == "file" && router.Name == routerName {
+			if router.Protocol == resource.protocol && router.Provider == "file" && router.Name == routerName {
 				return false
 			}
 		}
 		for _, service := range services {
-			if service.Provider == "file" && service.Name == serviceName {
+			if service.Protocol == resource.protocol && service.Provider == "file" && service.Name == serviceName {
 				return false
 			}
 		}
@@ -709,7 +840,7 @@ func matchesConfiguration(expected dynamicConfiguration, absentCodes []string, r
 				if tlsConfig["options"] == "default" && desired.TLS["options"] == nil {
 					delete(tlsConfig, "options")
 				}
-				if router.Provider == "file" && router.Name == name+"@file" && router.Status == "enabled" && router.Rule == desired.Rule && strings.TrimSuffix(router.Service, "@file") == desired.Service && reflect.DeepEqual(router.Entrypoints, desired.EntryPoints) && reflect.DeepEqual(tlsConfig, desired.TLS) {
+				if router.Protocol == protocol && router.Provider == "file" && router.Name == name+"@file" && router.Status == "enabled" && router.Rule == desired.Rule && strings.TrimSuffix(router.Service, "@file") == desired.Service && reflect.DeepEqual(router.Entrypoints, desired.EntryPoints) && reflect.DeepEqual(tlsConfig, desired.TLS) {
 					found = true
 				}
 			}

@@ -237,33 +237,67 @@ func (r *Runtime) openSFTP(ctx context.Context, target environmentport.Target) (
 	if err != nil {
 		return nil, nil, err
 	}
-	client, err := sftp.NewClient(sshClient)
+	var client *sftp.Client
+	if scope, ok := ctx.Value(sessionContextKey{}).(*runtimeSession); ok {
+		client, err = scope.fileClient(sshClient)
+	} else {
+		client, err = sftp.NewClient(sshClient)
+	}
 	if err != nil {
 		closeSSH()
 		return nil, nil, fmt.Errorf("start SFTP client: %w", err)
 	}
 	return client, func() {
-		_ = client.Close()
+		if _, scoped := ctx.Value(sessionContextKey{}).(*runtimeSession); !scoped {
+			_ = client.Close()
+		}
 		closeSSH()
 	}, nil
 }
 
 func (r *Runtime) openSSH(ctx context.Context, target environmentport.Target) (*ssh.Client, func(), error) {
+	if scope, ok := ctx.Value(sessionContextKey{}).(*runtimeSession); ok {
+		if !scope.matches(r, target) {
+			return nil, nil, errors.New("SSH runtime session target revision changed")
+		}
+		client, err := scope.acquire(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		stop := context.AfterFunc(ctx, func() { scope.discard(client) })
+		return client, func() {
+			if !stop() {
+				scope.discard(client)
+			}
+		}, nil
+	}
+	client, err := r.dialSSH(ctx, target)
+	if err != nil {
+		return nil, nil, err
+	}
+	stop := context.AfterFunc(ctx, func() { _ = client.Close() })
+	return client, func() {
+		stop()
+		_ = client.Close()
+	}, nil
+}
+
+func (r *Runtime) dialSSH(ctx context.Context, target environmentport.Target) (*ssh.Client, error) {
 	if r == nil || r.dialContext == nil {
-		return nil, nil, errors.New("SSH runtime dialer is not configured")
+		return nil, errors.New("SSH runtime dialer is not configured")
 	}
 	if !target.Environment.IsSSH() || target.PrivateKey == nil {
-		return nil, nil, errors.New("SSH deployment runtime received an invalid SSH target")
+		return nil, errors.New("SSH deployment runtime received an invalid SSH target")
 	}
 	signer, err := parseSigner(*target.PrivateKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	environment := target.Environment.SSH
 	address := net.JoinHostPort(strings.TrimSpace(environment.Host), strconv.Itoa(environment.Port))
 	connection, err := r.dialContext(ctx, "tcp", address)
 	if err != nil {
-		return nil, nil, fmt.Errorf("dial SSH target: %w", err)
+		return nil, fmt.Errorf("dial SSH target: %w", err)
 	}
 	stopCancelClose := context.AfterFunc(ctx, func() { _ = connection.Close() })
 	clientConfig := &ssh.ClientConfig{
@@ -275,13 +309,15 @@ func (r *Runtime) openSSH(ctx context.Context, target environmentport.Target) (*
 	if err != nil {
 		stopCancelClose()
 		_ = connection.Close()
-		return nil, nil, fmt.Errorf("establish SSH connection: %w", err)
+		return nil, fmt.Errorf("establish SSH connection: %w", err)
 	}
 	client := ssh.NewClient(clientConnection, channels, requests)
-	return client, func() {
-		stopCancelClose()
+	stopCancelClose()
+	if err := ctx.Err(); err != nil {
 		_ = client.Close()
-	}, nil
+		return nil, err
+	}
+	return client, nil
 }
 
 func (r *Runtime) lock(key string) func() {

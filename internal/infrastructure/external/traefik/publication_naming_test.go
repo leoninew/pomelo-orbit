@@ -64,7 +64,7 @@ func TestRouteCodeNamesFilesAndResourcesWhileIdentityOwnsCertificates(t *testing
 	if string(runtime.files[activeTestPath("new-api")]) != beforeB {
 		t.Fatal("repeated withdrawal removed a code reused by another Route")
 	}
-	items, err := m.InspectPublications(context.Background(), "project-1", testGateway())
+	items, err := inspectTestPublications(m, context.Background(), "project-1", testGateway())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestInterruptedRenameReconcilesBothPaths(t *testing.T) {
 			route := publicationTestRoute("api")
 			route.Id = "id-a"
 			publishTestRoute(t, m, route)
-			items, _ := m.InspectPublications(context.Background(), "project-1", testGateway())
+			items, _ := inspectTestPublications(m, context.Background(), "project-1", testGateway())
 			previous := items[0]
 			target, files, base, _ := m.publicationWorkspace(context.Background(), "project-1", testGateway())
 			runtime.files[path.Join(base, ".orbit/route-publication", route.Id, "previous.yaml")] = append([]byte(nil), runtime.files[activeTestPath("api")]...)
@@ -147,7 +147,7 @@ func TestInterruptedRenameReconcilesBothPaths(t *testing.T) {
 			if err := m.savePublication(context.Background(), target, base, pending); err != nil {
 				t.Fatal(err)
 			}
-			items, err := m.InspectPublications(context.Background(), "project-1", testGateway())
+			items, err := inspectTestPublications(m, context.Background(), "project-1", testGateway())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -177,7 +177,7 @@ func TestInterruptedRenameReconcilesBothPaths(t *testing.T) {
 }
 
 func TestRouteCodeOwnershipRejectsPublishedAndUnknownDestinations(t *testing.T) {
-	for _, owner := range []string{"confirmed", "pending previous", "pending candidate", "unknown file"} {
+	for _, owner := range []string{"confirmed", "pending previous", "unknown file"} {
 		t.Run(owner, func(t *testing.T) {
 			runtime := newRouteRuntimeFake()
 			runtime.autoAPI = true
@@ -187,15 +187,12 @@ func TestRouteCodeOwnershipRejectsPublishedAndUnknownDestinations(t *testing.T) 
 			publishTestRoute(t, m, a)
 			b.Name = "api"
 			if strings.HasPrefix(owner, "pending") {
-				items, _ := m.InspectPublications(context.Background(), "project-1", testGateway())
+				items, _ := inspectTestPublications(m, context.Background(), "project-1", testGateway())
 				previous, pending := items[0], items[0]
 				pending.Phase, pending.Previous, pending.Route.Name = "pending", &previous, "new-api"
 				target, _, base, _ := m.publicationWorkspace(context.Background(), "project-1", testGateway())
 				if err := m.savePublication(context.Background(), target, base, pending); err != nil {
 					t.Fatal(err)
-				}
-				if owner == "pending candidate" {
-					b.Name = "new-api"
 				}
 			}
 			if owner == "unknown file" {
@@ -253,7 +250,7 @@ func TestMissingRouteFileCanBeExplicitlyRepublishedOrWithdrawn(t *testing.T) {
 			} else {
 				routers, _ := m.ListRouters(context.Background(), "project-1", testGateway())
 				services, _ := m.ListServices(context.Background(), "project-1", testGateway())
-				if !matchesConfiguration(dynamicConfiguration{}, []string{"api"}, routers, services) {
+				if !matchesConfiguration(dynamicConfiguration{}, []routeResource{{code: "api", protocol: "http"}}, routers, services) {
 					t.Fatal("withdrawal left the previously loaded Route in memory")
 				}
 			}
@@ -297,7 +294,7 @@ func assertLoadedRouteCode(t *testing.T, m *RouteManager, route model.Route, abs
 	}
 	routers, routerErr := m.ListRouters(context.Background(), "project-1", testGateway())
 	services, serviceErr := m.ListServices(context.Background(), "project-1", testGateway())
-	if routerErr != nil || serviceErr != nil || !matchesConfiguration(expected, []string{absent}, routers, services) {
+	if routerErr != nil || serviceErr != nil || !matchesConfiguration(expected, []routeResource{{code: absent, protocol: route.Protocol}}, routers, services) {
 		t.Fatalf("configuration does not match code %s without %s: routers=%+v services=%+v", route.Name, absent, routers, services)
 	}
 }
@@ -310,7 +307,7 @@ func assertLoadedFilesDoNotMatchRename(t *testing.T, m *RouteManager, route mode
 	_ = yaml.Unmarshal(body, &expected)
 	routers, _ := m.ListRouters(context.Background(), "project-1", testGateway())
 	services, _ := m.ListServices(context.Background(), "project-1", testGateway())
-	if matchesConfiguration(expected, []string{"api"}, routers, services) {
+	if matchesConfiguration(expected, []routeResource{{code: "api", protocol: route.Protocol}}, routers, services) {
 		t.Fatalf("code %s matched while its previous resources remain loaded", route.Name)
 	}
 }

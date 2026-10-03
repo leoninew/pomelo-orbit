@@ -102,7 +102,7 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.PipelineRun.ExecutionTimeout != time.Hour {
 		t.Fatalf("unexpected pipeline execution timeout: %s", cfg.PipelineRun.ExecutionTimeout)
 	}
-	if cfg.Route != (RouteConfig{SyncTimeout: 30 * time.Second, ApiRequestTimeout: 3 * time.Second, ReloadTimeout: 5 * time.Second, ConfigurationMatchTimeout: 10 * time.Second, RecoveryTimeout: 10 * time.Second}) {
+	if cfg.Route != (RouteConfig{GatewayLockTimeout: 30 * time.Second, StateLoadTimeout: 60 * time.Second, FilePublicationTimeout: 60 * time.Second, ApiRequestTimeout: 3 * time.Second, ReloadTimeout: 5 * time.Second, ConfigurationMatchTimeout: 10 * time.Second, RecoveryTimeout: 10 * time.Second}) {
 		t.Fatalf("unexpected route timeouts: %+v", cfg.Route)
 	}
 	if cfg.Worker.LeaseDuration != time.Hour+5*time.Minute {
@@ -494,26 +494,28 @@ worker:
 
 func TestLoadRouteTimeouts(t *testing.T) {
 	setupDefaultConfig(t)
-	writeEnvConfig(t, "develop", "route:\n  sync_timeout: 90s\n  api_request_timeout: 4s\n  reload_timeout: 8s\n  configuration_match_timeout: 15s\n  recovery_timeout: 12s\n")
+	writeEnvConfig(t, "develop", "route:\n  gateway_lock_timeout: 7s\n  state_load_timeout: 10s\n  file_publication_timeout: 5s\n  api_request_timeout: 10s\n  reload_timeout: 5s\n  configuration_match_timeout: 5s\n  recovery_timeout: 20s\n")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Route != (RouteConfig{SyncTimeout: 90 * time.Second, ApiRequestTimeout: 4 * time.Second, ReloadTimeout: 8 * time.Second, ConfigurationMatchTimeout: 15 * time.Second, RecoveryTimeout: 12 * time.Second}) {
+	if cfg.Route != (RouteConfig{GatewayLockTimeout: 7 * time.Second, StateLoadTimeout: 10 * time.Second, FilePublicationTimeout: 5 * time.Second, ApiRequestTimeout: 10 * time.Second, ReloadTimeout: 5 * time.Second, ConfigurationMatchTimeout: 5 * time.Second, RecoveryTimeout: 20 * time.Second}) {
 		t.Fatalf("unexpected YAML route timeouts: %+v", cfg.Route)
 	}
 
-	t.Setenv("POMELO_ORBIT_ROUTE__SYNC_TIMEOUT", "120s")
-	t.Setenv("POMELO_ORBIT_ROUTE__API_REQUEST_TIMEOUT", "5s")
+	t.Setenv("POMELO_ORBIT_ROUTE__GATEWAY_LOCK_TIMEOUT", "8s")
+	t.Setenv("POMELO_ORBIT_ROUTE__STATE_LOAD_TIMEOUT", "120s")
+	t.Setenv("POMELO_ORBIT_ROUTE__FILE_PUBLICATION_TIMEOUT", "150s")
+	t.Setenv("POMELO_ORBIT_ROUTE__API_REQUEST_TIMEOUT", "11s")
 	t.Setenv("POMELO_ORBIT_ROUTE__RELOAD_TIMEOUT", "9s")
-	t.Setenv("POMELO_ORBIT_ROUTE__CONFIGURATION_MATCH_TIMEOUT", "20s")
+	t.Setenv("POMELO_ORBIT_ROUTE__CONFIGURATION_MATCH_TIMEOUT", "5s")
 	t.Setenv("POMELO_ORBIT_ROUTE__RECOVERY_TIMEOUT", "14s")
 	cfg, err = Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Route != (RouteConfig{SyncTimeout: 120 * time.Second, ApiRequestTimeout: 5 * time.Second, ReloadTimeout: 9 * time.Second, ConfigurationMatchTimeout: 20 * time.Second, RecoveryTimeout: 14 * time.Second}) {
+	if cfg.Route != (RouteConfig{GatewayLockTimeout: 8 * time.Second, StateLoadTimeout: 120 * time.Second, FilePublicationTimeout: 150 * time.Second, ApiRequestTimeout: 11 * time.Second, ReloadTimeout: 9 * time.Second, ConfigurationMatchTimeout: 5 * time.Second, RecoveryTimeout: 14 * time.Second}) {
 		t.Fatalf("unexpected environment route timeouts: %+v", cfg.Route)
 	}
 }
@@ -528,16 +530,16 @@ func TestLoadRejectsNonPositiveRouteConfigurationMatchTimeout(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsRouteTimeoutsOutsideTotalBudget(t *testing.T) {
+func TestLoadRejectsInvalidRouteStageTimeouts(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		env   string
 		value string
 		want  string
 	}{
-		{"recovery consumes total", "POMELO_ORBIT_ROUTE__RECOVERY_TIMEOUT", "30s", "recovery_timeout must be less than route.sync_timeout"},
-		{"stages exceed total", "POMELO_ORBIT_ROUTE__CONFIGURATION_MATCH_TIMEOUT", "20s", "timeouts must fit within route.sync_timeout"},
-		{"request exceeds matching", "POMELO_ORBIT_ROUTE__API_REQUEST_TIMEOUT", "15s", "api_request_timeout must not exceed route.configuration_match_timeout"},
+		{"gateway lock", "POMELO_ORBIT_ROUTE__GATEWAY_LOCK_TIMEOUT", "0s", "gateway_lock_timeout must be positive"},
+		{"state loading", "POMELO_ORBIT_ROUTE__STATE_LOAD_TIMEOUT", "0s", "state_load_timeout must be positive"},
+		{"file publication", "POMELO_ORBIT_ROUTE__FILE_PUBLICATION_TIMEOUT", "0s", "file_publication_timeout must be positive"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			setupDefaultConfig(t)
@@ -1055,7 +1057,9 @@ database:
 workspace:
   root: data
 route:
-  sync_timeout: 30s
+  gateway_lock_timeout: 30s
+  state_load_timeout: 60s
+  file_publication_timeout: 60s
   api_request_timeout: 3s
   reload_timeout: 5s
   configuration_match_timeout: 10s

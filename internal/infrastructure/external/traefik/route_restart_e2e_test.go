@@ -106,15 +106,13 @@ func TestFileProviderRestoresRoutesAfterTraefikRestart(t *testing.T) {
 			}
 		}()
 		defer func() { stopObserve(); <-observed }()
-		items, err := manager.InspectPublications(ctx, "project-1", gateway)
+		item, err := manager.InspectPublication(ctx, "project-1", gateway, route)
 		if err != nil {
 			t.Fatal(err)
 		}
 		fingerprint := ""
-		for _, item := range items {
-			if item.Route.Id == route.Id {
-				fingerprint = publicationFingerprint(item)
-			}
+		if item != nil {
+			fingerprint = publicationFingerprint(*item)
 		}
 		result, err := manager.PublishRoute(ctx, "project-1", gateway, route, fingerprint)
 		if err != nil || result.ConfigurationMatch != "matched" {

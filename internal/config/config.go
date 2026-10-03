@@ -115,7 +115,9 @@ type WorkspaceConfig struct {
 }
 
 type RouteConfig struct {
-	SyncTimeout               time.Duration `mapstructure:"sync_timeout" yaml:"sync_timeout"`
+	GatewayLockTimeout        time.Duration `mapstructure:"gateway_lock_timeout" yaml:"gateway_lock_timeout"`
+	StateLoadTimeout          time.Duration `mapstructure:"state_load_timeout" yaml:"state_load_timeout"`
+	FilePublicationTimeout    time.Duration `mapstructure:"file_publication_timeout" yaml:"file_publication_timeout"`
 	ApiRequestTimeout         time.Duration `mapstructure:"api_request_timeout" yaml:"api_request_timeout"`
 	ReloadTimeout             time.Duration `mapstructure:"reload_timeout" yaml:"reload_timeout"`
 	ConfigurationMatchTimeout time.Duration `mapstructure:"configuration_match_timeout" yaml:"configuration_match_timeout"`
@@ -358,7 +360,9 @@ func bindEnv(loader *viper.Viper) {
 		"database.mysql.dsn",
 		"database.postgres.dsn",
 		"workspace.root",
-		"route.sync_timeout",
+		"route.gateway_lock_timeout",
+		"route.state_load_timeout",
+		"route.file_publication_timeout",
 		"route.api_request_timeout",
 		"route.reload_timeout",
 		"route.configuration_match_timeout",
@@ -486,7 +490,9 @@ func validateRouteConfig(cfg RouteConfig) error {
 		name  string
 		value time.Duration
 	}{
-		{"sync_timeout", cfg.SyncTimeout},
+		{"gateway_lock_timeout", cfg.GatewayLockTimeout},
+		{"state_load_timeout", cfg.StateLoadTimeout},
+		{"file_publication_timeout", cfg.FilePublicationTimeout},
 		{"api_request_timeout", cfg.ApiRequestTimeout},
 		{"reload_timeout", cfg.ReloadTimeout},
 		{"configuration_match_timeout", cfg.ConfigurationMatchTimeout},
@@ -495,15 +501,6 @@ func validateRouteConfig(cfg RouteConfig) error {
 		if field.value <= 0 {
 			return fmt.Errorf("route.%s must be positive", field.name)
 		}
-	}
-	if cfg.RecoveryTimeout >= cfg.SyncTimeout {
-		return errors.New("route.recovery_timeout must be less than route.sync_timeout")
-	}
-	if cfg.ReloadTimeout > cfg.SyncTimeout-cfg.RecoveryTimeout || cfg.ConfigurationMatchTimeout > cfg.SyncTimeout-cfg.RecoveryTimeout-cfg.ReloadTimeout {
-		return errors.New("route reload, configuration match and recovery timeouts must fit within route.sync_timeout")
-	}
-	if cfg.ApiRequestTimeout > cfg.ConfigurationMatchTimeout {
-		return errors.New("route.api_request_timeout must not exceed route.configuration_match_timeout")
 	}
 	return nil
 }

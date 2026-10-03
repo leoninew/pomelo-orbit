@@ -188,6 +188,7 @@
     :changes="syncChanges"
     @synced="handleSyncComplete"
     @saved="handleSyncSaved"
+    @finished="fetchRoutes"
   />
 
   <AppDialog v-model:open="isCreateDialogOpen" title="创建路由">
@@ -1038,19 +1039,24 @@
     isSyncDialogOpen.value = true;
   }
 
-  async function handleSyncComplete() {
+  function handleSyncComplete() {
     clearPendingChanges();
-    await fetchRoutes();
   }
 
-  async function handleSyncSaved(results: RouteSyncResultResp[]) {
+  function handleSyncSaved(results: RouteSyncResultResp[]) {
     for (const item of results) {
       if (item.business_save === 'saved' || item.code === 'route_sync_completed') {
+        if (item.route_id in pendingEnabled) {
+          routes.value = routes.value.map((route) =>
+            route.id === item.route_id
+              ? { ...route, enabled: pendingEnabled[item.route_id] }
+              : route
+          );
+        }
         delete pendingEnabled[item.route_id];
       }
     }
     hasPendingRouteChanges.value = true;
-    await fetchRoutes();
   }
 
   function routeTarget(route: RouteResp): string {

@@ -21,6 +21,18 @@ func New(local deploymentport.Runtime, ssh deploymentport.Runtime) Runtime {
 	return Runtime{local: local, ssh: ssh}
 }
 
+func (r Runtime) OpenSession(ctx context.Context, target environmentport.Target) (context.Context, func(), error) {
+	runtime, err := r.forTarget(target)
+	if err != nil {
+		return nil, nil, err
+	}
+	sessions, ok := runtime.(deploymentport.RuntimeSessions)
+	if !ok {
+		return nil, nil, errors.New("target runtime sessions are not configured")
+	}
+	return sessions.OpenSession(ctx, target)
+}
+
 func (r Runtime) ServiceDir(target environmentport.Target, serviceCode string) (string, error) {
 	runtime, err := r.forTarget(target)
 	if err != nil {

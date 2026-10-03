@@ -185,7 +185,7 @@ func TestWindowsSSHTraefikRouterQueryIntegration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	manager := traefikclient.NewRouteManager(windowsSSHTargetResolver{target: target}, sshrunner.NewRuntime(), routeport.SyncTimeouts{Total: 30 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second})
+	manager := traefikclient.NewRouteManager(windowsSSHTargetResolver{target: target}, sshrunner.NewRuntime(), routeport.SyncTimeouts{GatewayLock: 30 * time.Second, StateLoad: 60 * time.Second, FilePublication: 60 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second})
 	routers, err := manager.ListRouters(ctx, target.Environment.ProjectId, model.GatewayConfig{RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: windowsSSHTraefikRestApiUrl()})
 	if err != nil {
 		t.Fatalf("query Traefik routers through Windows SSH: %v", err)

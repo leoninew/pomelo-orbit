@@ -76,6 +76,11 @@ type WorkspaceFiles interface {
 	RemoveFile(context.Context, environmentport.Target, string) error
 }
 
+// RuntimeSessions scopes reusable target connections to one caller-owned operation.
+type RuntimeSessions interface {
+	OpenSession(context.Context, environmentport.Target) (context.Context, func(), error)
+}
+
 type Workspace struct {
 	ServiceCode  string
 	Directories  []string

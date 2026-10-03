@@ -130,6 +130,7 @@
     'update:open': [open: boolean];
     synced: [];
     saved: [results: RouteSyncResultResp[]];
+    finished: [];
   }>();
 
   const { t, te } = useI18n();
@@ -209,7 +210,10 @@
       });
       needsFreshPreview.value = false;
     } catch (error) {
-      previewError.value = error instanceof Error ? error.message : t('route.syncPreviewFailed');
+      previewError.value = syncFailureReason(
+        error instanceof ApiError ? (error.code ?? '') : '',
+        error instanceof Error ? error.message : t('route.syncPreviewFailed')
+      );
       toast.error(previewError.value);
     }
   }
@@ -241,55 +245,59 @@
       }
       currentRows.push(row);
     }
-    await executeSync(async () => {
-      for (const row of currentRows) {
-        row.status = 'processing';
-        try {
-          const response = await routeApi.confirmSync(projectId, {
-            route_ids: [row.route_id],
-            publication_hash: row.publication_hash,
-            changes: syncChanges.value.filter((change) => change.route_id === row.route_id),
-            business_hash: row.business_hash,
-          });
-          const result = response.results.find((entry) => entry.route_id === row.route_id);
-          if (!result) {
-            throw new Error(t('route.syncFailed'));
-          }
-          row.status = result.code === 'route_sync_completed' ? 'completed' : 'failed';
-          if (row.status === 'failed') {
+    try {
+      await executeSync(async () => {
+        for (const row of currentRows) {
+          row.status = 'processing';
+          try {
+            const response = await routeApi.confirmSync(projectId, {
+              route_ids: [row.route_id],
+              publication_hash: row.publication_hash,
+              changes: syncChanges.value.filter((change) => change.route_id === row.route_id),
+              business_hash: row.business_hash,
+            });
+            const result = response.results.find((entry) => entry.route_id === row.route_id);
+            if (!result) {
+              throw new Error(t('route.syncFailed'));
+            }
+            row.status = result.code === 'route_sync_completed' ? 'completed' : 'failed';
+            if (row.status === 'failed') {
+              row.reason = syncFailureReason(
+                result.code,
+                result.error,
+                result.cleanup,
+                result.recovery
+              );
+            }
+            if (result.business_save === 'saved' || row.status === 'completed') {
+              syncChanges.value = syncChanges.value.filter(
+                (change) => change.route_id !== row.route_id
+              );
+            }
+            emit('saved', [result]);
+          } catch (error) {
+            row.status = 'failed';
             row.reason = syncFailureReason(
-              result.code,
-              result.error,
-              result.cleanup,
-              result.recovery
+              error instanceof ApiError ? (error.code ?? '') : '',
+              error instanceof Error ? error.message : t('route.syncFailed')
             );
           }
-          if (result.business_save === 'saved' || row.status === 'completed') {
-            syncChanges.value = syncChanges.value.filter(
-              (change) => change.route_id !== row.route_id
-            );
+          if (row.status === 'failed') {
+            toast.error(`${row.route_name || row.route_id}: ${row.reason}`);
           }
-          emit('saved', [result]);
-        } catch (error) {
-          row.status = 'failed';
-          row.reason = syncFailureReason(
-            error instanceof ApiError ? (error.code ?? '') : '',
-            error instanceof Error ? error.message : t('route.syncFailed')
-          );
         }
-        if (row.status === 'failed') {
-          toast.error(`${row.route_name || row.route_id}: ${row.reason}`);
+        retryRouteIds.value = syncRows.value
+          .filter((item) => item.status === 'failed')
+          .map((item) => item.route_id);
+        needsFreshPreview.value = retryRouteIds.value.length > 0;
+        if (!needsFreshPreview.value) {
+          toast.success(t('route.syncConfigurationComplete'));
+          emit('synced');
         }
-      }
-      retryRouteIds.value = syncRows.value
-        .filter((item) => item.status === 'failed')
-        .map((item) => item.route_id);
-      needsFreshPreview.value = retryRouteIds.value.length > 0;
-      if (!needsFreshPreview.value) {
-        toast.success(t('route.syncConfigurationComplete'));
-        emit('synced');
-      }
-    });
+      });
+    } finally {
+      emit('finished');
+    }
   }
 
   function certificateLabel(type: string, challenge: string) {

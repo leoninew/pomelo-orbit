@@ -144,6 +144,25 @@ afterEach(() => {
 });
 
 describe('RouteSyncDialog', () => {
+  it.each(['route_sync_gateway_unavailable', 'route_sync_gateway_not_running'])(
+    'shows the localized preview cause in both the dialog and toast for %s',
+    async (code) => {
+      vi.mocked(routeApi.previewSync).mockRejectedValueOnce(
+        new ApiError('Gateway query failed.', 503, code, 'request-1')
+      );
+      mountDialog({ open: true, changes: [] });
+      const reason = i18n.global.t(`route.syncErrorCodes.${code}`);
+      await vi.waitFor(() =>
+        expect(toasts.value).toEqual([expect.objectContaining({ type: 'error', text: reason })])
+      );
+      expect(document.querySelector('.app-dialog-content [role="alert"]')?.textContent).toBe(
+        reason
+      );
+      expect(button(i18n.global.t('route.retryPreview'))?.disabled).toBe(false);
+      expect(routeApi.confirmSync).not.toHaveBeenCalled();
+    }
+  );
+
   it('shows a preview failure toast and allows another preview before confirming', async () => {
     const reason = 'Gateway API is unavailable';
     vi.mocked(routeApi.previewSync).mockRejectedValueOnce(
@@ -212,6 +231,7 @@ describe('RouteSyncDialog', () => {
       .mockReturnValueOnce(c.promise);
     const saved = vi.fn();
     const synced = vi.fn();
+    const finished = vi.fn();
     mountDialog({
       open: true,
       scope: 'project',
@@ -222,6 +242,7 @@ describe('RouteSyncDialog', () => {
       ],
       onSaved: saved,
       onSynced: synced,
+      onFinished: finished,
     });
     await vi.waitFor(() => expect(button(i18n.global.t('route.syncAll'))?.disabled).toBe(false));
     const dialog = document.querySelector('.app-dialog-content');
@@ -259,6 +280,7 @@ describe('RouteSyncDialog', () => {
     );
     expect(saved).toHaveBeenLastCalledWith([resultA]);
     expect(synced).not.toHaveBeenCalled();
+    expect(finished).not.toHaveBeenCalled();
     b.resolve({
       message: '',
       code: 'route_sync_incomplete',
@@ -297,6 +319,7 @@ describe('RouteSyncDialog', () => {
     await vi.waitFor(() => expect(button(i18n.global.t('route.retryPreview'))).toBeDefined());
     expect(saved).toHaveBeenCalledTimes(3);
     expect(synced).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
     for (const [index, item] of items.entries()) {
       expect(routeApi.confirmSync).toHaveBeenNthCalledWith(index + 1, 'project-1', {
         route_ids: [item.route_id],
@@ -347,6 +370,7 @@ describe('RouteSyncDialog', () => {
     expect(originalRows[1].textContent).toContain('http://b:9090');
     button(i18n.global.t('route.syncAll'))?.click();
     await vi.waitFor(() => expect(synced).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(finished).toHaveBeenCalledTimes(2));
     expect(routeApi.confirmSync).toHaveBeenCalledTimes(4);
     expect(routeApi.confirmSync).toHaveBeenLastCalledWith('project-1', {
       route_ids: ['b'],

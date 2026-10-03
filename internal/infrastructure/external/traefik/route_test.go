@@ -19,7 +19,7 @@ import (
 )
 
 func testRouteTimeouts() routeport.SyncTimeouts {
-	return routeport.SyncTimeouts{Total: 30 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second}
+	return routeport.SyncTimeouts{GatewayLock: 30 * time.Second, StateLoad: 60 * time.Second, FilePublication: 60 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second}
 }
 
 func TestGatewayReadinessIgnoresIncompleteRoutePublication(t *testing.T) {
@@ -262,29 +262,37 @@ type routeRuntimeCommand struct {
 }
 
 type routeRuntimeFake struct {
-	responses          map[string]string
-	failures           map[string]int
-	failureErrors      map[string]error
-	attempts           map[string]int
-	requests           []string
-	files              map[string][]byte
-	lastTarget         environmentport.Target
-	environmentQueries int
-	autoAPI            bool
-	writeFailures      map[string]error
-	removeFailures     map[string]error
-	writes             []deploymentport.WorkspaceFile
-	physicalBase       string
-	containerId        string
-	commands           []routeRuntimeCommand
-	reloadRequired     bool
-	reloadAttempts     int
-	reloadFailures     map[int]error
-	loadedFiles        map[string][]byte
+	responses           map[string]string
+	failures            map[string]int
+	failureErrors       map[string]error
+	attempts            map[string]int
+	requests            []string
+	files               map[string][]byte
+	lastTarget          environmentport.Target
+	environmentQueries  int
+	autoAPI             bool
+	writeFailures       map[string]error
+	removeFailures      map[string]error
+	writes              []deploymentport.WorkspaceFile
+	physicalBase        string
+	containerId         string
+	containerError      error
+	containerDiagnostic string
+	commands            []routeRuntimeCommand
+	reloadRequired      bool
+	reloadAttempts      int
+	reloadFailures      map[int]error
+	loadedFiles         map[string][]byte
+	reads               []string
+	directories         []string
 }
 
 func newRouteRuntimeFake() *routeRuntimeFake {
 	return &routeRuntimeFake{responses: map[string]string{}, failures: map[string]int{}, failureErrors: map[string]error{}, attempts: map[string]int{}, files: map[string][]byte{}}
+}
+
+func (r *routeRuntimeFake) OpenSession(ctx context.Context, _ environmentport.Target) (context.Context, func(), error) {
+	return ctx, func() {}, nil
 }
 
 func (r *routeRuntimeFake) ServiceDir(_ environmentport.Target, serviceCode string) (string, error) {
@@ -311,6 +319,9 @@ func (r *routeRuntimeFake) Stream(context.Context, environmentport.Target, strin
 func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.Target, serviceCode string, name string, args ...string) (string, error) {
 	r.commands = append(r.commands, routeRuntimeCommand{target: target, serviceCode: serviceCode, name: name, args: append([]string(nil), args...)})
 	if name == "docker" && strings.Join(args, " ") == "compose ps -q traefik" {
+		if r.containerError != nil {
+			return r.containerDiagnostic, r.containerError
+		}
 		if r.containerId != "" {
 			return r.containerId, nil
 		}
@@ -395,6 +406,7 @@ func (r *routeRuntimeFake) SyncFiles(_ context.Context, target environmentport.T
 }
 
 func (r *routeRuntimeFake) ReadFile(_ context.Context, _ environmentport.Target, name string) ([]byte, error) {
+	r.reads = append(r.reads, name)
 	body, found := r.files[name]
 	if !found {
 		return nil, os.ErrNotExist
@@ -402,6 +414,7 @@ func (r *routeRuntimeFake) ReadFile(_ context.Context, _ environmentport.Target,
 	return append([]byte(nil), body...), nil
 }
 func (r *routeRuntimeFake) ListFiles(_ context.Context, _ environmentport.Target, directory string) ([]string, error) {
+	r.directories = append(r.directories, directory)
 	names := map[string]bool{}
 	for name := range r.files {
 		if strings.HasPrefix(name, directory+"/") {

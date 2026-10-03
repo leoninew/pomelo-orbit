@@ -36,11 +36,13 @@ workspace:
   root: data
 
 route:
-  sync_timeout: 30s
-  api_request_timeout: 3s
+  gateway_lock_timeout: 30s
+  state_load_timeout: 10s
+  file_publication_timeout: 5s
+  api_request_timeout: 10s
   reload_timeout: 5s
-  configuration_match_timeout: 10s
-  recovery_timeout: 10s
+  configuration_match_timeout: 5s
+  recovery_timeout: 20s
 
 orbit:
   root: .

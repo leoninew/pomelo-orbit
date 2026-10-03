@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-03 10:40:00
+最后修改时间: 2026-10-03 12:59:03
 
 Doc role: living architecture
 
@@ -59,13 +59,21 @@ API 计划/hash、worker 与 Compose 渲染共用 Gateway enrichment，在有效
 
 Web 按冻结顺序在前端循环，每次只确认一个 ID，提交其原预览修订和对应草稿；每条响应立即更新状态及已保存草稿，失败继续，成功记录保留。不同项的独立发布不会使下一项过期，同一项或共享依赖变化仍须重新预览。界面只显示待处理/处理中/完成/失败和失败原因提示；不增加异步后台任务或页面/弹窗关闭后的续跑管理。API/MCP 保留显式批量能力。
 
+每个预览/确认请求持有显式发布 session：RuntimeSessions 在目标 runtime 边界提供请求内 SSH/SFTP 复用，local session 不持有连接。绑定目标/凭据修订及工作区；阶段取消或 SSH/SFTP 失效淘汰连接，独立恢复可重新连接，退出时关闭。先按范围读取 Route 业务记录和 code，再逐条读取对应 state.json、实际 YAML/PEM 及必要 previous。selected 不列发布目录、不读取范围外记录；Project 范围枚举业务记录与已发布 ID 后使用同一单条流程，保留已删除 Route 的撤销能力。每项发布前只重读当前记录与文件，检查预览后变化；session 不保存全局发布元数据，不跨请求缓存。
+
+加载匹配只查候选及撤下资源涉及的协议，HTTP/TCP 各为 router、service 两个 API；协议切换核对新协议与旧协议资源缺席。文件/证书和当前 target revision 一致的 confirmed 项只核验加载结果，已匹配则报告 `file_commit=unchanged`，不重复写入/重载/收尾；加载不符才重载并匹配。pending 恢复所得基线等于期望时复用其运行核验。合法复用的旧编码不再作为 absent 资源检查。Web saved 更新本地草稿与启停，synced 清理成功状态，finished 在整轮结束时统一刷新一次；详情仅重读 Route。
+
+Publication.TargetRevision 是该工作区记录写入时的目标来源，允许读取历史 revision。Environment 切换与 Probe 不迁移或改写发布记录/路由文件；用户在新目标显式预览并确认后重新发布，写入当前 revision。历史 revision 不使用无变化捷径。本次请求内目标变化、预览/确认间依赖变化仍使预览过期，Project/Gateway 归属及文件、证书检查保持有效。
+
 预览规则直接返回 `protocol`、`match`、`target`；HTTP/HTTPS 由入口配置决定，与上游 URL 的协议分开。同步清单的协议列展示入口协议及证书方式，规则列展示匹配条件和目标，预览、处理中及完成后沿用同一表格。
 
-确认在短事务内复核并保存单条启停草稿，再在事务外提交该 Route 的文件并等待 `@file` 资源匹配。响应 HTTP 200 携带 `route_sync_completed`/`route_sync_incomplete` 及逐项保存、文件、配置、证书、恢复/清理状态与原因编码；执行前的鉴权、范围或过期错误沿用通用 HTTP 错误契约。每个确认请求使用集中配置 `route.sync_timeout`，默认总预算 30 秒，包含失败恢复；单次 API 请求、重载、匹配、恢复阶段上限分别为 3、5、10、10 秒。匹配在重载后独立计时，发布预留最多 10 秒恢复时间，恢复不得延长原请求截止时间；API/MCP 批量请求内未执行项明确报告，Web 的多条请求不共享整批预算。业务保存不因外部失败回滚。中断后先核对 pending 记录、活动/备份 YAML 和 PEM，确认或恢复该操作后才接受新的发布，不以业务草稿重建。
+确认在短事务内复核并保存单条启停草稿，再在事务外提交该 Route 的文件并等待 `@file` 资源匹配。响应 HTTP 200 携带 `route_sync_completed`/`route_sync_incomplete` 及逐项保存、文件、配置、证书、恢复/清理状态与原因编码；执行前的鉴权、范围或过期错误沿用通用 HTTP 错误契约。同步不设请求级总预算，也不从正常发布中预扣恢复时间；Web 预览和确认取消 Axios 总超时。集中 `route` 配置分别限制 Gateway 锁等待、状态准备、文件处理、单次 API、重载、匹配和恢复，当前为 30、10、5、10、5、5、20 秒。状态准备包含范围内逐条发布记录读取与 Gateway 验证；仅 Project 预览枚举发布记录目录，每次发布前检查重新获得独立状态预算。文件提交和确认后记录/清理分别获得文件处理预算；匹配在重载后独立计时。API/MCP 批量请求的单项阶段超时不截断后续项；调用方取消则跳过尚未开始的项。需要恢复时使用脱离调用方取消、单独限时的 context，恢复内部重载/匹配受其剩余时间约束，未完成则保留恢复材料。业务保存不因外部失败回滚。中断后先核对 pending 记录、活动/备份 YAML 和 PEM，确认或恢复该操作后才接受新的发布，不以业务草稿重建。
 
-Windows 文件提交后的加载收敛在 Traefik 发布适配器：SSH 使用声明的目标平台，local 使用现有 resolver 返回的 daemon mount source 区分 Windows/Linux 与 DooD。发布、撤销、失败恢复和 pending 恢复共用必要时 SIGHUP 重载再核对配置的路径；容器定位复用 Gateway Service 内的 Compose 查询，信号通过目标 Runtime 执行，不重启 Gateway，不改变其他 Route 文件。重载与配置匹配分别使用集中配置的 5 秒与 10 秒阶段预算，仍受确认请求的总截止时间约束。重载失败以 `route_sync_reload_failed` 报告；API 查询始终失败或超时导致无法确认配置时，以 `route_sync_configuration_unavailable` 报告；已成功观察 API 但配置不符时，以 `route_sync_configuration_mismatch` 报告。失败恢复状态独立返回并在 Web 原因提示中说明；原始 cause 只进入日志。Linux 继续依赖 watcher，远程 SSH Linux 实测留待后续；应用层和文件 writer 不加入平台分支或新接口。
+Windows 文件提交后的加载收敛在 Traefik 发布适配器：SSH 使用声明的目标平台，local 使用现有 resolver 返回的 daemon mount source 区分 Windows/Linux 与 DooD。发布、撤销、失败恢复和 pending 恢复共用必要时 SIGHUP 重载再核对配置的路径；容器定位复用 Gateway Service 内的 Compose 查询，信号通过目标 Runtime 执行，不重启 Gateway，不改变其他 Route 文件。重载与配置匹配分别使用集中配置的 5 秒独立阶段预算，单次 API 上限为 10 秒，在匹配阶段内受其剩余时间约束。日志统一记录阶段起止、上限、实际耗时和状态，发布记录读取另记每条耗时；SSH/SFTP 错误同时保留阶段 context 的取消或超时原因。重载失败以 `route_sync_reload_failed` 报告；API 查询始终失败或超时导致无法确认配置时，以 `route_sync_configuration_unavailable` 报告；已成功观察 API 但配置不符时，以 `route_sync_configuration_mismatch` 报告；其他发布阶段超时使用 `route_sync_publish_timeout`。失败恢复状态独立返回并在 Web 原因提示中说明；原始 cause 只进入日志。Linux 继续依赖 watcher，远程 SSH Linux 实测留待后续；平台重载逻辑仅位于 Traefik 适配器。
 
-配置匹配与实际 TLS 证书验证独立。router/service API 不能证明新 PEM 生效，当前 HTTPS 正常同步报告 `unverified`，不强制握手或因此自动回滚配置。HTTP-01 仅在 `http`/`http-dns` 可用；DNS-01 仅在 `dns`/`http-dns` 且 Gateway token 非空时可用。同域名候选必须与其他 Route 的已发布证书配置一致，不携带其他 Route 尚未同步的证书编辑。
+配置匹配与实际 TLS 证书验证独立。router/service API 不能证明新 PEM 生效，当前 HTTPS 正常同步报告 `unverified`，不强制握手或因此自动回滚配置。HTTP-01 仅在 `http`/`http-dns` 可用；DNS-01 仅在 `dns`/`http-dns` 且 Gateway token 非空时可用。同步校验当前 Route 的证书与私钥、受管证书版本及恢复材料，不读取其他 Route 的证书或发布状态。同域名多 Route 的证书配置不再由同步中的全局记录扫描核验。
+
+Route 同步阶段日志使用 `project_code`、`route_code` 识别业务对象，名称上下文随发布、恢复、重载和 Traefik API 请求传播。已删除业务记录的读取先记录发布记录路径，成功解码后补充发布时的 Route code。
 
 自定义 Route 发布通过按 Project/Gateway 的协调器串行化，与 Service deploy/restart 独立。部署不读取或检查自定义 Route 的业务数据、发布记录、YAML/PEM 或上游引用，不获取 Route 发布锁，也不发布或恢复 Route；pending、发布失败、文件缺失或证书损坏不会阻止部署。普通 Service 不等待 Gateway 就绪；Gateway deploy/restart 仍准备受管 provider/mount、重建容器，并仅按部署快照中的 API 地址与就绪超时检查 Traefik 自身可用性。Traefik 直接重启自行加载持久化文件，Orbit 离线时也能恢复。Gateway staging 可创建空 dynamic 目录且不自动补齐 Route；重新预览并确认 Route 同步才能重建选中文件。文件不存在时保留空恢复基线，不恢复过期 backup；外部修改、损坏的证书或 pending 由显式 Route 同步处理。调整 Service endpoint、网络或 Gateway entrypoint/resolver 后，对应 Route 是否仍有效也由后续显式同步检查。
 

@@ -15,22 +15,22 @@ import (
 )
 
 func testRouteSyncTimeouts() routeport.SyncTimeouts {
-	return routeport.SyncTimeouts{Total: 30 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second}
+	return routeport.SyncTimeouts{GatewayLock: 30 * time.Second, StateLoad: 60 * time.Second, FilePublication: 60 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second}
 }
 
-func TestRouteSyncTotalBudgetIncludesGatewayLock(t *testing.T) {
+func TestRouteSyncBoundsGatewayLockWait(t *testing.T) {
 	service, publisher, _, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
-	service.syncTimeouts.Total = 50 * time.Millisecond
+	service.syncTimeouts.GatewayLock = 50 * time.Millisecond
 	blocked := &deadlineLockPublisher{RouteConfigPublisher: publisher}
 	service.routePublisher = blocked
 	started := time.Now()
 	_, err := service.ConfirmRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{BusinessHash: "business", PublicationHash: "publication"})
 	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("expected total timeout while waiting for Gateway lock, got %v", err)
+		t.Fatalf("expected timeout while waiting for Gateway lock, got %v", err)
 	}
-	if blocked.deadline.IsZero() || blocked.deadline.After(started.Add(service.syncTimeouts.Total+time.Millisecond)) {
-		t.Fatalf("Gateway lock did not receive the total deadline: %s", blocked.deadline)
+	if blocked.deadline.IsZero() || blocked.deadline.After(started.Add(service.syncTimeouts.GatewayLock+time.Millisecond)) {
+		t.Fatalf("Gateway lock did not receive its stage deadline: %s", blocked.deadline)
 	}
 }
 
@@ -59,6 +59,14 @@ func TestSelectedSyncDoesNotCarryAnotherRoutesUnsyncedEdit(t *testing.T) {
 	result := confirmPreview(t, s, preview)
 	if result.Code != "route_sync_completed" || len(publisher.published) != 1 || publisher.published[0].Id != a.Id {
 		t.Fatalf("result=%+v published=%+v", result, publisher.published)
+	}
+	if publisher.lists != 0 || len(publisher.inspected) != 2 {
+		t.Fatalf("selected synchronization listed publications or repeated inspection: lists=%d inspected=%+v", publisher.lists, publisher.inspected)
+	}
+	for _, route := range publisher.inspected {
+		if route.Id != a.Id || route.Name != a.Name {
+			t.Fatalf("selected synchronization inspected another Route or omitted its business code: %+v", route)
+		}
 	}
 }
 
@@ -107,6 +115,21 @@ func TestRouteSyncPreservesSafeConfigurationFailureReason(t *testing.T) {
 	result := confirmPreview(t, service, preview)
 	if result.Code != "route_sync_incomplete" || len(result.Results) != 1 || result.Results[0].Code != "route_sync_configuration_unavailable" || result.Results[0].Error != message {
 		t.Fatalf("configuration failure was replaced by a generic publication message: %+v", result)
+	}
+}
+
+func TestRouteSyncContinuesAfterItemTimeout(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	a, b := createSyncTestRoute(t, service, "a"), createSyncTestRoute(t, service, "b")
+	preview := selectedPreview(t, service, a.Id, b.Id)
+	publisher.failures = map[string]error{a.Id: errors.Join(context.DeadlineExceeded, errors.New("private SFTP diagnostic"))}
+	result := confirmPreview(t, service, preview)
+	if result.Code != "route_sync_incomplete" || len(result.Results) != 2 || result.Results[0].Code != "route_sync_publish_timeout" || result.Results[0].Error != "The Route file publication step timed out." || result.Results[1].Code != "route_sync_completed" {
+		t.Fatalf("item timeout did not retain its safe cause and continue the batch: %+v", result)
+	}
+	if !reflect.DeepEqual(publisher.attempts, []string{a.Id, b.Id}) {
+		t.Fatalf("item timeout skipped later Routes: %v", publisher.attempts)
 	}
 }
 
@@ -195,6 +218,20 @@ func TestProjectPreviewWithdrawsDeletedPublishedRoute(t *testing.T) {
 	confirmPreview(t, s, preview)
 	if publisher.published[1].Enabled {
 		t.Fatal("deleted Route was republished")
+	}
+}
+
+func TestProjectPreviewSkipsPublicationDirectoriesWithoutRecords(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	route := createSyncTestRoute(t, service, "api")
+	publisher.listedIds = []string{"empty-publication-directory"}
+	preview, err := service.PreviewRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncPreviewInput{Scope: "project"})
+	if err != nil || !reflect.DeepEqual(preview.RouteIds, []string{route.Id}) || len(preview.Items) != 1 {
+		t.Fatalf("empty publication directory blocked the business scope: preview=%+v err=%v", preview, err)
+	}
+	if result := confirmPreview(t, service, preview); result.Code != "route_sync_completed" {
+		t.Fatalf("project confirmation=%+v", result)
 	}
 }
 

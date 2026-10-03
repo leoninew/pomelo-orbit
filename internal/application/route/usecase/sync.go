@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/common/operation"
 )
 
 const (
@@ -21,14 +21,21 @@ const (
 
 // PreviewRouteSync freezes a publication list without comparing runtime resources.
 func (s Service) PreviewRouteSync(ctx context.Context, userId string, projectId string, input routedto.RouteSyncPreviewInput) (routedto.RouteSyncPreview, error) {
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+	project, err := s.projectForMember(ctx, projectId, userId)
+	if err != nil {
 		return routedto.RouteSyncPreview{}, err
 	}
-	unlock, err := s.LockGateway(ctx, projectId)
+	ctx = operation.WithLogAttrs(ctx, slog.String("project_code", project.Code))
+	unlock, err := s.lockSyncGateway(ctx, projectId)
 	if err != nil {
 		return routedto.RouteSyncPreview{}, err
 	}
 	defer unlock()
+	ctx, closeSession, err := s.routePublisher.OpenSession(ctx, projectId)
+	if err != nil {
+		return routedto.RouteSyncPreview{}, err
+	}
+	defer closeSession()
 	plan, err := s.loadSyncState(ctx, userId, projectId, input)
 	if err != nil {
 		return routedto.RouteSyncPreview{}, err
@@ -42,16 +49,21 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 	if strings.TrimSpace(input.BusinessHash) == "" || input.PublicationHash == "" {
 		return result, apperror.New(apperror.KindValidation, "business_hash and publication_hash are required")
 	}
-	ctx, cancel := context.WithTimeout(ctx, s.syncTimeouts.Total)
-	defer cancel()
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+	project, err := s.projectForMember(ctx, projectId, userId)
+	if err != nil {
 		return result, err
 	}
-	unlock, err := s.LockGateway(ctx, projectId)
+	ctx = operation.WithLogAttrs(ctx, slog.String("project_code", project.Code))
+	unlock, err := s.lockSyncGateway(ctx, projectId)
 	if err != nil {
 		return result, err
 	}
 	defer unlock()
+	ctx, closeSession, err := s.routePublisher.OpenSession(ctx, projectId)
+	if err != nil {
+		return result, err
+	}
+	defer closeSession()
 	plan, err := s.loadSyncState(ctx, userId, projectId, routedto.RouteSyncPreviewInput{Scope: "selected", RouteIds: input.RouteIds, Changes: input.Changes})
 	if err != nil {
 		return result, err
@@ -72,10 +84,9 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 		if route.Enabled && route.HTTPSEnabled {
 			item.CertificateVerification = "unverified"
 		}
-		deadline, _ := ctx.Deadline()
-		if ctx.Err() != nil || time.Until(deadline) < s.syncTimeouts.Recovery+2*time.Second {
+		if ctx.Err() != nil {
 			item.Code = "route_sync_skipped"
-			item.Error = "The batch time budget ended before this Route was processed"
+			item.Error = "The request was canceled before this Route was processed"
 			result.Code = "route_sync_incomplete"
 			result.Results = append(result.Results, item)
 			continue
@@ -106,7 +117,7 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 			item.BusinessSave = "failed"
 		}
 		if err != nil {
-			slog.ErrorContext(ctx, "Route sync item failed", "project_id", projectId, "route_id", route.Id, "operation_id", item.OperationId, "recovery", item.Recovery, "error", err)
+			operation.Logger(ctx).ErrorContext(ctx, "Route sync item failed", "route_code", route.Name, "operation_id", item.OperationId, "recovery", item.Recovery, "error", err)
 			item.Code, item.Error = routeSyncPublishFailedCode, "Route file publication failed."
 			if errors.Is(err, os.ErrPermission) {
 				item.Code = routeSyncPermissionDeniedCode
@@ -116,6 +127,9 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 					item.Code = classified.Code
 				}
 				item.Error = classified.Message
+			} else if errors.Is(err, context.DeadlineExceeded) {
+				item.Code = "route_sync_publish_timeout"
+				item.Error = "The Route file publication step timed out."
 			}
 			result.Code = "route_sync_incomplete"
 		} else {
@@ -126,7 +140,25 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 	return result, nil
 }
 
-func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, input routedto.RouteSyncPreviewInput) (syncPlan, error) {
+func (s Service) lockSyncGateway(ctx context.Context, projectId string) (unlock func(), resultErr error) {
+	ctx, finish := operation.StartStage(ctx, "Route sync", "gateway_lock", s.syncTimeouts.GatewayLock)
+	defer func() {
+		resultErr = finish(resultErr)
+		if errors.Is(resultErr, context.DeadlineExceeded) {
+			resultErr = apperror.Wrap(apperror.KindUnavailable, "Timed out waiting for the Gateway synchronization lock", resultErr)
+		}
+	}()
+	return s.LockGateway(ctx, projectId)
+}
+
+func (s Service) loadSyncState(ctx context.Context, userId string, projectId string, input routedto.RouteSyncPreviewInput) (plan syncPlan, resultErr error) {
+	ctx, finish := operation.StartStage(ctx, "Route sync", "state_load", s.syncTimeouts.StateLoad)
+	defer func() {
+		resultErr = finish(resultErr)
+		if errors.Is(resultErr, context.DeadlineExceeded) {
+			resultErr = apperror.Wrap(apperror.KindUnavailable, "Timed out preparing the Route synchronization state", resultErr)
+		}
+	}()
 	if projectId == "" {
 		return syncPlan{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -137,11 +169,7 @@ func (s Service) loadSyncState(ctx context.Context, userId string, projectId str
 	if err != nil {
 		return syncPlan{}, err
 	}
-	publications, err := s.routePublisher.InspectPublications(ctx, projectId, *gateway)
-	if err != nil {
-		return syncPlan{}, err
-	}
-	plan, err := s.buildSyncPlan(ctx, projectId, input, *gateway, publications)
+	plan, err = s.buildSyncPlan(ctx, projectId, input, *gateway)
 	if err != nil {
 		return syncPlan{}, err
 	}

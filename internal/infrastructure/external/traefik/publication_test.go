@@ -66,6 +66,35 @@ func TestFileProviderReloadUsesTargetFilesystem(t *testing.T) {
 	}
 }
 
+func TestGatewayValidationReportsDockerQueryFailureSafely(t *testing.T) {
+	failure := errors.New("Process exited with status 1")
+	diagnostic := "error during connect: Docker Desktop engine is unavailable"
+	runtime := newRouteRuntimeFake()
+	runtime.containerError, runtime.containerDiagnostic = failure, diagnostic
+	manager := NewRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH, platform: model.EnvironmentPlatformWindows}, runtime, testRouteTimeouts())
+	_, err := manager.ValidateGateway(context.Background(), "project-1", testGateway(), nil)
+	if !errors.Is(err, failure) || !strings.Contains(err.Error(), diagnostic) {
+		t.Fatalf("Gateway validation lost the Docker command diagnostic: %v", err)
+	}
+	if !apperror.IsKind(err, apperror.KindUnavailable) || apperror.Classify(err).Code != "route_sync_gateway_unavailable" {
+		t.Fatalf("Docker failure was not classified as Gateway unavailability: %v", err)
+	}
+	message := apperror.Classify(err).Message
+	if !strings.Contains(message, "Docker") || strings.Contains(message, diagnostic) || strings.Contains(message, failure.Error()) {
+		t.Fatalf("public error did not retain a safe actionable cause: %q", message)
+	}
+}
+
+func TestGatewayValidationReportsStoppedContainer(t *testing.T) {
+	runtime := newRouteRuntimeFake()
+	runtime.containerId = "\n"
+	manager := NewRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts())
+	_, err := manager.ValidateGateway(context.Background(), "project-1", testGateway(), nil)
+	if !apperror.IsKind(err, apperror.KindUnavailable) || apperror.Classify(err).Code != "route_sync_gateway_not_running" {
+		t.Fatalf("stopped Gateway was not identified: %v", err)
+	}
+}
+
 func TestWindowsPublicationReloadsUpdatesAndWithdrawalWithoutChangingOtherRoutes(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI, runtime.reloadRequired = true, true
@@ -142,8 +171,8 @@ func TestRoutePublicationUsesConfiguredTimeoutForMatchingAndRecovery(t *testing.
 	publishTestRoute(t, manager, route)
 	assertTimeouts := func() {
 		t.Helper()
-		if len(runtime.remainingTimeouts) != 5 {
-			t.Fatalf("expected reload and four API requests, got %d", len(runtime.remainingTimeouts))
+		if len(runtime.remainingTimeouts) != 3 {
+			t.Fatalf("expected reload and two HTTP API requests, got %d", len(runtime.remainingTimeouts))
 		}
 		for index, remaining := range runtime.remainingTimeouts {
 			timeout := timeouts.ApiRequest
@@ -173,6 +202,7 @@ type routeTimeoutRuntime struct {
 	blockCommit       bool
 	blockReload       bool
 	requestFailure    error
+	recordReadFailure error
 	reloadDeadline    time.Time
 }
 
@@ -214,9 +244,48 @@ func (runtime *routeTimeoutRuntime) SyncFiles(ctx context.Context, target enviro
 	return runtime.routeRuntimeFake.SyncFiles(ctx, target, directory, files, pruneSuffix)
 }
 
+func (runtime *routeTimeoutRuntime) ReadFile(ctx context.Context, target environmentport.Target, name string) ([]byte, error) {
+	if runtime.recordReadFailure != nil && strings.HasSuffix(name, "/state.json") {
+		<-ctx.Done()
+		return nil, runtime.recordReadFailure
+	}
+	return runtime.routeRuntimeFake.ReadFile(ctx, target, name)
+}
+
+func TestPublicationRecordTimeoutPreservesSFTPFailure(t *testing.T) {
+	failure := errors.New("start SFTP client: ssh: unexpected packet in response to channel open: <nil>")
+	timeouts := testRouteTimeouts()
+	timeouts.StateLoad = 30 * time.Millisecond
+	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake(), recordReadFailure: failure}
+	runtime.files["/srv/orbit/traefik-default/.orbit/route-publication/existing/state.json"] = []byte("{}")
+	manager := NewRouteManager(routeTargetResolver{}, runtime, timeouts)
+	result, err := manager.PublishRoute(context.Background(), "project-1", testGateway(), publicationTestRoute("new"), "")
+	if !errors.Is(err, failure) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("publication inspection lost its timeout or transport cause: %v", err)
+	}
+	if result.FileCommit != "not_attempted" || result.Recovery != "not_needed" || len(runtime.writes) != 0 {
+		t.Fatalf("inspection failure attempted file publication: result=%+v writes=%v", result, runtime.writes)
+	}
+}
+
+func TestFilePublicationBudgetDoesNotTruncateReload(t *testing.T) {
+	timeouts := testRouteTimeouts()
+	timeouts.FilePublication, timeouts.Reload = 300*time.Millisecond, 2*time.Second
+	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake(), reloadDelay: 10 * time.Millisecond}
+	runtime.autoAPI, runtime.reloadRequired = true, true
+	manager := NewRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH, platform: model.EnvironmentPlatformWindows}, runtime, timeouts)
+	result, err := manager.PublishRoute(context.Background(), "project-1", testGateway(), publicationTestRoute("independent"), "")
+	if err != nil || result.FileCommit != "committed" || result.ConfigurationMatch != "matched" {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	if len(runtime.remainingTimeouts) != 3 || runtime.remainingTimeouts[0] <= time.Second {
+		t.Fatalf("reload did not receive its own budget: %v", runtime.remainingTimeouts)
+	}
+}
+
 func TestConfigurationMatchBudgetStartsAfterReload(t *testing.T) {
 	timeouts := testRouteTimeouts()
-	timeouts.ApiRequest, timeouts.Reload, timeouts.ConfigurationMatch = 60*time.Millisecond, 100*time.Millisecond, 80*time.Millisecond
+	timeouts.ApiRequest, timeouts.Reload, timeouts.ConfigurationMatch = 160*time.Millisecond, 100*time.Millisecond, 80*time.Millisecond
 	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake(), reloadDelay: 70 * time.Millisecond}
 	runtime.autoAPI, runtime.reloadRequired = true, true
 	manager := NewRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH, platform: model.EnvironmentPlatformWindows}, runtime, timeouts)
@@ -230,40 +299,46 @@ func TestConfigurationMatchBudgetStartsAfterReload(t *testing.T) {
 	if err := manager.loadFileConfiguration(context.Background(), "project-1", testGateway(), target, body); err != nil {
 		t.Fatal(err)
 	}
-	if len(runtime.remainingTimeouts) != 5 || runtime.remainingTimeouts[1] < 50*time.Millisecond {
+	if len(runtime.remainingTimeouts) != 3 || runtime.remainingTimeouts[1] < 50*time.Millisecond {
 		t.Fatalf("reload consumed the configuration matching budget: %v", runtime.remainingTimeouts)
+	}
+	for _, remaining := range runtime.remainingTimeouts[1:] {
+		if remaining <= 0 || remaining > timeouts.ConfigurationMatch {
+			t.Fatalf("API request exceeded the configuration matching budget: %s", remaining)
+		}
 	}
 }
 
-func TestRouteRecoveryDoesNotExceedTotalParentDeadline(t *testing.T) {
-	timeouts := routeport.SyncTimeouts{Total: 150 * time.Millisecond, ApiRequest: 20 * time.Millisecond, Reload: 40 * time.Millisecond, ConfigurationMatch: 30 * time.Millisecond, Recovery: 30 * time.Millisecond}
+func TestRouteRecoveryUsesIndependentBudgetAfterPublicationTimeout(t *testing.T) {
+	timeouts := testRouteTimeouts()
+	timeouts.FilePublication, timeouts.ApiRequest, timeouts.Reload, timeouts.ConfigurationMatch, timeouts.Recovery = 15*time.Millisecond, 20*time.Millisecond, 40*time.Millisecond, 30*time.Millisecond, 80*time.Millisecond
 	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake(), blockCommit: true, blockReload: true}
 	runtime.autoAPI, runtime.reloadRequired = true, true
 	manager := NewRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH, platform: model.EnvironmentPlatformWindows}, runtime, timeouts)
-	deadline := time.Now().Add(70 * time.Millisecond)
+	deadline := time.Now().Add(30 * time.Millisecond)
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 	result, err := manager.PublishRoute(ctx, "project-1", testGateway(), publicationTestRoute("bounded"), "")
 	if !errors.Is(err, context.DeadlineExceeded) || result.Recovery != "failed" {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
-	if !runtime.reloadDeadline.Equal(deadline) {
-		t.Fatalf("recovery escaped the total deadline: got %s, want %s", runtime.reloadDeadline, deadline)
+	if !runtime.reloadDeadline.After(deadline) {
+		t.Fatalf("recovery reused the publication deadline: got %s, parent %s", runtime.reloadDeadline, deadline)
 	}
 }
 
-func TestRecoveryUsesFreshContextWithinRemainingBudget(t *testing.T) {
+func TestRecoveryUsesFreshBoundedContext(t *testing.T) {
 	manager := NewRouteManager(routeTargetResolver{}, newRouteRuntimeFake(), testRouteTimeouts())
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	deadline := time.Now().Add(time.Second)
-	recoveryCtx, stop := manager.recoveryContext(ctx, deadline)
+	started := time.Now()
+	recoveryCtx, stop := manager.recoveryContext(ctx)
 	defer stop()
 	if recoveryCtx.Err() != nil {
 		t.Fatalf("recovery reused the canceled context: %v", recoveryCtx.Err())
 	}
-	if actual, _ := recoveryCtx.Deadline(); !actual.Equal(deadline) {
-		t.Fatalf("recovery escaped the total deadline: got %s, want %s", actual, deadline)
+	if actual, _ := recoveryCtx.Deadline(); actual.Before(started.Add(manager.timeouts.Recovery)) || actual.After(time.Now().Add(manager.timeouts.Recovery)) {
+		t.Fatalf("recovery did not receive its own bounded deadline: %s", actual)
 	}
 }
 
@@ -273,7 +348,8 @@ func TestConfigurationTimeoutPreservesLastAPIError(t *testing.T) {
 	timeouts.ConfigurationMatch = 15 * time.Millisecond
 	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake(), requestFailure: failure}
 	manager := NewRouteManager(routeTargetResolver{}, runtime, timeouts)
-	err := manager.waitConfiguration(context.Background(), "project-1", testGateway(), nil)
+	body, _ := yaml.Marshal(buildRouteSnapshot([]model.Route{publicationTestRoute("api")}))
+	err := manager.waitConfiguration(context.Background(), "project-1", testGateway(), body)
 	if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, failure) {
 		t.Fatalf("configuration timeout lost its cause: %v", err)
 	}
@@ -381,7 +457,7 @@ func TestInterruptedCandidateIsConfirmedBeforeRetryChangesBackup(t *testing.T) {
 	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	route := publicationTestRoute("a")
 	publishTestRoute(t, m, route)
-	items, _ := m.InspectPublications(context.Background(), "project-1", testGateway())
+	items, _ := inspectTestPublications(m, context.Background(), "project-1", testGateway())
 	previous := items[0]
 	backup := "/srv/orbit/traefik-default/.orbit/route-publication/a/previous.yaml"
 	runtime.files[backup] = append([]byte(nil), runtime.files[activeTestPath("a")]...)
@@ -406,7 +482,7 @@ func TestPendingRecoveryPreservesUnknownExternalFile(t *testing.T) {
 	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	route := publicationTestRoute("a")
 	publishTestRoute(t, m, route)
-	items, _ := m.InspectPublications(context.Background(), "project-1", testGateway())
+	items, _ := inspectTestPublications(m, context.Background(), "project-1", testGateway())
 	item := items[0]
 	item.Phase = "pending"
 	item.PreviousFingerprint = item.Fingerprint
@@ -432,7 +508,7 @@ func TestPendingCertificateRecoveryRequiresIntactCertificateFiles(t *testing.T) 
 			cert, key := generateTestCertificate(t, route.Domain)
 			route.HTTPSEnabled, route.CertType, route.CertPEM, route.CertKey = true, "manual", &cert, &key
 			publishTestRoute(t, m, route)
-			items, err := m.InspectPublications(context.Background(), "project-1", testGateway())
+			items, err := inspectTestPublications(m, context.Background(), "project-1", testGateway())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -493,7 +569,7 @@ func TestGatewayPublicationLockIsSharedAcrossManagers(t *testing.T) {
 	unlock()
 }
 
-func TestPublishedManualCertificateConflictsWithCandidateACME(t *testing.T) {
+func TestPublishingCertificateConfigurationDoesNotReadOtherRoutes(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI = true
 	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
@@ -506,12 +582,16 @@ func TestPublishedManualCertificateConflictsWithCandidateACME(t *testing.T) {
 	b.PathPrefix = "/b"
 	b.HTTPSEnabled = true
 	b.CertType = "letsencrypt"
-	_, err := m.PublishRoute(context.Background(), "project-1", testGateway(), b, "")
-	if err == nil {
-		t.Fatal("ACME candidate replaced a published manual certificate")
+	before := string(runtime.files[activeTestPath(a.Name)])
+	runtime.reads = nil
+	publishTestRoute(t, m, b)
+	if string(runtime.files[activeTestPath(a.Name)]) != before {
+		t.Fatal("publishing another Route changed the first Route certificate configuration")
 	}
-	if _, exists := runtime.files[activeTestPath("b")]; exists {
-		t.Fatal("conflicting candidate was committed")
+	for _, name := range runtime.reads {
+		if name == publicationRecordPath(a.Id) || name == activeTestPath(a.Name) || strings.Contains(name, "/certs/route-"+a.Id+"/") {
+			t.Fatalf("publishing another Route read unrelated certificate configuration: %s", name)
+		}
 	}
 }
 
@@ -522,16 +602,32 @@ func publicationTestRoute(id string) model.Route {
 func activeTestPath(id string) string {
 	return "/srv/orbit/traefik-default/gateway/dynamic/route-" + id + ".yaml"
 }
+func inspectTestPublications(m *RouteManager, ctx context.Context, projectId string, gateway model.GatewayConfig) ([]routeport.Publication, error) {
+	ids, err := m.ListPublicationRouteIds(ctx, projectId, gateway)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]routeport.Publication, 0, len(ids))
+	for _, id := range ids {
+		item, err := m.InspectPublication(ctx, projectId, gateway, model.Route{Id: id})
+		if err != nil {
+			return nil, err
+		}
+		if item != nil {
+			items = append(items, *item)
+		}
+	}
+	return items, nil
+}
+
 func testPublicationFingerprint(t *testing.T, m *RouteManager, id string) string {
 	t.Helper()
-	items, err := m.InspectPublications(context.Background(), "project-1", testGateway())
+	item, err := m.InspectPublication(context.Background(), "project-1", testGateway(), model.Route{Id: id})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, item := range items {
-		if item.Route.Id == id {
-			return publicationFingerprint(item)
-		}
+	if item != nil {
+		return publicationFingerprint(*item)
 	}
 	return ""
 }

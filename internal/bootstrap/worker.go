@@ -34,7 +34,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, stores.environmentCredential, cfg.Jwt.SecretKey)
 	_, runtime := newDeploymentRuntime(dockerPathResolver)
 	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.deployment, dockerPathResolver, transactionRunner)
-	routeManager := traefik.NewRouteManager(targetResolver, runtime)
+	routeManager := traefik.NewRouteManager(targetResolver, runtime, routeSyncTimeouts(cfg.Route))
 	routeService := routesvc.New(
 		stores.project,
 		stores.application,
@@ -45,6 +45,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		traefik.MkcertGenerator{},
 		routeManager,
 		transactionRunner,
+		routeSyncTimeouts(cfg.Route),
 	)
 	applicationService := applicationsvc.New(stores.project, stores.application)
 	pipelineRunService := pipelinerunsvc.NewExecutionService(

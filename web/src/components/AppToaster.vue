@@ -33,7 +33,7 @@
       </ToastClose>
     </ToastRoot>
     <ToastViewport
-      class="fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-2 outline-none md:left-auto md:right-4 md:w-96"
+      class="fixed bottom-4 left-4 right-4 z-[70] flex flex-col gap-2 outline-none md:left-auto md:right-4 md:w-96"
     />
   </ToastProvider>
 </template>

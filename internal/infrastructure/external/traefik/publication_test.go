@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -41,7 +43,7 @@ func TestFileProviderReloadUsesTargetFilesystem(t *testing.T) {
 			runtime := newRouteRuntimeFake()
 			runtime.autoAPI, runtime.reloadRequired = true, tc.reload
 			runtime.physicalBase, runtime.containerId = tc.physicalBase, "project-gateway-id"
-			m := newRouteManager(routeTargetResolver{targetType: tc.targetType, platform: tc.platform}, runtime, func() bool { return tc.inContainer })
+			m := newRouteManager(routeTargetResolver{targetType: tc.targetType, platform: tc.platform}, runtime, testRouteTimeouts(), func() bool { return tc.inContainer })
 			publishTestRoute(t, m, publicationTestRoute("a"))
 			if (runtime.reloadAttempts != 0) != tc.reload {
 				t.Fatalf("reload attempts=%d", runtime.reloadAttempts)
@@ -68,7 +70,7 @@ func TestWindowsPublicationReloadsUpdatesAndWithdrawalWithoutChangingOtherRoutes
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI, runtime.reloadRequired = true, true
 	runtime.physicalBase = "D:/orbit/traefik-default"
-	m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	a, b := publicationTestRoute("a"), publicationTestRoute("b")
 	unknown := "/srv/orbit/traefik-default/gateway/dynamic/custom.yaml"
 	unknownBody, _ := yaml.Marshal(buildRouteSnapshot([]model.Route{publicationTestRoute("external")}))
@@ -97,7 +99,7 @@ func TestWindowsReloadFailureReportsRecoveryAndSupportsRetry(t *testing.T) {
 			runtime := newRouteRuntimeFake()
 			runtime.autoAPI, runtime.reloadRequired = true, true
 			runtime.physicalBase = "D:/orbit/traefik-default"
-			m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+			m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 			a, b := publicationTestRoute("a"), publicationTestRoute("b")
 			publishTestRoute(t, m, a)
 			publishTestRoute(t, m, b)
@@ -130,6 +132,153 @@ func TestWindowsReloadFailureReportsRecoveryAndSupportsRetry(t *testing.T) {
 	}
 }
 
+func TestRoutePublicationUsesConfiguredTimeoutForMatchingAndRecovery(t *testing.T) {
+	timeouts := testRouteTimeouts()
+	timeouts.ApiRequest, timeouts.Reload = 2*time.Second, 4*time.Second
+	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake()}
+	runtime.autoAPI, runtime.reloadRequired = true, true
+	manager := NewRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH, platform: model.EnvironmentPlatformWindows}, runtime, timeouts)
+	route := publicationTestRoute("configured-timeout")
+	publishTestRoute(t, manager, route)
+	assertTimeouts := func() {
+		t.Helper()
+		if len(runtime.remainingTimeouts) != 5 {
+			t.Fatalf("expected reload and four API requests, got %d", len(runtime.remainingTimeouts))
+		}
+		for index, remaining := range runtime.remainingTimeouts {
+			timeout := timeouts.ApiRequest
+			if index == 0 {
+				timeout = timeouts.Reload
+			}
+			if remaining <= timeout-time.Second || remaining > timeout {
+				t.Fatalf("configured timeout %s was not applied: remaining=%s", timeout, remaining)
+			}
+		}
+	}
+	assertTimeouts()
+	runtime.remainingTimeouts = nil
+	runtime.writeFailures = map[string]error{activeTestPath(route.Name): os.ErrPermission}
+	route.TargetUrl = "http://updated:8080"
+	result, err := manager.PublishRoute(context.Background(), "project-1", testGateway(), route, testPublicationFingerprint(t, manager, route.Id))
+	if !errors.Is(err, os.ErrPermission) || result.Recovery != "restored" || result.FileCommit != "restored" {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	assertTimeouts()
+}
+
+type routeTimeoutRuntime struct {
+	*routeRuntimeFake
+	remainingTimeouts []time.Duration
+	reloadDelay       time.Duration
+	blockCommit       bool
+	blockReload       bool
+	requestFailure    error
+	reloadDeadline    time.Time
+}
+
+func (runtime *routeTimeoutRuntime) QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error) {
+	if name == "curl" || name == "docker" && len(args) > 0 && args[0] == "kill" {
+		deadline, found := ctx.Deadline()
+		if !found {
+			return "", errors.New("Route configuration operation has no deadline")
+		}
+		runtime.remainingTimeouts = append(runtime.remainingTimeouts, time.Until(deadline))
+		if name == "curl" && runtime.requestFailure != nil {
+			return "", runtime.requestFailure
+		}
+		if name == "docker" {
+			runtime.reloadDeadline = deadline
+			if runtime.blockReload {
+				<-ctx.Done()
+				return "", ctx.Err()
+			}
+			if runtime.reloadDelay != 0 {
+				timer := time.NewTimer(runtime.reloadDelay)
+				defer timer.Stop()
+				select {
+				case <-ctx.Done():
+					return "", ctx.Err()
+				case <-timer.C:
+				}
+			}
+		}
+	}
+	return runtime.routeRuntimeFake.QueryAtEnvironmentRoot(ctx, target, name, args...)
+}
+
+func (runtime *routeTimeoutRuntime) SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []deploymentport.WorkspaceFile, pruneSuffix string) error {
+	if runtime.blockCommit && strings.Contains(directory, "/gateway/dynamic") {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	return runtime.routeRuntimeFake.SyncFiles(ctx, target, directory, files, pruneSuffix)
+}
+
+func TestConfigurationMatchBudgetStartsAfterReload(t *testing.T) {
+	timeouts := testRouteTimeouts()
+	timeouts.ApiRequest, timeouts.Reload, timeouts.ConfigurationMatch = 60*time.Millisecond, 100*time.Millisecond, 80*time.Millisecond
+	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake(), reloadDelay: 70 * time.Millisecond}
+	runtime.autoAPI, runtime.reloadRequired = true, true
+	manager := NewRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH, platform: model.EnvironmentPlatformWindows}, runtime, timeouts)
+	route := publicationTestRoute("delayed-reload")
+	body, err := yaml.Marshal(buildRouteSnapshot([]model.Route{route}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.files[activeTestPath(route.Name)] = body
+	target, _ := manager.resolveTarget(context.Background(), "project-1")
+	if err := manager.loadFileConfiguration(context.Background(), "project-1", testGateway(), target, body); err != nil {
+		t.Fatal(err)
+	}
+	if len(runtime.remainingTimeouts) != 5 || runtime.remainingTimeouts[1] < 50*time.Millisecond {
+		t.Fatalf("reload consumed the configuration matching budget: %v", runtime.remainingTimeouts)
+	}
+}
+
+func TestRouteRecoveryDoesNotExceedTotalParentDeadline(t *testing.T) {
+	timeouts := routeport.SyncTimeouts{Total: 150 * time.Millisecond, ApiRequest: 20 * time.Millisecond, Reload: 40 * time.Millisecond, ConfigurationMatch: 30 * time.Millisecond, Recovery: 30 * time.Millisecond}
+	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake(), blockCommit: true, blockReload: true}
+	runtime.autoAPI, runtime.reloadRequired = true, true
+	manager := NewRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH, platform: model.EnvironmentPlatformWindows}, runtime, timeouts)
+	deadline := time.Now().Add(70 * time.Millisecond)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+	result, err := manager.PublishRoute(ctx, "project-1", testGateway(), publicationTestRoute("bounded"), "")
+	if !errors.Is(err, context.DeadlineExceeded) || result.Recovery != "failed" {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+	if !runtime.reloadDeadline.Equal(deadline) {
+		t.Fatalf("recovery escaped the total deadline: got %s, want %s", runtime.reloadDeadline, deadline)
+	}
+}
+
+func TestRecoveryUsesFreshContextWithinRemainingBudget(t *testing.T) {
+	manager := NewRouteManager(routeTargetResolver{}, newRouteRuntimeFake(), testRouteTimeouts())
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	deadline := time.Now().Add(time.Second)
+	recoveryCtx, stop := manager.recoveryContext(ctx, deadline)
+	defer stop()
+	if recoveryCtx.Err() != nil {
+		t.Fatalf("recovery reused the canceled context: %v", recoveryCtx.Err())
+	}
+	if actual, _ := recoveryCtx.Deadline(); !actual.Equal(deadline) {
+		t.Fatalf("recovery escaped the total deadline: got %s, want %s", actual, deadline)
+	}
+}
+
+func TestConfigurationTimeoutPreservesLastAPIError(t *testing.T) {
+	failure := errors.New("remote API connection failed")
+	timeouts := testRouteTimeouts()
+	timeouts.ConfigurationMatch = 15 * time.Millisecond
+	runtime := &routeTimeoutRuntime{routeRuntimeFake: newRouteRuntimeFake(), requestFailure: failure}
+	manager := NewRouteManager(routeTargetResolver{}, runtime, timeouts)
+	err := manager.waitConfiguration(context.Background(), "project-1", testGateway(), nil)
+	if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, failure) {
+		t.Fatalf("configuration timeout lost its cause: %v", err)
+	}
+}
+
 func TestRoutePublicationUpdatesAndWithdrawsOnlyOwnedFiles(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI = true
@@ -140,7 +289,7 @@ func TestRoutePublicationUpdatesAndWithdrawsOnlyOwnedFiles(t *testing.T) {
 	for name, body := range unknownFiles {
 		runtime.files[name] = []byte(body)
 	}
-	m := newRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH}, runtime, func() bool { return true })
+	m := newRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH}, runtime, testRouteTimeouts(), func() bool { return true })
 	a, b := publicationTestRoute("a"), publicationTestRoute("b")
 	cert, key := generateTestCertificate(t, b.Domain)
 	b.HTTPSEnabled, b.CertType, b.CertPEM, b.CertKey = true, "manual", &cert, &key
@@ -181,7 +330,7 @@ func TestRoutePublicationUpdatesAndWithdrawsOnlyOwnedFiles(t *testing.T) {
 func TestCertificateRevisionIsReusedWithoutRewritingAndRejectsCorruption(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI = true
-	m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	route := publicationTestRoute("secure")
 	cert, key := generateTestCertificate(t, route.Domain)
 	route.HTTPSEnabled, route.CertType, route.CertPEM, route.CertKey = true, "manual", &cert, &key
@@ -208,7 +357,7 @@ func TestCertificateRevisionIsReusedWithoutRewritingAndRejectsCorruption(t *test
 func TestPublicationFailureRestoresOnlyPreviousRoute(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI = true
-	m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	a, b := publicationTestRoute("a"), publicationTestRoute("b")
 	publishTestRoute(t, m, a)
 	publishTestRoute(t, m, b)
@@ -226,7 +375,7 @@ func TestInterruptedCandidateIsConfirmedBeforeRetryChangesBackup(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI, runtime.reloadRequired = true, true
 	runtime.physicalBase = "D:/orbit/traefik-default"
-	m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	route := publicationTestRoute("a")
 	publishTestRoute(t, m, route)
 	items, _ := m.InspectPublications(context.Background(), "project-1", testGateway())
@@ -251,7 +400,7 @@ func TestInterruptedCandidateIsConfirmedBeforeRetryChangesBackup(t *testing.T) {
 func TestPendingRecoveryPreservesUnknownExternalFile(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI = true
-	m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	route := publicationTestRoute("a")
 	publishTestRoute(t, m, route)
 	items, _ := m.InspectPublications(context.Background(), "project-1", testGateway())
@@ -275,7 +424,7 @@ func TestPendingCertificateRecoveryRequiresIntactCertificateFiles(t *testing.T) 
 			runtime := newRouteRuntimeFake()
 			runtime.autoAPI, runtime.reloadRequired = true, true
 			runtime.physicalBase = "D:/orbit/traefik-default"
-			m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+			m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 			route := publicationTestRoute("secure")
 			cert, key := generateTestCertificate(t, route.Domain)
 			route.HTTPSEnabled, route.CertType, route.CertPEM, route.CertKey = true, "manual", &cert, &key
@@ -344,7 +493,7 @@ func TestGatewayPublicationLockIsSharedAcrossManagers(t *testing.T) {
 func TestPublishedManualCertificateConflictsWithCandidateACME(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI = true
-	m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	a := publicationTestRoute("a")
 	cert, key := generateTestCertificate(t, a.Domain)
 	a.HTTPSEnabled, a.CertType, a.CertPEM, a.CertKey = true, "manual", &cert, &key

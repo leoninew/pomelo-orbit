@@ -25,6 +25,7 @@ import (
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	jwt "github.com/leoninew/pomelo-orbit/internal/auth/jwt"
 	"github.com/leoninew/pomelo-orbit/internal/bootstrap"
 	"github.com/leoninew/pomelo-orbit/internal/config"
@@ -184,7 +185,7 @@ func TestWindowsSSHTraefikRouterQueryIntegration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	manager := traefikclient.NewRouteManager(windowsSSHTargetResolver{target: target}, sshrunner.NewRuntime())
+	manager := traefikclient.NewRouteManager(windowsSSHTargetResolver{target: target}, sshrunner.NewRuntime(), routeport.SyncTimeouts{Total: 30 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second})
 	routers, err := manager.ListRouters(ctx, target.Environment.ProjectId, model.GatewayConfig{RestApiUrl: model.GatewayRestApiContainerUrl, RestApiHostUrl: windowsSSHTraefikRestApiUrl()})
 	if err != nil {
 		t.Fatalf("query Traefik routers through Windows SSH: %v", err)

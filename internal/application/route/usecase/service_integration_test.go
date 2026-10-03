@@ -530,6 +530,7 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 		recordingCertificateGenerator{},
 		client,
 		databasetx.NewTransactionRunner(database),
+		testRouteSyncTimeouts(),
 	)
 	seedRouteTestGateway(t, database)
 	return service, publisher, client, database

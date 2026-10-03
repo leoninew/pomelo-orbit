@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"reflect"
@@ -25,8 +26,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
 )
-
-const configurationMatchTimeout = 8 * time.Second
 
 // API and worker use separate managers in the same process.
 var gatewayPublicationLocks sync.Map
@@ -229,6 +228,8 @@ func (m *RouteManager) gatewayContainer(ctx context.Context, target environmentp
 }
 
 func (m *RouteManager) reloadFileProvider(ctx context.Context, target environmentport.Target, gateway model.GatewayConfig) error {
+	ctx, cancel := context.WithTimeout(ctx, m.timeouts.Reload)
+	defer cancel()
 	required := target.Environment.IsSSH() && target.Environment.SSH.Platform == model.EnvironmentPlatformWindows
 	if target.Environment.IsLocal() {
 		physical, err := m.runtime.ComposeMountSourceDir(ctx, target, gateway.RuntimeServiceCode)
@@ -265,9 +266,9 @@ func isWindowsMountSource(source string) bool {
 }
 
 func (m *RouteManager) loadFileConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, target environmentport.Target, body []byte, absentCodes ...string) error {
-	ctx, cancel := context.WithTimeout(ctx, configurationMatchTimeout)
-	defer cancel()
+	started := time.Now()
 	if err := m.reloadFileProvider(ctx, target, gateway); err != nil {
+		slog.WarnContext(ctx, "Route publication stage failed", "project_id", projectId, "phase", "reload", "elapsed", time.Since(started), "timeout", m.timeouts.Reload, "error", err)
 		return err
 	}
 	return m.waitConfiguration(ctx, projectId, gateway, body, absentCodes...)
@@ -283,6 +284,12 @@ func (m *RouteManager) savePublication(ctx context.Context, target environmentpo
 }
 
 func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gateway model.GatewayConfig, route model.Route, expectedFingerprint string) (routeport.PublicationResult, error) {
+	deadline := time.Now().Add(m.timeouts.Total)
+	if parentDeadline, found := ctx.Deadline(); found && parentDeadline.Before(deadline) {
+		deadline = parentDeadline
+	}
+	ctx, cancel := context.WithDeadline(ctx, deadline.Add(-m.timeouts.Recovery))
+	defer cancel()
 	result := routeport.PublicationResult{OperationId: idutil.NewId(), FileCommit: "not_attempted", ConfigurationMatch: "unverified", CertificateVerification: "not_applicable", Recovery: "not_needed", Cleanup: "not_attempted"}
 	if route.HTTPSEnabled && route.Enabled {
 		result.CertificateVerification = "unverified"
@@ -405,7 +412,9 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 	if route.Enabled && routeHasStoredCertificate(route) {
 		if err := m.ensureCertificateVersion(ctx, target, files, base, route); err != nil {
 			result.Recovery = "restored"
-			restoreErr := m.restoreRecord(ctx, target, base, previous, item, nil)
+			recoveryCtx, stopRecovery := m.recoveryContext(ctx, deadline)
+			defer stopRecovery()
+			restoreErr := m.restoreRecord(recoveryCtx, target, base, previous, item, nil)
 			if restoreErr != nil {
 				result.Recovery = "failed"
 			}
@@ -423,9 +432,13 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 			result.ConfigurationMatch = "mismatched"
 		}
 		result.Recovery = "failed"
-		recoveryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), configurationMatchTimeout)
-		defer cancel()
+		recoveryCtx, stopRecovery := m.recoveryContext(ctx, deadline)
+		defer stopRecovery()
+		started := time.Now()
 		restoreErr := m.rollbackPublication(recoveryCtx, projectId, gateway, target, files, base, item, oldBody)
+		if restoreErr != nil {
+			slog.WarnContext(recoveryCtx, "Route publication stage failed", "project_id", projectId, "route_id", route.Id, "phase", "recovery", "elapsed", time.Since(started), "timeout", m.timeouts.Recovery, "error", restoreErr)
+		}
 		if restoreErr == nil {
 			result.Recovery = "restored"
 			result.FileCommit = "restored"
@@ -615,8 +628,21 @@ type dynamicConfiguration struct {
 	TCP  dynamicProtocol `yaml:"tcp"`
 }
 
-func (m *RouteManager) waitConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, body []byte, absentCodes ...string) error {
-	ctx, cancel := context.WithTimeout(ctx, configurationMatchTimeout)
+func (m *RouteManager) recoveryContext(ctx context.Context, deadline time.Time) (context.Context, context.CancelFunc) {
+	if recoveryDeadline := time.Now().Add(m.timeouts.Recovery); recoveryDeadline.Before(deadline) {
+		deadline = recoveryDeadline
+	}
+	return context.WithDeadline(context.WithoutCancel(ctx), deadline)
+}
+
+func (m *RouteManager) waitConfiguration(ctx context.Context, projectId string, gateway model.GatewayConfig, body []byte, absentCodes ...string) (resultErr error) {
+	started := time.Now()
+	defer func() {
+		if resultErr != nil {
+			slog.WarnContext(ctx, "Route publication stage failed", "project_id", projectId, "phase", "configuration_match", "elapsed", time.Since(started), "timeout", m.timeouts.ConfigurationMatch, "error", resultErr)
+		}
+	}()
+	ctx, cancel := context.WithTimeout(ctx, m.timeouts.ConfigurationMatch)
 	defer cancel()
 	var expected dynamicConfiguration
 	if len(body) != 0 {
@@ -628,6 +654,7 @@ func (m *RouteManager) waitConfiguration(ctx context.Context, projectId string, 
 		}
 	}
 	observed := false
+	var lastErr error
 	for {
 		routers, err := m.ListRouters(ctx, projectId, gateway)
 		var services []routeport.TraefikService
@@ -639,13 +666,15 @@ func (m *RouteManager) waitConfiguration(ctx context.Context, projectId string, 
 		}
 		if err == nil {
 			observed = true
+		} else {
+			lastErr = err
 		}
 		select {
 		case <-ctx.Done():
 			if observed {
-				return apperror.WrapWithCode(apperror.KindConflict, "route_sync_configuration_mismatch", "Traefik configuration did not match the committed Route", ctx.Err())
+				return apperror.WrapWithCode(apperror.KindConflict, "route_sync_configuration_mismatch", "Traefik configuration did not match the committed Route", errors.Join(ctx.Err(), lastErr))
 			}
-			return fmt.Errorf("route configuration could not be matched: %w", ctx.Err())
+			return fmt.Errorf("route configuration could not be matched: %w", errors.Join(ctx.Err(), lastErr))
 		case <-time.After(250 * time.Millisecond):
 		}
 	}

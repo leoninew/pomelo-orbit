@@ -7,6 +7,14 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
+type SyncTimeouts struct {
+	Total              time.Duration
+	ApiRequest         time.Duration
+	Reload             time.Duration
+	ConfigurationMatch time.Duration
+	Recovery           time.Duration
+}
+
 // TransactionRunner runs a short application-owned database transaction.
 // External calls must happen after the callback returns successfully.
 type TransactionRunner interface {

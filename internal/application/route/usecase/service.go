@@ -29,6 +29,7 @@ type Service struct {
 	certificateGenerator routeport.RouteCertificateGenerator
 	traefikRouterClient  routeport.TraefikRouterClient
 	transactionRunner    routeport.TransactionRunner
+	syncTimeouts         routeport.SyncTimeouts
 }
 
 func New(
@@ -41,11 +42,12 @@ func New(
 	certificateGenerator routeport.RouteCertificateGenerator,
 	traefikRouterClient routeport.TraefikRouterClient,
 	transactionRunner routeport.TransactionRunner,
+	syncTimeouts routeport.SyncTimeouts,
 ) Service {
 	return Service{
 		project: project, application: application, service: service, route: route, gateway: gateway,
 		routePublisher: routePublisher, certificateGenerator: certificateGenerator,
-		traefikRouterClient: traefikRouterClient, transactionRunner: transactionRunner,
+		traefikRouterClient: traefikRouterClient, transactionRunner: transactionRunner, syncTimeouts: syncTimeouts,
 	}
 }
 

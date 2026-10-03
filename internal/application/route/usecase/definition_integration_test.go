@@ -44,6 +44,7 @@ func TestCreateRouteFromDefinitionPreservesConfigurationAndState(t *testing.T) {
 		nil,
 		nil,
 		nil,
+		testRouteSyncTimeouts(),
 	)
 	certPEM, certKey := "-----BEGIN CERTIFICATE-----\nsource\n-----END CERTIFICATE-----", "-----BEGIN PRIVATE KEY-----\nsource\n-----END PRIVATE KEY-----"
 	created, err := service.CreateRouteFromDefinition(ctx, "user-1", "project-1", routedto.RouteDefinitionInput{Route: model.Route{

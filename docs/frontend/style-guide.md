@@ -67,6 +67,12 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 - 脚本编辑抽屉主按钮统一使用“保存”。
 - `AppDrawer` 打开时使用 Reka UI 默认的 focus 管理，确保焦点进入抽屉；关闭时保留统一的 focus 策略。
 
+## Tooltip
+
+- 需要可见悬浮内容的提示统一使用共享 `AppTooltip`，业务组件不直接组合 Reka Tooltip primitives。
+- 有补充说明或异常原因时，触发元素提供信息图标和键盘焦点；没有内容时不展示图标或提示浮层。
+- Tooltip 通过 Portal 展示，层级高于模态窗及滚动容器，不被表格滚动区域裁切。
+
 ## Toast
 
 - 全局 toast 统一走 `AppToaster` / Reka Toast。

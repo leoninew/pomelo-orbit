@@ -10,6 +10,7 @@ import { serviceApi } from '@/api/service/service';
 import i18n from '@/i18n';
 import type { RouteResp } from '@/gen/proto/orbit/v1/route/route';
 import { useProjectStore } from '@/stores/project';
+import { useToast } from '@/composables/useToast';
 import RouteDetail from './RouteDetail.vue';
 import RoutePage from './RoutePage.vue';
 
@@ -59,6 +60,7 @@ const route: RouteResp = {
 let mountedApp: App | undefined;
 let target: HTMLDivElement | undefined;
 let pinia: ReturnType<typeof createPinia>;
+const { toasts } = useToast();
 
 async function flushRender() {
   await Promise.resolve();
@@ -68,6 +70,7 @@ async function flushRender() {
 }
 
 beforeEach(() => {
+  toasts.value = [];
   pinia = createPinia();
   setActivePinia(pinia);
   useProjectStore().setActiveProject('project-1');
@@ -88,7 +91,7 @@ beforeEach(() => {
     items: [
       {
         route_id: 'route-1',
-        route_name: 'api',
+        route_name: route.name,
         action: 'publish',
         rule: { protocol: 'http', match: 'Host(`api.example.test`)', target: 'http://api:8080' },
         cert_type: '',
@@ -126,6 +129,7 @@ afterEach(() => {
   target?.remove();
   mountedApp = undefined;
   target = undefined;
+  toasts.value = [];
   vi.clearAllMocks();
 });
 
@@ -134,8 +138,29 @@ describe('Route synchronization', () => {
     { path: '/routes', component: RoutePage, scope: 'project', routeIds: [] },
     { path: '/route/route-1', component: RouteDetail, scope: 'selected', routeIds: ['route-1'] },
   ] as const)(
-    'retains an unsaved enable draft after closing failed sync on $path',
+    'shows matching failure toast and status tip and retains the unsaved draft on $path',
     async ({ path, component, scope, routeIds }) => {
+      vi.mocked(routeApi.previewSync).mockResolvedValueOnce({
+        business_hash: 'business-hash',
+        route_ids: [route.id],
+        publication_hash: 'publication-hash',
+        items: [
+          {
+            route_id: route.id,
+            route_name: route.name,
+            action: 'publish',
+            rule: {
+              protocol: 'https',
+              match: 'Host(`api.example.test`)',
+              target: route.target_url,
+            },
+            cert_type: 'manual',
+            acme_challenge: '',
+            business_hash: 'business-hash',
+            publication_hash: 'publication-hash',
+          },
+        ],
+      });
       vi.mocked(routeApi.confirmSync).mockResolvedValueOnce({
         message: '',
         code: 'route_sync_incomplete',
@@ -189,14 +214,47 @@ describe('Route synchronization', () => {
           (button) => button.textContent?.trim() === i18n.global.t(key)
         );
       await vi.waitFor(() => expect(dialogButton('route.syncAll')?.disabled).toBe(false));
+      const columns = document.querySelectorAll('.app-dialog-content colgroup col');
+      expect([...columns].slice(0, 3).map((column) => column.className)).toEqual([
+        'w-28',
+        'w-28',
+        'w-28',
+      ]);
+      const protocol = document.querySelector<HTMLElement>(
+        '.app-dialog-content tbody td:nth-child(3) span'
+      );
+      expect(protocol?.textContent?.trim()).toBe('HTTPS');
+      expect(protocol?.querySelector('svg')).not.toBeNull();
+      protocol?.focus();
+      await vi.waitFor(() =>
+        expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('PEM')
+      );
+      dialogButton('route.syncAll')?.focus();
       dialogButton('route.syncAll')?.click();
+      const failureReason = i18n.global.t('route.syncErrorCodes.route_sync_skipped');
       await vi.waitFor(() => {
         const status = document.querySelector<HTMLElement>(
           '.app-dialog-content tbody td:last-child span'
         );
         expect(status?.textContent?.trim()).toBe(i18n.global.t('route.syncStatuses.failed'));
-        expect(status?.title).toBe(i18n.global.t('route.syncErrorCodes.route_sync_skipped'));
+        expect(toasts.value).toEqual([
+          expect.objectContaining({ type: 'error', text: `${route.name}: ${failureReason}` }),
+        ]);
       });
+      const failureStatus = document.querySelector<HTMLElement>(
+        '.app-dialog-content tbody td:last-child span'
+      );
+      expect(failureStatus?.querySelector('svg')).not.toBeNull();
+      failureStatus?.focus();
+      await vi.waitFor(() => {
+        const tooltip = document.querySelector<HTMLElement>('.app-tooltip-content');
+        const description = document.querySelector<HTMLElement>('[role="tooltip"]');
+        expect(tooltip?.textContent).toContain(failureReason);
+        expect(description?.textContent).toBe(failureReason);
+        expect(failureStatus?.getAttribute('aria-describedby')).toBe(description?.id);
+        expect(tooltip?.closest('.app-dialog-content')).toBeNull();
+      });
+      expect(dialogButton('route.retryPreview')?.disabled).toBe(false);
       await vi.waitFor(() => expect(dialogButton('common.cancel')?.disabled).toBe(false));
       dialogButton('common.cancel')?.click();
       await flushRender();

@@ -102,6 +102,9 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.PipelineRun.ExecutionTimeout != time.Hour {
 		t.Fatalf("unexpected pipeline execution timeout: %s", cfg.PipelineRun.ExecutionTimeout)
 	}
+	if cfg.Route != (RouteConfig{SyncTimeout: 30 * time.Second, ApiRequestTimeout: 3 * time.Second, ReloadTimeout: 5 * time.Second, ConfigurationMatchTimeout: 10 * time.Second, RecoveryTimeout: 10 * time.Second}) {
+		t.Fatalf("unexpected route timeouts: %+v", cfg.Route)
+	}
 	if cfg.Worker.LeaseDuration != time.Hour+5*time.Minute {
 		t.Fatalf("unexpected worker lease duration: %s", cfg.Worker.LeaseDuration)
 	}
@@ -484,6 +487,64 @@ worker:
 			_, err := Load()
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("expected %q, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestLoadRouteTimeouts(t *testing.T) {
+	setupDefaultConfig(t)
+	writeEnvConfig(t, "develop", "route:\n  sync_timeout: 90s\n  api_request_timeout: 4s\n  reload_timeout: 8s\n  configuration_match_timeout: 15s\n  recovery_timeout: 12s\n")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Route != (RouteConfig{SyncTimeout: 90 * time.Second, ApiRequestTimeout: 4 * time.Second, ReloadTimeout: 8 * time.Second, ConfigurationMatchTimeout: 15 * time.Second, RecoveryTimeout: 12 * time.Second}) {
+		t.Fatalf("unexpected YAML route timeouts: %+v", cfg.Route)
+	}
+
+	t.Setenv("POMELO_ORBIT_ROUTE__SYNC_TIMEOUT", "120s")
+	t.Setenv("POMELO_ORBIT_ROUTE__API_REQUEST_TIMEOUT", "5s")
+	t.Setenv("POMELO_ORBIT_ROUTE__RELOAD_TIMEOUT", "9s")
+	t.Setenv("POMELO_ORBIT_ROUTE__CONFIGURATION_MATCH_TIMEOUT", "20s")
+	t.Setenv("POMELO_ORBIT_ROUTE__RECOVERY_TIMEOUT", "14s")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Route != (RouteConfig{SyncTimeout: 120 * time.Second, ApiRequestTimeout: 5 * time.Second, ReloadTimeout: 9 * time.Second, ConfigurationMatchTimeout: 20 * time.Second, RecoveryTimeout: 14 * time.Second}) {
+		t.Fatalf("unexpected environment route timeouts: %+v", cfg.Route)
+	}
+}
+
+func TestLoadRejectsNonPositiveRouteConfigurationMatchTimeout(t *testing.T) {
+	setupDefaultConfig(t)
+	t.Setenv("POMELO_ORBIT_ROUTE__CONFIGURATION_MATCH_TIMEOUT", "0s")
+
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "route.configuration_match_timeout must be positive") {
+		t.Fatalf("expected route timeout validation error, got %v", err)
+	}
+}
+
+func TestLoadRejectsRouteTimeoutsOutsideTotalBudget(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		env   string
+		value string
+		want  string
+	}{
+		{"recovery consumes total", "POMELO_ORBIT_ROUTE__RECOVERY_TIMEOUT", "30s", "recovery_timeout must be less than route.sync_timeout"},
+		{"stages exceed total", "POMELO_ORBIT_ROUTE__CONFIGURATION_MATCH_TIMEOUT", "20s", "timeouts must fit within route.sync_timeout"},
+		{"request exceeds matching", "POMELO_ORBIT_ROUTE__API_REQUEST_TIMEOUT", "15s", "api_request_timeout must not exceed route.configuration_match_timeout"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			setupDefaultConfig(t)
+			t.Setenv(test.env, test.value)
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("expected %q, got %v", test.want, err)
 			}
 		})
 	}
@@ -993,6 +1054,12 @@ database:
     dsn: ""
 workspace:
   root: data
+route:
+  sync_timeout: 30s
+  api_request_timeout: 3s
+  reload_timeout: 5s
+  configuration_match_timeout: 10s
+  recovery_timeout: 10s
 orbit:
   root: .
 jwt:

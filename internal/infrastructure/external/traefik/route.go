@@ -27,6 +27,7 @@ type RouteManager struct {
 	targetResolver     environmentport.TargetResolver
 	runtime            deploymentport.Runtime
 	runningInContainer func() bool
+	timeouts           routeport.SyncTimeouts
 }
 
 type restRequestFailure struct {
@@ -47,12 +48,12 @@ func (e *restRequestFailure) unavailableMessage() string {
 	return fmt.Sprintf("Traefik REST API is unavailable %s at %s.", e.executionLocation, e.endpoint)
 }
 
-func NewRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.Runtime) *RouteManager {
-	return newRouteManager(targetResolver, runtime, localstorage.IsRunningInContainer)
+func NewRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.Runtime, timeouts routeport.SyncTimeouts) *RouteManager {
+	return newRouteManager(targetResolver, runtime, timeouts, localstorage.IsRunningInContainer)
 }
 
-func newRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.Runtime, runningInContainer func() bool) *RouteManager {
-	return &RouteManager{targetResolver: targetResolver, runtime: runtime, runningInContainer: runningInContainer}
+func newRouteManager(targetResolver environmentport.TargetResolver, runtime deploymentport.Runtime, timeouts routeport.SyncTimeouts, runningInContainer func() bool) *RouteManager {
+	return &RouteManager{targetResolver: targetResolver, runtime: runtime, runningInContainer: runningInContainer, timeouts: timeouts}
 }
 
 func (m *RouteManager) WaitUntilReady(ctx context.Context, projectId string, gateway model.GatewayConfig, timeout time.Duration) error {
@@ -62,7 +63,7 @@ func (m *RouteManager) WaitUntilReady(ctx context.Context, projectId string, gat
 	deadline := time.Now().Add(timeout)
 	var lastErr error
 	for {
-		_, lastErr = m.request(ctx, projectId, gateway, nil, []string{"-fsS", "--max-time", "5"}, "/api/overview")
+		_, lastErr = m.get(ctx, projectId, gateway, "/api/overview")
 		if lastErr == nil {
 			return nil
 		}
@@ -165,10 +166,12 @@ func (m *RouteManager) listServices(ctx context.Context, projectId string, gatew
 }
 
 func (m *RouteManager) get(ctx context.Context, projectId string, gateway model.GatewayConfig, endpoint string) (string, error) {
-	return m.request(ctx, projectId, gateway, nil, []string{"-fsS", "--max-time", "15"}, endpoint)
+	return m.request(ctx, projectId, gateway, nil, []string{"-fsS", "--max-time", strconv.FormatFloat(m.timeouts.ApiRequest.Seconds(), 'f', -1, 64)}, endpoint)
 }
 
 func (m *RouteManager) request(ctx context.Context, projectId string, gateway model.GatewayConfig, input []byte, curlArgs []string, endpoint string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.timeouts.ApiRequest)
+	defer cancel()
 	target, err := m.resolveTarget(ctx, projectId)
 	if err != nil {
 		return "", err

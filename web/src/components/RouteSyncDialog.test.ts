@@ -6,6 +6,7 @@ import { routeApi } from '@/api/route/route';
 import RouteSyncDialog from '@/components/RouteSyncDialog.vue';
 import i18n from '@/i18n';
 import { useProjectStore } from '@/stores/project';
+import { useToast } from '@/composables/useToast';
 import type {
   RouteSyncConfirmResp,
   RouteSyncPlanItemResp,
@@ -20,6 +21,7 @@ vi.mock('@/api/route/route', () => ({
 
 let app: App | undefined;
 let target: HTMLDivElement | undefined;
+const { toasts } = useToast();
 
 function mountDialog(props: Record<string, unknown>) {
   target = document.createElement('div');
@@ -69,7 +71,25 @@ function rowStatus(routeId: string) {
   return row?.querySelector<HTMLElement>('td:last-child span');
 }
 
+async function expectTooltip(trigger: HTMLElement | null | undefined, reason: string) {
+  if (!trigger) {
+    throw new Error('Tooltip trigger is missing');
+  }
+  trigger.focus();
+  await vi.waitFor(() => {
+    const tooltip = document.querySelector<HTMLElement>('.app-tooltip-content');
+    const description = document.querySelector<HTMLElement>('[role="tooltip"]');
+    expect(tooltip?.textContent).toContain(reason);
+    expect(description?.textContent).toBe(reason);
+    expect(trigger.getAttribute('aria-describedby')).toBe(description?.id);
+    expect(tooltip?.closest('.app-dialog-content')).toBeNull();
+  });
+  trigger.blur();
+  await nextTick();
+}
+
 beforeEach(() => {
+  toasts.value = [];
   setActivePinia(createPinia());
   useProjectStore().setActiveProject('project-1');
   vi.mocked(routeApi.previewSync).mockResolvedValue({
@@ -119,10 +139,60 @@ afterEach(() => {
   target?.remove();
   app = undefined;
   target = undefined;
+  toasts.value = [];
   vi.clearAllMocks();
 });
 
 describe('RouteSyncDialog', () => {
+  it('shows a preview failure toast and allows another preview before confirming', async () => {
+    const reason = 'Gateway API is unavailable';
+    vi.mocked(routeApi.previewSync).mockRejectedValueOnce(
+      new ApiError(reason, 503, 'dependency_unavailable')
+    );
+    const changes = [{ route_id: 'route-1', enabled: true }];
+    mountDialog({ open: true, changes });
+    await vi.waitFor(() =>
+      expect(toasts.value).toEqual([expect.objectContaining({ type: 'error', text: reason })])
+    );
+    expect(document.querySelector('.app-dialog-content [role="alert"]')?.textContent).toBe(reason);
+    const retry = button(i18n.global.t('route.retryPreview'));
+    expect(retry?.disabled).toBe(false);
+    expect(button(i18n.global.t('route.syncAll'))).toBeUndefined();
+    const retryPreview = deferred<RouteSyncPreviewResp>();
+    vi.mocked(routeApi.previewSync).mockReturnValueOnce(retryPreview.promise);
+    retry?.click();
+    await nextTick();
+    expect(retry?.disabled).toBe(true);
+    expect(routeApi.previewSync).toHaveBeenLastCalledWith('project-1', {
+      scope: 'selected',
+      route_ids: ['route-1'],
+      changes,
+    });
+    expect(routeApi.confirmSync).not.toHaveBeenCalled();
+    retryPreview.resolve({
+      business_hash: 'retry-business',
+      publication_hash: 'retry-publication',
+      route_ids: ['route-1'],
+      items: [planItem('route-1')],
+    });
+    await vi.waitFor(() => expect(button(i18n.global.t('route.syncAll'))?.disabled).toBe(false));
+    expect(routeApi.confirmSync).not.toHaveBeenCalled();
+    expect(document.querySelector('.app-dialog-content [role="alert"]')).toBeNull();
+    button(i18n.global.t('route.syncAll'))?.click();
+    await vi.waitFor(() =>
+      expect(toasts.value.at(-1)).toMatchObject({
+        type: 'success',
+        text: i18n.global.t('route.syncConfigurationComplete'),
+      })
+    );
+    expect(routeApi.confirmSync).toHaveBeenCalledWith('project-1', {
+      route_ids: ['route-1'],
+      business_hash: 'route-1-business',
+      publication_hash: 'route-1-publication',
+      changes,
+    });
+  });
+
   it('updates each row as sequential confirmations return and retries only the failure', async () => {
     const items = [planItem('a', 'withdraw'), planItem('b'), planItem('c', 'skip')];
     items[1].rule = { protocol: 'https', match: 'Host(`b.example.test`)', target: 'http://b:8080' };
@@ -169,11 +239,11 @@ describe('RouteSyncDialog', () => {
     expect(dialog?.querySelector('table')).toBe(table);
     expect([...document.querySelectorAll('.app-dialog-content tbody tr')]).toEqual(originalRows);
     expect(originalRows[1].textContent).toContain(i18n.global.t('route.syncActions.publish'));
-    expect(originalRows[1].children[2].textContent).toContain('HTTPS');
-    expect(originalRows[1].children[2].textContent).toContain('PEM');
+    expect(originalRows[1].children[2].textContent?.trim()).toBe('HTTPS');
+    await expectTooltip(originalRows[1].children[2].querySelector('span'), 'PEM');
     expect(originalRows[1].textContent).toContain('Host(`b.example.test`)');
     expect(originalRows[1].textContent).toContain('http://b:8080');
-    expect(originalRows[1].textContent).toContain('PEM');
+    expect(originalRows[1].textContent).not.toContain('PEM');
     expect(routeApi.confirmSync).toHaveBeenCalledTimes(1);
     expect(rowStatus('a')?.textContent?.trim()).toBe(
       i18n.global.t('route.syncStatuses.processing')
@@ -203,12 +273,19 @@ describe('RouteSyncDialog', () => {
     });
     await vi.waitFor(() => expect(routeApi.confirmSync).toHaveBeenCalledTimes(3));
     expect(rowStatus('b')?.textContent?.trim()).toBe(i18n.global.t('route.syncStatuses.failed'));
-    expect(rowStatus('b')?.title).toBe(
+    await expectTooltip(
+      rowStatus('b'),
       i18n.global.t('route.syncErrorCodes.route_sync_publish_permission_denied')
     );
     expect(rowStatus('c')?.textContent?.trim()).toBe(
       i18n.global.t('route.syncStatuses.processing')
     );
+    expect(toasts.value).toEqual([
+      expect.objectContaining({
+        type: 'error',
+        text: `b: ${i18n.global.t('route.syncErrorCodes.route_sync_publish_permission_denied')}`,
+      }),
+    ]);
     c.resolve({
       message: '',
       code: 'route_sync_completed',
@@ -319,9 +396,11 @@ describe('RouteSyncDialog', () => {
       button(i18n.global.t('route.syncAll'))?.click();
       await vi.waitFor(() => expect(button(i18n.global.t('route.retryPreview'))).toBeDefined());
       expect(routeApi.confirmSync).toHaveBeenCalledTimes(2);
-      expect(rowStatus('a')?.title).toBe(
-        reason.startsWith('route.') ? i18n.global.t(reason) : reason
-      );
+      const failureReason = reason.startsWith('route.') ? i18n.global.t(reason) : reason;
+      await expectTooltip(rowStatus('a'), failureReason);
+      expect(toasts.value).toEqual([
+        expect.objectContaining({ type: 'error', text: `a: ${failureReason}` }),
+      ]);
       expect(rowStatus('b')?.textContent?.trim()).toBe(
         i18n.global.t('route.syncStatuses.completed')
       );
@@ -360,10 +439,28 @@ describe('RouteSyncDialog', () => {
     await vi.waitFor(() => expect(confirm?.disabled).toBe(false));
     confirm?.click();
     await vi.waitFor(() => expect(saved).toHaveBeenCalledOnce());
-    expect(status(i18n.global.t('route.syncStatuses.failed'))?.title).toBe(
+    await expectTooltip(
+      status(i18n.global.t('route.syncStatuses.failed')),
       i18n.global.t('route.syncErrorCodes.route_sync_publish_failed')
     );
-    expect(confirm?.disabled).toBe(true);
+    expect(confirm?.disabled).toBe(false);
+    expect(confirm?.textContent?.trim()).toBe(i18n.global.t('route.retryPreview'));
+    vi.mocked(routeApi.previewSync).mockRejectedValueOnce(
+      new ApiError('Gateway API is unavailable', 503, 'dependency_unavailable')
+    );
+    button(i18n.global.t('route.retryPreview'))?.click();
+    await vi.waitFor(() =>
+      expect(toasts.value.at(-1)).toMatchObject({
+        type: 'error',
+        text: 'Gateway API is unavailable',
+      })
+    );
+    expect(confirm?.disabled).toBe(false);
+    await expectTooltip(
+      status(i18n.global.t('route.syncStatuses.failed')),
+      i18n.global.t('route.syncErrorCodes.route_sync_publish_failed')
+    );
+    expect(routeApi.confirmSync).toHaveBeenCalledOnce();
     button(i18n.global.t('route.retryPreview'))?.click();
     await vi.waitFor(() =>
       expect(routeApi.previewSync).toHaveBeenLastCalledWith('project-1', {
@@ -401,7 +498,7 @@ describe('RouteSyncDialog', () => {
       reason: 'route.syncCleanupFailed',
     },
   ])(
-    'shows only failure status with a reason tooltip for $code/$cleanup',
+    'shows a failure toast and status tooltip with the same reason for $code/$cleanup',
     async ({ code, cleanup, reason }) => {
       vi.mocked(routeApi.confirmSync).mockResolvedValueOnce({
         message: '',
@@ -422,9 +519,16 @@ describe('RouteSyncDialog', () => {
         expect(status(i18n.global.t('route.syncStatuses.failed'))).toBeDefined()
       );
       const failure = status(i18n.global.t('route.syncStatuses.failed'));
-      expect(failure?.title).toBe(i18n.global.t(reason));
+      await expectTooltip(failure, i18n.global.t(reason));
       expect(failure?.tabIndex).toBe(0);
-      expect(document.body.textContent).not.toContain(i18n.global.t(reason));
+      expect(failure?.querySelector('svg')).not.toBeNull();
+      expect(toasts.value).toEqual([
+        expect.objectContaining({ type: 'error', text: `api: ${i18n.global.t(reason)}` }),
+      ]);
+      expect(button(i18n.global.t('route.retryPreview'))?.disabled).toBe(false);
+      expect(document.querySelector('.app-dialog-content tbody')?.textContent).not.toContain(
+        i18n.global.t(reason)
+      );
       expect(document.body.textContent).not.toContain('request-1');
       expect(document.body.textContent).not.toContain('operation-1');
     }
@@ -446,6 +550,20 @@ describe('RouteSyncDialog', () => {
       certificate: "Let's Encrypt · DNS-01",
     },
     {
+      protocol: 'https',
+      targetUrl: 'http://api:8080',
+      certType: 'letsencrypt',
+      challenge: 'http',
+      certificate: "Let's Encrypt · HTTP-01",
+    },
+    {
+      protocol: 'https',
+      targetUrl: 'http://api:8080',
+      certType: 'mkcert',
+      challenge: '',
+      certificate: 'mkcert',
+    },
+    {
       protocol: 'http',
       targetUrl: 'https://api:8443',
       certType: '',
@@ -453,7 +571,7 @@ describe('RouteSyncDialog', () => {
       certificate: '',
     },
   ])(
-    'shows $protocol separately from the upstream protocol',
+    'shows $protocol on one line with certificate details in its tooltip: $certificate',
     async ({ protocol, targetUrl, certType, challenge, certificate }) => {
       vi.mocked(routeApi.previewSync).mockResolvedValueOnce({
         business_hash: 'business-hash',
@@ -477,14 +595,21 @@ describe('RouteSyncDialog', () => {
         expect(document.body.textContent).toContain(i18n.global.t('route.syncActions.publish'))
       );
       const cells = document.querySelectorAll('.app-dialog-content tbody td');
-      expect(cells[2].querySelector('p')?.textContent).toBe(protocol.toUpperCase());
+      const protocolLabel = cells[2].querySelector('span');
+      expect(cells[2].textContent?.trim()).toBe(protocol.toUpperCase());
+      expect(protocolLabel?.getAttribute('tabindex')).toBe(certType ? '0' : null);
       expect(cells[3].textContent).toContain('Host(`api.example.test`)');
       expect(cells[3].textContent).toContain(targetUrl);
       expect(cells[3].textContent).not.toContain('HTTPS');
       expect(cells[3].textContent).not.toContain('HTTP');
       if (certType) {
-        expect(cells[2].textContent).toContain(certificate);
+        await expectTooltip(protocolLabel, certificate);
+        expect(protocolLabel?.querySelector('svg')).not.toBeNull();
+        expect(cells[2].textContent).not.toContain(certificate);
         expect(cells[3].textContent).not.toContain(certificate);
+      } else {
+        expect(protocolLabel?.hasAttribute('aria-describedby')).toBe(false);
+        expect(protocolLabel?.querySelector('svg')).toBeNull();
       }
       expect(document.querySelectorAll('.app-dialog-content tbody tr')).toHaveLength(1);
       expect(button(i18n.global.t('route.syncAll'))?.disabled).toBe(false);
@@ -531,9 +656,9 @@ describe('RouteSyncDialog', () => {
     await vi.waitFor(() =>
       expect(status(i18n.global.t('route.syncStatuses.completed'))).toBeDefined()
     );
-    expect(status(i18n.global.t('route.syncStatuses.completed'))?.hasAttribute('title')).toBe(
-      false
-    );
+    expect(
+      status(i18n.global.t('route.syncStatuses.completed'))?.hasAttribute('aria-describedby')
+    ).toBe(false);
     expect(
       [...document.querySelectorAll('.app-dialog-content th')].map((item) =>
         item.textContent?.trim()
@@ -551,7 +676,7 @@ describe('RouteSyncDialog', () => {
     expect(table?.querySelector('tbody tr')).toBe(row);
     expect(row?.querySelectorAll('td')).toHaveLength(5);
     expect(row?.textContent).toContain(i18n.global.t('route.syncActions.publish'));
-    expect(row?.children[2].textContent).toBe('HTTP');
+    expect(row?.children[2].textContent?.trim()).toBe('HTTP');
     expect(row?.textContent).toContain('Host(`api.example.test`)');
     expect(row?.textContent).toContain('http://api:8080');
     expect(document.body.textContent).not.toContain('operation-1');

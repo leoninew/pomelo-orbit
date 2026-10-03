@@ -46,14 +46,12 @@
           </thead>
           <tbody>
             <tr v-for="deployment in deployments" :key="deployment.id">
-              <td class="max-w-64 truncate font-mono text-xs">
-                <router-link
-                  :to="`/deployment/${deployment.id}`"
-                  class="app-link"
-                  :title="deployment.id"
-                >
-                  {{ deployment.id }}
-                </router-link>
+              <td class="font-mono text-xs">
+                <AppTruncatedText :text="deployment.id" class="max-w-64" as-child>
+                  <router-link :to="`/deployment/${deployment.id}`" class="app-link">
+                    {{ deployment.id }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
               <td>
                 <router-link
@@ -153,6 +151,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';

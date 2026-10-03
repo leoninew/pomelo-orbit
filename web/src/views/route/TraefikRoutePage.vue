@@ -72,8 +72,8 @@
           </thead>
           <tbody>
             <tr v-for="traefikRoute in filteredRoutes" :key="traefikRoute.name">
-              <td class="max-w-0 truncate text-foreground" :title="traefikRoute.name">
-                {{ traefikRoute.name }}
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="traefikRoute.name" />
               </td>
               <td class="whitespace-nowrap text-foreground">{{ traefikRoute.provider }}</td>
               <td>
@@ -84,23 +84,28 @@
                   {{ traefikRoute.status }}
                 </AppBadge>
               </td>
-              <td class="max-w-0" :title="traefikRoute.rule">
-                <a
+              <td class="max-w-0">
+                <AppTruncatedText
                   v-if="
                     !isTCPRouter(traefikRoute) && buildRouteUrl(traefikRoute.rule, traefikRoute.tls)
                   "
-                  :href="buildRouteUrl(traefikRoute.rule, traefikRoute.tls)!"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="app-link flex items-center gap-1"
+                  :text="traefikRoute.rule"
+                  as-child
                 >
-                  <span class="truncate">{{ traefikRoute.rule }}</span>
-                  <ExternalLink class="size-3 shrink-0" />
-                </a>
-                <span v-else class="block truncate text-foreground">{{ traefikRoute.rule }}</span>
+                  <a
+                    :href="buildRouteUrl(traefikRoute.rule, traefikRoute.tls)!"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="app-link relative pr-4"
+                  >
+                    {{ traefikRoute.rule }}
+                    <ExternalLink class="absolute right-0 top-1/2 size-3 -translate-y-1/2" />
+                  </a>
+                </AppTruncatedText>
+                <AppTruncatedText v-else :text="traefikRoute.rule" class="text-foreground" />
               </td>
-              <td class="max-w-0 truncate text-foreground" :title="traefikRoute.service">
-                {{ traefikRoute.service }}
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="traefikRoute.service" />
               </td>
               <td class="max-w-0" :title="traefikRoute.entrypoints.join(', ')">
                 <div class="flex flex-nowrap gap-1 overflow-hidden">
@@ -140,6 +145,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import type { TraefikRouterResp } from '@/gen/proto/orbit/v1/route/traefik';

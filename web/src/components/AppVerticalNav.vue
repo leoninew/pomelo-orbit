@@ -36,7 +36,9 @@
           "
         >
           <component :is="branch.icon" class="size-4 shrink-0" />
-          <span class="min-w-0 flex-1 truncate text-left">{{ branch.label }}</span>
+          <AppTruncatedText :text="branch.label" class="flex-1 text-left" as-child>
+            <span>{{ branch.label }}</span>
+          </AppTruncatedText>
           <ChevronDown
             class="size-4 shrink-0 transition-transform duration-200"
             :class="isOpen(branch.key) ? 'rotate-0' : '-rotate-90'"
@@ -56,7 +58,9 @@
                   : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
               "
             >
-              <span class="truncate">{{ child.label }}</span>
+              <AppTruncatedText :text="child.label" as-child>
+                <span>{{ child.label }}</span>
+              </AppTruncatedText>
             </RouterLink>
           </div>
         </CollapsibleContent>
@@ -69,6 +73,7 @@
   import { ChevronDown } from '@lucide/vue';
   import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
   import { reactive, watch } from 'vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import type { ResolvedNavigationBranch } from '@/navigation';
 
   const props = defineProps<{

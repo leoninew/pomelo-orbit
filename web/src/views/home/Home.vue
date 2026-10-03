@@ -80,19 +80,17 @@
             <tbody>
               <tr v-for="run in recentRuns" :key="run.id">
                 <td class="overflow-hidden">
-                  <button
-                    class="app-link block truncate"
-                    :title="run.repository_name"
-                    @click="router.push(`/repository/${run.repository_id}`)"
-                  >
-                    {{ run.repository_name }}
-                  </button>
+                  <AppTruncatedText :text="run.repository_name" as-child>
+                    <button
+                      class="app-link"
+                      @click="router.push(`/repository/${run.repository_id}`)"
+                    >
+                      {{ run.repository_name }}
+                    </button>
+                  </AppTruncatedText>
                 </td>
-                <td
-                  class="overflow-hidden truncate text-foreground"
-                  :title="formatTime(run.created_at)"
-                >
-                  {{ formatTime(run.created_at) }}
+                <td class="text-foreground">
+                  <AppTruncatedText :text="formatTime(run.created_at)" />
                 </td>
                 <td>
                   <AppBadge variant="status" :tone="statusTone(run.status)">
@@ -138,19 +136,17 @@
             <tbody>
               <tr v-for="deployment in recentDeploys" :key="deployment.id">
                 <td class="overflow-hidden">
-                  <button
-                    class="app-link block truncate"
-                    :title="deployment.application_name"
-                    @click="router.push(`/application/${deployment.application_id}`)"
-                  >
-                    {{ deployment.application_name }}
-                  </button>
+                  <AppTruncatedText :text="deployment.application_name" as-child>
+                    <button
+                      class="app-link"
+                      @click="router.push(`/application/${deployment.application_id}`)"
+                    >
+                      {{ deployment.application_name }}
+                    </button>
+                  </AppTruncatedText>
                 </td>
-                <td
-                  class="overflow-hidden truncate text-foreground"
-                  :title="formatTime(deployment.started_at)"
-                >
-                  {{ formatTime(deployment.started_at) }}
+                <td class="text-foreground">
+                  <AppTruncatedText :text="formatTime(deployment.started_at)" />
                 </td>
                 <td>
                   <AppBadge variant="status" :tone="statusTone(deployment.status)">
@@ -178,6 +174,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';

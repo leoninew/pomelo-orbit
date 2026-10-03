@@ -42,10 +42,12 @@
           </thead>
           <tbody>
             <tr v-for="pipeline in pipelines" :key="pipeline.id">
-              <td class="max-w-64 truncate">
-                <router-link :to="`/pipeline/${pipeline.id}`" class="app-link">
-                  {{ pipeline.name }}
-                </router-link>
+              <td>
+                <AppTruncatedText :text="pipeline.name" class="max-w-64" as-child>
+                  <router-link :to="`/pipeline/${pipeline.id}`" class="app-link">
+                    {{ pipeline.name }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
               <td>
                 <AppBadge
@@ -333,6 +335,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import RepositorySelect from '@/components/RepositorySelect.vue';
   import ListPagination from '@/components/ListPagination.vue';

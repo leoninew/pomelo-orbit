@@ -11,7 +11,7 @@
     </template>
     <AppEmptyState v-if="filteredComponents.length === 0" size="compact" />
     <div v-else class="overflow-x-auto">
-      <table class="app-data-table min-w-[1180px]">
+      <table class="app-data-table min-w-[960px]">
         <thead>
           <tr>
             <th>{{ t('application.detail.fields.component') }}</th>
@@ -34,11 +34,8 @@
             <td class="max-w-sm break-all text-muted-foreground">
               {{ component.container_name }}
             </td>
-            <td
-              class="w-[480px] max-w-[480px] truncate text-muted-foreground"
-              :title="component.image"
-            >
-              {{ component.image }}
+            <td class="w-72 max-w-72 text-muted-foreground">
+              <AppTruncatedText :text="component.image" class="max-w-60" />
             </td>
             <td class="min-w-72">
               <div
@@ -88,6 +85,7 @@
   import { useI18n } from 'vue-i18n';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';

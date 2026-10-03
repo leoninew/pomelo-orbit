@@ -35,9 +35,10 @@
           >
             <PanelLeftClose class="size-4" />
           </button>
-          <p class="ml-2 min-w-0 truncate text-sm font-medium text-foreground">
-            {{ activeConversationTitle || t('deploymentDialogue.newConversation') }}
-          </p>
+          <AppTruncatedText
+            :text="activeConversationTitle || t('deploymentDialogue.newConversation')"
+            class="ml-2 text-sm font-medium text-foreground"
+          />
           <ToolbarRoot
             v-if="activeConversation"
             class="ml-auto flex shrink-0 items-center"
@@ -182,6 +183,7 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppDrawer from '@/components/AppDrawer.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import MarkdownContent from '@/components/MarkdownContent.vue';
   import { useToast } from '@/composables/useToast';
   import type {

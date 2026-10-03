@@ -72,10 +72,10 @@
       <div v-else class="overflow-x-auto">
         <table class="app-data-table table-fixed min-w-[1200px]">
           <colgroup>
-            <col class="w-[14%]" />
+            <col class="w-[10%]" />
             <col class="w-[16%]" />
             <col class="w-[10%]" />
-            <col class="w-[20%]" />
+            <col class="w-[24%]" />
             <col class="w-[8%]" />
             <col class="w-[8%]" />
             <col class="w-[14%]" />
@@ -95,19 +95,21 @@
           </thead>
           <tbody>
             <tr v-for="route in routes" :key="route.id">
-              <td>
-                <router-link
-                  :to="{
-                    path: `/route/${route.id}`,
-                    query: {
-                      pending_sync: hasPendingRouteChanges ? '1' : undefined,
-                      pending_certificate: hasPendingCertificateChanges ? '1' : undefined,
-                    },
-                  }"
-                  class="app-link whitespace-nowrap"
-                >
-                  {{ route.name }}
-                </router-link>
+              <td class="max-w-0">
+                <AppTruncatedText :text="route.name" as-child>
+                  <router-link
+                    :to="{
+                      path: `/route/${route.id}`,
+                      query: {
+                        pending_sync: hasPendingRouteChanges ? '1' : undefined,
+                        pending_certificate: hasPendingCertificateChanges ? '1' : undefined,
+                      },
+                    }"
+                    class="app-link"
+                  >
+                    {{ route.name }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
               <td>
                 <a
@@ -129,8 +131,8 @@
                     : route.path_prefix
                 }}
               </td>
-              <td class="max-w-0 truncate text-foreground" :title="routeTarget(route)">
-                {{ routeTarget(route) }}
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="routeTarget(route)" />
               </td>
               <td>
                 <AppBadge variant="status" :tone="routeEnabled(route) ? 'success' : 'default'">
@@ -532,6 +534,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
   import RouteSyncDialog from '@/components/RouteSyncDialog.vue';

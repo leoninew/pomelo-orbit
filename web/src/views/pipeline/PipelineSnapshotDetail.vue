@@ -75,7 +75,7 @@
               <tr v-for="stage in snapshot.stages_snapshot" :key="stage.id">
                 <td>{{ stage.sort_order }}</td>
                 <td>{{ stage.name }}</td>
-                <td class="max-w-xs truncate">{{ stage.image }}</td>
+                <td><AppTruncatedText :text="stage.image" class="max-w-xs" /></td>
                 <td>
                   <div class="flex flex-wrap gap-1">
                     <AppBadge v-for="dependency in stage.depends_on" :key="dependency">
@@ -111,6 +111,7 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ViewModeTabs from '@/components/ViewModeTabs.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';

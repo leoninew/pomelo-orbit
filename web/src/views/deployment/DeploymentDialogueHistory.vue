@@ -38,7 +38,9 @@
           class="min-w-0 flex-1 px-2.5 py-2 text-left text-sm"
           @click="emit('select', conversation.id)"
         >
-          <span class="block truncate" :title="conversation.title">{{ conversation.title }}</span>
+          <AppTruncatedText :text="conversation.title" as-child>
+            <span>{{ conversation.title }}</span>
+          </AppTruncatedText>
           <span class="mt-0.5 block text-xs text-muted-foreground">
             {{ formatRelativeTime(conversation.updated_at) }}
           </span>
@@ -69,6 +71,7 @@
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import AppSpinner from '@/components/AppSpinner.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import SelectControl, { type SelectOptionValue } from '@/components/SelectControl.vue';
   import type { DeploymentDialogueConversation } from '@/gen/proto/orbit/v1/dialogue/dialogue';
   import { formatRelativeTime } from '@/utils/time';

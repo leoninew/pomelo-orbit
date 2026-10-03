@@ -60,14 +60,17 @@
           class="app-option-item"
         >
           <span class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-            <span class="min-w-0 truncate" :title="option.label">{{ option.label }}</span>
-            <span
+            <AppTruncatedText :text="option.label" as-child>
+              <span>{{ option.label }}</span>
+            </AppTruncatedText>
+            <AppTruncatedText
               v-if="option.description"
-              class="max-w-[45%] shrink-0 truncate text-xs text-muted-foreground"
-              :title="option.description"
+              :text="option.description"
+              class="max-w-[45%] shrink-0 text-xs text-muted-foreground"
+              as-child
             >
-              {{ option.description }}
-            </span>
+              <span>{{ option.description }}</span>
+            </AppTruncatedText>
           </span>
           <ComboboxItemIndicator>
             <Check class="size-4 shrink-0 text-primary" />
@@ -102,6 +105,7 @@
     ComboboxRoot,
     ComboboxTrigger,
   } from 'reka-ui';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
 
   export type ComboboxOptionValue = string | number;
 

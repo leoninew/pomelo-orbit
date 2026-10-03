@@ -76,11 +76,12 @@
       <DropdownMenuTrigger
         class="ml-1 flex h-10 max-w-40 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:max-w-56"
         :aria-label="t('app.projectMenuAria', { project: activeProjectLabel })"
-        :title="activeProjectLabel"
         @click="handleProjectMenuOpen"
       >
         <Cloud class="size-4 shrink-0" />
-        <span class="min-w-0 truncate text-sm">{{ activeProjectLabel }}</span>
+        <AppTruncatedText :text="activeProjectLabel" class="text-sm" as-child>
+          <span>{{ activeProjectLabel }}</span>
+        </AppTruncatedText>
         <ChevronDown class="size-4 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuPortal>
@@ -100,7 +101,9 @@
               :class="{ 'bg-accent': project.id === projectStore.activeProjectId }"
               @select="handleSwitchProject(project.id)"
             >
-              <span class="min-w-0 flex-1 truncate">{{ project.name }}</span>
+              <AppTruncatedText :text="project.name" class="flex-1" as-child>
+                <span>{{ project.name }}</span>
+              </AppTruncatedText>
               <span class="shrink-0 text-xs text-muted-foreground">{{ project.code }}</span>
               <Check
                 v-if="project.id === projectStore.activeProjectId"
@@ -294,6 +297,7 @@
   import { useI18n } from 'vue-i18n';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
   import { useAuthStore } from '@/stores/auth';
   import { useProjectStore } from '@/stores/project';

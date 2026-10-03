@@ -38,14 +38,14 @@
                 {{ component.name }}
               </router-link>
             </td>
-            <td class="max-w-xs truncate text-muted-foreground" :title="component.image">
-              {{ component.image }}
+            <td class="text-muted-foreground">
+              <AppTruncatedText :text="component.image" class="max-w-xs" />
             </td>
-            <td
-              class="max-w-xs truncate text-muted-foreground"
-              :title="component.artifact_local_image_sha256 || ''"
-            >
-              {{ component.artifact_local_image_sha256 || '-' }}
+            <td class="text-muted-foreground">
+              <AppTruncatedText
+                :text="component.artifact_local_image_sha256 || '-'"
+                class="max-w-xs"
+              />
             </td>
             <td class="text-muted-foreground">{{ component.pull_policy }}</td>
             <td class="text-muted-foreground">{{ component.restart_policy }}</td>
@@ -75,6 +75,7 @@
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import AppEmptyState from '@/components/AppEmptyState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import DetailInfoCard from '@/components/DetailInfoCard.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import type { VersionComponentResp } from '@/gen/proto/orbit/v1/application/version';

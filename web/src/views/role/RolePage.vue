@@ -42,16 +42,18 @@
           </thead>
           <tbody>
             <tr v-for="role in roles" :key="role.id">
-              <td class="max-w-0 truncate text-foreground" :title="role.code">
-                <router-link :to="`/role/${role.id}`" class="app-link">
-                  {{ role.code }}
-                </router-link>
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="role.code" as-child>
+                  <router-link :to="`/role/${role.id}`" class="app-link">
+                    {{ role.code }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
-              <td class="max-w-0 truncate" :title="role.name">
-                {{ role.name }}
+              <td class="max-w-0">
+                <AppTruncatedText :text="role.name" />
               </td>
-              <td class="max-w-0 truncate text-foreground" :title="role.description || undefined">
-                {{ role.description || '-' }}
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="role.description || '-'" />
               </td>
               <td class="whitespace-nowrap text-foreground">
                 {{ formatTime(role.created_at) }}
@@ -178,6 +180,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

@@ -38,14 +38,14 @@
                   {{ stage.name }}
                 </router-link>
               </td>
-              <td class="max-w-xs truncate text-foreground" :title="stage.image">
-                {{ stage.image }}
+              <td class="text-foreground">
+                <AppTruncatedText :text="stage.image" class="max-w-xs" />
               </td>
               <td>
                 <AppBadge>v{{ stage.version }}</AppBadge>
               </td>
-              <td class="max-w-xs truncate text-muted-foreground">
-                {{ stage.description || '未填写' }}
+              <td class="text-muted-foreground">
+                <AppTruncatedText :text="stage.description || '未填写'" class="max-w-xs" />
               </td>
               <td class="whitespace-nowrap text-foreground">{{ formatTime(stage.updated_at) }}</td>
               <td>
@@ -137,6 +137,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

@@ -39,23 +39,29 @@
             <td>
               <AppBadge variant="status">{{ variable.kind }}</AppBadge>
             </td>
-            <td class="max-w-40 truncate" :title="stageLabel(variable)">
-              <span v-if="variable.stage_binding" class="text-foreground">
-                {{ stageLabel(variable) }}
-              </span>
+            <td>
+              <AppTruncatedText
+                v-if="variable.stage_binding"
+                :text="stageLabel(variable)"
+                class="max-w-40 text-foreground"
+              />
               <span v-else class="text-muted-foreground">
                 {{ t('variableDeclaration.global') }}
               </span>
             </td>
-            <td class="max-w-md truncate" :title="configuration(variable)?.description">
-              <span v-if="configuration(variable)?.description" class="text-muted-foreground">
-                {{ configuration(variable)?.description }}
-              </span>
+            <td>
+              <AppTruncatedText
+                v-if="configuration(variable)?.description"
+                :text="configuration(variable)?.description"
+                class="max-w-md text-muted-foreground"
+              />
             </td>
-            <td class="max-w-sm truncate" :title="displayValue(variable)">
-              <span v-if="hasDisplayValue(configurationValue(variable))" class="text-foreground">
-                {{ displayValue(variable) }}
-              </span>
+            <td>
+              <AppTruncatedText
+                v-if="hasDisplayValue(configurationValue(variable))"
+                :text="displayValue(variable)"
+                class="max-w-sm text-foreground"
+              />
             </td>
             <td v-if="!readonly" class="w-32">
               <div class="flex items-center gap-3">
@@ -90,6 +96,7 @@
   import { computed, ref } from 'vue';
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import type { VariableConfigurationResp, VariableResp } from '@/gen/proto/orbit/v1/common/common';
   import { effectiveVariableValue } from '@/utils/variableDeclaration';
 

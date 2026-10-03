@@ -129,11 +129,8 @@
                       {{ version.status }}
                     </AppBadge>
                   </td>
-                  <td
-                    class="max-w-xs truncate text-muted-foreground"
-                    :title="version.component_summary || ''"
-                  >
-                    {{ version.component_summary }}
+                  <td class="text-muted-foreground">
+                    <AppTruncatedText :text="version.component_summary" class="max-w-xs" />
                   </td>
                   <td class="whitespace-nowrap text-muted-foreground">
                     {{ formatTime(version.created_at) }}
@@ -267,14 +264,11 @@
                     {{ version.status }}
                   </AppBadge>
                 </td>
-                <td
-                  class="max-w-xs truncate text-muted-foreground"
-                  :title="version.component_summary || ''"
-                >
-                  {{ version.component_summary }}
+                <td class="text-muted-foreground">
+                  <AppTruncatedText :text="version.component_summary" class="max-w-xs" />
                 </td>
-                <td class="max-w-xs truncate text-muted-foreground" :title="version.note || ''">
-                  {{ version.note }}
+                <td class="text-muted-foreground">
+                  <AppTruncatedText :text="version.note" class="max-w-xs" />
                 </td>
                 <td class="text-muted-foreground">{{ formatTime(version.created_at) }}</td>
                 <td>
@@ -670,6 +664,7 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';

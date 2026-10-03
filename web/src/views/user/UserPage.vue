@@ -48,16 +48,18 @@
           </thead>
           <tbody>
             <tr v-for="user in users" :key="user.id">
-              <td class="max-w-0 truncate text-foreground" :title="user.username">
-                <router-link :to="`/user/${user.id}`" class="app-link">
-                  {{ user.username }}
-                </router-link>
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="user.username" as-child>
+                  <router-link :to="`/user/${user.id}`" class="app-link">
+                    {{ user.username }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
-              <td class="max-w-0 truncate text-foreground" :title="user.email || undefined">
-                {{ user.email || '-' }}
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="user.email || '-'" />
               </td>
-              <td class="max-w-0 truncate text-foreground" :title="formatRoleNames(user)">
-                {{ formatRoleNames(user) || '-' }}
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="formatRoleNames(user) || '-'" />
               </td>
               <td>
                 <AppBadge
@@ -317,6 +319,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';

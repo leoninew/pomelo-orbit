@@ -49,39 +49,32 @@
           <tbody>
             <tr v-for="a in artifacts" :key="a.id">
               <td class="overflow-hidden font-mono text-xs">
-                <router-link
-                  :to="`/pipeline-run/artifact/${a.id}`"
-                  class="app-link block truncate"
-                  :title="a.id"
-                >
-                  {{ a.id }}
-                </router-link>
+                <AppTruncatedText :text="a.id" as-child>
+                  <router-link :to="`/pipeline-run/artifact/${a.id}`" class="app-link">
+                    {{ a.id }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
-              <td class="overflow-hidden truncate text-foreground" :title="a.name">
-                {{ a.name }}
+              <td class="text-foreground">
+                <AppTruncatedText :text="a.name" />
               </td>
               <td>
                 <AppBadge variant="pill">
                   {{ a.collector }}
                 </AppBadge>
               </td>
-              <td class="overflow-hidden truncate text-foreground" :title="a.stage_name">
-                {{ a.stage_name }}
+              <td class="text-foreground">
+                <AppTruncatedText :text="a.stage_name" />
               </td>
               <td class="overflow-hidden">
-                <router-link
-                  :to="`/repository/${a.repository_id}`"
-                  class="app-link block truncate"
-                  :title="a.repository_name"
-                >
-                  {{ a.repository_name }}
-                </router-link>
+                <AppTruncatedText :text="a.repository_name" as-child>
+                  <router-link :to="`/repository/${a.repository_id}`" class="app-link">
+                    {{ a.repository_name }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
-              <td
-                class="overflow-hidden truncate text-foreground"
-                :title="formatTime(a.created_at)"
-              >
-                {{ formatTime(a.created_at) }}
+              <td class="text-foreground">
+                <AppTruncatedText :text="formatTime(a.created_at)" />
               </td>
             </tr>
           </tbody>
@@ -107,6 +100,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import RepositorySelect from '@/components/RepositorySelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';

@@ -61,9 +61,7 @@
                 </span>
               </td>
               <td class="max-w-0 text-muted-foreground">
-                <span class="block truncate" :title="displayConfigValue(item.default)">
-                  {{ displayConfigValue(item.default) }}
-                </span>
+                <AppTruncatedText :text="displayConfigValue(item.default)" />
               </td>
               <td class="max-w-0">
                 <!-- Editing Mode -->
@@ -98,9 +96,7 @@
                     item.is_overridden ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
                   "
                 >
-                  <span class="block truncate" :title="displayConfigValue(item.value)">
-                    {{ displayConfigValue(item.value) }}
-                  </span>
+                  <AppTruncatedText :text="displayConfigValue(item.value)" />
                 </div>
               </td>
               <td v-if="canWriteSettings" class="whitespace-nowrap">
@@ -157,6 +153,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

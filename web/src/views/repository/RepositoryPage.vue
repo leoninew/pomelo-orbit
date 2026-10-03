@@ -42,8 +42,8 @@
                 </router-link>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ p.code }}</td>
-              <td class="max-w-md truncate text-foreground" :title="repositoryLocation(p)">
-                {{ repositoryLocation(p) }}
+              <td class="text-foreground">
+                <AppTruncatedText :text="repositoryLocation(p)" class="max-w-md" />
               </td>
               <td class="whitespace-nowrap text-foreground">
                 {{ p.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
@@ -384,6 +384,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import RepositoryCredentialSelect from '@/components/RepositoryCredentialSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';

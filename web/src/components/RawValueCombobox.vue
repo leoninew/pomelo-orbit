@@ -52,11 +52,11 @@
           :text-value="String(value)"
           class="app-option-item"
         >
-          <span class="min-w-0">
-            <span class="block truncate">{{ value }}</span>
-          </span>
+          <AppTruncatedText :text="String(value)" class="flex-1" as-child>
+            <span>{{ value }}</span>
+          </AppTruncatedText>
           <ComboboxItemIndicator>
-            <Check class="size-4 text-primary" />
+            <Check class="size-4 shrink-0 text-primary" />
           </ComboboxItemIndicator>
         </ComboboxItem>
       </ComboboxContent>
@@ -77,6 +77,7 @@
     ComboboxRoot,
     ComboboxTrigger,
   } from 'reka-ui';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
 
   export type RawValue = string | number;
 

@@ -48,10 +48,12 @@
           </thead>
           <tbody>
             <tr v-for="project in pagedProjects" :key="project.id">
-              <td class="max-w-0 truncate text-foreground" :title="project.name">
-                <router-link :to="`/project/${project.id}`" class="app-link">
-                  {{ project.name }}
-                </router-link>
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="project.name" as-child>
+                  <router-link :to="`/project/${project.id}`" class="app-link">
+                    {{ project.name }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
               <td class="whitespace-nowrap text-foreground">{{ project.code }}</td>
               <td>
@@ -191,9 +193,10 @@
             </span>
             <template v-if="handoverFile">
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-foreground" :title="handoverFile.name">
-                  {{ handoverFile.name }}
-                </p>
+                <AppTruncatedText
+                  :text="handoverFile.name"
+                  class="text-sm font-medium text-foreground"
+                />
                 <p class="mt-0.5 text-xs text-muted-foreground">
                   {{ formatHandoverFileSize(handoverFile.size) }}
                 </p>
@@ -420,6 +423,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';

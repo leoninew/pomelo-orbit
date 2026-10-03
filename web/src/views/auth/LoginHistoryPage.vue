@@ -32,8 +32,8 @@
               <td class="text-foreground">{{ formatTime(record.login_at) }}</td>
               <td class="text-foreground">{{ record.username }}</td>
               <td class="text-foreground">{{ record.ip_address }}</td>
-              <td class="max-w-md truncate text-foreground" :title="record.user_agent || undefined">
-                {{ record.user_agent || '-' }}
+              <td class="text-foreground">
+                <AppTruncatedText :text="record.user_agent || '-'" class="max-w-md" />
               </td>
               <td>
                 <AppBadge variant="status" :tone="record.success ? 'success' : 'error'">
@@ -68,6 +68,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

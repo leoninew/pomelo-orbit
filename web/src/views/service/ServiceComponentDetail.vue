@@ -41,9 +41,7 @@
               <tr v-for="field in runtimeRows" :key="field.key">
                 <td class="text-foreground">{{ field.label }}</td>
                 <td class="max-w-0 text-muted-foreground">
-                  <span class="block truncate" :title="displayValue(field.state.base)">
-                    {{ displayValue(field.state.base) }}
-                  </span>
+                  <AppTruncatedText :text="displayValue(field.state.base)" />
                 </td>
                 <td class="max-w-0">
                   <RawValueSelect
@@ -58,18 +56,16 @@
                     class="app-textarea"
                     rows="3"
                   />
-                  <span
+                  <AppTruncatedText
                     v-else
-                    class="block h-9 truncate leading-9"
+                    :text="displayValue(field.state.value)"
+                    class="h-9 leading-9"
                     :class="
                       runtimeFieldDiffers(field)
                         ? 'text-amber-600 dark:text-amber-400'
                         : 'text-foreground'
                     "
-                    :title="displayValue(field.state.value)"
-                  >
-                    {{ displayValue(field.state.value) }}
-                  </span>
+                  />
                 </td>
                 <td class="whitespace-nowrap">
                   <div v-if="editingRuntimeKey === field.key" class="flex h-9 items-center gap-2">
@@ -152,26 +148,22 @@
               <tr v-for="field in resourceFields" :key="field.key">
                 <td class="text-foreground">{{ field.label }}</td>
                 <td class="max-w-0 text-muted-foreground">
-                  <span class="block truncate" :title="displayValue(field.base)">
-                    {{ displayValue(field.base) }}
-                  </span>
+                  <AppTruncatedText :text="displayValue(field.base)" />
                 </td>
                 <td class="max-w-0">
                   <div v-if="editingResourceKey === field.key">
                     <input v-model="editingResourceValue" class="app-input h-9" />
                   </div>
-                  <span
+                  <AppTruncatedText
                     v-else
-                    class="block h-9 truncate leading-9"
+                    :text="resourceDeleted ? '-' : displayValue(field.value)"
+                    class="h-9 leading-9"
                     :class="
                       resourceDeleted || field.value !== field.base
                         ? 'text-amber-600 dark:text-amber-400'
                         : 'text-foreground'
                     "
-                    :title="resourceDeleted ? '-' : displayValue(field.value)"
-                  >
-                    {{ resourceDeleted ? '-' : displayValue(field.value) }}
-                  </span>
+                  />
                 </td>
                 <td>
                   <div v-if="editingResourceKey === field.key" class="flex h-9 items-center gap-2">
@@ -224,9 +216,7 @@
             <tbody>
               <tr v-for="endpoint in endpointRows" :key="endpoint.identity">
                 <td class="max-w-0 text-foreground">
-                  <span class="block truncate" :title="endpoint.identity">
-                    {{ endpoint.identity }}
-                  </span>
+                  <AppTruncatedText :text="endpoint.identity" />
                 </td>
                 <td>
                   <AppBadge variant="pill">{{ endpoint.protocol }}</AppBadge>
@@ -240,8 +230,8 @@
                       class="flex min-w-0 gap-2"
                     >
                       <dt class="shrink-0">{{ field.label }}</dt>
-                      <dd class="min-w-0 truncate" :title="displayValue(endpoint.base[field.key])">
-                        {{ displayValue(endpoint.base[field.key]) }}
+                      <dd class="min-w-0">
+                        <AppTruncatedText :text="displayValue(endpoint.base[field.key])" />
                       </dd>
                     </div>
                   </dl>
@@ -256,15 +246,14 @@
                     >
                       <dt class="shrink-0 text-muted-foreground">{{ field.label }}</dt>
                       <dd
-                        class="min-w-0 truncate"
+                        class="min-w-0"
                         :class="
                           endpoint.value[field.key] !== endpoint.base[field.key]
                             ? 'text-amber-600 dark:text-amber-400'
                             : 'text-foreground'
                         "
-                        :title="displayValue(endpoint.value[field.key])"
                       >
-                        {{ displayValue(endpoint.value[field.key]) }}
+                        <AppTruncatedText :text="displayValue(endpoint.value[field.key])" />
                       </dd>
                     </div>
                   </dl>
@@ -560,6 +549,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
   import type { EnvironmentVariableListRow } from '@/components/environmentVariableList';
   import { useStatusAsync } from '@/composables/useStatusAsync';

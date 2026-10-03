@@ -52,12 +52,14 @@
           </thead>
           <tbody>
             <tr v-for="app in applications" :key="app.id">
-              <td class="min-w-0 truncate">
-                <router-link :to="`/application/${app.id}`" class="app-link" :title="app.name">
-                  {{ app.name }}
-                </router-link>
+              <td class="min-w-0">
+                <AppTruncatedText :text="app.name" as-child>
+                  <router-link :to="`/application/${app.id}`" class="app-link">
+                    {{ app.name }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
-              <td class="truncate text-foreground" :title="app.code">{{ app.code }}</td>
+              <td class="text-foreground"><AppTruncatedText :text="app.code" /></td>
               <td>
                 <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
                   {{ app.kind }}
@@ -189,6 +191,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

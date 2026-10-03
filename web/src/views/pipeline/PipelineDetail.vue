@@ -152,8 +152,8 @@
                     {{ stage.name }}
                   </router-link>
                 </td>
-                <td class="max-w-xs truncate text-foreground" :title="stage.image">
-                  {{ stage.image }}
+                <td class="text-foreground">
+                  <AppTruncatedText :text="stage.image" class="max-w-xs" />
                 </td>
                 <td>
                   <div class="flex items-center gap-2">
@@ -472,6 +472,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ViewModeTabs from '@/components/ViewModeTabs.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

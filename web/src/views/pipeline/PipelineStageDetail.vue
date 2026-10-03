@@ -91,8 +91,11 @@
                 <td>
                   <AppBadge>{{ artifact.collector }}</AppBadge>
                 </td>
-                <td class="max-w-xl truncate text-muted-foreground">
-                  {{ artifact.collector === 'command' ? artifact.command : artifact.reference }}
+                <td class="text-muted-foreground">
+                  <AppTruncatedText
+                    :text="artifact.collector === 'command' ? artifact.command : artifact.reference"
+                    class="max-w-xl"
+                  />
                 </td>
                 <td>
                   <div class="flex items-center gap-3">
@@ -292,6 +295,7 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect, { type RawValue } from '@/components/RawValueSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

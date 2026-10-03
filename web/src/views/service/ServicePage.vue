@@ -65,11 +65,13 @@
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0 space-y-1">
               <h2 class="text-base font-semibold text-foreground">
-                <router-link :to="`/service/${svc.id}`" class="app-link block truncate">
-                  {{ svc.application_name }}
-                </router-link>
+                <AppTruncatedText :text="svc.application_name" as-child>
+                  <router-link :to="`/service/${svc.id}`" class="app-link">
+                    {{ svc.application_name }}
+                  </router-link>
+                </AppTruncatedText>
               </h2>
-              <p class="truncate text-sm text-muted-foreground">{{ svc.code }}</p>
+              <AppTruncatedText :text="svc.code" class="text-sm text-muted-foreground" />
             </div>
             <AppBadge variant="status" :tone="appStatusTone(svc.status)">
               {{ svc.status }}
@@ -80,13 +82,11 @@
             <div class="flex items-center justify-between gap-3">
               <dt class="text-muted-foreground">{{ t('service.fields.version') }}</dt>
               <dd class="min-w-0 text-right">
-                <router-link
-                  :to="`/version/${svc.version_id}`"
-                  class="app-link block truncate"
-                  :title="svc.version_label"
-                >
-                  {{ svc.version_label }}
-                </router-link>
+                <AppTruncatedText :text="svc.version_label" as-child>
+                  <router-link :to="`/version/${svc.version_id}`" class="app-link">
+                    {{ svc.version_label }}
+                  </router-link>
+                </AppTruncatedText>
               </dd>
             </div>
             <div class="flex items-center justify-between gap-3">
@@ -112,12 +112,6 @@
             >
               {{ t('service.actions.stop') }}
             </button>
-            <router-link
-              :to="{ path: '/deployments', query: { application_id: svc.application_id } }"
-              class="app-link"
-            >
-              {{ t('service.actions.deployments') }}
-            </router-link>
           </div>
         </article>
       </div>
@@ -159,9 +153,11 @@
               </td>
               <td class="text-foreground">{{ svc.code }}</td>
               <td>
-                <router-link :to="`/version/${svc.version_id}`" class="app-link">
-                  {{ svc.version_label }}
-                </router-link>
+                <AppTruncatedText :text="svc.version_label" class="max-w-60" as-child>
+                  <router-link :to="`/version/${svc.version_id}`" class="app-link">
+                    {{ svc.version_label }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
               <td>
                 <AppBadge variant="status" :tone="appStatusTone(svc.status)">
@@ -185,12 +181,6 @@
                   >
                     {{ t('service.actions.stop') }}
                   </button>
-                  <router-link
-                    :to="{ path: '/deployments', query: { application_id: svc.application_id } }"
-                    class="app-link"
-                  >
-                    {{ t('service.actions.deployments') }}
-                  </router-link>
                 </div>
               </td>
             </tr>
@@ -379,6 +369,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';

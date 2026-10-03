@@ -7,7 +7,6 @@ import (
 	"net"
 	"regexp"
 	"strings"
-	"time"
 
 	"golang.org/x/net/publicsuffix"
 
@@ -645,24 +644,6 @@ func cloneInt(input *int) *int {
 	}
 	copy := *input
 	return &copy
-}
-
-// VerifyPublishedRoutes observes persisted files after Gateway recreation.
-func (s Service) VerifyPublishedRoutes(ctx context.Context, projectId string) error {
-	if projectId == "" {
-		return apperror.New(apperror.KindValidation, "project_id is required for route publish")
-	}
-	gateway, err := s.resolveGatewayForRender(ctx, projectId)
-	if err != nil {
-		return err
-	}
-	if strings.TrimSpace(gateway.RestApiUrl) == "" || strings.TrimSpace(gateway.RestApiHostUrl) == "" {
-		return apperror.New(apperror.KindValidation, "gateway rest_api_url and rest_api_host_url are required for route publish")
-	}
-	if err := s.routePublisher.WaitUntilReady(ctx, projectId, *gateway, time.Duration(gateway.RestReadyTimeoutSeconds)*time.Second); err != nil {
-		return err
-	}
-	return s.routePublisher.VerifyPublished(ctx, projectId, *gateway)
 }
 
 func (s Service) LockGateway(ctx context.Context, projectId string) (func(), error) {

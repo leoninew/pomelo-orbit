@@ -97,6 +97,19 @@ func TestBatchSyncContinuesAfterFailureInFrozenOrder(t *testing.T) {
 	}
 }
 
+func TestRouteSyncPreservesSafeConfigurationFailureReason(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	route := createSyncTestRoute(t, service, "api")
+	preview := selectedPreview(t, service, route.Id)
+	message := "Traefik API queries failed or timed out before the Route configuration could be confirmed"
+	publisher.failures = map[string]error{route.Id: apperror.WrapWithCode(apperror.KindUnavailable, "route_sync_configuration_unavailable", message, errors.New("private diagnostic"))}
+	result := confirmPreview(t, service, preview)
+	if result.Code != "route_sync_incomplete" || len(result.Results) != 1 || result.Results[0].Code != "route_sync_configuration_unavailable" || result.Results[0].Error != message {
+		t.Fatalf("configuration failure was replaced by a generic publication message: %+v", result)
+	}
+}
+
 func TestProjectPreviewCanBeConfirmedOneRouteAtATime(t *testing.T) {
 	s, publisher, _, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()

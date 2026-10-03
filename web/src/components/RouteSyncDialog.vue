@@ -257,7 +257,12 @@
           }
           row.status = result.code === 'route_sync_completed' ? 'completed' : 'failed';
           if (row.status === 'failed') {
-            row.reason = syncFailureReason(result.code, result.error, result.cleanup);
+            row.reason = syncFailureReason(
+              result.code,
+              result.error,
+              result.cleanup,
+              result.recovery
+            );
           }
           if (result.business_save === 'saved' || row.status === 'completed') {
             syncChanges.value = syncChanges.value.filter(
@@ -307,11 +312,12 @@
     return tones[status];
   }
 
-  function syncFailureReason(code: string, error: string, cleanup?: string) {
+  function syncFailureReason(code: string, error: string, cleanup?: string, recovery?: string) {
     if (cleanup === 'failed') {
       return t('route.syncCleanupFailed');
     }
     const key = `route.syncErrorCodes.${code}`;
-    return te(key) ? t(key) : error || t('route.syncFailed');
+    const reason = te(key) ? t(key) : error || t('route.syncFailed');
+    return recovery === 'failed' ? t('route.syncRecoveryFailed', { reason }) : reason;
   }
 </script>

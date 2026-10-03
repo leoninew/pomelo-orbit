@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -867,13 +866,7 @@ type recordingRoutePublisher struct {
 	failures     map[string]error
 	attempts     []string
 	dependencies string
-	readyWaits   int
 	err          error
-}
-
-func (p *recordingRoutePublisher) WaitUntilReady(context.Context, string, model.GatewayConfig, time.Duration) error {
-	p.readyWaits++
-	return nil
 }
 
 func (p *recordingRoutePublisher) LockGateway(context.Context, string) (func(), error) {
@@ -881,9 +874,6 @@ func (p *recordingRoutePublisher) LockGateway(context.Context, string) (func(), 
 }
 func (p *recordingRoutePublisher) ValidateGateway(context.Context, string, model.GatewayConfig, []model.Route) (string, error) {
 	return p.dependencies, nil
-}
-func (p *recordingRoutePublisher) VerifyPublished(context.Context, string, model.GatewayConfig) error {
-	return nil
 }
 func (p *recordingRoutePublisher) InspectPublications(context.Context, string, model.GatewayConfig) ([]routeport.Publication, error) {
 	items := []routeport.Publication{}

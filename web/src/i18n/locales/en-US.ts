@@ -1087,15 +1087,20 @@ export default {
       failed: 'Failed',
     },
     syncCleanupFailed: 'Cleanup incomplete; retry required',
+    syncRecoveryFailed: '{reason}; automatic recovery also failed; recovery records were preserved',
     syncEmpty: 'No routes to sync',
     syncErrorCodes: {
-      route_sync_publish_failed: 'Publication incomplete; preview again to retry',
+      route_sync_publish_failed: 'Failed to publish Route files',
       route_sync_publish_permission_denied: 'Target workspace permission denied',
       route_sync_preview_expired: 'Configuration changed; preview again',
       route_sync_file_changed: 'Managed configuration file changed or is missing',
       route_sync_certificate_conflict: 'Certificate conflicts with another published route',
       route_sync_certificate_changed: 'Certificate files were modified',
       route_sync_configuration_mismatch: 'Traefik configuration did not match',
+      route_sync_configuration_unavailable:
+        'Traefik API queries failed or timed out; Route configuration could not be confirmed',
+      route_sync_pending_recovery_failed:
+        'The previous interrupted publication could not be confirmed or recovered; this publication was not attempted',
       route_sync_reload_failed: 'Failed to reload Traefik configuration',
       route_sync_skipped: 'Not processed; preview again to retry',
     },

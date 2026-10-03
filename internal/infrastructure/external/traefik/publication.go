@@ -326,6 +326,9 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 		previous, err = m.reconcilePending(ctx, projectId, gateway, target, files, base, *previous)
 		if err != nil {
 			result.Recovery = "failed"
+			if _, classified := apperror.As(err); !classified {
+				err = apperror.WrapWithCode(apperror.KindInternal, "route_sync_pending_recovery_failed", "The previous interrupted Route publication could not be confirmed or recovered", err)
+			}
 			return result, err
 		}
 		result.Recovery = "restored"
@@ -674,7 +677,7 @@ func (m *RouteManager) waitConfiguration(ctx context.Context, projectId string, 
 			if observed {
 				return apperror.WrapWithCode(apperror.KindConflict, "route_sync_configuration_mismatch", "Traefik configuration did not match the committed Route", errors.Join(ctx.Err(), lastErr))
 			}
-			return fmt.Errorf("route configuration could not be matched: %w", errors.Join(ctx.Err(), lastErr))
+			return apperror.WrapWithCode(apperror.KindUnavailable, "route_sync_configuration_unavailable", "Traefik API queries failed or timed out before the Route configuration could be confirmed", errors.Join(ctx.Err(), lastErr))
 		case <-time.After(250 * time.Millisecond):
 		}
 	}
@@ -735,41 +738,4 @@ func matchesConfiguration(expected dynamicConfiguration, absentCodes []string, r
 		}
 	}
 	return true
-}
-
-func (m *RouteManager) VerifyPublished(ctx context.Context, projectId string, gateway model.GatewayConfig) error {
-	items, err := m.InspectPublications(ctx, projectId, gateway)
-	if err != nil {
-		return err
-	}
-	routes := make([]model.Route, 0, len(items))
-	for _, item := range items {
-		routes = append(routes, item.Route)
-	}
-	if _, err := m.ValidateGateway(ctx, projectId, gateway, routes); err != nil {
-		return err
-	}
-	target, files, base, err := m.publicationWorkspace(ctx, projectId, gateway)
-	if err != nil {
-		return err
-	}
-	for _, item := range items {
-		if item.Phase != "confirmed" || item.ActualFingerprint != item.Fingerprint {
-			return errors.New("route publication is incomplete or its managed file is missing or modified")
-		}
-		if item.Route.Enabled && item.ActualCertificateRevision != item.CertificateRevision {
-			return errors.New("published Route certificate files are missing or modified")
-		}
-		if !item.Route.Enabled {
-			continue
-		}
-		body, err := files.ReadFile(ctx, target, routeConfigurationPath(base, item.Route))
-		if err != nil {
-			return err
-		}
-		if err := m.waitConfiguration(ctx, projectId, gateway, body); err != nil {
-			return err
-		}
-	}
-	return nil
 }

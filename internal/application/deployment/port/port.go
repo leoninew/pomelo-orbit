@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 
 	logport "github.com/leoninew/pomelo-orbit/internal/application/logstream/port"
 
@@ -98,11 +99,8 @@ type Runtime interface {
 	SyncFiles(ctx context.Context, target environmentport.Target, directory string, files []WorkspaceFile, pruneSuffix string) error
 }
 
-// GatewayRoutePublisher coordinates deployments with explicit Route publication.
-type GatewayRoutePublisher interface {
-	VerifyPublishedRoutes(ctx context.Context, projectId string) error
-	LockGateway(context.Context, string) (func(), error)
-	CheckRouteDependencies(context.Context, string, model.EffectiveServicePlan) error
+type GatewayReadinessChecker interface {
+	WaitUntilReady(ctx context.Context, projectId string, gateway model.GatewayConfig, timeout time.Duration) error
 }
 
 // GatewayDeploymentCoordinator resolves and selects Gateway state required by

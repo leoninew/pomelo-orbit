@@ -23,14 +23,9 @@ type TransactionRunner interface {
 
 // RouteConfigPublisher publishes independently owned Route files.
 type RouteConfigPublisher interface {
-	// WaitUntilReady blocks until the Traefik control-plane REST API accepts
-	// requests, or until ctx ends / the readiness deadline elapses. Gateway
-	// deploy uses this after compose up because process start lags the container.
-	WaitUntilReady(ctx context.Context, projectId string, gateway model.GatewayConfig, timeout time.Duration) error
 	LockGateway(context.Context, string) (func(), error)
 	InspectPublications(context.Context, string, model.GatewayConfig) ([]Publication, error)
 	PublishRoute(context.Context, string, model.GatewayConfig, model.Route, string) (PublicationResult, error)
-	VerifyPublished(context.Context, string, model.GatewayConfig) error
 	ValidateGateway(context.Context, string, model.GatewayConfig, []model.Route) (string, error)
 }
 

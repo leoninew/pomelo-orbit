@@ -107,7 +107,7 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 		}
 		if err != nil {
 			slog.ErrorContext(ctx, "Route sync item failed", "project_id", projectId, "route_id", route.Id, "operation_id", item.OperationId, "recovery", item.Recovery, "error", err)
-			item.Code, item.Error = routeSyncPublishFailedCode, "Route publication could not be completed. Preview this Route again to retry."
+			item.Code, item.Error = routeSyncPublishFailedCode, "Route file publication failed."
 			if errors.Is(err, os.ErrPermission) {
 				item.Code = routeSyncPermissionDeniedCode
 				item.Error = "The target workspace rejected the file operation (permission denied)."

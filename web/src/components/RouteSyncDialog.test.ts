@@ -485,21 +485,36 @@ describe('RouteSyncDialog', () => {
     {
       code: 'route_sync_publish_permission_denied',
       cleanup: 'not_attempted',
+      recovery: 'not_needed',
       reason: 'route.syncErrorCodes.route_sync_publish_permission_denied',
     },
     {
       code: 'route_sync_reload_failed',
       cleanup: 'not_attempted',
+      recovery: 'restored',
       reason: 'route.syncErrorCodes.route_sync_reload_failed',
     },
     {
       code: 'route_sync_publish_failed',
       cleanup: 'failed',
+      recovery: 'not_needed',
       reason: 'route.syncCleanupFailed',
+    },
+    {
+      code: 'route_sync_configuration_unavailable',
+      cleanup: 'not_attempted',
+      recovery: 'failed',
+      reason: 'route.syncErrorCodes.route_sync_configuration_unavailable',
+    },
+    {
+      code: 'route_sync_pending_recovery_failed',
+      cleanup: 'not_attempted',
+      recovery: 'failed',
+      reason: 'route.syncErrorCodes.route_sync_pending_recovery_failed',
     },
   ])(
     'shows a failure toast and status tooltip with the same reason for $code/$cleanup',
-    async ({ code, cleanup, reason }) => {
+    async ({ code, cleanup, recovery, reason }) => {
       vi.mocked(routeApi.confirmSync).mockResolvedValueOnce({
         message: '',
         code: 'route_sync_incomplete',
@@ -508,6 +523,7 @@ describe('RouteSyncDialog', () => {
           itemResult({
             code,
             cleanup,
+            recovery,
             configuration_match: 'unverified',
           }),
         ],
@@ -519,11 +535,15 @@ describe('RouteSyncDialog', () => {
         expect(status(i18n.global.t('route.syncStatuses.failed'))).toBeDefined()
       );
       const failure = status(i18n.global.t('route.syncStatuses.failed'));
-      await expectTooltip(failure, i18n.global.t(reason));
+      const expectedReason =
+        recovery === 'failed'
+          ? i18n.global.t('route.syncRecoveryFailed', { reason: i18n.global.t(reason) })
+          : i18n.global.t(reason);
+      await expectTooltip(failure, expectedReason);
       expect(failure?.tabIndex).toBe(0);
       expect(failure?.querySelector('svg')).not.toBeNull();
       expect(toasts.value).toEqual([
-        expect.objectContaining({ type: 'error', text: `api: ${i18n.global.t(reason)}` }),
+        expect.objectContaining({ type: 'error', text: `api: ${expectedReason}` }),
       ]);
       expect(button(i18n.global.t('route.retryPreview'))?.disabled).toBe(false);
       expect(document.querySelector('.app-dialog-content tbody')?.textContent).not.toContain(

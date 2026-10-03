@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-02 14:06:22
+最后修改时间: 2026-10-03 10:10:00
 
 Doc role: living architecture
 
@@ -61,7 +61,7 @@ Web 按冻结顺序在前端循环，每次只确认一个 ID，提交其原预�
 
 预览规则直接返回 `protocol`、`match`、`target`；HTTP/HTTPS 由入口配置决定，与上游 URL 的协议分开。同步清单的协议列展示入口协议及证书方式，规则列展示匹配条件和目标，预览、处理中及完成后沿用同一表格。
 
-确认在短事务内复核并保存单条启停草稿，再在事务外提交该 Route 的文件并等待 `@file` 资源匹配。响应 HTTP 200 携带 `route_sync_completed`/`route_sync_incomplete` 及逐项保存、文件、配置、证书、恢复/清理状态与原因编码；执行前的鉴权、范围或过期错误沿用通用 HTTP 错误契约。每个确认请求预算 105 秒，配置匹配及恢复各最多 8 秒；API/MCP 批量请求内未执行项明确报告，Web 的多条请求不共享整批预算。业务保存不因外部失败回滚。中断后先核对 pending 记录、活动/备份 YAML 和 PEM，确认或恢复该操作后才接受新的发布，不以业务草稿重建。
+确认在短事务内复核并保存单条启停草稿，再在事务外提交该 Route 的文件并等待 `@file` 资源匹配。响应 HTTP 200 携带 `route_sync_completed`/`route_sync_incomplete` 及逐项保存、文件、配置、证书、恢复/清理状态与原因编码；执行前的鉴权、范围或过期错误沿用通用 HTTP 错误契约。每个确认请求使用集中配置 `route.sync_timeout`，默认总预算 30 秒，包含失败恢复；单次 API 请求、重载、匹配、恢复阶段上限分别为 3、5、10、10 秒。匹配在重载后独立计时，发布预留最多 10 秒恢复时间，恢复不得延长原请求截止时间；API/MCP 批量请求内未执行项明确报告，Web 的多条请求不共享整批预算。业务保存不因外部失败回滚。中断后先核对 pending 记录、活动/备份 YAML 和 PEM，确认或恢复该操作后才接受新的发布，不以业务草稿重建。
 
 Windows 文件提交后的加载收敛在 Traefik 发布适配器：SSH 使用声明的目标平台，local 使用现有 resolver 返回的 daemon mount source 区分 Windows/Linux 与 DooD。发布、撤销、失败恢复和 pending 恢复共用必要时 SIGHUP 重载再核对配置的路径；容器定位复用 Gateway Service 内的 Compose 查询，信号通过目标 Runtime 执行，不重启 Gateway，不改变其他 Route 文件。重载与配置匹配共用 8 秒预算，失败以 route_sync_reload_failed 进入既有逐项报告和恢复机制。Linux 继续依赖 watcher，远程 SSH Linux 实测留待后续；应用层和文件 writer 不加入平台分支或新接口。
 

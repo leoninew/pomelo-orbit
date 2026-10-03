@@ -42,11 +42,11 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 	if strings.TrimSpace(input.BusinessHash) == "" || input.PublicationHash == "" {
 		return result, apperror.New(apperror.KindValidation, "business_hash and publication_hash are required")
 	}
+	ctx, cancel := context.WithTimeout(ctx, s.syncTimeouts.Total)
+	defer cancel()
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return result, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 105*time.Second)
-	defer cancel()
 	unlock, err := s.LockGateway(ctx, projectId)
 	if err != nil {
 		return result, err
@@ -73,7 +73,7 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 			item.CertificateVerification = "unverified"
 		}
 		deadline, _ := ctx.Deadline()
-		if ctx.Err() != nil || time.Until(deadline) < 2*time.Second {
+		if ctx.Err() != nil || time.Until(deadline) < s.syncTimeouts.Recovery+2*time.Second {
 			item.Code = "route_sync_skipped"
 			item.Error = "The batch time budget ended before this Route was processed"
 			result.Code = "route_sync_incomplete"

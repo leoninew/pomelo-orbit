@@ -116,7 +116,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	pipelineWorkspace := newPipelineWorkspace(cfg, stores, dockerPathResolver)
 	localSource := repositorysource.New(dockerPathResolver)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, stores.environmentCredential, cfg.Jwt.SecretKey)
-	routeManager := traefik.NewRouteManager(targetResolver, runtime)
+	routeManager := traefik.NewRouteManager(targetResolver, runtime, routeSyncTimeouts(cfg.Route))
 	applicationService := applicationsvc.New(stores.project, stores.application, stores.service)
 	serviceService := servicesvc.New(stores.project, stores.application, stores.service, stores.deployment)
 	routeService := routesvc.New(
@@ -129,6 +129,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		traefik.MkcertGenerator{},
 		routeManager,
 		transactionRunner,
+		routeSyncTimeouts(cfg.Route),
 	)
 	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.deployment, dockerPathResolver, transactionRunner).
 		WithDefinitionServices(applicationService, serviceService)

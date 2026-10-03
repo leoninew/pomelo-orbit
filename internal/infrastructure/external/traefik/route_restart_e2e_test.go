@@ -30,7 +30,7 @@ func TestFileProviderRestoresRoutesAfterTraefikRestart(t *testing.T) {
 	root := t.TempDir()
 	runtime := localrunner.NewRuntime(runtimepath.ResolveDockerDaemonPath)
 	resolver := routeTargetResolver{workspaceRoot: root}
-	manager := newRouteManager(resolver, runtime, func() bool { return false })
+	manager := newRouteManager(resolver, runtime, testRouteTimeouts(), func() bool { return false })
 	gateway := testGateway()
 	target, _ := resolver.ResolveProjectTarget(ctx, "project-1")
 	base, err := runtime.ServiceDir(target, gateway.RuntimeServiceCode)

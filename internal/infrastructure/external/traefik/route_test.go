@@ -13,15 +13,20 @@ import (
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
 )
+
+func testRouteTimeouts() routeport.SyncTimeouts {
+	return routeport.SyncTimeouts{Total: 30 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second}
+}
 
 func TestRouteManagerListRoutersUsesRemoteTraefikApi(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.responses["/api/http/routers"] = `[{"name":"api@docker","provider":"docker","status":"enabled","rule":"Host(api.example.test)","service":"api-service","entryPoints":["websecure"],"tls":{}}]`
 	runtime.responses["/api/tcp/routers"] = `[{"name":"redis@file","provider":"file","status":"enabled","rule":"HostSNI(` + "`*`" + `)","service":"redis-service","entryPoints":["tcp16379"],"tls":null}]`
-	manager := newRouteManager(routeTargetResolver{}, runtime, func() bool { return true })
+	manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return true })
 	routers, err := manager.ListRouters(context.Background(), "project-1", testGateway())
 	if err != nil {
 		t.Fatal(err)
@@ -47,7 +52,7 @@ func TestRouteManagerListServicesMapsRemoteHTTPAndTCPResponses(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.responses["/api/http/services"] = `[{"name":"api-service@file","provider":"file","status":"enabled","loadBalancer":{"servers":[{"url":"http://api:8080"}]}}]`
 	runtime.responses["/api/tcp/services"] = `[{"name":"redis-service@file","provider":"file","status":"enabled","loadBalancer":{"servers":[{"address":"redis:6379"}]}}]`
-	manager := newRouteManager(routeTargetResolver{}, runtime, func() bool { return true })
+	manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return true })
 	services, err := manager.ListServices(context.Background(), "project-1", testGateway())
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +65,7 @@ func TestRouteManagerListServicesMapsRemoteHTTPAndTCPResponses(t *testing.T) {
 func TestRouteManagerUsesHostEndpointForHostLocalOrbit(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.responses["/api/http/routers"] = `[]`
-	manager := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 
 	if _, err := manager.listRouters(context.Background(), "project-1", testGateway(), "http"); err != nil {
 		t.Fatal(err)
@@ -73,7 +78,7 @@ func TestRouteManagerUsesHostEndpointForHostLocalOrbit(t *testing.T) {
 func TestRouteManagerUsesHostEndpointForSSHOrbit(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.responses["/api/http/routers"] = `[]`
-	manager := newRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH}, runtime, func() bool { return true })
+	manager := newRouteManager(routeTargetResolver{targetType: model.EnvironmentTargetTypeSSH}, runtime, testRouteTimeouts(), func() bool { return true })
 
 	if _, err := manager.listRouters(context.Background(), "project-1", testGateway(), "http"); err != nil {
 		t.Fatal(err)
@@ -87,7 +92,7 @@ func TestRouteManagerDoesNotFallbackAfterRequestFailure(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.responses["/api/http/routers"] = `[]`
 	runtime.failures["/api/http/routers"] = 1
-	manager := newRouteManager(routeTargetResolver{}, runtime, func() bool { return true })
+	manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return true })
 
 	if _, err := manager.listRouters(context.Background(), "project-1", testGateway(), "http"); err == nil {
 		t.Fatal("expected Traefik request failure")
@@ -115,7 +120,7 @@ func TestRouteManagerReportsSafeAccessContextForRESTRequestFailure(t *testing.T)
 			runtime.responses["/api/http/routers"] = `[]`
 			runtime.failures["/api/http/routers"] = 1
 			runtime.failureErrors["/api/http/routers"] = errors.New("Process exited with status 6: private runtime detail")
-			manager := newRouteManager(routeTargetResolver{targetType: tt.targetType}, runtime, func() bool { return tt.inContainer })
+			manager := newRouteManager(routeTargetResolver{targetType: tt.targetType}, runtime, testRouteTimeouts(), func() bool { return tt.inContainer })
 
 			_, err := manager.listRouters(context.Background(), "project-1", testGateway(), "http")
 			if err == nil {
@@ -135,7 +140,7 @@ func TestRouteManagerReportsSafeAccessContextForRESTRequestFailure(t *testing.T)
 func TestRouteManagerDoesNotClassifyConfigurationOrDecodeErrorsAsUnavailable(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.responses["/api/http/routers"] = "not json"
-	manager := newRouteManager(routeTargetResolver{}, runtime, func() bool { return true })
+	manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return true })
 
 	_, err := manager.listRouters(context.Background(), "project-1", testGateway(), "http")
 	if err == nil {
@@ -159,7 +164,7 @@ func TestRouteManagerDoesNotClassifyConfigurationOrDecodeErrorsAsUnavailable(t *
 func TestRouteManagerWaitUntilReadyPollsRemoteHost(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.failures["/api/overview"] = 2
-	manager := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	if err := manager.WaitUntilReady(context.Background(), "project-1", testGateway(), 3*time.Second); err != nil {
 		t.Fatal(err)
 	}

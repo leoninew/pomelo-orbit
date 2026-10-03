@@ -17,7 +17,7 @@ func TestRouteCodeNamesFilesAndResourcesWhileIdentityOwnsCertificates(t *testing
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI, runtime.reloadRequired = true, true
 	runtime.physicalBase = "D:/orbit/traefik-default"
-	m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	a, b := publicationTestRoute("api"), publicationTestRoute("web")
 	a.Id, b.Id = "id-a", "id-b"
 	cert, key := generateTestCertificate(t, a.Domain)
@@ -77,7 +77,7 @@ func TestRouteRenameFailureRestoresOriginalPathAndResources(t *testing.T) {
 			runtime := newRouteRuntimeFake()
 			runtime.autoAPI, runtime.reloadRequired = true, true
 			runtime.physicalBase = "D:/orbit/traefik-default"
-			m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+			m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 			a, b := publicationTestRoute("api"), publicationTestRoute("web")
 			a.Id, b.Id = "id-a", "id-b"
 			publishTestRoute(t, m, a)
@@ -119,7 +119,7 @@ func TestInterruptedRenameReconcilesBothPaths(t *testing.T) {
 			runtime := newRouteRuntimeFake()
 			runtime.autoAPI, runtime.reloadRequired = true, true
 			runtime.physicalBase = "D:/orbit/traefik-default"
-			m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+			m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 			route := publicationTestRoute("api")
 			route.Id = "id-a"
 			publishTestRoute(t, m, route)
@@ -176,7 +176,7 @@ func TestRouteCodeOwnershipRejectsPublishedAndUnknownDestinations(t *testing.T) 
 		t.Run(owner, func(t *testing.T) {
 			runtime := newRouteRuntimeFake()
 			runtime.autoAPI = true
-			m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+			m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 			a, b := publicationTestRoute("api"), publicationTestRoute("web")
 			a.Id, b.Id = "id-a", "id-b"
 			publishTestRoute(t, m, a)
@@ -215,7 +215,7 @@ func TestMissingRouteFileCanBeExplicitlyRepublishedOrWithdrawn(t *testing.T) {
 			runtime := newRouteRuntimeFake()
 			runtime.autoAPI, runtime.reloadRequired = true, true
 			runtime.physicalBase = "D:/orbit/traefik-default"
-			m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+			m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 			a, b := publicationTestRoute("api"), publicationTestRoute("web")
 			a.Id, b.Id = "id-a", "id-b"
 			publishTestRoute(t, m, a)
@@ -260,7 +260,7 @@ func TestMissingFilePublicationFailureRestoresAbsenceAndCanRetry(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.autoAPI, runtime.reloadRequired = true, true
 	runtime.physicalBase = "D:/orbit/traefik-default"
-	m := newRouteManager(routeTargetResolver{}, runtime, func() bool { return false })
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
 	route := publicationTestRoute("api")
 	route.Id = "id-a"
 	publishTestRoute(t, m, route)

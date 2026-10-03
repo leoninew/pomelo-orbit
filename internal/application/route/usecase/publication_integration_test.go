@@ -2,14 +2,48 @@ package routesvc
 
 import (
 	"context"
+	"errors"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
+	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func testRouteSyncTimeouts() routeport.SyncTimeouts {
+	return routeport.SyncTimeouts{Total: 30 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second}
+}
+
+func TestRouteSyncTotalBudgetIncludesGatewayLock(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	service.syncTimeouts.Total = 50 * time.Millisecond
+	blocked := &deadlineLockPublisher{RouteConfigPublisher: publisher}
+	service.routePublisher = blocked
+	started := time.Now()
+	_, err := service.ConfirmRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{BusinessHash: "business", PublicationHash: "publication"})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected total timeout while waiting for Gateway lock, got %v", err)
+	}
+	if blocked.deadline.IsZero() || blocked.deadline.After(started.Add(service.syncTimeouts.Total+time.Millisecond)) {
+		t.Fatalf("Gateway lock did not receive the total deadline: %s", blocked.deadline)
+	}
+}
+
+type deadlineLockPublisher struct {
+	routeport.RouteConfigPublisher
+	deadline time.Time
+}
+
+func (publisher *deadlineLockPublisher) LockGateway(ctx context.Context, _ string) (func(), error) {
+	publisher.deadline, _ = ctx.Deadline()
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
 
 func TestSelectedSyncDoesNotCarryAnotherRoutesUnsyncedEdit(t *testing.T) {
 	s, publisher, _, database := newRouteIntegrationService(t)

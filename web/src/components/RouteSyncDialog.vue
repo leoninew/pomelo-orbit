@@ -9,10 +9,10 @@
     <div v-else-if="preview || syncRows.length" class="max-h-96 overflow-auto" aria-live="polite">
       <table v-if="syncRows.length" class="app-data-table min-w-[680px] table-fixed">
         <colgroup>
-          <col class="w-[18%]" />
-          <col class="w-[14%]" />
-          <col class="w-[22%]" />
-          <col class="w-[30%]" />
+          <col class="w-28" />
+          <col class="w-28" />
+          <col class="w-28" />
+          <col />
           <col class="w-[16%]" />
         </colgroup>
         <thead>
@@ -29,24 +29,41 @@
             <td class="align-top break-words">{{ item.route_name || item.route_id }}</td>
             <td class="align-top break-words">{{ t(`route.syncActions.${item.action}`) }}</td>
             <td class="align-top break-words">
-              <p>{{ item.rule?.protocol.toUpperCase() }}</p>
-              <p v-if="item.cert_type" class="text-muted-foreground">
-                {{ certificateLabel(item.cert_type, item.acme_challenge) }}
-              </p>
+              <AppTooltip
+                :content="
+                  item.cert_type ? certificateLabel(item.cert_type, item.acme_challenge) : undefined
+                "
+              >
+                <span
+                  class="inline-flex items-center gap-1 whitespace-nowrap"
+                  :class="item.cert_type ? 'cursor-help' : undefined"
+                  :tabindex="item.cert_type ? 0 : undefined"
+                >
+                  {{ item.rule?.protocol.toUpperCase() }}
+                  <Info v-if="item.cert_type" class="size-3 shrink-0" aria-hidden="true" />
+                </span>
+              </AppTooltip>
             </td>
             <td class="align-top break-words">
               <p v-if="item.rule?.match">{{ item.rule.match }}</p>
               <p v-if="item.rule?.target">-&gt; {{ item.rule.target }}</p>
             </td>
             <td class="align-top break-words">
-              <AppBadge
-                variant="status"
-                :tone="syncStatusTone(item.status)"
-                :title="item.status === 'failed' ? item.reason : undefined"
-                :tabindex="item.status === 'failed' ? 0 : undefined"
-              >
-                {{ t(`route.syncStatuses.${item.status}`) }}
-              </AppBadge>
+              <AppTooltip :content="item.status === 'failed' ? item.reason : undefined">
+                <AppBadge
+                  variant="status"
+                  :tone="syncStatusTone(item.status)"
+                  :class="item.status === 'failed' ? 'cursor-help gap-1' : undefined"
+                  :tabindex="item.status === 'failed' ? 0 : undefined"
+                >
+                  {{ t(`route.syncStatuses.${item.status}`) }}
+                  <Info
+                    v-if="item.status === 'failed'"
+                    class="size-3 shrink-0"
+                    aria-hidden="true"
+                  />
+                </AppBadge>
+              </AppTooltip>
             </td>
           </tr>
         </tbody>
@@ -56,21 +73,14 @@
     <p v-if="previewError" class="app-field-error break-words" role="alert">
       {{ previewError }}
     </p>
-    <button
-      v-if="!syncOperating && !preview && !previewLoading && (needsFreshPreview || previewError)"
-      type="button"
-      class="app-button h-9 px-3"
-      @click="loadPreview(needsFreshPreview)"
-    >
-      <RefreshCw class="size-4" />
-      {{ t('route.retryPreview') }}
-    </button>
     <template #footer>
       <AppDialogActions
         v-if="syncOperating || !syncRows.length || needsFreshPreview || preview"
         :busy="syncOperating"
-        :confirm-disabled="!preview || previewLoading || preview.route_ids.length === 0"
-        :confirm-label="t('route.syncAll')"
+        :confirm-disabled="
+          previewLoading || (!canRetryPreview && (!preview || preview.route_ids.length === 0))
+        "
+        :confirm-label="canRetryPreview ? t('route.retryPreview') : t('route.syncAll')"
         @cancel="close"
         @confirm="confirm"
       />
@@ -82,14 +92,15 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, watch } from 'vue';
-  import { RefreshCw } from '@lucide/vue';
+  import { computed, ref, watch } from 'vue';
+  import { Info } from '@lucide/vue';
   import { useI18n } from 'vue-i18n';
   import { routeApi } from '@/api/route/route';
   import AppBadge from '@/components/AppBadge.vue';
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTooltip from '@/components/AppTooltip.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import type {
     RouteSyncChange,
@@ -132,6 +143,9 @@
   const syncChanges = ref<RouteSyncChange[]>([]);
   const syncRows = ref<SyncRow[]>([]);
   const retryRouteIds = ref<string[]>();
+  const canRetryPreview = computed(
+    () => !preview.value && (needsFreshPreview.value || previewError.value !== '')
+  );
   watch(
     () => props.open,
     (open) => {
@@ -196,13 +210,21 @@
       needsFreshPreview.value = false;
     } catch (error) {
       previewError.value = error instanceof Error ? error.message : t('route.syncPreviewFailed');
+      toast.error(previewError.value);
     }
   }
 
   async function confirm() {
+    if (syncOperating.value || previewLoading.value) {
+      return;
+    }
+    if (canRetryPreview.value) {
+      await loadPreview(needsFreshPreview.value);
+      return;
+    }
     const projectId = projectStore.activeProjectId;
     const currentPreview = preview.value;
-    if (!projectId || !currentPreview || syncOperating.value) {
+    if (!projectId || !currentPreview) {
       return;
     }
     previewError.value = '';
@@ -250,14 +272,15 @@
             error instanceof Error ? error.message : t('route.syncFailed')
           );
         }
+        if (row.status === 'failed') {
+          toast.error(`${row.route_name || row.route_id}: ${row.reason}`);
+        }
       }
       retryRouteIds.value = syncRows.value
         .filter((item) => item.status === 'failed')
         .map((item) => item.route_id);
       needsFreshPreview.value = retryRouteIds.value.length > 0;
-      if (needsFreshPreview.value) {
-        toast.error(t('route.syncIncomplete'));
-      } else {
+      if (!needsFreshPreview.value) {
         toast.success(t('route.syncConfigurationComplete'));
         emit('synced');
       }

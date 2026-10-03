@@ -37,6 +37,7 @@ type Config struct {
 	Logging               LoggingConfig               `mapstructure:"logging" yaml:"logging"`
 	Database              DatabaseConfig              `mapstructure:"database" yaml:"database"`
 	Workspace             WorkspaceConfig             `mapstructure:"workspace" yaml:"workspace"`
+	Route                 RouteConfig                 `mapstructure:"route" yaml:"route"`
 	PipelineRun           PipelineRunConfig           `mapstructure:"pipeline_run" yaml:"pipeline_run"`
 	Worker                WorkerConfig                `mapstructure:"worker" yaml:"worker"`
 	Orbit                 OrbitConfig                 `mapstructure:"orbit" yaml:"orbit"`
@@ -111,6 +112,14 @@ type PostgresConfig struct {
 // derives pipeline and deployment child directories from this single root.
 type WorkspaceConfig struct {
 	Root string `mapstructure:"root" yaml:"root"`
+}
+
+type RouteConfig struct {
+	SyncTimeout               time.Duration `mapstructure:"sync_timeout" yaml:"sync_timeout"`
+	ApiRequestTimeout         time.Duration `mapstructure:"api_request_timeout" yaml:"api_request_timeout"`
+	ReloadTimeout             time.Duration `mapstructure:"reload_timeout" yaml:"reload_timeout"`
+	ConfigurationMatchTimeout time.Duration `mapstructure:"configuration_match_timeout" yaml:"configuration_match_timeout"`
+	RecoveryTimeout           time.Duration `mapstructure:"recovery_timeout" yaml:"recovery_timeout"`
 }
 
 type WorkerConfig struct {
@@ -349,6 +358,11 @@ func bindEnv(loader *viper.Viper) {
 		"database.mysql.dsn",
 		"database.postgres.dsn",
 		"workspace.root",
+		"route.sync_timeout",
+		"route.api_request_timeout",
+		"route.reload_timeout",
+		"route.configuration_match_timeout",
+		"route.recovery_timeout",
 		"pipeline_run.execution_timeout",
 		"orbit.root",
 		"jwt.secret_key",
@@ -441,6 +455,9 @@ func (c Config) Validate() error {
 	if c.PipelineRun.ExecutionTimeout <= 0 {
 		return errors.New("pipeline_run.execution_timeout must be positive")
 	}
+	if err := validateRouteConfig(c.Route); err != nil {
+		return err
+	}
 	if err := validateWorkspaceConfig(c.Workspace); err != nil {
 		return err
 	}
@@ -463,6 +480,33 @@ func (c Config) Validate() error {
 }
 
 var windowsInitializationWorkspacePattern = regexp.MustCompile(`^[A-Za-z]:\\`)
+
+func validateRouteConfig(cfg RouteConfig) error {
+	for _, field := range []struct {
+		name  string
+		value time.Duration
+	}{
+		{"sync_timeout", cfg.SyncTimeout},
+		{"api_request_timeout", cfg.ApiRequestTimeout},
+		{"reload_timeout", cfg.ReloadTimeout},
+		{"configuration_match_timeout", cfg.ConfigurationMatchTimeout},
+		{"recovery_timeout", cfg.RecoveryTimeout},
+	} {
+		if field.value <= 0 {
+			return fmt.Errorf("route.%s must be positive", field.name)
+		}
+	}
+	if cfg.RecoveryTimeout >= cfg.SyncTimeout {
+		return errors.New("route.recovery_timeout must be less than route.sync_timeout")
+	}
+	if cfg.ReloadTimeout > cfg.SyncTimeout-cfg.RecoveryTimeout || cfg.ConfigurationMatchTimeout > cfg.SyncTimeout-cfg.RecoveryTimeout-cfg.ReloadTimeout {
+		return errors.New("route reload, configuration match and recovery timeouts must fit within route.sync_timeout")
+	}
+	if cfg.ApiRequestTimeout > cfg.ConfigurationMatchTimeout {
+		return errors.New("route.api_request_timeout must not exceed route.configuration_match_timeout")
+	}
+	return nil
+}
 
 func normalizeProjectInitializationConfig(cfg *ProjectInitializationConfig) error {
 	workspaceRoot, err := normalizeInitializationWorkspaceRoot(cfg.Environment.LocalWorkspaceRoot)

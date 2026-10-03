@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-03 10:10:00
+最后修改时间: 2026-10-03 10:40:00
 
 Doc role: living architecture
 
@@ -63,11 +63,11 @@ Web 按冻结顺序在前端循环，每次只确认一个 ID，提交其原预�
 
 确认在短事务内复核并保存单条启停草稿，再在事务外提交该 Route 的文件并等待 `@file` 资源匹配。响应 HTTP 200 携带 `route_sync_completed`/`route_sync_incomplete` 及逐项保存、文件、配置、证书、恢复/清理状态与原因编码；执行前的鉴权、范围或过期错误沿用通用 HTTP 错误契约。每个确认请求使用集中配置 `route.sync_timeout`，默认总预算 30 秒，包含失败恢复；单次 API 请求、重载、匹配、恢复阶段上限分别为 3、5、10、10 秒。匹配在重载后独立计时，发布预留最多 10 秒恢复时间，恢复不得延长原请求截止时间；API/MCP 批量请求内未执行项明确报告，Web 的多条请求不共享整批预算。业务保存不因外部失败回滚。中断后先核对 pending 记录、活动/备份 YAML 和 PEM，确认或恢复该操作后才接受新的发布，不以业务草稿重建。
 
-Windows 文件提交后的加载收敛在 Traefik 发布适配器：SSH 使用声明的目标平台，local 使用现有 resolver 返回的 daemon mount source 区分 Windows/Linux 与 DooD。发布、撤销、失败恢复和 pending 恢复共用必要时 SIGHUP 重载再核对配置的路径；容器定位复用 Gateway Service 内的 Compose 查询，信号通过目标 Runtime 执行，不重启 Gateway，不改变其他 Route 文件。重载与配置匹配共用 8 秒预算，失败以 route_sync_reload_failed 进入既有逐项报告和恢复机制。Linux 继续依赖 watcher，远程 SSH Linux 实测留待后续；应用层和文件 writer 不加入平台分支或新接口。
+Windows 文件提交后的加载收敛在 Traefik 发布适配器：SSH 使用声明的目标平台，local 使用现有 resolver 返回的 daemon mount source 区分 Windows/Linux 与 DooD。发布、撤销、失败恢复和 pending 恢复共用必要时 SIGHUP 重载再核对配置的路径；容器定位复用 Gateway Service 内的 Compose 查询，信号通过目标 Runtime 执行，不重启 Gateway，不改变其他 Route 文件。重载与配置匹配分别使用集中配置的 5 秒与 10 秒阶段预算，仍受确认请求的总截止时间约束。重载失败以 `route_sync_reload_failed` 报告；API 查询始终失败或超时导致无法确认配置时，以 `route_sync_configuration_unavailable` 报告；已成功观察 API 但配置不符时，以 `route_sync_configuration_mismatch` 报告。失败恢复状态独立返回并在 Web 原因提示中说明；原始 cause 只进入日志。Linux 继续依赖 watcher，远程 SSH Linux 实测留待后续；应用层和文件 writer 不加入平台分支或新接口。
 
 配置匹配与实际 TLS 证书验证独立。router/service API 不能证明新 PEM 生效，当前 HTTPS 正常同步报告 `unverified`，不强制握手或因此自动回滚配置。HTTP-01 仅在 `http`/`http-dns` 可用；DNS-01 仅在 `dns`/`http-dns` 且 Gateway token 非空时可用。同域名候选必须与其他 Route 的已发布证书配置一致，不携带其他 Route 尚未同步的证书编辑。
 
-API 与 worker 通过同进程、按 Project/Gateway 的协调器串行化发布和部署。部署前检查已发布上游、网络、entrypoint/resolver 引用；Gateway deploy/restart 后只核对持久化文件与加载结果，不重发当前数据库配置。Traefik 直接重启自行加载持久化文件，Orbit 离线时也能恢复。已确认 YAML 缺失不阻止 Gateway staging 创建空目录，部署后仍报告缺失；重新预览并确认 Route 同步可重建选中文件。文件不存在时保留空恢复基线，不恢复过期 backup；外部修改、损坏的证书或 pending 仍报告问题。新建 Gateway 可先部署空目录，再显式同步 Route。
+自定义 Route 发布通过按 Project/Gateway 的协调器串行化，与 Service deploy/restart 独立。部署不读取或检查自定义 Route 的业务数据、发布记录、YAML/PEM 或上游引用，不获取 Route 发布锁，也不发布或恢复 Route；pending、发布失败、文件缺失或证书损坏不会阻止部署。普通 Service 不等待 Gateway 就绪；Gateway deploy/restart 仍准备受管 provider/mount、重建容器，并仅按部署快照中的 API 地址与就绪超时检查 Traefik 自身可用性。Traefik 直接重启自行加载持久化文件，Orbit 离线时也能恢复。Gateway staging 可创建空 dynamic 目录且不自动补齐 Route；重新预览并确认 Route 同步才能重建选中文件。文件不存在时保留空恢复基线，不恢复过期 backup；外部修改、损坏的证书或 pending 由显式 Route 同步处理。调整 Service endpoint、网络或 Gateway entrypoint/resolver 后，对应 Route 是否仍有效也由后续显式同步检查。
 
 TCP Route 的 entrypoint/host port 由选中 Gateway Version 的 Component endpoint 声明。Route 不创建 Gateway listener，也不改变 Gateway Version。
 

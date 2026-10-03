@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-10-02 10:42:03
+最后修改时间: 2026-10-03 10:40:00
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -24,7 +24,7 @@ Doc role: living SoT
 | C-14 | 默认不修改已执行迁移文件 | 活跃开发期可重建库；Repository/Repository Credential 全局共享任务按用户明确要求就地修订既有迁移，已运行数据库须另行转换或重建 |
 | C-15 | 无兼容层 / 别名 / 新旧并存 | CLAUDE.md |
 | C-16 | 文档：活 SoT vs archive；过程库仅进行中任务 | 本整理任务 |
-| C-17 | Route 显式按范围发布持久化文件 | 普通编辑/证书先保存业务数据，启停为前端草稿；预览发布/撤销/跳过清单并冻结 ID、业务与受管文件依赖修订，不比较运行时差异。确认逐条保存和发布，失败继续且报告未完成。Traefik 重启直接加载文件；Gateway deploy/restart 覆盖受管 provider/mount 并重建容器，只核验已发布文件，不携带业务草稿。现存 REST Gateway 线下告知重新部署后显式同步，无专用 UI 或旧快照转换；未知文件保留 |
+| C-17 | Route 显式按范围发布持久化文件，与 Service 部署独立 | 普通编辑/证书先保存业务数据，启停为前端草稿；预览发布/撤销/跳过清单并冻结 ID、业务与受管文件依赖修订，不比较运行时差异。确认逐条保存和发布，失败继续且报告具体原因及恢复失败状态。Service deploy/restart 不获取 Route 同步锁，不检查或恢复自定义 Route，也不受发布失败或 pending 阻止；Gateway 覆盖受管 provider/mount 并重建容器，仅检查自身 API 就绪，不携带业务草稿。Traefik 重启直接加载文件。现存 REST Gateway 线下告知重新部署后显式同步，无专用 UI 或旧快照转换；未知文件保留 |
 | C-18 | MCP 仅采用本地 stdio 与内部 actor 绑定 | Web Dialogue 为每 turn 建立固定 actor 的内存 Core；Grok/Codex stdio 用显式 MCP PAT `POMELO_ORBIT_MCP__ACCESS_TOKEN`，每次 tools/call 认证；无远程 /mcp |
 | C-19 | Project 环境/Gateway 初始化只走 Web Wizard；MCP 使用 connection-local 已就绪 Project scope | Project 创建和 identity seed 不预建 Environment/Gateway；`ProjectInitializationConfig` 只给 Wizard 初值；运行时只读库存；Grok/Codex 先 list/select，后续工具不再传 `project_id` |
 | C-20 | Repository 与 Repository Credential 全局共享，Project 只作成员校验上下文 | 仓库 `code`、凭据名称全局唯一；Application Pipeline、Run、Artifact 和 Environment 仍按 Project 归属；仓库删除检查所有现存应用流水线绑定，应用流水线删除检查其未结束 Run；历史 Run/Snapshot/Artifact 不直接阻止仓库删除 |

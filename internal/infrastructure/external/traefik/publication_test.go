@@ -277,6 +277,9 @@ func TestConfigurationTimeoutPreservesLastAPIError(t *testing.T) {
 	if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, failure) {
 		t.Fatalf("configuration timeout lost its cause: %v", err)
 	}
+	if classified, ok := apperror.As(err); !ok || classified.Code != "route_sync_configuration_unavailable" {
+		t.Fatalf("configuration timeout did not identify the failed stage: %v", err)
+	}
 }
 
 func TestRoutePublicationUpdatesAndWithdrawsOnlyOwnedFiles(t *testing.T) {

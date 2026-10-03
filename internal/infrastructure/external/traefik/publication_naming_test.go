@@ -64,11 +64,16 @@ func TestRouteCodeNamesFilesAndResourcesWhileIdentityOwnsCertificates(t *testing
 	if string(runtime.files[activeTestPath("new-api")]) != beforeB {
 		t.Fatal("repeated withdrawal removed a code reused by another Route")
 	}
-	runtime.responses["/etc/traefik/traefik.yml"] = "providers:\n  file:\n    directory: /etc/traefik/dynamic\n    watch: true\nentryPoints:\n  web: {}\n"
-	runtime.responses["{{json .Mounts}}"] = `[{"Source":"D:/orbit/traefik-default/gateway/dynamic","Destination":"/etc/traefik/dynamic","RW":false},{"Source":"D:/orbit/traefik-default/gateway/certs","Destination":"/etc/traefik/certs","RW":false},{"Source":"D:/orbit/traefik-default/gateway/acme","Destination":"/letsencrypt","RW":true}]`
-	if err := m.VerifyPublished(context.Background(), "project-1", testGateway()); err != nil {
-		t.Fatalf("deployment verification rejected a legitimately reused code: %v", err)
+	items, err := m.InspectPublications(context.Background(), "project-1", testGateway())
+	if err != nil {
+		t.Fatal(err)
 	}
+	for _, item := range items {
+		if item.Phase != "confirmed" || item.ActualFingerprint != item.Fingerprint {
+			t.Fatalf("publication rejected a legitimately reused code: %+v", item)
+		}
+	}
+	assertLoadedRouteCode(t, m, b, "api")
 }
 
 func TestRouteRenameFailureRestoresOriginalPathAndResources(t *testing.T) {

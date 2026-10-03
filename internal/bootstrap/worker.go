@@ -9,7 +9,6 @@ import (
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
-	routesvc "github.com/leoninew/pomelo-orbit/internal/application/route/usecase"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
@@ -35,18 +34,6 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	_, runtime := newDeploymentRuntime(dockerPathResolver)
 	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.deployment, dockerPathResolver, transactionRunner)
 	routeManager := traefik.NewRouteManager(targetResolver, runtime, routeSyncTimeouts(cfg.Route))
-	routeService := routesvc.New(
-		stores.project,
-		stores.application,
-		stores.service,
-		stores.route,
-		stores.gateway,
-		routeManager,
-		traefik.MkcertGenerator{},
-		routeManager,
-		transactionRunner,
-		routeSyncTimeouts(cfg.Route),
-	)
 	applicationService := applicationsvc.New(stores.project, stores.application)
 	pipelineRunService := pipelinerunsvc.NewExecutionService(
 		stores.project,
@@ -79,7 +66,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		runtime,
 		deploymentLogStore,
 		cfg.Worker.PollInterval,
-		routeService,
+		routeManager,
 	)
 
 	router := worker.NewRouter()

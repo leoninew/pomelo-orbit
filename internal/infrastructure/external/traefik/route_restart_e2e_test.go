@@ -189,7 +189,11 @@ func TestFileProviderRestoresRoutesAfterTraefikRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	checkCertificate()
-	if err := manager.VerifyPublished(ctx, "project-1", gateway); err != nil {
+	activeConfiguration, err := os.ReadFile(bPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.waitConfiguration(ctx, "project-1", gateway, activeConfiguration); err != nil {
 		t.Fatal(err)
 	}
 	// Recreate an intentionally removed test directory, then explicitly publish
@@ -213,14 +217,10 @@ func TestFileProviderRestoresRoutesAfterTraefikRestart(t *testing.T) {
 	if err := manager.WaitUntilReady(ctx, "project-1", gateway, 15*time.Second); err != nil {
 		t.Fatal(err)
 	}
-	if err := manager.VerifyPublished(ctx, "project-1", gateway); err == nil {
-		t.Fatal("missing published configuration was reported as verified")
-	}
+	waitForTraefikTestResponse(t, ctx, webURL, b.Domain, http.StatusNotFound)
 	publish(b)
 	checkCertificate()
-	if err := manager.VerifyPublished(ctx, "project-1", gateway); err != nil {
-		t.Fatal(err)
-	}
+	waitForTraefikTestResponse(t, ctx, webURL, b.Domain, http.StatusOK)
 }
 
 func runTraefikTestDocker(t *testing.T, ctx context.Context, args ...string) string {

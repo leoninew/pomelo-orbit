@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-10-02 13:06:45
+最后修改时间: 2026-10-03 10:40:00
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -52,9 +52,9 @@ Gateway 创建或复用部署宿主上的 Docker bridge network `traefik`。加�
 
 Gateway 仍通过普通 Service/Deployment 生命周期部署。有效计划统一覆盖 File provider、dynamic/certs 只读目录及 acme 读写目录，并写入静态受控文件；Gateway 自动强制重建，使配置和挂载生效。新建 Gateway 可以先部署空目录，再显式预览/确认 Route 同步。路由按编码命名的 YAML 独立发布在当前 Environment target，内部归属仍使用稳定 ID，普通部署不会清空路由目录。
 
-Gateway deploy/restart 后检查已发布 YAML/PEM 和 Traefik 加载结果，不发布数据库中尚未同步的修改。业务 Service 部署前检查已发布 Route 的 Component/endpoint、容器名称和 Traefik 网络引用；Gateway Version 变更检查已发布 entrypoint/resolver。需要移除这些依赖时，先显式调整或撤销对应 Route。部署与 Route 同步共用协调器。
+Service deploy/restart 不读取自定义 Route 的业务配置、发布记录、YAML/PEM 或依赖引用，不获取 Route 同步锁，不发布或恢复 Route。自定义路由 pending、发布失败或文件缺失不会阻止普通 Service 或 Gateway 部署。Gateway deploy/restart 只按部署快照检查 Traefik 管理 API 就绪；业务 Service 不等待 Gateway 就绪。Component/endpoint、容器名、网络或 Gateway entrypoint/resolver 调整后，对应 Route 由用户另行显式同步，部署不以这些路由引用作为前置条件。
 
-受管 `gateway/dynamic` 被删除后，Gateway 部署允许重新准备空目录，但最终核验仍报告已发布 YAML 缺失。重新预览并确认 Route 同步可重建选定文件及父目录；部署本身不从业务草稿自动补齐路由。现存文件被外部修改、pending 或证书损坏仍需先处理。
+受管 `gateway/dynamic` 被删除后，Gateway 部署重新准备空目录，不会因已发布 YAML 缺失报告部署失败。重新预览并确认 Route 同步可重建选定文件及父目录；部署本身不从业务草稿自动补齐路由。现存文件被外部修改、pending 或证书损坏由独立的 Route 同步处理。
 
 迁移脚本初始化或已部署 REST 的受管 Gateway，无需修改 YAML：线下告知用户重新部署 Gateway 一次，再从现有入口显式同步路由。首次切换不转换旧 REST 快照，重建后到同步完成前路由可能暂不可用，应安排维护时间；不增加迁移 UI，也不改写已执行迁移。
 

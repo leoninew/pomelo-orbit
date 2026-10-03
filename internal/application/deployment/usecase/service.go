@@ -34,9 +34,9 @@ type Service struct {
 	logger       *slog.Logger
 	pollInterval time.Duration
 
-	commandStore          deploymentport.CommandStore
-	gatewayCoordinator    deploymentport.GatewayDeploymentCoordinator
-	gatewayRoutePublisher deploymentport.GatewayRoutePublisher
+	commandStore       deploymentport.CommandStore
+	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator
+	gatewayReadiness   deploymentport.GatewayReadinessChecker
 }
 
 func New(

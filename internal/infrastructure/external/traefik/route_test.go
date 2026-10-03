@@ -22,6 +22,19 @@ func testRouteTimeouts() routeport.SyncTimeouts {
 	return routeport.SyncTimeouts{Total: 30 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second}
 }
 
+func TestGatewayReadinessIgnoresIncompleteRoutePublication(t *testing.T) {
+	runtime := newRouteRuntimeFake()
+	runtime.responses["/api/overview"] = `{}`
+	runtime.files["/srv/orbit/traefik-default/.orbit/route-publication/api/state.json"] = []byte(`{"phase":"pending"}`)
+	manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
+	if err := manager.WaitUntilReady(context.Background(), "project-1", testGateway(), time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if !equalStrings(runtime.requests, []string{"http://127.0.0.1:8080/api/overview"}) || len(runtime.commands) != 1 || runtime.commands[0].name != "curl" || len(runtime.writes) != 0 {
+		t.Fatalf("readiness performed Route operations: requests=%v commands=%v writes=%v", runtime.requests, runtime.commands, runtime.writes)
+	}
+}
+
 func TestRouteManagerListRoutersUsesRemoteTraefikApi(t *testing.T) {
 	runtime := newRouteRuntimeFake()
 	runtime.responses["/api/http/routers"] = `[{"name":"api@docker","provider":"docker","status":"enabled","rule":"Host(api.example.test)","service":"api-service","entryPoints":["websecure"],"tls":{}}]`

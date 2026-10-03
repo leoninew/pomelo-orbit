@@ -1,5 +1,5 @@
 # 路由与证书
-最后修改时间: 2026-10-03 10:05:46
+最后修改时间: 2026-10-03 10:40:00
 
 Doc role: living guide
 
@@ -13,7 +13,7 @@ Web 在同步模态窗的原预览表中保留名称、操作、协议与规则�
 
 API/MCP 保留显式批量确认能力。确认响应的汇总编码为 `route_sync_completed` 或 `route_sync_incomplete`，逐项报告业务保存、文件提交、配置匹配、证书验证、恢复和清理状态；Web 只展示一个状态字段，不展开内部阶段。预览同时返回整批及每项独立的 `business_hash`、`publication_hash`，单条确认使用对应项的修订，期间业务或共享依赖变化须重新预览，不能自动发布未确认的新内容。
 
-Traefik 直接重启从持久化文件恢复，Orbit 可以离线。Gateway 部署/重启只检查已发布文件及其加载结果，不重新读取可编辑 Route 发布。业务 Service 部署会保护已发布的上游引用；需要移除或改名相关 Component/endpoint 时先显式同步撤销或调整对应 Route。Component `endpoint.mode=gateway` 仍是 Docker label 路由，默认 entrypoint/TLS 由 GatewayConfig 控制。
+Traefik 直接重启从持久化文件恢复，Orbit 可以离线。Service 部署/重启与自定义 Route 同步独立：不检查发布记录、YAML/PEM 或已发布上游引用，不因 pending、发布失败或文件缺失阻止部署。Gateway 仅检查 Traefik 管理 API 就绪，不核验自定义 Route；业务 Service 不等待 Gateway API。移除或改名 Component/endpoint、改变网络或 Gateway entrypoint/resolver 后，若需要更新自定义路由，应另行显式同步。Component `endpoint.mode=gateway` 仍是随部署生效的 Docker label 路由，默认 entrypoint/TLS 由 GatewayConfig 控制。
 
 前端 `/routes` 以自定义 Route 为主列表，提供创建、编辑、批量启停草稿和同步入口；Route 详情页提供单条启停草稿、独立证书配置和同步。已启用 Route 修改证书后先保存，页面提示待同步；预览同时展示协议与证书方式。未启用 Route 的证书配置同样直接保存，不提示待同步，启用并同步后才发布。未启用 Route 的创建、编辑和删除也不单独提示待同步。`/route/traefik` 单独展示 Traefik 当前路由，可从主列表进入并返回。
 
@@ -25,7 +25,7 @@ Gateway 详情页在独立的「Traefik API」卡片中展示和编辑容器 API
 
 发布从总截止时间中预留恢复预算：默认最迟在第 20 秒结束正常发布，失败恢复使用独立、有限的 context，但不能超过原同步的第 30 秒。剩余时间不足以预留恢复和启动下一项时，批量跳过未开始的 Route；恢复未完成则保留 pending 记录与恢复材料，不报告成功。启动时校验各阶段预算能容纳于总预算，日志标明重载、匹配或恢复阶段、耗时与最后一次 API 错误。
 
-配置支持 `.env.example` 中对应的 `POMELO_ORBIT_ROUTE__*` 环境变量覆盖；修改后需重启 Orbit 后端及独立 Worker 才生效。这与 Gateway 页面中的 Traefik API 就绪超时不同，后者只用于 Gateway 启动就绪检查。
+配置支持 `.env.example` 中对应的 `POMELO_ORBIT_ROUTE__*` 环境变量覆盖；修改后需重启 Orbit 后端才生效。这与 Gateway 页面中的 Traefik API 就绪超时不同，后者只用于 Gateway 启动就绪检查。
 
 Gateway Service 工作目录的结构如下：
 
@@ -44,7 +44,7 @@ Gateway Service 工作目录的结构如下：
 
 证书目录和 `.orbit` 归属记录使用稳定 ID。修改路由编码后显式同步会写入新编码文件、撤下旧文件，并核对旧 router/service 消失；失败恢复旧路径。撤销使用已发布编码，未同步的编码修改不会使其他路由文件被删除。编码仍被其他已发布或 pending 路由占用，或目标文件未登记归属时，发布报告冲突。
 
-删除 `gateway/dynamic` 后，重新部署 Gateway 可以重新准备空目录，但部署后仍会报告已发布文件缺失。重新预览并确认 Route 同步可重建选中 YAML 及其父目录；只有用户确认的内容被发布。外部修改的现存文件仍报告冲突，不自动覆盖；预览后删除文件会使该预览过期。
+删除 `gateway/dynamic` 后，重新部署 Gateway 可以重新准备空目录，不会因自定义路由文件缺失报告部署失败，也不会自动发布路由。重新预览并确认 Route 同步可重建选中 YAML 及其父目录；只有用户确认的内容被发布。外部修改的现存文件仍在路由同步中报告冲突，不自动覆盖；预览后删除文件会使该预览过期。
 
 Gateway 部署统一应用 `providers.file.directory=/etc/traefik/dynamic`、`watch=true`，移除 REST provider，动态配置与手工证书目录只读挂载，ACME 目录读写挂载；静态文件覆盖后自动重建 Gateway 容器。发布记录与旧 YAML 位于未挂载、未监视的 `.orbit` 下。路由文件、PEM 与记录使用现有 `WorkspaceFile/SyncFiles`，文件 Mode 为 `0600`；完整临时文件写好后替换活动文件。清理只处理该 Route 的旧证书版本，保留当前和必要的上一版本。
 
@@ -54,7 +54,7 @@ Windows 工作目录 bind mount 到 Docker Desktop Linux 容器时，可能出�
 
 重载失败使用逐项编码 `route_sync_reload_failed`，不会被当作同步成功。文件恢复后仍须重载并匹配才报告已恢复；失败则保留恢复材料供下次预览和重试。SIGHUP 重读现存文件集合，保留其他 Route 和未知文件，不读取未同步的业务编辑。
 
-文件权限失败使用逐项编码 `route_sync_publish_permission_denied`，其他发布失败使用对应原因编码或 `route_sync_publish_failed`；弹窗的失败状态提示展示本地化原因，不显示内部阶段和请求/操作 ID。配置匹配与实际 TLS 证书验证在 API 中分开报告：router/service API 匹配不能证明新 PEM 已生效，当前正常同步的 HTTPS 证书结果为 `unverified`。界面“完成”表示配置同步及必要操作完成，不表示证书已生效。实际 TLS 验证使用正确 SNI 和预期证书 fingerprint；未验证证书不自动回滚已匹配的配置。
+文件权限失败使用逐项编码 `route_sync_publish_permission_denied`；API 查询失败或超时导致配置无法确认使用 `route_sync_configuration_unavailable`；已观察到配置但与提交内容不符使用 `route_sync_configuration_mismatch`；上次中断的发布无法确认或恢复且没有更具体原因编码时使用 `route_sync_pending_recovery_failed`。其他文件发布失败使用对应原因编码或 `route_sync_publish_failed`，不再笼统提示“发布未完成，请重新预览后重试”。弹窗与 Toast 展示相同的本地化原因，自动恢复失败时追加说明待恢复记录已保留，不显示请求/操作 ID 或原始错误。重新预览只刷新待发布计划，不会修复 API 连接、加载超时或文件权限；应先根据具体原因处理再确认重试。配置匹配与实际 TLS 证书验证在 API 中分开报告：router/service API 匹配不能证明新 PEM 已生效，当前正常同步的 HTTPS 证书结果为 `unverified`。界面“完成”表示配置同步及必要操作完成，不表示证书已生效。实际 TLS 验证使用正确 SNI 和预期证书 fingerprint；未验证证书不自动回滚已匹配的配置。
 
 HTTP Route 可使用手工 PEM、mkcert 或 Let's Encrypt。HTTP-01 需要 Gateway `http` 或 `http-dns` profile；DNS-01 需要 `dns` 或 `http-dns` profile 和 Gateway 中保存的 Cloudflare token。DNS-01 仍要求可注册的真实域名。
 

@@ -1,10 +1,11 @@
 # SpecFlow 过程库归档
 
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-10-05 00:12:46
 
-本目录存放 **已提交并归档** 的 SpecFlow 四件套：
+本目录存放已闭环的 SpecFlow 过程文档；按流程模式保留实际使用的阶段：
 
-- `requirement/`
+- `intent/`
+- `requirement/`（历史命名）
 - `spec/`
 - `plan/`
 - `verification/`

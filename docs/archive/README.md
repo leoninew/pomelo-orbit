@@ -1,6 +1,6 @@
 # 归档文档
 
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-10-05 00:12:46
 
 ## 重要声明
 
@@ -22,6 +22,7 @@
 
 | 路径 | 内容 |
 |------|------|
+| `specflow/intent/` | 已闭环 SpecFlow 意图 |
 | `specflow/requirement/` | 已闭环 SpecFlow 需求（原 `docs/requirement` 已提交历史） |
 | `specflow/spec/` | 已闭环规格 |
 | `specflow/plan/` | 已闭环计划 |

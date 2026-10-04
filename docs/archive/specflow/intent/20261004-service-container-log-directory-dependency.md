@@ -1,5 +1,5 @@
 # 服务容器日志与运行目录记录解耦
-最后修改时间: 2026-10-04 18:15:15
+最后修改时间: 2026-10-05 00:12:46
 
 Flow mode: light
 Review status: Accepted
@@ -10,7 +10,7 @@ Review status: Accepted
 
 使用用户授权的 Pomelo PW 登录当前开发环境后，确认日志请求返回 HTTP 200，但事件只有 `ready` 和 `waiting`，没有携带日志内容的 `chunk`。查询已能发现目标容器，读取阶段却依赖 `runtime_directory` 和该目录中的 `docker-compose.yml`。
 
-该服务是新建服务，没有 Orbit Deployment 记录，`deployment_directory`、`runtime_directory` 均为空，目录修订均为 0。用户提供的真实目录为 `D:\SourceCodes\pomelo-orbit\data\deployment\k12-delivery-os-default`；环境根目录与服务编码计算出的默认路径与其一致。问题是库存运行目录记录未绑定，不是主机目录不存在或默认路径计算错误。目标上的手动启动不会自动写入这些字段。
+复现日志问题时，该服务是新建服务，没有 Orbit Deployment 记录，`deployment_directory`、`runtime_directory` 均为空，目录修订均为 0。用户提供的真实目录为 `D:\SourceCodes\pomelo-orbit\data\deployment\k12-delivery-os-default`；环境根目录与服务编码计算出的默认路径与其一致。问题是库存运行目录记录未绑定，不是主机目录不存在或默认路径计算错误。目标上的手动启动不会自动写入这些字段。
 
 ## Goal / 目标
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -32,12 +33,16 @@ func (r *directoryMountRuntime) QueryAtEnvironmentRoot(_ context.Context, _ envi
 	return r.inspectOutput, r.inspectErr
 }
 
-func directoryMountFixture(t *testing.T, running bool, mountType, source string) string {
+func directoryMountFixture(t *testing.T, running bool, mountType string, sources ...string) string {
 	t.Helper()
-	body, err := json.Marshal(map[string]any{
-		"Running": running,
-		"Mounts":  []map[string]string{{"Type": mountType, "Source": source}},
-	})
+	containers := make([]map[string]any, 0, len(sources))
+	for _, source := range sources {
+		containers = append(containers, map[string]any{
+			"State":  map[string]bool{"Running": running},
+			"Mounts": []map[string]string{{"Type": mountType, "Source": source}},
+		})
+	}
+	body, err := json.Marshal(containers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,13 +63,16 @@ func TestDirectoryOwnershipRejectsRunningSharedMounts(t *testing.T) {
 		t.Run(source, func(t *testing.T) {
 			service, runtime, current := directoryMountTestService(t)
 			runtime.psOutput = "container-one\ncontainer-two\n"
-			runtime.inspectOutput = directoryMountFixture(t, true, "bind", "/different/data") + "\n" + directoryMountFixture(t, true, "bind", source)
+			runtime.inspectOutput = directoryMountFixture(t, true, "bind", "/different/data", source)
 			err := service.checkDirectoryOwnership(context.Background(), deploymentTestTarget(1), current, "/app/b", []ResolvedMount{{Relative: true, HostSource: "/host/shared"}})
 			if err == nil || !strings.Contains(err.Error(), "running service a") {
 				t.Fatalf("expected running service conflict, got %v", err)
 			}
 			if len(runtime.queries) != 2 || runtime.queries[0].Name != "docker" || !strings.Contains(runtime.queries[0].String(), "label=com.docker.compose.project=a") || !strings.Contains(runtime.queries[0].String(), "status=running") || !strings.Contains(runtime.queries[1].String(), "container-one container-two") {
 				t.Fatalf("runtime queries=%+v", runtime.queries)
+			}
+			if want := []string{"inspect", "--type", "container", "container-one", "container-two"}; !reflect.DeepEqual(runtime.queries[1].Args, want) {
+				t.Fatalf("inspect args=%q, want native container JSON output with args=%q", runtime.queries[1].Args, want)
 			}
 		})
 	}

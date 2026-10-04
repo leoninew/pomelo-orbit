@@ -3,9 +3,7 @@ package deploymentsvc
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"runtime"
 	"strings"
 
@@ -80,23 +78,21 @@ func (s Service) checkRunningMountOwnership(ctx context.Context, target environm
 	if len(ids) == 0 {
 		return nil
 	}
-	args := append([]string{"inspect", "--format", `{"Running":{{json .State.Running}},"Mounts":{{json .Mounts}}}`}, ids...)
+	// Native inspect JSON avoids PowerShell stripping quotes from template keys.
+	args := append([]string{"inspect", "--type", "container"}, ids...)
 	output, err = s.runtime.QueryAtEnvironmentRoot(ctx, target, "docker", args...)
 	if err != nil {
 		return fmt.Errorf("inspect running mounts for service %s: %w", serviceCode, err)
 	}
-	decoder := json.NewDecoder(strings.NewReader(output))
-	for {
-		var container struct {
-			Running bool
-			Mounts  []struct{ Type, Source string }
-		}
-		if err := decoder.Decode(&container); errors.Is(err, io.EOF) {
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("parse running mounts for service %s: %w", serviceCode, err)
-		}
-		if !container.Running {
+	var containers []struct {
+		State  struct{ Running bool }
+		Mounts []struct{ Type, Source string }
+	}
+	if err := json.Unmarshal([]byte(output), &containers); err != nil {
+		return fmt.Errorf("parse running mounts for service %s: %w", serviceCode, err)
+	}
+	for _, container := range containers {
+		if !container.State.Running {
 			continue
 		}
 		for _, mount := range container.Mounts {
@@ -111,6 +107,7 @@ func (s Service) checkRunningMountOwnership(ctx context.Context, target environm
 			}
 		}
 	}
+	return nil
 }
 
 func dockerMountComparisonPath(value, platform string) string {

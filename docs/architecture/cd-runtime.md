@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-04 00:16:31
+最后修改时间: 2026-10-05 00:12:46
 
 Doc role: living architecture
 
@@ -22,7 +22,7 @@ Project
 
 Environment target 是 Project 的独占部署边界：local target 全局唯一，SSH target 按精确 host + port 唯一。这样固定 Gateway 端口和共享 `traefik` 网络不会被多个 Project 同时占用。
 
-Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、Route 文件/证书发布和 Traefik API 查询通过同一个 target runtime 执行。Service 首次目录默认为 `<workspace_root>/deployment/<service-code>`，运行时接收显式服务编码与目录；Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 使用 Environment binding 的受管私钥验证认证、pinned host key 和目标 Docker prerequisites。
+Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、Route 文件/证书发布和 Traefik API 查询通过同一个 target runtime 执行。Service 首次目录默认为 `<workspace_root>/deployment/<service-code>`，部署和依赖服务目录的操作接收显式服务编码与目录；Web 容器日志流在 Environment 工作区根目录按 Compose project 读取。Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 使用 Environment binding 的受管私钥验证认证、pinned host key 和目标 Docker prerequisites。
 
 Deployment 将 `environment_id`、Environment `target_type`、target revision 与可选 Gateway Application identity 保存为正式不可变列。SSH deployment 额外保存 SSH Credential identity/revision；local deployment 的 SSH snapshot 为空。`options_json` 只保存命令选项和 Gateway 配置快照；worker 在执行前以正式列核对当前 Environment，目标变更后的排队任务直接失败，不能落到其他 Project 或新目标。
 
@@ -83,9 +83,9 @@ TCP Route 的 entrypoint/host port 由选中 Gateway Version 的 Component endpo
 
 CI/CD 日志统一通过 Fetch + SSE 读取，所有入口沿用 Bearer 与 Project 成员授权。CD 操作文件保持位于控制面 `logging.deployment_root`，读取历史不要求远端在线；部署详情容器、Service Component、Gateway 与 Route 日志通过明确的 local/SSH target runtime 执行持续读取。Route 展示关联 Gateway 的输出。
 
-操作文件入口为 `/api/deployment/:deployment_id/log/stream`，部署容器入口为 `/api/deployment/:deployment_id/container-log/stream`，持续运行的容器入口为 `/api/application/:app_id/log/stream`，后者要求显式 service_id，可指定 Component 名称。所有路由均为 GET，并要求 project_id，可携带续读 cursor。旧 Web 日志快照路由已移除；MCP 的 DeploymentLog/RuntimeComposeLogs 按需读取用途独立保留。
+操作文件入口为 `/api/deployment/:deployment_id/log/stream`，部署容器入口为 `/api/deployment/:deployment_id/container-log/stream`，持续运行的容器入口为 `/api/application/:app_id/log/stream`，后者要求显式 service_id，可指定 Component 名称。所有路由均为 GET，并要求 project_id，可携带续读 cursor。旧 Web 日志快照路由已移除；MCP 的 DeploymentLog/RuntimeComposeLogs 按需读取用途独立保留。DeploymentLog 读取控制面操作日志，RuntimeComposeLogs 仍在 Service 运行目录执行带 `-f docker-compose.yml` 的快照命令；Web 日志流的目录解耦不改变这两个工具的前置条件。
 
-容器日志在操作进行中订阅；按 Service code 的 Compose project 标签和可选 Component 标签查询目标 Docker，容器尚未出现时保持 waiting。读取在 Environment 工作区根目录执行，使用显式 `docker compose -p <service-code> logs --follow --timestamps --no-color`，不加载 Compose 文件，也不依赖 Service 状态或已确认的运行目录，因此可读取目标环境上手动启动的同一 Compose project。以非 PTY 传递 stdout，命令 stderr 单独保留最多 32 KiB 诊断。两秒复核成员、资源、目标/凭据修订与 Docker 容器 ID；容器重建时刷新来源，取消旧读取命令后继续。部署结束不会结束容器日志；stop 操作继续不展示容器日志。
+Web 容器日志流可在操作进行中订阅；按 Service code 的 Compose project 标签和可选 Component 标签查询目标 Docker，容器尚未出现时保持 waiting。读取在 Environment 工作区根目录执行，使用显式 `docker compose -p <service-code> logs --follow --timestamps --no-color`，不加载 Compose 文件，也不依赖 Service 状态或已确认的运行目录，因此可读取目标环境上手动启动的同一 Compose project。以非 PTY 传递 stdout，命令 stderr 单独保留最多 32 KiB 诊断。两秒复核成员、资源、目标/凭据修订与 Docker 容器 ID；容器重建时刷新来源，取消旧读取命令后继续。部署结束不会结束容器日志；stop 操作继续不展示容器日志。
 
 文件日志采用精确字节游标；容器日志按时间戳重叠两秒补读，前端采用有界记录次数去重。来源变化和不能保证补齐的恢复显示缺口；Docker 删除的历史无法恢复。客户端断开仅取消读取命令/session，不停止部署任务或容器。SSE 心跳 15 秒，慢连接单次写入超时 10 秒；新增日志 SSE 路由关闭响应正文捕获，保留请求元信息。
 

@@ -1,5 +1,5 @@
 # 服务容器日志与运行目录记录解耦验收
-最后修改时间: 2026-10-04 18:15:15
+最后修改时间: 2026-10-05 00:12:46
 
 Flow mode: light
 Review status: Accepted
@@ -8,8 +8,8 @@ Review status: Accepted
 
 - 依据 [Accepted Intent](../intent/20261004-service-container-log-directory-dependency.md)、本次实际 diff、自动化检查、Pomelo PW 浏览器结果和用户人工验收。
 - 用户在实现及验证结果汇报后明确确认“已经测试没有问题”，要求补记 light 流程并完成 Verification。
-- 记录前相对 HEAD 的范围为 13 个文件、122 行新增、60 行删除；本轮只新增同名 Intent 与 Verification 两份文档。
-- 当前实现已由用户暂存。本轮核对工作区与暂存内容，没有执行 Git 暂存、提交、推送或操作开发服务器。
+- 范围为 Web 容器日志流的用例、Runtime 端口及 local/SSH adapter、相关回归和产品/运行时文档。MCP 日志快照、部署准备与生命周期操作不属于本次行为变更。
+- Intent 与 Verification 均已接受，随本次文档校准移入 `docs/archive/specflow/`；下述实现与验收结果保留原日志修复时的记录。
 
 ## Intent alignment / 意图对齐
 
@@ -59,7 +59,7 @@ Review status: Accepted
 
 ## Test / command results / 测试与命令结果
 
-项目为 Go 后端与 `web` Vue/TypeScript 前端，使用现有 Taskfile、Go 测试入口及用户指定 Pomelo PW。下列结果收集自本次修复过程；本轮仅补记文档，没有在代码未变化时重复运行。
+项目为 Go 后端与 `web` Vue/TypeScript 前端，使用现有 Taskfile、Go 测试入口及用户指定 Pomelo PW。下列结果收集自原日志修复与验收过程，本次文档校准没有重新执行这些检查。
 
 | 命令或检查 | 结果 |
 | --- | --- |
@@ -87,11 +87,12 @@ Pomelo PW 在现有 `http://localhost:9020` 上检查服务详情的 `k12-delive
 
 没有未落实的目标或额外业务扩展。共享日志用例同时被 Service、Gateway、Route 与部署容器入口使用，统一删除目录依赖；部署记录的目标快照与 stop 操作限制继续保留。测试替身适配属于 Runtime 接口收敛的必要变化。
 
-前端实现、数据库与迁移、目录绑定、库存状态和部署/重启/停止执行均未修改。原有目录确认与日志统一任务的过程文档保持原记录，当前行为由本 Intent 和已更新的活文档说明。
+前端实现、数据库与迁移、目录绑定、库存状态和部署/重启/停止执行均未修改。原有目录确认与日志统一任务的过程文档保持原记录；当前行为以[产品模型](../../../product/cd-model.md)和[CD 运行时](../../../architecture/cd-runtime.md)为准，本归档仅保留问题背景和验收证据。
 
 ## Risks / 风险
 
 - 匹配依赖 Compose project 与 Component 标签；目标 Docker 权限与日志保留能力仍是读取前提。
+- 日志流验收不包含部署准备的目录归属、写入权限或运行挂载占用检查，也不证明目标服务已经通过 Orbit 部署。
 - 两秒复核、follow、SSE、初始 tail 和续读重叠策略未增加频率或缓存。移除文件检查与 SFTP 的收益仅作代码级评估，未做性能压测。
 - 本次真实浏览器验收针对用户提供的服务与当前目标环境，local/SSH adapter 另有自动化覆盖；未进行全部操作系统、Docker/Compose 版本或生产代理组合的专项认证。
 
@@ -103,4 +104,4 @@ Pomelo PW 在现有 `http://localhost:9020` 上检查服务详情的 `k12-delive
 
 修复与 Intent 对齐，固定检查、相关回归、真实 Pomelo PW 流程和用户人工验收通过。问题确认为日志读取对未绑定运行目录记录的依赖，修复后无需保存该记录即可查看目标上同一 Compose project 的实际输出。
 
-用户已明确要求完成验证，Review status 标记为 `Accepted`。本阶段只补充流程文档，未改变用户暂存状态或创建提交。
+用户已明确要求完成验证，Review status 为 `Accepted`。本任务已闭环，Intent 与 Verification 归档于 `docs/archive/specflow/`。

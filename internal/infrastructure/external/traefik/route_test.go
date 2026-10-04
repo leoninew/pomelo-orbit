@@ -313,7 +313,7 @@ func (r *routeRuntimeFake) StageWorkspace(context.Context, environmentport.Targe
 func (r *routeRuntimeFake) Run(context.Context, environmentport.Target, deploymentport.ServiceLocation, io.Writer, string, ...string) error {
 	return nil
 }
-func (r *routeRuntimeFake) Stream(context.Context, environmentport.Target, deploymentport.ServiceLocation, io.Writer, string, ...string) error {
+func (r *routeRuntimeFake) StreamAtEnvironmentRoot(context.Context, environmentport.Target, io.Writer, string, ...string) error {
 	return nil
 }
 func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.Target, location deploymentport.ServiceLocation, name string, args ...string) (string, error) {

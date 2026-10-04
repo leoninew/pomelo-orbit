@@ -57,6 +57,6 @@ Gateway 部署会写入当前受管 File provider 配置并自动重建容器，
 
 ## 服务部署目录
 
-Service 保存确认目录 `deployment_directory` 和运行目录 `runtime_directory`，分别绑定 Environment target revision。首次根据环境根目录拼接，后续按当前修订回填；允许完整目录位于环境工作区之外。部署一次提交版本与目录，Deployment 冻结版本、工作目录和目标修订。重启、停止、状态与日志使用运行目录。
+Service 保存确认目录 `deployment_directory` 和运行目录 `runtime_directory`，分别绑定 Environment target revision。首次根据环境根目录拼接，后续按当前修订回填；允许完整目录位于环境工作区之外。部署一次提交版本与目录，Deployment 冻结版本、工作目录和目标修订。重启、停止和状态使用运行目录；容器日志按 Service code 与 Component 标签读取目标 Docker 上的实际容器，不依赖服务的持久化状态、运行目录记录或 Compose 文件。
 
 已部署服务（包括已停止的服务）改目录只警告：相对挂载位置改变、旧数据不会迁移，可能重建容器并中断服务。Gateway 还需注意路由、证书和 ACME 数据，并另行显式同步 Route。警告不阻止提交。

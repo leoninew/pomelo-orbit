@@ -76,7 +76,7 @@ func (r *containerStreamRuntime) QueryAtEnvironmentRoot(context.Context, environ
 	}
 	return fmt.Sprintf(`{"ID":%q}`, r.id), nil
 }
-func (r *containerStreamRuntime) Stream(ctx context.Context, _ environmentport.Target, _ deploymentport.ServiceLocation, output io.Writer, _ string, args ...string) error {
+func (r *containerStreamRuntime) StreamAtEnvironmentRoot(ctx context.Context, _ environmentport.Target, output io.Writer, _ string, args ...string) error {
 	r.mu.Lock()
 	id := r.id
 	r.commands = append(r.commands, strings.Join(args, " "))
@@ -222,6 +222,49 @@ func TestLocalApplicationContainerLogs(t *testing.T) {
 	}
 	if !strings.Contains(runtime.commands[0], "--follow --timestamps --no-color --tail 200 web") {
 		t.Fatalf("command = %s", runtime.commands[0])
+	}
+}
+
+func TestStoppedServiceContainerLogs(t *testing.T) {
+	for _, targetType := range []string{model.EnvironmentTargetTypeLocal, model.EnvironmentTargetTypeSSH} {
+		t.Run(targetType, func(t *testing.T) {
+			svc, store, runtime := newContainerStreamService()
+			store.service.Status = status.ServiceStatusStopped
+			store.service.RuntimeDirectory, store.service.RuntimeTargetRevision = "", 0
+			store.version = model.Version{Id: "version-1"}
+			store.components = []model.VersionComponent{{VersionId: "version-1", Name: "web"}}
+			svc.application = containerStreamApplicationStore{store: store.runtimeQueryStore}
+			target := testSSHTarget("project-1")
+			if targetType == model.EnvironmentTargetTypeLocal {
+				target.Environment.TargetType = targetType
+				target.Environment.SSH = nil
+			}
+			svc.targetResolver = staticTargetResolver{target: target}
+			runtime.id = "manually-started-container"
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			subscription, err := svc.OpenApplicationLogStream(ctx, "user-1", "project-1", "app-1", "service-1", "web", "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var chunk logdto.Event
+			err = subscription.Run(ctx, func(event logdto.Event) error {
+				if event.Type == "chunk" {
+					chunk = event
+					cancel()
+				}
+				return nil
+			})
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("follow result = %v", err)
+			}
+			if !strings.Contains(string(chunk.Data), runtime.id) || chunk.Cursor == "" {
+				t.Fatalf("stopped service log chunk = %+v", chunk)
+			}
+			if len(runtime.commands) != 1 || runtime.commands[0] != "compose -p demo-default logs --follow --timestamps --no-color --tail 200 web" || runtime.closed != 1 {
+				t.Fatalf("commands = %v, closed = %d", runtime.commands, runtime.closed)
+			}
+		})
 	}
 }
 

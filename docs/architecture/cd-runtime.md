@@ -85,7 +85,7 @@ CI/CD 日志统一通过 Fetch + SSE 读取，所有入口沿用 Bearer 与 Proj
 
 操作文件入口为 `/api/deployment/:deployment_id/log/stream`，部署容器入口为 `/api/deployment/:deployment_id/container-log/stream`，持续运行的容器入口为 `/api/application/:app_id/log/stream`，后者要求显式 service_id，可指定 Component 名称。所有路由均为 GET，并要求 project_id，可携带续读 cursor。旧 Web 日志快照路由已移除；MCP 的 DeploymentLog/RuntimeComposeLogs 按需读取用途独立保留。
 
-容器日志在操作进行中订阅；容器或 Compose 配置尚未出现时保持 waiting。以非 PTY 的 `docker compose logs --follow --timestamps --no-color` 传递 stdout，命令 stderr 单独保留最多 32 KiB 诊断。两秒复核成员、资源、目标/凭据修订与 Docker 容器 ID；容器重建时刷新来源，取消旧读取命令后继续。部署结束不会结束容器日志；stop 操作继续不展示容器日志。
+容器日志在操作进行中订阅；按 Service code 的 Compose project 标签和可选 Component 标签查询目标 Docker，容器尚未出现时保持 waiting。读取在 Environment 工作区根目录执行，使用显式 `docker compose -p <service-code> logs --follow --timestamps --no-color`，不加载 Compose 文件，也不依赖 Service 状态或已确认的运行目录，因此可读取目标环境上手动启动的同一 Compose project。以非 PTY 传递 stdout，命令 stderr 单独保留最多 32 KiB 诊断。两秒复核成员、资源、目标/凭据修订与 Docker 容器 ID；容器重建时刷新来源，取消旧读取命令后继续。部署结束不会结束容器日志；stop 操作继续不展示容器日志。
 
 文件日志采用精确字节游标；容器日志按时间戳重叠两秒补读，前端采用有界记录次数去重。来源变化和不能保证补齐的恢复显示缺口；Docker 删除的历史无法恢复。客户端断开仅取消读取命令/session，不停止部署任务或容器。SSE 心跳 15 秒，慢连接单次写入超时 10 秒；新增日志 SSE 路由关闭响应正文捕获，保留请求元信息。
 

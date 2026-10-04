@@ -13,7 +13,6 @@ import (
 	"time"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
-	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	logdto "github.com/leoninew/pomelo-orbit/internal/application/logstream/dto"
 	logstream "github.com/leoninew/pomelo-orbit/internal/application/logstream/usecase"
@@ -218,7 +217,8 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 			}
 			currentSource = source
 			resume.Source = source
-			command := composeCommand{Name: "docker", Args: []string{"compose", "-p", service.Code, "-f", "docker-compose.yml", "logs", "--follow", "--timestamps", "--no-color"}}
+			// An explicit project name lets Compose read existing containers without loading configuration.
+			command := composeCommand{Name: "docker", Args: []string{"compose", "-p", service.Code, "logs", "--follow", "--timestamps", "--no-color"}}
 			if resume.Time != "" {
 				lastTime, _ := time.Parse(time.RFC3339Nano, resume.Time)
 				command.Args = append(command.Args, "--since", lastTime.Add(-2*time.Second).UTC().Format(time.RFC3339Nano))
@@ -246,9 +246,6 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 				if err != nil {
 					return err
 				}
-				if current.RuntimeDirectory != service.RuntimeDirectory || current.RuntimeTargetRevision != service.RuntimeTargetRevision {
-					return errRuntimeLocationChanged
-				}
 				if current.Code != service.Code {
 					return apperror.New(apperror.KindConflict, "Container log service changed")
 				}
@@ -274,10 +271,7 @@ func (s Service) followContainerCommand(ctx context.Context, target environmentp
 	defer func() { _ = reader.Close() }()
 	done := make(chan error, 1)
 	go func() {
-		location, err := runtimeServiceLocation(target, service)
-		if err == nil {
-			err = s.runtime.Stream(commandCtx, target, location, writer, command.Name, command.Args...)
-		}
+		err := s.runtime.StreamAtEnvironmentRoot(commandCtx, target, writer, command.Name, command.Args...)
 		_ = writer.CloseWithError(err)
 		done <- err
 	}()
@@ -308,9 +302,6 @@ func (s Service) followContainerCommand(ctx context.Context, target environmentp
 		case line, ok := <-lines:
 			if !ok {
 				err := <-scanDone
-				if errors.Is(err, deploymentport.ErrLogNotReady) {
-					return false, emit(logdto.Event{Type: "waiting", SourceId: source})
-				}
 				if err != nil && !errors.Is(err, context.Canceled) {
 					return false, apperror.Wrap(apperror.KindUnavailable, "Container log read failed", err)
 				}
@@ -335,9 +326,6 @@ func (s Service) followContainerCommand(ctx context.Context, target environmentp
 			}
 		case <-ticker.C:
 			if err := check(ctx); err != nil {
-				if errors.Is(err, errRuntimeLocationChanged) {
-					return true, nil
-				}
 				return false, err
 			}
 			current, err := s.resolveProjectTarget(ctx, service.ProjectId)

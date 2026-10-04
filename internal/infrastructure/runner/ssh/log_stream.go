@@ -2,21 +2,21 @@ package sshrunner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path"
 
-	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/stream"
-	"github.com/pkg/sftp"
 )
 
-func (r *Runtime) Stream(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, output io.Writer, name string, args ...string) error {
-	directory, err := r.ServiceDir(target, location)
-	if err != nil {
-		return err
+func (r *Runtime) StreamAtEnvironmentRoot(ctx context.Context, target environmentport.Target, output io.Writer, name string, args ...string) error {
+	if !target.Environment.IsSSH() {
+		return errors.New("SSH deployment runtime received a non-SSH environment")
+	}
+	directory := normalizeRemotePath(target.Environment.WorkspaceRoot)
+	if directory == "" {
+		return errors.New("environment workspace root is required")
 	}
 	command, _, err := remoteCommand(target.Environment.SSH.Platform, directory, name, args...)
 	if err != nil {
@@ -27,23 +27,6 @@ func (r *Runtime) Stream(ctx context.Context, target environmentport.Target, loc
 		return err
 	}
 	defer cleanup()
-	files, err := sftp.NewClient(client)
-	if err != nil {
-		return err
-	}
-	configPath, resolveErr := newSFTPPathResolver(files, target.Environment.SSH.Platform).resolve(path.Join(normalizeRemotePath(directory), "docker-compose.yml"))
-	if resolveErr != nil {
-		_ = files.Close()
-		return resolveErr
-	}
-	_, statErr := files.Stat(configPath)
-	_ = files.Close()
-	if os.IsNotExist(statErr) {
-		return deploymentport.ErrLogNotReady
-	}
-	if statErr != nil {
-		return statErr
-	}
 	session, err := client.NewSession()
 	if err != nil {
 		return err

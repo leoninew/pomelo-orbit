@@ -73,12 +73,12 @@ func (r Runtime) Run(ctx context.Context, target environmentport.Target, locatio
 	return runtime.Run(ctx, target, location, log, name, args...)
 }
 
-func (r Runtime) Stream(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, output io.Writer, name string, args ...string) error {
+func (r Runtime) StreamAtEnvironmentRoot(ctx context.Context, target environmentport.Target, output io.Writer, name string, args ...string) error {
 	runtime, err := r.forTarget(target)
 	if err != nil {
 		return err
 	}
-	return runtime.Stream(ctx, target, location, output, name, args...)
+	return runtime.StreamAtEnvironmentRoot(ctx, target, output, name, args...)
 }
 
 func (r Runtime) Query(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, name string, args ...string) (string, error) {

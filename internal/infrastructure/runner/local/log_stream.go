@@ -6,22 +6,18 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 
-	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/stream"
 )
 
-func (r *Runtime) Stream(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation, output io.Writer, name string, args ...string) error {
-	directory, err := r.ServiceDir(target, location)
+func (r *Runtime) StreamAtEnvironmentRoot(ctx context.Context, target environmentport.Target, output io.Writer, name string, args ...string) error {
+	directory, err := r.localWorkspaceRoot(target)
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(filepath.Join(directory, "docker-compose.yml")); os.IsNotExist(err) {
-		return deploymentport.ErrLogNotReady
-	} else if err != nil {
-		return err
+	if err := os.MkdirAll(directory, 0o750); err != nil {
+		return fmt.Errorf("create local environment workspace: %w", err)
 	}
 	command := exec.CommandContext(ctx, name, args...)
 	command.Dir = directory

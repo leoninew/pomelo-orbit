@@ -53,7 +53,7 @@ func (w *workspaceFake) Run(context.Context, environmentport.Target, deploymentp
 	return w.queryErr
 }
 
-func (w *workspaceFake) Stream(context.Context, environmentport.Target, deploymentport.ServiceLocation, io.Writer, string, ...string) error {
+func (w *workspaceFake) StreamAtEnvironmentRoot(context.Context, environmentport.Target, io.Writer, string, ...string) error {
 	return w.queryErr
 }
 

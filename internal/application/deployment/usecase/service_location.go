@@ -1,15 +1,11 @@
 package deploymentsvc
 
 import (
-	"errors"
-
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
-
-var errRuntimeLocationChanged = errors.New("service runtime directory changed")
 
 func runtimeServiceLocation(target environmentport.Target, service model.Service) (deploymentport.ServiceLocation, error) {
 	if service.RuntimeDirectory == "" {

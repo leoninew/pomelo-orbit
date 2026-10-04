@@ -105,7 +105,7 @@ type Workspace struct {
 // Runtime is the only deployment execution boundary. Every operation receives
 // an explicit Project Environment target and dispatches only by target type.
 type Runtime interface {
-	Stream(ctx context.Context, target environmentport.Target, location ServiceLocation, output io.Writer, name string, args ...string) error
+	StreamAtEnvironmentRoot(ctx context.Context, target environmentport.Target, output io.Writer, name string, args ...string) error
 	ServiceDir(target environmentport.Target, location ServiceLocation) (string, error)
 	ServiceDirExists(ctx context.Context, target environmentport.Target, location ServiceLocation) (bool, error)
 	ResolveDirectory(ctx context.Context, target environmentport.Target, location ServiceLocation) (string, error)

@@ -144,7 +144,9 @@
                   {{ route.protocol === 'tcp' ? 'TCP' : route.https_enabled ? 'HTTPS' : 'HTTP' }}
                 </AppBadge>
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ formatTime(route.created_at) }}</td>
+              <td class="whitespace-nowrap text-foreground">
+                <AppTableTime :time="route.created_at" />
+              </td>
               <td class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button class="app-link" :disabled="routeOperating" @click="openEditModal(route)">
@@ -534,6 +536,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
@@ -545,7 +548,6 @@
   import type { RouteResp, RouteSyncResultResp } from '@/gen/proto/orbit/v1/route/route';
   import { useProjectStore } from '@/stores/project';
   import { useToast } from '@/composables/useToast';
-  import { formatTime } from '@/utils/time';
   import { domainAfterCodeChange, isValidRouteCode } from './routeDomain';
 
   const toast = useToast();

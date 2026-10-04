@@ -27,13 +27,10 @@
             <tr v-for="token in tokens" :key="token.id">
               <td class="text-foreground">{{ token.name }}</td>
               <td>
-                {{
-                  token.expires_at
-                    ? formatTime(token.expires_at)
-                    : t('mcpAccessTokens.neverExpires')
-                }}
+                <AppTableTime v-if="token.expires_at" :time="token.expires_at" />
+                <span v-else>{{ t('mcpAccessTokens.neverExpires') }}</span>
               </td>
-              <td>{{ formatTime(token.created_at) }}</td>
+              <td><AppTableTime :time="token.created_at" /></td>
               <td>
                 <button
                   type="button"
@@ -155,11 +152,11 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import SelectControl, { type SelectOption } from '@/components/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { MCPAccessTokenResp } from '@/gen/proto/orbit/v1/auth/auth';
-  import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
   const { t } = useI18n();

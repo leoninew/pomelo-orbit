@@ -108,7 +108,7 @@
               <td>
                 <AppBadge variant="pill">{{ member.auth_source }}</AppBadge>
               </td>
-              <td>{{ member.last_login_at ? formatTime(member.last_login_at) : '' }}</td>
+              <td><AppTableTime v-if="member.last_login_at" :time="member.last_login_at" /></td>
               <td class="w-20">
                 <button
                   class="app-link-danger"
@@ -223,6 +223,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';

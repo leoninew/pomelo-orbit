@@ -41,6 +41,9 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 	if created.CreatedAt.IsZero() {
 		t.Fatal("expected created credential timestamp to be set")
 	}
+	if !created.UpdatedAt.Equal(created.CreatedAt) {
+		t.Fatal("expected newly created credential timestamps to match")
+	}
 	if created.EncryptedData == "" || created.EncryptedData == plainData {
 		t.Fatalf("expected stored credential data to be encrypted")
 	}
@@ -78,6 +81,42 @@ func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
 	}
 	if err := service.DeleteCredential(ctx, ciTestUserId, ciTestProjectId, created.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("expected referenced credential delete validation error, got %v", err)
+	}
+}
+
+func TestCredentialServiceTracksUpdatesWithoutChangingCreationTime(t *testing.T) {
+	service, database := newCredentialIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	created, err := service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{
+		ProjectId: ciTestProjectId, Name: "Tracked credential", Type: "github_token", Data: "original-token",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	name := "Tracked renamed credential"
+	data := "updated-token"
+	previous := created
+	for _, input := range []credentialdto.CredentialUpdateInput{{Name: &name}, {Data: &data}} {
+		updated, err := service.UpdateCredential(ctx, ciTestUserId, ciTestProjectId, created.Id, input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !updated.CreatedAt.Equal(created.CreatedAt) {
+			t.Fatal("expected creation time to remain unchanged")
+		}
+		if !updated.UpdatedAt.After(previous.UpdatedAt) {
+			t.Fatalf("expected update time to advance: previous=%v updated=%v", previous.UpdatedAt, updated.UpdatedAt)
+		}
+		previous = updated
+	}
+	items, err := service.ListCredentials(ctx, ciTestUserId, ciTestProjectId, 1, 10, "Tracked")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items.Items) != 1 || !items.Items[0].CreatedAt.Equal(created.CreatedAt) || !items.Items[0].UpdatedAt.Equal(previous.UpdatedAt) {
+		t.Fatalf("unexpected listed credential timestamps: %+v", items.Items)
 	}
 }
 

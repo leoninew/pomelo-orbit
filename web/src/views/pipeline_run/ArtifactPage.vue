@@ -74,7 +74,7 @@
                 </AppTruncatedText>
               </td>
               <td class="text-foreground">
-                <AppTruncatedText :text="formatTime(a.created_at)" />
+                <AppTableTime :time="a.created_at" />
               </td>
             </tr>
           </tbody>
@@ -100,6 +100,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import RepositorySelect from '@/components/RepositorySelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
@@ -108,7 +109,6 @@
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
   import type { ArtifactResp } from '@/gen/proto/orbit/v1/pipeline_run/artifact';
-  import { formatTime } from '@/utils/time';
 
   const { status, error, execute } = useStatusAsync();
   const toast = useToast();

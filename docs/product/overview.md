@@ -37,6 +37,8 @@ Environment 是 Project 级共用执行目标：CI 支持 local、Windows SSH（
 
 Repository 与 Repository Credential 是所有 Project 共用的资源；Repository `code` 和仓库凭据名称分别在全局唯一。当前 Project 用于成员资格校验，不是这两类资源的归属。Application Pipeline、Run、Artifact 和 Environment 仍归属各自 Project，多个 Project 可将同一 Repository 绑定到各自的 Application Pipeline。
 
+仓库凭据记录创建时间和更新时间；创建或导入时两者相同，编辑名称或内容时只刷新更新时间。既有凭据的更新时间由新增迁移初始化为创建时间。
+
 CI 的可复用性与可运行性分为两个显式对象：
 
 - `Pipeline(kind=template)` 是所有 Project 共享的通用编排来源，不能运行、不能绑定 Application 或 Repository；它在实际被 Application 采用时使用现有 `PipelineSnapshot` 保存不可变定义。

@@ -29,7 +29,7 @@
           </thead>
           <tbody>
             <tr v-for="record in history" :key="record.id">
-              <td class="text-foreground">{{ formatTime(record.login_at) }}</td>
+              <td class="text-foreground"><AppTableTime :time="record.login_at" /></td>
               <td class="text-foreground">{{ record.username }}</td>
               <td class="text-foreground">{{ record.ip_address }}</td>
               <td class="text-foreground">
@@ -68,13 +68,13 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { LoginHistoryResp } from '@/gen/proto/orbit/v1/auth/auth';
-  import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
   const { t } = useI18n();

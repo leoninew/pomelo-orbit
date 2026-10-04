@@ -86,7 +86,7 @@
                   {{ deployment.status }}
                 </AppBadge>
               </td>
-              <td class="text-foreground">{{ formatTime(deployment.started_at) }}</td>
+              <td class="text-foreground"><AppTableTime :time="deployment.started_at" /></td>
               <td class="text-foreground">
                 {{ formatDuration(deployment.started_at, deployment.finished_at) }}
               </td>
@@ -151,6 +151,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
@@ -161,7 +162,7 @@
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment/deployment';
   import { isComplete, statusTone } from '@/utils/status';
-  import { formatDuration, formatTime } from '@/utils/time';
+  import { formatDuration } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
   const route = useRoute();

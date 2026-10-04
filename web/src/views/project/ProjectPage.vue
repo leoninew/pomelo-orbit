@@ -65,10 +65,10 @@
                 </AppBadge>
               </td>
               <td class="whitespace-nowrap text-foreground">
-                {{ formatTime(project.created_at) }}
+                <AppTableTime :time="project.created_at" />
               </td>
               <td class="whitespace-nowrap text-foreground">
-                {{ formatTime(project.updated_at) }}
+                <AppTableTime :time="project.updated_at" />
               </td>
               <td class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
@@ -423,6 +423,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ComboboxSelect from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
@@ -430,7 +431,6 @@
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
-  import { formatTime } from '@/utils/time';
 
   const projectCodePattern = /^[a-z][a-z0-9+.-]{0,31}$/;
 

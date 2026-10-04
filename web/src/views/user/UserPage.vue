@@ -73,10 +73,10 @@
                 <AppBadge variant="pill">{{ user.auth_source }}</AppBadge>
               </td>
               <td class="whitespace-nowrap text-foreground">
-                {{ formatTime(user.created_at) }}
+                <AppTableTime :time="user.created_at" />
               </td>
               <td class="whitespace-nowrap text-foreground">
-                {{ user.last_login_at ? formatTime(user.last_login_at) : '-' }}
+                <AppTableTime :time="user.last_login_at" />
               </td>
               <td v-if="canWriteUsers" class="whitespace-nowrap">
                 <div class="flex items-center gap-3">
@@ -319,6 +319,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
@@ -328,7 +329,6 @@
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
   import type { UserListResp, UserResp } from '@/gen/proto/orbit/v1/user/user';
-  import { formatTime } from '@/utils/time';
 
   const { t } = useI18n();
   const router = useRouter();

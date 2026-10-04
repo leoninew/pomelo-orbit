@@ -63,7 +63,9 @@
                   {{ run.status }}
                 </AppBadge>
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ formatTime(run.started_at) }}</td>
+              <td class="whitespace-nowrap text-foreground">
+                <AppTableTime :time="run.started_at" />
+              </td>
               <td class="whitespace-nowrap text-foreground">
                 {{ formatDuration(run.started_at, run.finished_at) }}
               </td>
@@ -126,6 +128,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import RepositorySelect from '@/components/RepositorySelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
@@ -135,7 +138,7 @@
   import type { PipelineRunResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
   import { useProjectStore } from '@/stores/project';
   import { isComplete, statusTone } from '@/utils/status';
-  import { formatDuration, formatTime } from '@/utils/time';
+  import { formatDuration } from '@/utils/time';
 
   const projectStore = useProjectStore();
   const route = useRoute();

@@ -13,6 +13,7 @@ export interface CredentialResp {
   name: string;
   type: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface CredentialDetailResp {
@@ -21,6 +22,7 @@ export interface CredentialDetailResp {
   type: string;
   data: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface CredentialCreateReq {

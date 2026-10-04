@@ -6,6 +6,7 @@ import AppTruncatedText from '@/components/AppTruncatedText.vue';
 
 const fullText = 'registry.example.com/project/component:20261003-build-123456789';
 const text = ref(fullText);
+const displayText = ref<string>();
 const resizeCallbacks = new Set<() => void>();
 let visibleWidth: number;
 let contentWidth: number;
@@ -16,7 +17,12 @@ async function mountText(child?: () => VNode, router?: Router) {
   target = document.createElement('div');
   document.body.append(target);
   app = createApp({
-    render: () => h(AppTruncatedText, { text: text.value, asChild: Boolean(child) }, child),
+    render: () =>
+      h(
+        AppTruncatedText,
+        { text: text.value, displayText: displayText.value, asChild: Boolean(child) },
+        child
+      ),
   });
   if (router) {
     app.use(router);
@@ -35,6 +41,7 @@ function trigger() {
 
 beforeEach(() => {
   text.value = fullText;
+  displayText.value = undefined;
   visibleWidth = 160;
   contentWidth = 400;
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
@@ -73,6 +80,36 @@ afterEach(() => {
 });
 
 describe('AppTruncatedText', () => {
+  it.each(['hover', 'focus'] as const)(
+    'shows the full text on %s when the display text is shortened without overflowing',
+    async (interaction) => {
+      contentWidth = 100;
+      text.value = '2026-10-04 13:22:30';
+      displayText.value = '2026-10-04';
+      await mountText();
+      expect(trigger().textContent?.trim()).toBe(displayText.value);
+      expect(trigger().classList.contains('decoration-dashed')).toBe(true);
+      expect(trigger().tabIndex).toBe(0);
+      if (interaction === 'hover') {
+        trigger().dispatchEvent(new PointerEvent('pointermove', { pointerType: 'mouse' }));
+      } else {
+        trigger().focus();
+      }
+      await vi.waitFor(() => {
+        expect(document.querySelector('.app-tooltip-content')?.textContent).toContain(text.value);
+      });
+
+      trigger().blur();
+      text.value = '-';
+      displayText.value = '-';
+      await nextTick();
+      expect(trigger().textContent?.trim()).toBe('-');
+      expect(trigger().classList.contains('underline')).toBe(false);
+      expect(trigger().hasAttribute('tabindex')).toBe(false);
+      expect(document.querySelector('.app-tooltip-content')).toBeNull();
+    }
+  );
+
   it.each(['hover', 'focus'] as const)(
     'shows the full truncated text on %s',
     async (interaction) => {

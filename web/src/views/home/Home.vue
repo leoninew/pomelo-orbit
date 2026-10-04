@@ -90,7 +90,7 @@
                   </AppTruncatedText>
                 </td>
                 <td class="text-foreground">
-                  <AppTruncatedText :text="formatTime(run.created_at)" />
+                  <AppTableTime :time="run.created_at" />
                 </td>
                 <td>
                   <AppBadge variant="status" :tone="statusTone(run.status)">
@@ -146,7 +146,7 @@
                   </AppTruncatedText>
                 </td>
                 <td class="text-foreground">
-                  <AppTruncatedText :text="formatTime(deployment.started_at)" />
+                  <AppTableTime :time="deployment.started_at" />
                 </td>
                 <td>
                   <AppBadge variant="status" :tone="statusTone(deployment.status)">
@@ -174,6 +174,7 @@
   import AppBadge from '@/components/AppBadge.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -182,7 +183,7 @@
   import type { DeploymentResp } from '@/gen/proto/orbit/v1/deployment/deployment';
   import type { PipelineRunResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
   import { statusTone } from '@/utils/status';
-  import { formatTime, getTodayStart } from '@/utils/time';
+  import { getTodayStart } from '@/utils/time';
 
   // 导入卡片图片
   import image1 from '@/assets/images/1.png';

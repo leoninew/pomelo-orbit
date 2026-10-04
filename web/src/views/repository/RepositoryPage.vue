@@ -30,7 +30,7 @@
               <th>仓库类型</th>
               <th>默认分支</th>
               <th>Git 凭据</th>
-              <th>创建时间</th>
+              <th>更新时间</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -43,7 +43,7 @@
               </td>
               <td class="whitespace-nowrap text-foreground">{{ p.code }}</td>
               <td class="text-foreground">
-                <AppTruncatedText :text="repositoryLocation(p)" class="max-w-md" />
+                <AppTruncatedText :text="repositoryLocation(p)" class="max-w-64" />
               </td>
               <td class="whitespace-nowrap text-foreground">
                 {{ p.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
@@ -59,7 +59,9 @@
                 </router-link>
                 <span v-else-if="p.has_credential">已配置</span>
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ formatTime(p.created_at) }}</td>
+              <td class="whitespace-nowrap text-foreground">
+                <AppTableTime :time="p.updated_at" />
+              </td>
               <td class="whitespace-nowrap">
                 <button class="app-link mr-3" @click="openEditModal(p)">编辑</button>
                 <button class="app-link-danger" @click="openDeleteDialog(p)">删除</button>
@@ -384,6 +386,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import RepositoryCredentialSelect from '@/components/RepositoryCredentialSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';
@@ -393,7 +396,6 @@
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
   import type { RepositoryResp } from '@/gen/proto/orbit/v1/repository/repository';
-  import { formatTime } from '@/utils/time';
   import {
     repositoryFormFeedback,
     type RepositoryFormErrors,

@@ -32,6 +32,7 @@
               <th>名称</th>
               <th>类型</th>
               <th>创建时间</th>
+              <th>更新时间</th>
               <th>操作</th>
             </tr>
           </thead>
@@ -47,7 +48,8 @@
                   {{ cred.type }}
                 </AppBadge>
               </td>
-              <td class="text-foreground">{{ formatTime(cred.created_at) }}</td>
+              <td class="text-foreground"><AppTableTime :time="cred.created_at" /></td>
+              <td class="text-foreground"><AppTableTime :time="cred.updated_at" /></td>
               <td>
                 <button class="app-link mr-3" @click="openEditModal(cred)">编辑</button>
                 <button class="app-link-danger" @click="confirmDelete(cred.id)">删除</button>
@@ -226,6 +228,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
@@ -236,7 +239,6 @@
     CredentialImportReq,
     CredentialResp,
   } from '@/gen/proto/orbit/v1/credential/credential';
-  import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
   const toast = useToast();

@@ -47,7 +47,9 @@
               <td class="text-muted-foreground">
                 <AppTruncatedText :text="stage.description || '未填写'" class="max-w-xs" />
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ formatTime(stage.updated_at) }}</td>
+              <td class="whitespace-nowrap text-foreground">
+                <AppTableTime :time="stage.updated_at" />
+              </td>
               <td>
                 <div class="flex items-center gap-3">
                   <router-link :to="`/pipeline-stage/${stage.id}`" class="app-link">
@@ -137,6 +139,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
@@ -144,7 +147,6 @@
   import { useToast } from '@/composables/useToast';
   import type { PipelineStageResp } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
   import { useProjectStore } from '@/stores/project';
-  import { formatTime } from '@/utils/time';
 
   const projectStore = useProjectStore();
   const router = useRouter();

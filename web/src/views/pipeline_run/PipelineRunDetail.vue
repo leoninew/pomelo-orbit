@@ -299,7 +299,7 @@
                   </router-link>
                 </td>
                 <td class="text-muted-foreground">
-                  {{ formatTime(artifact.created_at) }}
+                  <AppTableTime :time="artifact.created_at" />
                 </td>
               </tr>
             </tbody>
@@ -374,6 +374,7 @@
   import DetailPageHeader from '@/components/DetailPageHeader.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import LogDrawer from '@/components/LogDrawer.vue';
   import ViewModeTabs from '@/components/ViewModeTabs.vue';

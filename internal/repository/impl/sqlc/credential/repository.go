@@ -52,7 +52,7 @@ func (r Repository) ListCredentials(ctx context.Context, page int, perPage int, 
 	}
 	items := make([]model.Credential, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, credentialFrom(row.Id, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt))
+		items = append(items, credentialFrom(row.Id, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt, row.UpdatedAt))
 	}
 	return repository.Page[model.Credential]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -62,7 +62,7 @@ func (r Repository) Credential(ctx context.Context, id string) (model.Credential
 	if err != nil {
 		return model.Credential{}, fmt.Errorf("load credential %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return credentialFrom(row.Id, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt), nil
+	return credentialFrom(row.Id, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) CredentialByName(ctx context.Context, name string) (model.Credential, error) {
@@ -70,7 +70,7 @@ func (r Repository) CredentialByName(ctx context.Context, name string) (model.Cr
 	if err != nil {
 		return model.Credential{}, fmt.Errorf("load credential by name %s: %w", name, sqlcommon.TranslateError(err))
 	}
-	return credentialFrom(row.Id, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt), nil
+	return credentialFrom(row.Id, row.Name, row.Type, row.EncryptedData, row.Revision, row.CreatedAt, row.UpdatedAt), nil
 }
 
 func (r Repository) CredentialExists(ctx context.Context, id string) (bool, error) {
@@ -100,6 +100,7 @@ func (r Repository) CreateCredential(ctx context.Context, credential model.Crede
 		EncryptedData: credential.EncryptedData,
 		Revision:      credential.Revision,
 		CreatedAt:     credential.CreatedAt,
+		UpdatedAt:     credential.UpdatedAt,
 	})
 	if err != nil {
 		return fmt.Errorf("create credential %s: %w", credential.Name, err)
@@ -112,6 +113,7 @@ func (r Repository) UpdateCredential(ctx context.Context, credential model.Crede
 		Name:          credential.Name,
 		EncryptedData: credential.EncryptedData,
 		Revision:      credential.Revision,
+		UpdatedAt:     credential.UpdatedAt,
 		Id:            credential.Id,
 	})
 	if err != nil {
@@ -127,7 +129,7 @@ func (r Repository) DeleteCredential(ctx context.Context, id string) error {
 	return nil
 }
 
-func credentialFrom(id string, name, typ, encryptedData string, revision int64, createdAt time.Time) model.Credential {
+func credentialFrom(id string, name, typ, encryptedData string, revision int64, createdAt, updatedAt time.Time) model.Credential {
 	return model.Credential{
 		Id:            id,
 		Name:          name,
@@ -135,5 +137,6 @@ func credentialFrom(id string, name, typ, encryptedData string, revision int64, 
 		EncryptedData: encryptedData,
 		Revision:      revision,
 		CreatedAt:     createdAt,
+		UpdatedAt:     updatedAt,
 	}
 }

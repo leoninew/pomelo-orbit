@@ -174,7 +174,9 @@
                   {{ svc.status }}
                 </AppBadge>
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ formatTime(svc.updated_at) }}</td>
+              <td class="whitespace-nowrap text-foreground">
+                <AppTableTime :time="svc.updated_at" />
+              </td>
               <td>
                 <div class="flex flex-wrap items-center gap-3">
                   <AppTooltip
@@ -398,6 +400,7 @@
   import { useDeploymentDirectory } from '@/composables/useDeploymentDirectory';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import ListPagination from '@/components/ListPagination.vue';

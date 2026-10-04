@@ -13,6 +13,7 @@ func credentialResponse(item model.Credential) credentialv1.CredentialResp {
 		Name:      item.Name,
 		Type:      item.Type,
 		CreatedAt: transport.FormatTime(item.CreatedAt),
+		UpdatedAt: transport.FormatTime(item.UpdatedAt),
 	}
 }
 
@@ -24,5 +25,6 @@ func credentialDetailResponse(item credentialdto.CredentialDetail) credentialv1.
 		Type:      credential.Type,
 		Data:      item.Data,
 		CreatedAt: credential.CreatedAt,
+		UpdatedAt: credential.UpdatedAt,
 	}
 }

@@ -1,12 +1,12 @@
 -- name: RepositoryCredentialById :one
-SELECT id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at, updated_at
 FROM repository_credential
 WHERE id = sqlc.arg(id)
   AND project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token');
 
 -- name: RepositoryCredentialByName :one
-SELECT id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at, updated_at
 FROM repository_credential
 WHERE project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
@@ -36,7 +36,7 @@ WHERE project_id IS NULL
     OR type LIKE sqlc.narg(search_pattern));
 
 -- name: ListRepositoryCredentials :many
-SELECT id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at, updated_at
 FROM repository_credential
 WHERE project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
@@ -47,12 +47,13 @@ ORDER BY id DESC
 LIMIT ? OFFSET ?;
 
 -- name: CreateRepositoryCredential :exec
-INSERT INTO repository_credential (id, name, type, encrypted_data, revision, created_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO repository_credential (id, name, type, encrypted_data, revision, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateRepositoryCredential :exec
 UPDATE repository_credential
-SET name = sqlc.arg(name), encrypted_data = sqlc.arg(encrypted_data), revision = sqlc.arg(revision)
+SET name = sqlc.arg(name), encrypted_data = sqlc.arg(encrypted_data), revision = sqlc.arg(revision),
+    updated_at = sqlc.arg(updated_at)
 WHERE id = sqlc.arg(id)
   AND project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token');

@@ -33,8 +33,8 @@ func (q *Queries) CountRepositoryCredentials(ctx context.Context, arg CountRepos
 }
 
 const createRepositoryCredential = `-- name: CreateRepositoryCredential :exec
-INSERT INTO repository_credential (id, name, type, encrypted_data, revision, created_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO repository_credential (id, name, type, encrypted_data, revision, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateRepositoryCredentialParams struct {
@@ -44,6 +44,7 @@ type CreateRepositoryCredentialParams struct {
 	EncryptedData string    `db:"encrypted_data"`
 	Revision      int64     `db:"revision"`
 	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 func (q *Queries) CreateRepositoryCredential(ctx context.Context, arg CreateRepositoryCredentialParams) error {
@@ -54,6 +55,7 @@ func (q *Queries) CreateRepositoryCredential(ctx context.Context, arg CreateRepo
 		arg.EncryptedData,
 		arg.Revision,
 		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	return err
 }
@@ -71,7 +73,7 @@ func (q *Queries) DeleteRepositoryCredential(ctx context.Context, id string) err
 }
 
 const listRepositoryCredentials = `-- name: ListRepositoryCredentials :many
-SELECT id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at, updated_at
 FROM repository_credential
 WHERE project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
@@ -95,6 +97,7 @@ type ListRepositoryCredentialsRow struct {
 	EncryptedData string    `db:"encrypted_data"`
 	Revision      int64     `db:"revision"`
 	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 func (q *Queries) ListRepositoryCredentials(ctx context.Context, arg ListRepositoryCredentialsParams) ([]ListRepositoryCredentialsRow, error) {
@@ -119,6 +122,7 @@ func (q *Queries) ListRepositoryCredentials(ctx context.Context, arg ListReposit
 			&i.EncryptedData,
 			&i.Revision,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -134,7 +138,7 @@ func (q *Queries) ListRepositoryCredentials(ctx context.Context, arg ListReposit
 }
 
 const repositoryCredentialById = `-- name: RepositoryCredentialById :one
-SELECT id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at, updated_at
 FROM repository_credential
 WHERE id = ?
   AND project_id IS NULL
@@ -148,6 +152,7 @@ type RepositoryCredentialByIdRow struct {
 	EncryptedData string    `db:"encrypted_data"`
 	Revision      int64     `db:"revision"`
 	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 func (q *Queries) RepositoryCredentialById(ctx context.Context, id string) (RepositoryCredentialByIdRow, error) {
@@ -160,12 +165,13 @@ func (q *Queries) RepositoryCredentialById(ctx context.Context, id string) (Repo
 		&i.EncryptedData,
 		&i.Revision,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const repositoryCredentialByName = `-- name: RepositoryCredentialByName :one
-SELECT id, name, type, encrypted_data, revision, created_at
+SELECT id, name, type, encrypted_data, revision, created_at, updated_at
 FROM repository_credential
 WHERE project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
@@ -179,6 +185,7 @@ type RepositoryCredentialByNameRow struct {
 	EncryptedData string    `db:"encrypted_data"`
 	Revision      int64     `db:"revision"`
 	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }
 
 func (q *Queries) RepositoryCredentialByName(ctx context.Context, name string) (RepositoryCredentialByNameRow, error) {
@@ -191,6 +198,7 @@ func (q *Queries) RepositoryCredentialByName(ctx context.Context, name string) (
 		&i.EncryptedData,
 		&i.Revision,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -227,17 +235,19 @@ func (q *Queries) RepositoryCredentialName(ctx context.Context, id string) (stri
 
 const updateRepositoryCredential = `-- name: UpdateRepositoryCredential :exec
 UPDATE repository_credential
-SET name = ?, encrypted_data = ?, revision = ?
+SET name = ?, encrypted_data = ?, revision = ?,
+    updated_at = ?
 WHERE id = ?
   AND project_id IS NULL
   AND type IN ('git_ssh', 'github_token', 'gitee_token', 'gitea_token', 'registry_token')
 `
 
 type UpdateRepositoryCredentialParams struct {
-	Name          string `db:"name"`
-	EncryptedData string `db:"encrypted_data"`
-	Revision      int64  `db:"revision"`
-	Id            string `db:"id"`
+	Name          string    `db:"name"`
+	EncryptedData string    `db:"encrypted_data"`
+	Revision      int64     `db:"revision"`
+	UpdatedAt     time.Time `db:"updated_at"`
+	Id            string    `db:"id"`
 }
 
 func (q *Queries) UpdateRepositoryCredential(ctx context.Context, arg UpdateRepositoryCredentialParams) error {
@@ -245,6 +255,7 @@ func (q *Queries) UpdateRepositoryCredential(ctx context.Context, arg UpdateRepo
 		arg.Name,
 		arg.EncryptedData,
 		arg.Revision,
+		arg.UpdatedAt,
 		arg.Id,
 	)
 	return err

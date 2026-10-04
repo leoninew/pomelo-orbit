@@ -83,7 +83,7 @@
                 <AppBadge>v{{ pipeline.version }}</AppBadge>
               </td>
               <td class="whitespace-nowrap text-foreground">
-                {{ formatTime(pipeline.updated_at) }}
+                <AppTableTime :time="pipeline.updated_at" />
               </td>
               <td>
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -335,6 +335,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
   import RepositorySelect from '@/components/RepositorySelect.vue';
@@ -348,7 +349,7 @@
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import { useProjectStore } from '@/stores/project';
-  import { formatTime, nowUnixTimestamp } from '@/utils/time';
+  import { nowUnixTimestamp } from '@/utils/time';
 
   const route = useRoute();
   const router = useRouter();

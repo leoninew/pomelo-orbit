@@ -96,6 +96,7 @@ func (s Service) UpdateCredential(ctx context.Context, userId string, projectId 
 		credential.EncryptedData = encrypted
 	}
 	credential.Revision++
+	credential.UpdatedAt = time.Now().UTC()
 	if err := s.credential.UpdateCredential(ctx, credential); err != nil {
 		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to update credential", err)
 	}
@@ -144,7 +145,8 @@ func (s Service) createCredentialRecord(ctx context.Context, name string, creden
 	if err != nil {
 		return model.Credential{}, err
 	}
-	credential := model.Credential{Id: idutil.NewId(), Name: name, Type: credentialType, EncryptedData: encrypted, Revision: 1, CreatedAt: time.Now().UTC()}
+	now := time.Now().UTC()
+	credential := model.Credential{Id: idutil.NewId(), Name: name, Type: credentialType, EncryptedData: encrypted, Revision: 1, CreatedAt: now, UpdatedAt: now}
 	if err := s.credential.CreateCredential(ctx, credential); err != nil {
 		return model.Credential{}, apperror.Wrap(apperror.KindInternal, "Failed to create credential", err)
 	}

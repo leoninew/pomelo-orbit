@@ -35,11 +35,12 @@
       <div v-else class="overflow-x-auto">
         <table class="app-data-table table-fixed min-w-[960px]">
           <colgroup>
-            <col class="w-[28%]" />
+            <col class="w-[24%]" />
             <col class="w-[20%]" />
             <col class="w-[12%]" />
-            <col class="w-[20%]" />
-            <col class="w-[20%]" />
+            <col class="w-[14%]" />
+            <col class="w-[14%]" />
+            <col class="w-[16%]" />
           </colgroup>
           <thead>
             <tr>
@@ -47,6 +48,7 @@
               <th>{{ t('application.code') }}</th>
               <th>{{ t('application.kind') }}</th>
               <th>{{ t('common.createdAt') }}</th>
+              <th>{{ t('common.updatedAt') }}</th>
               <th>{{ t('common.operation') }}</th>
             </tr>
           </thead>
@@ -65,7 +67,12 @@
                   {{ app.kind }}
                 </AppBadge>
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ formatTime(app.created_at) }}</td>
+              <td class="whitespace-nowrap text-foreground">
+                <AppTableTime :time="app.created_at" />
+              </td>
+              <td class="whitespace-nowrap text-foreground">
+                <AppTableTime :time="app.updated_at" />
+              </td>
               <td>
                 <div class="flex items-center gap-3 whitespace-nowrap">
                   <button class="app-link" :disabled="operating" @click="openEditDialog(app)">
@@ -191,6 +198,7 @@
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import SearchControl from '@/components/SearchControl.vue';
@@ -202,7 +210,6 @@
     ApplicationResp,
   } from '@/gen/proto/orbit/v1/application/application';
   import { applicationKindTone } from '@/utils/status';
-  import { formatTime } from '@/utils/time';
   import { ToolbarRoot } from 'reka-ui';
 
   const { t } = useI18n();

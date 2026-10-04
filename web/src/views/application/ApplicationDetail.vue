@@ -133,7 +133,7 @@
                     <AppTruncatedText :text="version.component_summary" class="max-w-xs" />
                   </td>
                   <td class="whitespace-nowrap text-muted-foreground">
-                    {{ formatTime(version.created_at) }}
+                    <AppTableTime :time="version.created_at" />
                   </td>
                   <td>
                     <div class="flex flex-wrap items-center gap-3">
@@ -270,7 +270,9 @@
                 <td class="text-muted-foreground">
                   <AppTruncatedText :text="version.note" class="max-w-xs" />
                 </td>
-                <td class="text-muted-foreground">{{ formatTime(version.created_at) }}</td>
+                <td class="text-muted-foreground">
+                  <AppTableTime :time="version.created_at" />
+                </td>
                 <td>
                   <div class="flex flex-wrap items-center gap-3">
                     <button
@@ -664,6 +666,7 @@
   import AppDrawer from '@/components/AppDrawer.vue';
   import AppEmptyState from '@/components/AppEmptyState.vue';
   import AppLoadingState from '@/components/AppLoadingState.vue';
+  import AppTableTime from '@/components/AppTableTime.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import ListPagination from '@/components/ListPagination.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';

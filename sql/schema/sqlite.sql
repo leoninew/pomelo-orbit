@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS repository_credential (
     encrypted_data TEXT NOT NULL,
     revision INTEGER NOT NULL DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
+    updated_at DATETIME NOT NULL DEFAULT (datetime('now')),
     project_id TEXT REFERENCES project(id),
     CONSTRAINT uq_repository_credential_name UNIQUE (name)
 );

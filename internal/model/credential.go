@@ -9,4 +9,5 @@ type Credential struct {
 	EncryptedData string    `db:"encrypted_data"`
 	Revision      int64     `db:"revision"`
 	CreatedAt     time.Time `db:"created_at"`
+	UpdatedAt     time.Time `db:"updated_at"`
 }

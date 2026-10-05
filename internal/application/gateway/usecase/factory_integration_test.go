@@ -77,6 +77,15 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	if len(versions) != 4 {
 		t.Fatalf("gateway Versions = %#v", versions)
 	}
+	for _, initialVersion := range versions {
+		initialComponents, err := applications.VersionComponentsByVersion(context.Background(), gatewayFactoryProjectId, initialVersion.Id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(initialComponents) != 1 || initialComponents[0].RestartPolicy == nil || *initialComponents[0].RestartPolicy != "unless-stopped" {
+			t.Fatalf("gateway Version %q restart policy = %#v", initialVersion.Label, initialComponents)
+		}
+	}
 
 	version, err := applications.Version(context.Background(), gatewayFactoryProjectId, created.Service.VersionId)
 	if err != nil {

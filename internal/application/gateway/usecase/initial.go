@@ -56,11 +56,12 @@ func buildInitialGatewayVersions(applicationId, image, pullPolicy, componentName
 // resolver layout is fixed per profile and never derived from GatewayConfig.
 func buildInitialGatewayComponent(versionId, image, pullPolicy, componentName, role, networkName string) model.VersionComponent {
 	return model.VersionComponent{
-		Id:         idutil.NewId(),
-		VersionId:  versionId,
-		Name:       componentName,
-		Image:      image,
-		PullPolicy: pullPolicy,
+		Id:            idutil.NewId(),
+		VersionId:     versionId,
+		Name:          componentName,
+		Image:         image,
+		PullPolicy:    pullPolicy,
+		RestartPolicy: stringRef("unless-stopped"),
 		Endpoints: []model.VersionComponentEndpoint{
 			{Protocol: "tcp", ContainerPort: 80, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(80)},
 			{Protocol: "tcp", ContainerPort: 443, Mode: "host", BindAddress: stringRef("0.0.0.0"), ListenPort: intRef(443)},

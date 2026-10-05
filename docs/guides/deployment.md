@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-10-04 00:16:31
+最后修改时间: 2026-10-05 22:24:06
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -47,6 +47,8 @@ Docker Engine/Compose（Windows 上包括 Docker Desktop、WSL2 Linux engine）�
 SSH Probe 不使用密码认证、PTY、端口转发或用户输入的远端命令；网络、认证和 Docker 失败将记录为脱敏诊断。切换 target type 或修改 SSH target/工作目录会递增 Environment target revision。SSH target 变更会清除已记录指纹，旧 Probe 结果不会覆盖新配置。
 
 ## 网络与 Gateway
+
+Gateway 初始化创建的 `base`、`http`、`dns`、`http-dns` 四个 Version 均为 Traefik Component 设置 `restart: unless-stopped`。
 
 Gateway 创建或复用部署宿主上的 Docker bridge network `traefik`。加入 Traefik 的普通 Service 以 external network 方式接入同一共享网络；Gateway 的 `providers.docker.network` 也固定为 `traefik`。网络名不由 Environment code 派生。
 

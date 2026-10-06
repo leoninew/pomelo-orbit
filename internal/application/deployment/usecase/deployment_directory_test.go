@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -63,6 +64,7 @@ func (s *directoryVersionSelector) SelectServiceDeploymentVersion(_ context.Cont
 }
 
 func TestDeploymentRequestFreezesVersionDirectoryAndRevision(t *testing.T) {
+	directory := filepath.ToSlash(filepath.Join(t.TempDir(), "api"))
 	service, store, _, _ := independentDeploymentTestService(t, false)
 	service.commandStore, service.dispatcher = store, directoryDispatcher{}
 	service.gatewayCoordinator = &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{ApplicationId: "gateway-1", NetworkName: "traefik"}}
@@ -71,12 +73,12 @@ func TestDeploymentRequestFreezesVersionDirectoryAndRevision(t *testing.T) {
 	store.version.Id = "selected-version"
 	store.components[0].VersionId = store.version.Id
 	result, err := service.DeployService(context.Background(), "user-1", "project-1", "service-1", deploymentdto.DeployServiceInput{
-		VersionId: &store.version.Id, DeploymentDirectory: "/outside/workspace/api", EnvironmentTargetRevision: 1,
+		VersionId: &store.version.Id, DeploymentDirectory: directory, EnvironmentTargetRevision: 1,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if selector.calls != 1 || result.DeploymentId != store.deployment.Id || *store.deployment.VersionId != "selected-version" || *store.deployment.WorkingDirectory != "/outside/workspace/api" || *store.deployment.EnvironmentTargetRevision != 1 {
+	if selector.calls != 1 || result.DeploymentId != store.deployment.Id || *store.deployment.VersionId != "selected-version" || *store.deployment.WorkingDirectory != directory || *store.deployment.EnvironmentTargetRevision != 1 {
 		t.Fatalf("deployment=%+v selector calls=%d", store.deployment, selector.calls)
 	}
 	store.service.DeploymentDirectory = "/later/edit"
@@ -84,7 +86,7 @@ func TestDeploymentRequestFreezesVersionDirectoryAndRevision(t *testing.T) {
 	if err := executeIndependentDeployment(service, "deploy"); err != nil {
 		t.Fatal(err)
 	}
-	if store.service.RuntimeDirectory != "/outside/workspace/api" {
+	if filepath.ToSlash(store.service.RuntimeDirectory) != directory {
 		t.Fatalf("runtime directory=%s", store.service.RuntimeDirectory)
 	}
 }
@@ -184,6 +186,7 @@ func TestComposeMapsEachRelativeBindSource(t *testing.T) {
 	result, err := service.RenderComposeDetailed(context.Background(), RenderInput{
 		Plan: plan, LogicalSvcDir: "/app/custom", ComposeMountSourceDir: "/host/custom",
 		ResolveMountSource: func(_ context.Context, source string) (string, error) {
+			source = filepath.ToSlash(source)
 			if strings.HasSuffix(source, "/gateway/acme") {
 				return "/separate/acme", nil
 			}

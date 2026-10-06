@@ -27,6 +27,8 @@ type ServiceComponent struct {
 	ComponentName            string
 	Entrypoint               []string
 	Command                  []string
+	User                     *string
+	GroupAdd                 []string
 	PullPolicy               *string
 	RestartPolicy            *string
 	Status                   string

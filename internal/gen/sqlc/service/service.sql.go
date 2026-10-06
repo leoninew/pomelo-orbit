@@ -299,9 +299,9 @@ func (q *Queries) InsertService(ctx context.Context, arg InsertServiceParams) er
 
 const insertServiceComponent = `-- name: InsertServiceComponent :exec
 INSERT INTO service_component (
-  id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
+  id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, container_user, group_add_json, status, created_at, updated_at
 ) SELECT
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 WHERE EXISTS (
   SELECT 1 FROM service
   WHERE service.id = ?
@@ -318,6 +318,8 @@ type InsertServiceComponentParams struct {
 	CommandJson              sql.NullString `db:"command_json"`
 	PullPolicy               sql.NullString `db:"pull_policy"`
 	RestartPolicy            sql.NullString `db:"restart_policy"`
+	ContainerUser            sql.NullString `db:"container_user"`
+	GroupAddJson             sql.NullString `db:"group_add_json"`
 	Status                   string         `db:"status"`
 	CreatedAt                time.Time      `db:"created_at"`
 	UpdatedAt                time.Time      `db:"updated_at"`
@@ -334,6 +336,8 @@ func (q *Queries) InsertServiceComponent(ctx context.Context, arg InsertServiceC
 		arg.CommandJson,
 		arg.PullPolicy,
 		arg.RestartPolicy,
+		arg.ContainerUser,
+		arg.GroupAddJson,
 		arg.Status,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -786,7 +790,7 @@ func (q *Queries) ServiceByProjectAndCode(ctx context.Context, arg ServiceByProj
 }
 
 const serviceComponentById = `-- name: ServiceComponentById :one
-SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
+SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, container_user, group_add_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE service_component.id = ?
   AND EXISTS (
@@ -811,6 +815,8 @@ func (q *Queries) ServiceComponentById(ctx context.Context, arg ServiceComponent
 		&i.ComponentName,
 		&i.EntrypointJson,
 		&i.CommandJson,
+		&i.ContainerUser,
+		&i.GroupAddJson,
 		&i.PullPolicy,
 		&i.RestartPolicy,
 		&i.Status,
@@ -1005,7 +1011,7 @@ func (q *Queries) ServiceComponentResourceByComponent(ctx context.Context, arg S
 }
 
 const serviceComponentsByService = `-- name: ServiceComponentsByService :many
-SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
+SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, container_user, group_add_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE service_id = ?
   AND EXISTS (
@@ -1037,6 +1043,8 @@ func (q *Queries) ServiceComponentsByService(ctx context.Context, arg ServiceCom
 			&i.ComponentName,
 			&i.EntrypointJson,
 			&i.CommandJson,
+			&i.ContainerUser,
+			&i.GroupAddJson,
 			&i.PullPolicy,
 			&i.RestartPolicy,
 			&i.Status,
@@ -1227,7 +1235,7 @@ func (q *Queries) UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServic
 
 const updateServiceComponentOverlayFields = `-- name: UpdateServiceComponentOverlayFields :exec
 UPDATE service_component
-SET entrypoint_json = ?, command_json = ?, pull_policy = ?, restart_policy = ?, updated_at = ?
+SET entrypoint_json = ?, command_json = ?, pull_policy = ?, restart_policy = ?, container_user = ?, group_add_json = ?, updated_at = ?
 WHERE service_component.id = ?
   AND EXISTS (
     SELECT 1 FROM service
@@ -1241,6 +1249,8 @@ type UpdateServiceComponentOverlayFieldsParams struct {
 	CommandJson    sql.NullString `db:"command_json"`
 	PullPolicy     sql.NullString `db:"pull_policy"`
 	RestartPolicy  sql.NullString `db:"restart_policy"`
+	ContainerUser  sql.NullString `db:"container_user"`
+	GroupAddJson   sql.NullString `db:"group_add_json"`
 	UpdatedAt      time.Time      `db:"updated_at"`
 	Id             string         `db:"id"`
 	ProjectId      string         `db:"project_id"`
@@ -1252,6 +1262,8 @@ func (q *Queries) UpdateServiceComponentOverlayFields(ctx context.Context, arg U
 		arg.CommandJson,
 		arg.PullPolicy,
 		arg.RestartPolicy,
+		arg.ContainerUser,
+		arg.GroupAddJson,
 		arg.UpdatedAt,
 		arg.Id,
 		arg.ProjectId,

@@ -56,6 +56,7 @@ type Querier interface {
 	UpdateVersionComponentBasic(ctx context.Context, arg UpdateVersionComponentBasicParams) error
 	UpdateVersionComponentCommand(ctx context.Context, arg UpdateVersionComponentCommandParams) error
 	UpdateVersionComponentEntrypoint(ctx context.Context, arg UpdateVersionComponentEntrypointParams) error
+	UpdateVersionComponentIdentity(ctx context.Context, arg UpdateVersionComponentIdentityParams) error
 	UpdateVersionComponentSummary(ctx context.Context, arg UpdateVersionComponentSummaryParams) error
 	VersionById(ctx context.Context, arg VersionByIdParams) (Version, error)
 	VersionComponentById(ctx context.Context, arg VersionComponentByIdParams) (VersionComponentByIdRow, error)

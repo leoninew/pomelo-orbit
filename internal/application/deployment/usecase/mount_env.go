@@ -48,6 +48,9 @@ type ResolvedMount struct {
 }
 
 func validateMountSpec(m MountSpec) error {
+	if err := model.ValidateSharedMount(m.SourceType, m.Source, m.Shared); err != nil {
+		return err
+	}
 	if m.SourceType == "" || m.Source == "" || m.Target == "" {
 		return fmt.Errorf("source_type, source and target are required")
 	}

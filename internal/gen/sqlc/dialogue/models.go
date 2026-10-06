@@ -414,6 +414,8 @@ type ServiceComponent struct {
 	ComponentName            string         `db:"component_name"`
 	EntrypointJson           sql.NullString `db:"entrypoint_json"`
 	CommandJson              sql.NullString `db:"command_json"`
+	ContainerUser            sql.NullString `db:"container_user"`
+	GroupAddJson             sql.NullString `db:"group_add_json"`
 	PullPolicy               sql.NullString `db:"pull_policy"`
 	RestartPolicy            sql.NullString `db:"restart_policy"`
 	Status                   string         `db:"status"`
@@ -506,6 +508,8 @@ type VersionComponent struct {
 	CommandJson              string         `db:"command_json"`
 	PullPolicy               string         `db:"pull_policy"`
 	RestartPolicy            sql.NullString `db:"restart_policy"`
+	ContainerUser            sql.NullString `db:"container_user"`
+	GroupAddJson             sql.NullString `db:"group_add_json"`
 	CreatedAt                time.Time      `db:"created_at"`
 	UpdatedAt                time.Time      `db:"updated_at"`
 	EntrypointJson           string         `db:"entrypoint_json"`
@@ -568,6 +572,7 @@ type VersionComponentMount struct {
 	Target           string         `db:"target"`
 	ReadOnly         int64          `db:"read_only"`
 	SourceIsHostPath int64          `db:"source_is_host_path"`
+	Shared           int64          `db:"shared"`
 	Content          sql.NullString `db:"content"`
 	ContentMasked    int64          `db:"content_masked"`
 	Mode             string         `db:"mode"`

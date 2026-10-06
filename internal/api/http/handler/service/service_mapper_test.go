@@ -1,12 +1,45 @@
 package servicehandler
 
 import (
+	"encoding/json"
+	"reflect"
 	"testing"
 
+	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func TestServiceIdentityJSONPresence(t *testing.T) {
+	for _, document := range []string{`{}`, `{"user":"", "group_add":{"values":[]}}`, `{"user":"1000:1000", "group_add":{"values":["988"]}}`} {
+		var req servicev1.ServiceComponentOverlayUpdateReq
+		if err := transport.UnmarshalProtoJSON([]byte(document), &req); err != nil {
+			t.Fatal(err)
+		}
+		input := serviceComponentOverlayInput(&req)
+		response := serviceComponentResponse(model.ServiceComponent{User: input.User, GroupAdd: input.GroupAdd})
+		encoded, err := transport.MarshalProtoJSON(&response)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(encoded, &fields); err != nil {
+			t.Fatal(err)
+		}
+		if _, exists := fields["group_add"]; exists && req.GroupAdd == nil {
+			t.Fatalf("inheritance must omit group_add, got %s", encoded)
+		}
+		var decoded servicev1.ServiceComponentResp
+		if err := transport.UnmarshalProtoJSON(encoded, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		output := serviceComponentOverlayInput(&servicev1.ServiceComponentOverlayUpdateReq{User: decoded.User, GroupAdd: decoded.GroupAdd})
+		if !reflect.DeepEqual(input.User, output.User) || !reflect.DeepEqual(input.GroupAdd, output.GroupAdd) {
+			t.Fatalf("presence lost for %s: %s", document, encoded)
+		}
+	}
+}
 
 func TestServiceViewResponseUsesBoundComponentImage(t *testing.T) {
 	listenPort := 18080

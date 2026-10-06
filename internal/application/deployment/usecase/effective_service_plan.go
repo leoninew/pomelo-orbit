@@ -84,6 +84,12 @@ func BuildEffectiveServicePlan(app model.Application, version model.Version, ser
 func MergeServiceComponent(declaration model.VersionComponent, overlay model.ServiceComponent, serviceEnv map[string]string) (model.EffectiveServiceComponent, error) {
 	result := effectiveComponentFromVersion(declaration)
 	result.ServiceComponentId = overlay.Id
+	if overlay.User != nil {
+		result.User = model.EffectiveComponentUser(overlay.User)
+	}
+	if overlay.GroupAdd != nil {
+		result.GroupAdd = append([]string(nil), overlay.GroupAdd...)
+	}
 	if overlay.Entrypoint != nil {
 		result.Entrypoint = cloneStringSlice(overlay.Entrypoint)
 	}
@@ -252,6 +258,8 @@ func effectiveComponentFromVersion(declaration model.VersionComponent) model.Eff
 		Image:             declaration.Image,
 		Entrypoint:        cloneStringSlice(declaration.Entrypoint),
 		Command:           cloneStringSlice(declaration.Command),
+		User:              model.EffectiveComponentUser(declaration.User),
+		GroupAdd:          append([]string(nil), declaration.GroupAdd...),
 		Env:               append([]model.VersionComponentEnv(nil), declaration.Env...),
 		Mounts:            append([]model.VersionComponentMount(nil), declaration.Mounts...),
 		Dependencies:      append([]model.VersionComponentDependency(nil), declaration.Dependencies...),
@@ -337,6 +345,8 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 		Resources     *model.VersionComponentResources
 		PullPolicy    string
 		RestartPolicy *string
+		User          *string
+		GroupAdd      []string
 		Tmpfs         []model.VersionComponentTmpfs
 		Ulimits       []model.VersionComponentUlimit
 		Devices       []model.VersionComponentDeviceRequest
@@ -355,7 +365,7 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 	}
 	components := make([]fingerprintComponent, 0, len(plan.Components))
 	for _, component := range plan.Components {
-		components = append(components, fingerprintComponent{Name: component.Name, Image: component.Image, Entrypoint: component.Entrypoint, Command: component.Command, Env: component.Env, Mounts: component.Mounts, Dependencies: component.Dependencies, Healthcheck: component.Healthcheck, Resources: component.Resources, PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: component.Tmpfs, Ulimits: component.Ulimits, Devices: component.Devices, Endpoints: component.Endpoints})
+		components = append(components, fingerprintComponent{Name: component.Name, Image: component.Image, Entrypoint: component.Entrypoint, Command: component.Command, User: model.EffectiveComponentUser(component.User), GroupAdd: append([]string(nil), component.GroupAdd...), Env: component.Env, Mounts: component.Mounts, Dependencies: component.Dependencies, Healthcheck: component.Healthcheck, Resources: component.Resources, PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: component.Tmpfs, Ulimits: component.Ulimits, Devices: component.Devices, Endpoints: component.Endpoints})
 	}
 	sort.Slice(components, func(i, j int) bool { return components[i].Name < components[j].Name })
 	gatewayNetworkName := ""

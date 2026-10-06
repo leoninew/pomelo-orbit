@@ -1,5 +1,5 @@
 # Project 环境与 CD 产品模型
-最后修改时间: 2026-10-05 00:12:46
+最后修改时间: 2026-10-06 16:50:33
 
 Doc role: living product model
 
@@ -54,6 +54,14 @@ GatewayConfig 保存控制面 REST URL/readiness、`internal_domain`、可选的
 DNS token 是 Gateway 属性，直接返回、快照并作为 `CF_DNS_API_TOKEN` 写入 DNS profile 的 Compose environment。本期不提供全局 token、secret workspace、Compose secret 或脱敏接口。
 
 Gateway 部署会写入当前受管 File provider 配置并自动重建容器，迁移脚本初始化和已部署 REST 的受管实例同样适用。首次切换通过线下传达重新部署及显式同步一次的步骤，不增加 UI 或转换旧发布快照；部署不会从业务 Route 自动发布草稿。
+
+## 组件运行身份与共享目录
+
+Version Component 声明 `user` 和 `group_add`。组件详情以独立运行身份区域及 `/identity` 接口保存，两字段不属于基本信息更新。`user` 为用户名称或 UID，可带 `:主组`；`group_add` 为组名称或 GID 字符串列表。未配置时沿用镜像默认身份，不探测宿主机账户或推断 Docker socket GID。容器身份与 SSH 登录身份分别配置。
+
+Service 身份覆盖为稀疏值：省略即继承；非空值替换；`user=""` 恢复镜像用户，`group_add={"values":[]}` 移除全部附加组。列表整体替换，不追加；恢复继承时省略字段。两类身份均参与有效计划、配置 hash、定义传递和 Compose 渲染。
+
+Version 的绝对 directory mount 可声明 `shared=true`，允许其他服务在该源目录内准备部署文件。Service 可以覆盖源或删除声明的挂载，共享属性属于 Version 声明。运行保护使用实际容器的共享标签和 bind 挂载；未声明共享的数据与所有 Service 根目录继续独占。Orbit 使用普通应用部署，通过共享工作区和 Docker socket 挂载复用现有 DooD 能力，不享有控制面专属目录豁免。
 
 ## 服务部署目录
 

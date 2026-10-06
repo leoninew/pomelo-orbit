@@ -214,9 +214,13 @@ func (r Repository) UpdateServiceComponentOverlay(ctx context.Context, projectId
 	if err != nil {
 		return fmt.Errorf("encode service component command: %w", err)
 	}
+	groupAddJSON, err := dbmodel.StringListJSON(component.GroupAdd)
+	if err != nil {
+		return fmt.Errorf("encode service component group_add: %w", err)
+	}
 	if err := q.UpdateServiceComponentOverlayFields(ctx, servicesqlc.UpdateServiceComponentOverlayFieldsParams{
 		EntrypointJson: entrypointJSON, CommandJson: commandJSON,
-		PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy), ContainerUser: dbmodel.NullString(component.User), GroupAddJson: groupAddJSON,
 		UpdatedAt: time.Now().UTC(), Id: component.Id, ProjectId: projectId,
 	}); err != nil {
 		return fmt.Errorf("update service component runtime overlay: %w", err)
@@ -297,9 +301,13 @@ func (r Repository) serviceComponentFromRow(ctx context.Context, q *servicesqlc.
 	if err != nil {
 		return model.ServiceComponent{}, fmt.Errorf("decode service component command %s: %w", row.Id, err)
 	}
+	groupAdd, err := dbmodel.StringListFromJSON(row.GroupAddJson)
+	if err != nil {
+		return model.ServiceComponent{}, fmt.Errorf("decode service component group_add %s: %w", row.Id, err)
+	}
 	component := model.ServiceComponent{
 		Id: row.Id, ServiceId: row.ServiceId, SourceVersionComponentId: row.SourceVersionComponentId, ComponentName: row.ComponentName,
-		Entrypoint: entrypoint, Command: command, PullPolicy: dbmodel.StringPtr(row.PullPolicy), RestartPolicy: dbmodel.StringPtr(row.RestartPolicy),
+		Entrypoint: entrypoint, Command: command, PullPolicy: dbmodel.StringPtr(row.PullPolicy), RestartPolicy: dbmodel.StringPtr(row.RestartPolicy), User: dbmodel.StringPtr(row.ContainerUser), GroupAdd: groupAdd,
 		Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 	env, err := q.ServiceComponentEnvByComponent(ctx, servicesqlc.ServiceComponentEnvByComponentParams{ServiceComponentId: component.Id, ProjectId: projectId})
@@ -350,9 +358,13 @@ func insertServiceComponent(ctx context.Context, q *servicesqlc.Queries, project
 	if err != nil {
 		return fmt.Errorf("encode service component command %s: %w", component.ComponentName, err)
 	}
+	groupAddJSON, err := dbmodel.StringListJSON(component.GroupAdd)
+	if err != nil {
+		return fmt.Errorf("encode service component group_add %s: %w", component.ComponentName, err)
+	}
 	if err := q.InsertServiceComponent(ctx, servicesqlc.InsertServiceComponentParams{
 		Id: component.Id, ServiceId: component.ServiceId, SourceVersionComponentId: component.SourceVersionComponentId, ComponentName: component.ComponentName,
-		EntrypointJson: entrypointJSON, CommandJson: commandJSON, PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		EntrypointJson: entrypointJSON, CommandJson: commandJSON, PullPolicy: dbmodel.NullString(component.PullPolicy), RestartPolicy: dbmodel.NullString(component.RestartPolicy), ContainerUser: dbmodel.NullString(component.User), GroupAddJson: groupAddJSON,
 		Status: component.Status, CreatedAt: createdAt, UpdatedAt: updatedAt, ProjectId: projectId,
 	}); err != nil {
 		return fmt.Errorf("insert service component %s: %w", component.ComponentName, err)

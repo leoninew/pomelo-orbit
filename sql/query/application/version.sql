@@ -113,7 +113,7 @@ WHERE version.id = sqlc.arg(id)
   );
 
 -- name: VersionComponentsByVersion :many
-SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, container_user, group_add_json, created_at, updated_at
 FROM version_component
 WHERE version_id = sqlc.arg(version_id)
   AND EXISTS (
@@ -125,7 +125,7 @@ WHERE version_id = sqlc.arg(version_id)
 ORDER BY name;
 
 -- name: VersionComponentById :one
-SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, container_user, group_add_json, created_at, updated_at
 FROM version_component
 WHERE version_component.id = sqlc.arg(id)
   AND EXISTS (
@@ -137,12 +137,23 @@ WHERE version_component.id = sqlc.arg(id)
 
 -- name: InsertVersionComponent :exec
 INSERT INTO version_component (
-  id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, container_user, group_add_json, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateVersionComponentBasic :exec
 UPDATE version_component
 SET name = sqlc.arg(name), image = sqlc.arg(image), pull_policy = sqlc.arg(pull_policy), restart_policy = sqlc.arg(restart_policy), updated_at = sqlc.arg(updated_at)
+WHERE version_component.id = sqlc.arg(id)
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = sqlc.arg(project_id)
+  );
+
+-- name: UpdateVersionComponentIdentity :exec
+UPDATE version_component
+SET container_user = sqlc.arg(container_user), group_add_json = sqlc.arg(group_add_json), updated_at = sqlc.arg(updated_at)
 WHERE version_component.id = sqlc.arg(id)
   AND EXISTS (
     SELECT 1 FROM version
@@ -225,11 +236,11 @@ WHERE component_id = ?;
 
 -- name: InsertVersionComponentMount :exec
 INSERT INTO version_component_mount (
-  component_id, source_type, source, target, read_only, source_is_host_path, content, mode, ignore_if_exists, position
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  component_id, source_type, source, target, read_only, source_is_host_path, shared, content, mode, ignore_if_exists, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: VersionComponentMountsByComponent :many
-SELECT component_id, source_type, source, target, read_only, source_is_host_path, content, mode, ignore_if_exists, position
+SELECT component_id, source_type, source, target, read_only, source_is_host_path, shared, content, mode, ignore_if_exists, position
 FROM version_component_mount
 WHERE component_id = ?
 ORDER BY position;

@@ -53,7 +53,7 @@ func serviceComponentResponse(item model.ServiceComponent) servicev1.ServiceComp
 	for _, value := range item.Endpoints {
 		endpoints = append(endpoints, &servicev1.ServiceComponentEndpointOverlay{Protocol: value.Protocol, ContainerPort: int32(value.ContainerPort), Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: int32Ptr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix, State: string(value.State)})
 	}
-	return servicev1.ServiceComponentResp{Id: item.Id, ServiceId: item.ServiceId, SourceVersionComponentId: item.SourceVersionComponentId, ComponentName: item.ComponentName, Status: item.Status, Env: env, Mounts: mounts, Resources: serviceComponentResourcesResponse(item.Resources), Endpoints: endpoints, CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt), Entrypoint: optionalCommandText(item.Entrypoint), Command: optionalCommandText(item.Command), PullPolicy: item.PullPolicy, RestartPolicy: item.RestartPolicy}
+	return servicev1.ServiceComponentResp{Id: item.Id, ServiceId: item.ServiceId, SourceVersionComponentId: item.SourceVersionComponentId, ComponentName: item.ComponentName, Status: item.Status, Env: env, Mounts: mounts, Resources: serviceComponentResourcesResponse(item.Resources), Endpoints: endpoints, CreatedAt: transport.FormatTime(item.CreatedAt), UpdatedAt: transport.FormatTime(item.UpdatedAt), Entrypoint: optionalCommandText(item.Entrypoint), Command: optionalCommandText(item.Command), PullPolicy: item.PullPolicy, RestartPolicy: item.RestartPolicy, User: item.User, GroupAdd: serviceGroupAddResponse(item.GroupAdd)}
 }
 
 func serviceComponentDetailResponse(item servicedto.ServiceComponentDetail) servicev1.ServiceComponentDetailResp {
@@ -69,9 +69,9 @@ func componentDeclarationResponse(component model.VersionComponent) servicev1.Se
 	}
 	mounts := make([]*servicev1.ServiceComponentDeclaredMount, 0, len(component.Mounts))
 	for _, item := range component.Mounts {
-		mounts = append(mounts, &servicev1.ServiceComponentDeclaredMount{SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly, SourceIsHostPath: item.SourceIsHostPath})
+		mounts = append(mounts, &servicev1.ServiceComponentDeclaredMount{SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly, SourceIsHostPath: item.SourceIsHostPath, Shared: item.Shared})
 	}
-	return servicev1.ServiceComponentDefinitionResp{Id: component.Id, Name: component.Name, Image: component.Image, Entrypoint: commandline.Format(component.Entrypoint), Command: commandline.Format(component.Command), PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Env: env, Endpoints: serviceComponentDeclaredEndpointsResponse(component.Endpoints), Mounts: mounts, Resources: componentResourcesResponse(component.Resources)}
+	return servicev1.ServiceComponentDefinitionResp{Id: component.Id, Name: component.Name, Image: component.Image, Entrypoint: commandline.Format(component.Entrypoint), Command: commandline.Format(component.Command), PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, User: component.User, GroupAdd: component.GroupAdd, Env: env, Endpoints: serviceComponentDeclaredEndpointsResponse(component.Endpoints), Mounts: mounts, Resources: componentResourcesResponse(component.Resources)}
 }
 
 func serviceComponentDeclaredEndpointsResponse(items []model.VersionComponentEndpoint) []*servicev1.ServiceComponentDeclaredEndpoint {
@@ -93,7 +93,7 @@ func serviceComponentOverlayInput(req *servicev1.ServiceComponentOverlayUpdateRe
 	if req == nil {
 		return servicedto.ServiceComponentOverlayInput{}
 	}
-	result := servicedto.ServiceComponentOverlayInput{Entrypoint: req.Entrypoint, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Resources: serviceComponentResourcesInput(req.Resources)}
+	result := servicedto.ServiceComponentOverlayInput{Entrypoint: req.Entrypoint, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, User: req.User, GroupAdd: serviceGroupAddInput(req.GroupAdd), Resources: serviceComponentResourcesInput(req.Resources)}
 	for _, item := range req.Env {
 		if item != nil {
 			result.Env = append(result.Env, model.ServiceComponentEnv{Key: item.Key, Value: item.Value, State: model.ServiceComponentOverlayState(item.State)})
@@ -118,6 +118,20 @@ func optionalCommandText(value []string) *string {
 	}
 	text := commandline.Format(value)
 	return &text
+}
+
+func serviceGroupAddResponse(values []string) *servicev1.ServiceComponentGroupAdd {
+	if values == nil {
+		return nil
+	}
+	return &servicev1.ServiceComponentGroupAdd{Values: append([]string{}, values...)}
+}
+
+func serviceGroupAddInput(value *servicev1.ServiceComponentGroupAdd) []string {
+	if value == nil {
+		return nil
+	}
+	return append([]string{}, value.Values...)
 }
 
 func serviceEnvUpdateInput(req *servicev1.ServiceEnvUpdateReq) servicedto.ServiceEnvUpdateInput {

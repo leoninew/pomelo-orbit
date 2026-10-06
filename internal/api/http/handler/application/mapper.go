@@ -69,7 +69,7 @@ func versionComponentInput(req *applicationv1.VersionComponentReq) applicationdt
 		Env:        componentEnvInput(req.Env), Endpoints: componentEndpointInput(req.Endpoints), Mounts: componentMountInput(req.Mounts),
 		Dependencies: componentDependencyInput(req.Dependencies),
 		Healthcheck:  componentHealthcheckInput(req.Healthcheck), Resources: componentResourcesInput(req.Resources),
-		PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits), Devices: componentDeviceInput(req.Devices),
+		PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, User: req.User, GroupAdd: req.GroupAdd, Tmpfs: componentTmpfsInput(req.Tmpfs), Ulimits: componentUlimitInput(req.Ulimits), Devices: componentDeviceInput(req.Devices),
 	}
 }
 
@@ -79,9 +79,13 @@ func versionComponentBasicUpdateInput(req *applicationv1.VersionComponentBasicUp
 	}
 }
 
+func versionComponentIdentityUpdateInput(req *applicationv1.VersionComponentIdentityUpdateReq) applicationdto.VersionComponentIdentityUpdateInput {
+	return applicationdto.VersionComponentIdentityUpdateInput{User: req.User, GroupAdd: req.GroupAdd}
+}
+
 func versionComponentCreateInput(req *applicationv1.VersionComponentCreateReq) applicationdto.VersionComponentInput {
 	return applicationdto.VersionComponentInput{
-		Name: req.Name, Image: req.Image, Entrypoint: req.Entrypoint, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy,
+		Name: req.Name, Image: req.Image, Entrypoint: req.Entrypoint, Command: req.Command, PullPolicy: req.PullPolicy, RestartPolicy: req.RestartPolicy, User: req.User, GroupAdd: req.GroupAdd,
 	}
 }
 
@@ -143,7 +147,7 @@ func componentMountInput(items []*applicationv1.ComponentMount) []model.VersionC
 		if item != nil {
 			result = append(result, model.VersionComponentMount{
 				SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly,
-				SourceIsHostPath: item.SourceIsHostPath, Content: stringValue(item.Content),
+				SourceIsHostPath: item.SourceIsHostPath, Shared: item.Shared, Content: stringValue(item.Content),
 				Mode: item.Mode, IgnoreIfExists: item.IgnoreIfExists,
 			})
 		}
@@ -265,7 +269,7 @@ func versionComponentResponse(component model.VersionComponent) *applicationv1.V
 		Env:        componentEnvResponse(component.Env), Endpoints: componentEndpointResponse(component.Endpoints), Mounts: componentMountResponse(component.Mounts),
 		Dependencies: componentDependencyResponse(component.Dependencies),
 		Healthcheck:  componentHealthcheckResponse(component.Healthcheck), Resources: componentResourcesResponse(component.Resources),
-		PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, Tmpfs: componentTmpfsResponse(component.Tmpfs), Ulimits: componentUlimitResponse(component.Ulimits),
+		PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, User: component.User, GroupAdd: component.GroupAdd, Tmpfs: componentTmpfsResponse(component.Tmpfs), Ulimits: componentUlimitResponse(component.Ulimits),
 		Devices:   componentDeviceResponse(component.Devices),
 		CreatedAt: transport.FormatTime(component.CreatedAt), UpdatedAt: transport.FormatTime(component.UpdatedAt),
 	}
@@ -300,7 +304,7 @@ func componentMountResponse(items []model.VersionComponentMount) []*applicationv
 	for _, item := range items {
 		result = append(result, &applicationv1.ComponentMount{
 			SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly,
-			SourceIsHostPath: item.SourceIsHostPath, Content: optionalString(item.Content),
+			SourceIsHostPath: item.SourceIsHostPath, Shared: item.Shared, Content: optionalString(item.Content),
 			Mode: item.Mode, IgnoreIfExists: item.IgnoreIfExists,
 		})
 	}

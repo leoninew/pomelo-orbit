@@ -59,6 +59,7 @@ type ApplicationService interface {
 	VersionComponentForUser(context.Context, string, string, string, string) (model.VersionComponent, error)
 	CreateVersionComponent(context.Context, string, string, string, applicationdto.VersionComponentInput) (model.VersionComponent, error)
 	UpdateVersionComponentBasic(context.Context, string, string, string, string, applicationdto.VersionComponentBasicUpdateInput) (model.VersionComponent, error)
+	UpdateVersionComponentIdentity(context.Context, string, string, string, string, applicationdto.VersionComponentIdentityUpdateInput) (model.VersionComponent, error)
 	UpdateVersionComponentRuntime(context.Context, string, string, string, string, applicationdto.VersionComponentRuntimeUpdateInput) (model.VersionComponent, error)
 	UpdateVersionComponentEndpoints(context.Context, string, string, string, string, applicationdto.VersionComponentEndpointsUpdateInput) (model.VersionComponent, error)
 	UpdateVersionComponentEnv(context.Context, string, string, string, string, applicationdto.VersionComponentEnvUpdateInput) (model.VersionComponent, error)

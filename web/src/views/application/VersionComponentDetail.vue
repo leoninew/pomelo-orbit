@@ -188,6 +188,40 @@
             </dl>
           </DetailInfoCard>
           <DetailInfoCard
+            :title="t('application.componentDetail.sections.identity')"
+            :editable="Boolean(canEdit && !isNew)"
+            :disabled="operating"
+            @edit="startIdentityEditing"
+          >
+            <ComponentIdentityFields
+              v-if="isNew"
+              v-model:user="form.user"
+              v-model:groups="form.group_add"
+              class="p-5 sm:p-6"
+            />
+            <dl
+              v-else
+              class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-5 p-5 sm:grid-cols-2 sm:p-6"
+            >
+              <div class="min-w-0">
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.user') }}
+                </dt>
+                <dd class="mt-1 break-words text-foreground">
+                  {{ form.user || t('common.notSet') }}
+                </dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-muted-foreground">
+                  {{ t('application.componentDetail.fields.groupAdd') }}
+                </dt>
+                <dd class="mt-1 whitespace-pre-wrap break-words text-foreground">
+                  {{ form.group_add || t('common.notSet') }}
+                </dd>
+              </div>
+            </dl>
+          </DetailInfoCard>
+          <DetailInfoCard
             v-if="!isNew"
             :title="t('application.componentDetail.sections.healthcheck')"
             :editable="canEdit"
@@ -411,6 +445,7 @@
                     <th>{{ t('application.componentDetail.fields.source') }}</th>
                     <th>{{ t('application.componentDetail.fields.target') }}</th>
                     <th>{{ t('application.componentDetail.fields.readOnly') }}</th>
+                    <th>{{ t('application.componentDetail.fields.shared') }}</th>
                     <th class="w-48">{{ t('common.operation') }}</th>
                   </tr>
                 </thead>
@@ -424,6 +459,7 @@
                     <td class="min-w-20 text-foreground">
                       {{ row.read_only ? t('common.yes') : t('common.no') }}
                     </td>
+                    <td>{{ row.shared ? t('common.yes') : t('common.no') }}</td>
                     <td class="w-36">
                       <div class="flex items-center gap-3">
                         <button
@@ -743,6 +779,23 @@
           :confirm-label="t('common.save')"
           @cancel="cancelBasicEditing"
           @confirm="save('basic')"
+        />
+      </template>
+    </AppDialog>
+
+    <AppDialog
+      :open="identityDialogOpen"
+      :title="t('application.componentDetail.sections.identity')"
+      width-class="w-[min(480px,calc(100vw-32px))]"
+      @update:open="setIdentityDialogOpen"
+    >
+      <ComponentIdentityFields v-model:user="form.user" v-model:groups="form.group_add" />
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.save')"
+          @cancel="cancelIdentityEditing"
+          @confirm="save('identity')"
         />
       </template>
     </AppDialog>
@@ -1299,6 +1352,24 @@
             {{ t('application.componentDetail.fields.readOnly') }}
           </span>
         </label>
+        <label
+          v-if="['directory', 'file'].includes(mountForm.source_type)"
+          class="flex items-center gap-2 self-end pb-2"
+        >
+          <input v-model="mountForm.source_is_host_path" class="app-checkbox" type="checkbox" />
+          <span class="text-sm text-foreground">
+            {{ t('application.componentDetail.fields.sourceIsHostPath') }}
+          </span>
+        </label>
+        <label
+          v-if="mountForm.source_type === 'directory'"
+          class="flex items-center gap-2 self-end pb-2"
+        >
+          <input v-model="mountForm.shared" class="app-checkbox" type="checkbox" />
+          <span class="text-sm text-foreground">
+            {{ t('application.componentDetail.fields.shared') }}
+          </span>
+        </label>
       </div>
       <p v-if="mountDialogError" class="app-field-error" role="alert">{{ mountDialogError }}</p>
       <template #footer>
@@ -1407,6 +1478,7 @@
   import EnvironmentVariableListEditor from '@/components/EnvironmentVariableListEditor.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import ComponentIdentityFields from '@/components/ComponentIdentityFields.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -1418,6 +1490,7 @@
   } from '@/gen/proto/orbit/v1/application/version';
   import {
     componentBasicRequestFromForm,
+    componentIdentityRequestFromForm,
     componentCreateRequestFromForm,
     componentDependenciesRequestFromForm,
     componentDevicesRequestFromForm,
@@ -1445,7 +1518,7 @@
   } from '@/components/environmentVariableList';
 
   type ComponentTab = 'runtime' | 'connectivity' | 'mounts' | 'advanced';
-  type ComponentSaveGroup = 'basic' | 'runtime';
+  type ComponentSaveGroup = 'basic' | 'identity' | 'runtime';
   type ConnectivityGroup = 'ports' | 'dependencies';
   type RecordGroup = ConnectivityGroup | 'tmpfs' | 'ulimits' | 'devices';
   type PersistOutcome = 'saved' | 'invalid' | 'failed';
@@ -1487,6 +1560,7 @@
   const savedEnvironmentRows = ref<EnvironmentVariableListRow[]>([]);
   const activeTab = ref<ComponentTab>('runtime');
   const basicDialogOpen = ref(false);
+  const identityDialogOpen = ref(false);
   const basicErrors = reactive({ name: '', image: '', pullPolicy: '', restartPolicy: '' });
   const healthcheckDialogOpen = ref(false);
   const healthcheckErrors = reactive({ test_mode: '', test: '', retries: '' });
@@ -1809,6 +1883,12 @@
       mountErrors.source = message;
     }
     mountErrors.target = mountForm.target.trim() ? '' : message;
+    if (
+      mountForm.shared &&
+      (mountForm.source_type !== 'directory' || !isAbsoluteMountSource(source))
+    ) {
+      mountErrors.source = t('application.componentDetail.validation.sharedSource');
+    }
     return !mountErrors.source_type && !mountErrors.source && !mountErrors.target;
   }
 
@@ -1838,6 +1918,7 @@
       target: '',
       read_only: false,
       source_is_host_path: false,
+      shared: false,
       content: '',
       mode: '',
       ignore_if_exists: false,
@@ -1888,7 +1969,7 @@
   }
 
   function startBasicEditing() {
-    if (!component.value || healthcheckDialogOpen.value) {
+    if (!component.value || healthcheckDialogOpen.value || identityDialogOpen.value) {
       return;
     }
     assignForm(componentFormFromResponse(component.value));
@@ -1914,8 +1995,33 @@
     cancelBasicEditing();
   }
 
+  function startIdentityEditing() {
+    if (!component.value || basicDialogOpen.value || healthcheckDialogOpen.value) {
+      return;
+    }
+    assignForm(componentFormFromResponse(component.value));
+    formError.value = '';
+    identityDialogOpen.value = true;
+  }
+
+  function cancelIdentityEditing() {
+    if (component.value) {
+      assignForm(componentFormFromResponse(component.value));
+    }
+    formError.value = '';
+    identityDialogOpen.value = false;
+  }
+
+  function setIdentityDialogOpen(open: boolean) {
+    if (open) {
+      identityDialogOpen.value = true;
+      return;
+    }
+    cancelIdentityEditing();
+  }
+
   function startHealthcheckEditing() {
-    if (basicDialogOpen.value) {
+    if (basicDialogOpen.value || identityDialogOpen.value) {
       return;
     }
     if (component.value) {
@@ -2351,6 +2457,9 @@
   }
 
   function updateMountFormSourceType(value: string | number) {
+    if (value !== 'directory') {
+      mountForm.shared = false;
+    }
     mountForm.source_type = String(value);
     mountErrors.source_type = '';
     if (mountForm.source_type !== 'directory' && mountForm.source_type !== 'file') {
@@ -2497,7 +2606,9 @@
       error === 'nameImage' ||
       error === 'componentName' ||
       error === 'pullPolicy' ||
-      error === 'restartPolicy'
+      error === 'restartPolicy' ||
+      error === 'user' ||
+      error === 'groupAdd'
     ) {
       return 'runtime';
     }
@@ -2517,6 +2628,9 @@
   }
 
   function messageFor(error: ComponentFormError): string {
+    if (error === 'user' || error === 'groupAdd') {
+      return t(`application.componentDetail.validation.${error}`);
+    }
     if (error === 'nameImage') {
       return t('application.componentDetail.validation.nameImage');
     }
@@ -2607,6 +2721,18 @@
             componentId,
             result.value
           );
+        } else if (group === 'identity') {
+          const result = componentIdentityRequestFromForm(form);
+          if (!result.valid) {
+            showValidationError(result.error);
+            return;
+          }
+          updated = await applicationApi.updateVersionComponentIdentity(
+            projectId,
+            versionId,
+            componentId,
+            result.value
+          );
         } else {
           if (!validateHealthcheckForm()) {
             return;
@@ -2627,6 +2753,7 @@
         component.value = updated;
         assignForm(componentFormFromResponse(updated));
         basicDialogOpen.value = false;
+        identityDialogOpen.value = false;
         healthcheckDialogOpen.value = false;
         toast.success(t('application.toast.updateSuccess'));
       });

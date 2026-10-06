@@ -55,6 +55,8 @@ type VersionComponent struct {
 	ArtifactId    *string `db:"artifact_id"`
 	Entrypoint    []string
 	Command       []string
+	User          *string
+	GroupAdd      []string
 	Env           []VersionComponentEnv
 	Endpoints     []VersionComponentEndpoint
 	Mounts        []VersionComponentMount
@@ -109,6 +111,7 @@ type VersionComponentMount struct {
 	Target           string
 	ReadOnly         bool
 	SourceIsHostPath bool
+	Shared           bool
 	Content          string
 	Mode             string
 	IgnoreIfExists   bool

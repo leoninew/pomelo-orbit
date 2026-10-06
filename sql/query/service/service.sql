@@ -93,7 +93,7 @@ WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
 
 -- name: ServiceComponentsByService :many
-SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
+SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, container_user, group_add_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE service_id = sqlc.arg(service_id)
   AND EXISTS (
@@ -104,7 +104,7 @@ WHERE service_id = sqlc.arg(service_id)
 ORDER BY component_name;
 
 -- name: ServiceComponentById :one
-SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
+SELECT id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, container_user, group_add_json, pull_policy, restart_policy, status, created_at, updated_at
 FROM service_component
 WHERE service_component.id = sqlc.arg(id)
   AND EXISTS (
@@ -124,9 +124,9 @@ WHERE service_id = sqlc.arg(service_id)
 
 -- name: InsertServiceComponent :exec
 INSERT INTO service_component (
-  id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, status, created_at, updated_at
+  id, service_id, source_version_component_id, component_name, entrypoint_json, command_json, pull_policy, restart_policy, container_user, group_add_json, status, created_at, updated_at
 ) SELECT
-  sqlc.arg(id), sqlc.arg(service_id), sqlc.arg(source_version_component_id), sqlc.arg(component_name), sqlc.arg(entrypoint_json), sqlc.arg(command_json), sqlc.arg(pull_policy), sqlc.arg(restart_policy), sqlc.arg(status), sqlc.arg(created_at), sqlc.arg(updated_at)
+  sqlc.arg(id), sqlc.arg(service_id), sqlc.arg(source_version_component_id), sqlc.arg(component_name), sqlc.arg(entrypoint_json), sqlc.arg(command_json), sqlc.arg(pull_policy), sqlc.arg(restart_policy), sqlc.arg(container_user), sqlc.arg(group_add_json), sqlc.arg(status), sqlc.arg(created_at), sqlc.arg(updated_at)
 WHERE EXISTS (
   SELECT 1 FROM service
   WHERE service.id = sqlc.arg(service_id)
@@ -135,7 +135,7 @@ WHERE EXISTS (
 
 -- name: UpdateServiceComponentOverlayFields :exec
 UPDATE service_component
-SET entrypoint_json = sqlc.arg(entrypoint_json), command_json = sqlc.arg(command_json), pull_policy = sqlc.arg(pull_policy), restart_policy = sqlc.arg(restart_policy), updated_at = sqlc.arg(updated_at)
+SET entrypoint_json = sqlc.arg(entrypoint_json), command_json = sqlc.arg(command_json), pull_policy = sqlc.arg(pull_policy), restart_policy = sqlc.arg(restart_policy), container_user = sqlc.arg(container_user), group_add_json = sqlc.arg(group_add_json), updated_at = sqlc.arg(updated_at)
 WHERE service_component.id = sqlc.arg(id)
   AND EXISTS (
     SELECT 1 FROM service

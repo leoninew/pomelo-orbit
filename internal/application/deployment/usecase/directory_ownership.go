@@ -85,8 +85,9 @@ func (s Service) checkRunningMountOwnership(ctx context.Context, target environm
 		return fmt.Errorf("inspect running mounts for service %s: %w", serviceCode, err)
 	}
 	var containers []struct {
+		Config struct{ Labels map[string]string }
 		State  struct{ Running bool }
-		Mounts []struct{ Type, Source string }
+		Mounts []struct{ Type, Source, Destination string }
 	}
 	if err := json.Unmarshal([]byte(output), &containers); err != nil {
 		return fmt.Errorf("parse running mounts for service %s: %w", serviceCode, err)
@@ -95,12 +96,19 @@ func (s Service) checkRunningMountOwnership(ctx context.Context, target environm
 		if !container.State.Running {
 			continue
 		}
+		sharedTargets, err := sharedMountTargets(container.Config.Labels)
+		if err != nil {
+			return fmt.Errorf("parse shared mounts for service %s: %w", serviceCode, err)
+		}
 		for _, mount := range container.Mounts {
 			if mount.Type != "bind" {
 				continue
 			}
 			occupied := dockerMountComparisonPath(mount.Source, platform)
 			for _, source := range sources {
+				if sharedTargets[sharedMountTargetKey(mount.Destination)] && mountSourceContains(occupied, source, platform) {
+					continue
+				}
 				if workspacepath.OverlappingDirectories(dockerMountComparisonPath(source, platform), occupied, platform) {
 					return fmt.Errorf("docker mount directory %s overlaps bind mount %s used by running service %s", source, mount.Source, serviceCode)
 				}
@@ -111,8 +119,9 @@ func (s Service) checkRunningMountOwnership(ctx context.Context, target environm
 }
 
 func dockerMountComparisonPath(value, platform string) string {
-	if platform == model.EnvironmentPlatformWindows {
+	if platform == model.EnvironmentPlatformWindows || len(value) > 1 && value[1] == ':' {
 		value = strings.ReplaceAll(value, "\\", "/")
+		value = strings.ToLower(value)
 	}
 	// Docker Desktop may report a Windows bind source using its Linux VM path.
 	for _, prefix := range []string{"/run/desktop/mnt/host/", "/host_mnt/"} {

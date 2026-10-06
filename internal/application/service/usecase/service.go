@@ -296,6 +296,8 @@ func (s Service) UpdateServiceComponentOverlay(ctx context.Context, userId, proj
 	component.Command = command
 	component.PullPolicy = input.PullPolicy
 	component.RestartPolicy = input.RestartPolicy
+	component.User = input.User
+	component.GroupAdd = input.GroupAdd
 	component.Env = append([]model.ServiceComponentEnv(nil), input.Env...)
 	component.Mounts = append([]model.ServiceComponentMount(nil), input.Mounts...)
 	component.Resources = input.Resources
@@ -474,6 +476,15 @@ func serviceComponentsFromDefinition(input []model.ServiceComponent, declaration
 }
 
 func normalizeOverlay(component *model.ServiceComponent, declaration model.VersionComponent) error {
+	if err := model.ValidateComponentIdentity(component.User, component.GroupAdd); err != nil {
+		return err
+	}
+	if component.User != nil && *component.User != "" && declaration.User != nil && *component.User == *declaration.User {
+		component.User = nil
+	}
+	if len(component.GroupAdd) > 0 && slices.Equal(component.GroupAdd, declaration.GroupAdd) {
+		component.GroupAdd = nil
+	}
 	// An empty argv is an intentional override that restores the image default;
 	// it must remain distinct from a nil value that inherits the declaration.
 	if len(component.Entrypoint) > 0 && slices.Equal(component.Entrypoint, declaration.Entrypoint) {
@@ -557,6 +568,9 @@ func normalizeOverlay(component *model.ServiceComponent, declaration model.Versi
 				return fmt.Errorf("mount %s requires source and source_is_host_path", item.Target)
 			}
 			if err := model.ValidateMountSource(declarationMount.SourceType, *item.Source, *item.SourceIsHostPath); err != nil {
+				return fmt.Errorf("component %s mount %s: %w", declaration.Name, item.Target, err)
+			}
+			if err := model.ValidateSharedMount(declarationMount.SourceType, *item.Source, declarationMount.Shared); err != nil {
 				return fmt.Errorf("component %s mount %s: %w", declaration.Name, item.Target, err)
 			}
 			if *item.Source != declarationMount.Source || *item.SourceIsHostPath != declarationMount.SourceIsHostPath {

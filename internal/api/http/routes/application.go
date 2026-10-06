@@ -32,6 +32,7 @@ func (r Router) registerApplication(engine *gin.Engine) {
 	engine.POST("/api/version/:version_id/component", handler.CreateVersionComponent)
 	engine.GET("/api/version/:version_id/component/:component_id", handler.GetVersionComponent)
 	engine.PUT("/api/version/:version_id/component/:component_id/basic", handler.UpdateVersionComponentBasic)
+	engine.PUT("/api/version/:version_id/component/:component_id/identity", handler.UpdateVersionComponentIdentity)
 	engine.PUT("/api/version/:version_id/component/:component_id/runtime", handler.UpdateVersionComponentRuntime)
 	engine.PUT("/api/version/:version_id/component/:component_id/endpoints", handler.UpdateVersionComponentEndpoints)
 	engine.PUT("/api/version/:version_id/component/:component_id/env", handler.UpdateVersionComponentEnv)

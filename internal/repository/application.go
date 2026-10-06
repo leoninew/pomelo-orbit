@@ -40,6 +40,7 @@ type ApplicationStore interface {
 	ReplaceVersionComponents(ctx context.Context, projectId string, versionId string, components []model.VersionComponent) error
 	CreateVersionComponent(ctx context.Context, projectId string, component model.VersionComponent) error
 	UpdateVersionComponentBasic(ctx context.Context, projectId string, component model.VersionComponent, oldName string) error
+	UpdateVersionComponentIdentity(ctx context.Context, projectId string, component model.VersionComponent) error
 	UpdateVersionComponentRuntime(ctx context.Context, projectId string, component model.VersionComponent) error
 	UpdateVersionComponentEndpoints(ctx context.Context, projectId string, component model.VersionComponent) error
 	UpdateVersionComponentEnv(ctx context.Context, projectId string, component model.VersionComponent) error

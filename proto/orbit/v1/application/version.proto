@@ -18,6 +18,8 @@ message VersionComponentReq {
   repeated ComponentUlimit ulimits = 15;
   repeated ComponentDeviceRequest devices = 16;
   string entrypoint = 17;
+  optional string user = 18;
+  repeated string group_add = 19;
 }
 
 message VersionComponentCreateReq {
@@ -27,6 +29,8 @@ message VersionComponentCreateReq {
   optional string restart_policy = 4;
   string command = 5;
   string entrypoint = 6;
+  optional string user = 7;
+  repeated string group_add = 8;
 }
 
 message VersionComponentBasicUpdateReq {
@@ -36,6 +40,11 @@ message VersionComponentBasicUpdateReq {
   optional string restart_policy = 4;
   string command = 5;
   string entrypoint = 6;
+}
+
+message VersionComponentIdentityUpdateReq {
+  optional string user = 1;
+  repeated string group_add = 2;
 }
 
 message VersionComponentRuntimeUpdateReq {
@@ -93,6 +102,8 @@ message VersionComponentResp {
   optional string artifact_source_commit_sha = 24;
   optional string artifact_name = 25;
   string entrypoint = 26;
+  optional string user = 27;
+  repeated string group_add = 28;
 }
 
 message ComponentEnv {
@@ -119,6 +130,7 @@ message ComponentMount {
   bool source_is_host_path = 6;
   bool ignore_if_exists = 8;
   string mode = 9;
+  bool shared = 10;
 }
 
 message ComponentDependency {

@@ -19,6 +19,12 @@ func applyComponentRuntimeFields(service map[string]any, component model.Version
 	if err := validateComponentRuntimeFields(component); err != nil {
 		return err
 	}
+	if component.User != nil && *component.User != "" {
+		service["user"] = *component.User
+	}
+	if len(component.GroupAdd) > 0 {
+		service["group_add"] = append([]string(nil), component.GroupAdd...)
+	}
 	if component.RestartPolicy != nil && *component.RestartPolicy != "no" {
 		service["restart"] = *component.RestartPolicy
 	}
@@ -34,6 +40,9 @@ func applyComponentRuntimeFields(service map[string]any, component model.Version
 }
 
 func validateComponentRuntimeFields(component model.VersionComponent) error {
+	if err := model.ValidateComponentIdentity(component.User, component.GroupAdd); err != nil {
+		return err
+	}
 	if component.RestartPolicy != nil {
 		switch *component.RestartPolicy {
 		case "no":

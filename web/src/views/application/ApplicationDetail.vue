@@ -1105,10 +1105,13 @@
           ? componentForm.name.trim()
             ? ''
             : t('application.componentDetail.validation.componentNameRequired')
-          : t('application.componentDetail.validation.componentName');
-      componentErrors.image = componentForm.image.trim()
-        ? ''
-        : t('application.componentDetail.validation.imageRequired');
+          : result.error === 'componentName'
+            ? t('application.componentDetail.validation.componentName')
+            : '';
+      componentErrors.image =
+        result.error === 'nameImage' && !componentForm.image.trim()
+          ? t('application.componentDetail.validation.imageRequired')
+          : '';
       componentErrors.restartPolicy =
         result.error === 'restartPolicy'
           ? t('application.componentDetail.validation.restartPolicy')

@@ -265,6 +265,11 @@
           </label>
           <textarea v-model="componentForm.command" class="app-textarea" rows="3" />
         </div>
+        <ComponentIdentityFields
+          v-model:user="componentForm.user"
+          v-model:groups="componentForm.group_add"
+          class="sm:col-span-2"
+        />
       </div>
       <p v-if="componentCreateError" class="app-field-error mt-3" role="alert">
         {{ componentCreateError }}
@@ -472,6 +477,7 @@
   import AppLoadingState from '@/components/AppLoadingState.vue';
   import MonacoEditor from '@/components/MonacoEditor.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import ComponentIdentityFields from '@/components/ComponentIdentityFields.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';

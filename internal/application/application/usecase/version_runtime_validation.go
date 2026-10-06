@@ -20,6 +20,9 @@ func validateComponentRuntimeFields(component model.VersionComponent) error {
 }
 
 func validateComponentRuntimeFieldsWithOptions(component model.VersionComponent, requireRestartPolicy bool) error {
+	if err := model.ValidateComponentIdentity(component.User, component.GroupAdd); err != nil {
+		return fmt.Errorf("component %s: %w", component.Name, err)
+	}
 	if requireRestartPolicy && component.RestartPolicy == nil {
 		return fmt.Errorf("component %s restart_policy is required", component.Name)
 	}

@@ -94,6 +94,12 @@
               </AppBadge>
             </dd>
           </div>
+          <div class="flex gap-2 sm:col-span-2">
+            <dt>{{ t('service.fields.runtimeDirectory') }}</dt>
+            <dd class="min-w-0 break-all text-foreground">
+              {{ service.runtime_directory || '-' }}
+            </dd>
+          </div>
           <div class="flex gap-2">
             <dt>{{ t('common.updatedAt') }}</dt>
             <dd class="text-muted-foreground">{{ formatTime(service.updated_at) }}</dd>

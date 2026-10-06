@@ -11,7 +11,7 @@ import (
 )
 
 func (c *core) registerVersionComponentTools(server *mcp.Server) {
-	addTool(server, "orbit_update_version_component_basic", "Replace a Component's name, image, command, pull policy, and restart policy.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_update_version_component_basic", "Replace a Component's basic configuration.", func(ctx context.Context, input struct {
 		VersionId     string `json:"version_id" jsonschema:"required"`
 		ComponentId   string `json:"component_id" jsonschema:"required"`
 		Name          string `json:"name" jsonschema:"required"`
@@ -37,6 +37,26 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 			return nil, err
 		}
 		return componentWriteResult("update_version_component_basic", input.VersionId, input.ComponentId, "/basic", component), nil
+	})
+
+	addTool(server, "orbit_update_version_component_identity", "Replace a Component's container user and supplementary groups. Omit user and use an empty group_add list to restore the image identity.", func(ctx context.Context, input struct {
+		VersionId   string   `json:"version_id" jsonschema:"required"`
+		ComponentId string   `json:"component_id" jsonschema:"required"`
+		User        *string  `json:"user,omitempty"`
+		GroupAdd    []string `json:"group_add" jsonschema:"required"`
+	}) (map[string]any, error) {
+		if err := c.versionInScope(ctx, input.VersionId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		component, err := c.deps.Application.UpdateVersionComponentIdentity(ctx, c.deps.ActorUserId, projectId, input.VersionId, input.ComponentId, applicationdto.VersionComponentIdentityUpdateInput{User: input.User, GroupAdd: input.GroupAdd})
+		if err != nil {
+			return nil, err
+		}
+		return componentWriteResult("update_version_component_identity", input.VersionId, input.ComponentId, "/identity", component), nil
 	})
 
 	addTool(server, "orbit_update_version_component_runtime", "Replace a Component's health check.", func(ctx context.Context, input struct {

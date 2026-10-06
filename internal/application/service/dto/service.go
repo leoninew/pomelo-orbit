@@ -54,6 +54,8 @@ type ServiceComponentOverlayInput struct {
 	Command       *string
 	PullPolicy    *string
 	RestartPolicy *string
+	User          *string
+	GroupAdd      []string
 	Env           []model.ServiceComponentEnv
 	Mounts        []model.ServiceComponentMount
 	Resources     *model.ServiceComponentResources

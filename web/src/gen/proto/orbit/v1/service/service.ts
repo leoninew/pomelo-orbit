@@ -91,6 +91,8 @@ export interface ServiceComponentResp {
   command?: string | undefined;
   pull_policy?: string | undefined;
   restart_policy?: string | undefined;
+  user?: string | undefined;
+  group_add?: ServiceComponentGroupAdd | undefined;
 }
 
 /**
@@ -115,6 +117,8 @@ export interface ServiceComponentDefinitionResp {
   endpoints: ServiceComponentDeclaredEndpoint[];
   entrypoint: string;
   restart_policy?: string | undefined;
+  user?: string | undefined;
+  group_add: string[];
 }
 
 export interface ServiceComponentDeclaredEnv {
@@ -128,6 +132,7 @@ export interface ServiceComponentDeclaredMount {
   target: string;
   read_only: boolean;
   source_is_host_path: boolean;
+  shared: boolean;
 }
 
 export interface ServiceComponentDeclaredResources {
@@ -156,6 +161,13 @@ export interface ServiceComponentOverlayUpdateReq {
   command?: string | undefined;
   pull_policy?: string | undefined;
   restart_policy?: string | undefined;
+  user?: string | undefined;
+  group_add?: ServiceComponentGroupAdd | undefined;
+}
+
+/** Presence distinguishes inheritance from explicitly removing all extra groups. */
+export interface ServiceComponentGroupAdd {
+  values: string[];
 }
 
 export interface ServiceComponentEnvOverlay {

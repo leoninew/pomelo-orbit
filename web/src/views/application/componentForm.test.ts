@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   componentBasicRequestFromForm,
+  componentIdentityRequestFromForm,
   componentCreateRequestFromForm,
   componentDependenciesRequestFromForm,
   componentEnvRequestFromForm,
@@ -16,6 +17,74 @@ import {
 } from './componentForm';
 
 describe('componentForm', () => {
+  it('creates and clears container identity with field validation', () => {
+    const form = emptyComponentForm();
+    form.name = 'orbit';
+    form.image = 'orbit:1';
+    form.user = '1000:1000';
+    form.group_add = '988\ndocker';
+    const result = componentCreateRequestFromForm(form);
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.value).toMatchObject({ user: '1000:1000', group_add: ['988', 'docker'] });
+    }
+    form.user = '1000:';
+    expect(componentIdentityRequestFromForm(form)).toEqual({ valid: false, error: 'user' });
+    form.user = '';
+    form.group_add = '';
+    const cleared = componentIdentityRequestFromForm(form);
+    if (cleared.valid) {
+      expect(cleared.value).toMatchObject({ user: undefined, group_add: [] });
+    } else {
+      throw new Error('Cannot clear identity');
+    }
+  });
+
+  it('saves identity independently from basic fields', () => {
+    const form = emptyComponentForm();
+    form.user = '1000:1000';
+    form.group_add = '988';
+    expect(componentIdentityRequestFromForm(form)).toEqual({
+      valid: true,
+      value: { user: '1000:1000', group_add: ['988'] },
+    });
+    form.name = 'orbit';
+    form.image = 'orbit:1';
+    form.user = '1000:';
+    form.group_add = '988,,docker';
+    const basic = componentBasicRequestFromForm(form);
+    expect(basic.valid).toBe(true);
+    if (!basic.valid) {
+      throw new Error('Identity errors blocked basic fields');
+    }
+    expect(basic.value).not.toHaveProperty('user');
+    expect(basic.value).not.toHaveProperty('group_add');
+  });
+
+  it('allows explicit sharing only for absolute directory sources', () => {
+    const form = emptyComponentForm();
+    form.mounts.push({
+      source_type: 'directory',
+      source: '/srv/data',
+      target: '/app/data',
+      read_only: false,
+      source_is_host_path: true,
+      shared: true,
+      content: '',
+      mode: '',
+      ignore_if_exists: false,
+    });
+    expect(componentMountsRequestFromForm(form)).toMatchObject({
+      valid: true,
+      value: { mounts: [{ shared: true }] },
+    });
+    const mount = form.mounts[0];
+    if (!mount) {
+      throw new Error('Missing mount');
+    }
+    mount.source = './data';
+    expect(componentMountsRequestFromForm(form)).toEqual({ valid: false, error: 'mounts' });
+  });
   it('preserves entered configuration text', () => {
     const form = emptyComponentForm();
     form.name = 'api';
@@ -29,6 +98,7 @@ describe('componentForm', () => {
       target: '/etc/app.conf',
       read_only: true,
       source_is_host_path: false,
+      shared: false,
       content: ' key = value ',
       mode: '0644',
       ignore_if_exists: false,
@@ -58,6 +128,7 @@ describe('componentForm', () => {
       target: '/etc/app.conf',
       read_only: true,
       source_is_host_path: false,
+      shared: false,
       content: 'key=value',
       mode: '0644',
       ignore_if_exists: false,
@@ -74,6 +145,7 @@ describe('componentForm', () => {
       target: '/app/.env',
       read_only: true,
       source_is_host_path: false,
+      shared: false,
       content: 'key=value',
       mode: '0644',
       ignore_if_exists: false,
@@ -93,6 +165,7 @@ describe('componentForm', () => {
       target: '/var/lib/app',
       read_only: false,
       source_is_host_path: false,
+      shared: false,
       content: '',
       mode: '',
       ignore_if_exists: false,
@@ -109,6 +182,7 @@ describe('componentForm', () => {
       target: '/var/lib/app',
       read_only: false,
       source_is_host_path: false,
+      shared: false,
       content: '',
       mode: '',
       ignore_if_exists: false,
@@ -177,6 +251,8 @@ describe('componentForm', () => {
         command: '',
         pull_policy: 'missing',
         restart_policy: 'unless-stopped',
+        user: undefined,
+        group_add: [],
       },
     });
   });
@@ -238,6 +314,7 @@ describe('componentForm', () => {
       target: '/var/lib/app',
       read_only: false,
       source_is_host_path: false,
+      shared: false,
       content: '',
       mode: '',
       ignore_if_exists: false,
@@ -264,6 +341,7 @@ describe('componentForm', () => {
             target: '/var/lib/app',
             read_only: false,
             source_is_host_path: false,
+            shared: false,
             content: undefined,
             mode: '',
             ignore_if_exists: false,

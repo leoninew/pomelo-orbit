@@ -54,6 +54,11 @@
                     v-else-if="editingRuntimeKey === field.key"
                     v-model="editingRuntimeValue"
                     class="app-textarea"
+                    :class="runtimeIdentityError(field) ? 'app-input-error' : ''"
+                    :aria-invalid="runtimeIdentityError(field) ? 'true' : undefined"
+                    :aria-describedby="
+                      runtimeIdentityError(field) ? `identity-${field.key}-error` : undefined
+                    "
                     rows="3"
                   />
                   <AppTruncatedText
@@ -66,6 +71,14 @@
                         : 'text-foreground'
                     "
                   />
+                  <p
+                    v-if="runtimeIdentityError(field)"
+                    :id="`identity-${field.key}-error`"
+                    class="app-field-error"
+                    role="alert"
+                  >
+                    {{ runtimeIdentityError(field) }}
+                  </p>
                 </td>
                 <td class="whitespace-nowrap">
                   <div v-if="editingRuntimeKey === field.key" class="flex h-9 items-center gap-2">
@@ -82,7 +95,7 @@
                       {{ t('common.edit') }}
                     </button>
                     <button
-                      v-if="runtimeFieldDiffers(field)"
+                      v-if="field.state.overridden"
                       class="text-muted-foreground hover:text-foreground"
                       :disabled="operating"
                       @click="resetRuntime(field)"
@@ -299,6 +312,7 @@
                 <th>{{ t('application.componentDetail.fields.source') }}</th>
                 <th>{{ t('application.componentDetail.fields.target') }}</th>
                 <th>{{ t('application.componentDetail.fields.readOnly') }}</th>
+                <th>{{ t('application.componentDetail.fields.shared') }}</th>
                 <th class="w-48">{{ t('common.operation') }}</th>
               </tr>
             </thead>
@@ -323,6 +337,7 @@
                 <td class="min-w-20 text-foreground">
                   {{ mount.read_only ? t('common.yes') : t('common.no') }}
                 </td>
+                <td>{{ mount.shared ? t('common.yes') : t('common.no') }}</td>
                 <td class="w-36">
                   <div class="flex items-center gap-3">
                     <button
@@ -537,6 +552,8 @@
 </template>
 
 <script setup lang="ts">
+  import { parseGroupAdd, validComponentUser } from '@/utils/componentIdentity';
+  import { serviceIdentityDraft, serviceIdentityPayload } from './serviceComponentIdentity';
   import { ArrowLeft, Save } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -576,6 +593,7 @@
     read_only: boolean;
     base: string;
     base_source_is_host_path: boolean;
+    shared: boolean;
     source: string;
     source_is_host_path: boolean;
     deleted: boolean;
@@ -605,7 +623,8 @@
     base: string;
     value: string;
   };
-  type RuntimeFieldKey = 'entrypoint' | 'command' | 'pull_policy' | 'restart_policy';
+  type RuntimeFieldKey =
+    'entrypoint' | 'command' | 'pull_policy' | 'restart_policy' | 'user' | 'group_add';
   type RuntimeFieldState = {
     base: string;
     value: string;
@@ -736,6 +755,8 @@
       command: { base: '', value: '', overridden: false },
       pull_policy: { base: '', value: '', overridden: false },
       restart_policy: { base: '', value: '', overridden: false },
+      user: { base: '', value: '', overridden: false },
+      group_add: { base: '', value: '', overridden: false },
     };
   }
 
@@ -752,6 +773,9 @@
     }
     const declaration = value.version_component;
     const component = value.service_component;
+    const identity = serviceIdentityDraft(declaration, component);
+    Object.assign(runtimeDraft.user, identity.user);
+    Object.assign(runtimeDraft.group_add, identity.group_add);
     Object.assign(runtimeDraft.entrypoint, {
       base: declaration.entrypoint,
       value: component.entrypoint ?? '',
@@ -794,6 +818,7 @@
         read_only: item.read_only,
         base: item.source,
         base_source_is_host_path: item.source_is_host_path,
+        shared: item.shared,
         source: overlay?.source ?? item.source,
         source_is_host_path: overlay?.source_is_host_path ?? item.source_is_host_path,
         deleted: overlay?.state === 'deleted',
@@ -875,6 +900,8 @@
       command: component.command,
       pull_policy: component.pull_policy,
       restart_policy: component.restart_policy,
+      user: component.user,
+      group_add: component.group_add,
       env: componentEnvironmentOverlays(environmentRows.value),
       mounts: component.mounts,
       resources: component.resources,
@@ -987,6 +1014,10 @@
       mountSourceError.value = t('service.componentDetail.validation.sourceMustStartWithDotSlash');
       return;
     }
+    if (row.shared && !isAbsoluteMountSource(source)) {
+      mountSourceError.value = t('application.componentDetail.validation.sharedSource');
+      return;
+    }
     row.source = source;
     row.source_is_host_path = editingMountSourceIsHostPath.value;
     row.deleted = false;
@@ -1090,6 +1121,13 @@
     return value || '-';
   }
   const runtimeFieldDefinitions = computed<RuntimeFieldDefinition[]>(() => [
+    { key: 'user', label: t('application.componentDetail.fields.user'), kind: 'text', values: [] },
+    {
+      key: 'group_add',
+      label: t('application.componentDetail.fields.groupAdd'),
+      kind: 'text',
+      values: [],
+    },
     {
       key: 'pull_policy',
       label: t('application.componentDetail.fields.pullPolicy'),
@@ -1120,6 +1158,21 @@
   );
   function runtimeFieldDiffers(field: RuntimeField) {
     return field.state.overridden && field.state.value !== field.state.base;
+  }
+  function runtimeIdentityError(field: RuntimeField): string {
+    const value =
+      editingRuntimeKey.value === field.key
+        ? editingRuntimeValue.value
+        : field.state.overridden
+          ? field.state.value
+          : '';
+    if (field.key === 'user' && !validComponentUser(value)) {
+      return t('application.componentDetail.validation.user');
+    }
+    if (field.key === 'group_add' && parseGroupAdd(value) === null) {
+      return t('application.componentDetail.validation.groupAdd');
+    }
+    return '';
   }
   function startRuntimeEdit(field: RuntimeField) {
     editingRuntimeKey.value = field.key;
@@ -1167,6 +1220,7 @@
   }
   function payload(): ServiceComponentOverlayUpdateReq {
     return {
+      ...serviceIdentityPayload(runtimeDraft.user, runtimeDraft.group_add),
       entrypoint: runtimeDraft.entrypoint.overridden ? runtimeDraft.entrypoint.value : undefined,
       command: runtimeDraft.command.overridden ? runtimeDraft.command.value : undefined,
       pull_policy: runtimeDraft.pull_policy.overridden
@@ -1244,6 +1298,9 @@
   async function save() {
     commitRuntimeEdit();
     commitResourceEdit();
+    if (runtimeRows.value.some((field) => runtimeIdentityError(field))) {
+      return;
+    }
     try {
       await executeOperation(async () => {
         await serviceApi.updateComponent(selectedProjectId(), serviceId, componentId, payload());

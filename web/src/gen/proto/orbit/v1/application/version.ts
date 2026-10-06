@@ -24,6 +24,8 @@ export interface VersionComponentReq {
   ulimits: ComponentUlimit[];
   devices: ComponentDeviceRequest[];
   entrypoint: string;
+  user?: string | undefined;
+  group_add: string[];
 }
 
 export interface VersionComponentCreateReq {
@@ -33,6 +35,8 @@ export interface VersionComponentCreateReq {
   restart_policy?: string | undefined;
   command: string;
   entrypoint: string;
+  user?: string | undefined;
+  group_add: string[];
 }
 
 export interface VersionComponentBasicUpdateReq {
@@ -42,6 +46,11 @@ export interface VersionComponentBasicUpdateReq {
   restart_policy?: string | undefined;
   command: string;
   entrypoint: string;
+}
+
+export interface VersionComponentIdentityUpdateReq {
+  user?: string | undefined;
+  group_add: string[];
 }
 
 export interface VersionComponentRuntimeUpdateReq {
@@ -99,6 +108,8 @@ export interface VersionComponentResp {
   artifact_source_commit_sha?: string | undefined;
   artifact_name?: string | undefined;
   entrypoint: string;
+  user?: string | undefined;
+  group_add: string[];
 }
 
 export interface ComponentEnv {
@@ -125,6 +136,7 @@ export interface ComponentMount {
   source_is_host_path: boolean;
   ignore_if_exists: boolean;
   mode: string;
+  shared: boolean;
 }
 
 export interface ComponentDependency {

@@ -14,6 +14,7 @@ import (
 func TestEncodeDecodeKeepsInternalReferencesWithoutProjectOwnership(t *testing.T) {
 	projectId := "source-project"
 	serviceId := "source-service"
+	empty := ""
 	item := Package{
 		Format:  Format,
 		Version: FormatVersion,
@@ -26,6 +27,7 @@ func TestEncodeDecodeKeepsInternalReferencesWithoutProjectOwnership(t *testing.T
 			Components: []model.ServiceComponent{{
 				Id: "source-service-component", ServiceId: serviceId,
 				SourceVersionComponentId: "source-version-component", ComponentName: "web",
+				User: &empty, GroupAdd: []string{},
 			}},
 		}},
 		Routes: []routedto.RouteDefinitionInput{{Route: model.Route{
@@ -50,6 +52,10 @@ func TestEncodeDecodeKeepsInternalReferencesWithoutProjectOwnership(t *testing.T
 	}
 	if decoded.Services[0].Components[0].SourceVersionComponentId != "source-version-component" {
 		t.Fatalf("source Component reference was not preserved: %+v", decoded.Services[0].Components[0])
+	}
+	component := decoded.Services[0].Components[0]
+	if component.User == nil || *component.User != "" || component.GroupAdd == nil || len(component.GroupAdd) != 0 {
+		t.Fatal("handover lost explicit image-default identity")
 	}
 	if decoded.Routes[0].Route.ServiceId == nil || *decoded.Routes[0].Route.ServiceId != serviceId || decoded.Routes[0].Route.ProjectId != nil {
 		t.Fatalf("unexpected decoded Route: %+v", decoded.Routes[0].Route)

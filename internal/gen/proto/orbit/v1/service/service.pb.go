@@ -566,10 +566,12 @@ type ServiceComponentResp struct {
 	EffectiveEndpoints []*ServiceComponentDeclaredEndpoint `protobuf:"bytes,14,rep,name=effective_endpoints,json=effectiveEndpoints,proto3" json:"effective_endpoints,omitempty"`
 	// nil inherits the Version declaration; an empty command string is an
 	// explicit empty argv and causes Compose to use the image default.
-	Entrypoint    *string `protobuf:"bytes,15,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
-	Command       *string `protobuf:"bytes,16,opt,name=command,proto3,oneof" json:"command,omitempty"`
-	PullPolicy    *string `protobuf:"bytes,17,opt,name=pull_policy,json=pullPolicy,proto3,oneof" json:"pull_policy,omitempty"`
-	RestartPolicy *string `protobuf:"bytes,18,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
+	Entrypoint    *string                   `protobuf:"bytes,15,opt,name=entrypoint,proto3,oneof" json:"entrypoint,omitempty"`
+	Command       *string                   `protobuf:"bytes,16,opt,name=command,proto3,oneof" json:"command,omitempty"`
+	PullPolicy    *string                   `protobuf:"bytes,17,opt,name=pull_policy,json=pullPolicy,proto3,oneof" json:"pull_policy,omitempty"`
+	RestartPolicy *string                   `protobuf:"bytes,18,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
+	User          *string                   `protobuf:"bytes,19,opt,name=user,proto3,oneof" json:"user,omitempty"`
+	GroupAdd      *ServiceComponentGroupAdd `protobuf:"bytes,20,opt,name=group_add,json=groupAdd,proto3,oneof" json:"group_add,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -730,6 +732,20 @@ func (x *ServiceComponentResp) GetRestartPolicy() string {
 	return ""
 }
 
+func (x *ServiceComponentResp) GetUser() string {
+	if x != nil && x.User != nil {
+		return *x.User
+	}
+	return ""
+}
+
+func (x *ServiceComponentResp) GetGroupAdd() *ServiceComponentGroupAdd {
+	if x != nil {
+		return x.GroupAdd
+	}
+	return nil
+}
+
 // ServiceComponentDetailResp provides the Version declaration and sparse
 // Service Component values separately. An absent value in service_component
 // means that the Service inherits the corresponding Version value.
@@ -798,6 +814,8 @@ type ServiceComponentDefinitionResp struct {
 	Endpoints     []*ServiceComponentDeclaredEndpoint `protobuf:"bytes,9,rep,name=endpoints,proto3" json:"endpoints,omitempty"`
 	Entrypoint    string                              `protobuf:"bytes,10,opt,name=entrypoint,proto3" json:"entrypoint,omitempty"`
 	RestartPolicy *string                             `protobuf:"bytes,11,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
+	User          *string                             `protobuf:"bytes,12,opt,name=user,proto3,oneof" json:"user,omitempty"`
+	GroupAdd      []string                            `protobuf:"bytes,13,rep,name=group_add,json=groupAdd,proto3" json:"group_add,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -909,6 +927,20 @@ func (x *ServiceComponentDefinitionResp) GetRestartPolicy() string {
 	return ""
 }
 
+func (x *ServiceComponentDefinitionResp) GetUser() string {
+	if x != nil && x.User != nil {
+		return *x.User
+	}
+	return ""
+}
+
+func (x *ServiceComponentDefinitionResp) GetGroupAdd() []string {
+	if x != nil {
+		return x.GroupAdd
+	}
+	return nil
+}
+
 type ServiceComponentDeclaredEnv struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -968,6 +1000,7 @@ type ServiceComponentDeclaredMount struct {
 	Target           string                 `protobuf:"bytes,3,opt,name=target,proto3" json:"target,omitempty"`
 	ReadOnly         bool                   `protobuf:"varint,4,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
 	SourceIsHostPath bool                   `protobuf:"varint,5,opt,name=source_is_host_path,json=sourceIsHostPath,proto3" json:"source_is_host_path,omitempty"`
+	Shared           bool                   `protobuf:"varint,6,opt,name=shared,proto3" json:"shared,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1033,6 +1066,13 @@ func (x *ServiceComponentDeclaredMount) GetReadOnly() bool {
 func (x *ServiceComponentDeclaredMount) GetSourceIsHostPath() bool {
 	if x != nil {
 		return x.SourceIsHostPath
+	}
+	return false
+}
+
+func (x *ServiceComponentDeclaredMount) GetShared() bool {
+	if x != nil {
+		return x.Shared
 	}
 	return false
 }
@@ -1207,6 +1247,8 @@ type ServiceComponentOverlayUpdateReq struct {
 	Command       *string                            `protobuf:"bytes,6,opt,name=command,proto3,oneof" json:"command,omitempty"`
 	PullPolicy    *string                            `protobuf:"bytes,7,opt,name=pull_policy,json=pullPolicy,proto3,oneof" json:"pull_policy,omitempty"`
 	RestartPolicy *string                            `protobuf:"bytes,8,opt,name=restart_policy,json=restartPolicy,proto3,oneof" json:"restart_policy,omitempty"`
+	User          *string                            `protobuf:"bytes,9,opt,name=user,proto3,oneof" json:"user,omitempty"`
+	GroupAdd      *ServiceComponentGroupAdd          `protobuf:"bytes,10,opt,name=group_add,json=groupAdd,proto3,oneof" json:"group_add,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1297,6 +1339,65 @@ func (x *ServiceComponentOverlayUpdateReq) GetRestartPolicy() string {
 	return ""
 }
 
+func (x *ServiceComponentOverlayUpdateReq) GetUser() string {
+	if x != nil && x.User != nil {
+		return *x.User
+	}
+	return ""
+}
+
+func (x *ServiceComponentOverlayUpdateReq) GetGroupAdd() *ServiceComponentGroupAdd {
+	if x != nil {
+		return x.GroupAdd
+	}
+	return nil
+}
+
+// Presence distinguishes inheritance from explicitly removing all extra groups.
+type ServiceComponentGroupAdd struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Values        []string               `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceComponentGroupAdd) Reset() {
+	*x = ServiceComponentGroupAdd{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceComponentGroupAdd) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceComponentGroupAdd) ProtoMessage() {}
+
+func (x *ServiceComponentGroupAdd) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceComponentGroupAdd.ProtoReflect.Descriptor instead.
+func (*ServiceComponentGroupAdd) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ServiceComponentGroupAdd) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
 type ServiceComponentEnvOverlay struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
@@ -1308,7 +1409,7 @@ type ServiceComponentEnvOverlay struct {
 
 func (x *ServiceComponentEnvOverlay) Reset() {
 	*x = ServiceComponentEnvOverlay{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[15]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1320,7 +1421,7 @@ func (x *ServiceComponentEnvOverlay) String() string {
 func (*ServiceComponentEnvOverlay) ProtoMessage() {}
 
 func (x *ServiceComponentEnvOverlay) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[15]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1333,7 +1434,7 @@ func (x *ServiceComponentEnvOverlay) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceComponentEnvOverlay.ProtoReflect.Descriptor instead.
 func (*ServiceComponentEnvOverlay) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{15}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ServiceComponentEnvOverlay) GetKey() string {
@@ -1369,7 +1470,7 @@ type ServiceComponentMountOverlay struct {
 
 func (x *ServiceComponentMountOverlay) Reset() {
 	*x = ServiceComponentMountOverlay{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[16]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1381,7 +1482,7 @@ func (x *ServiceComponentMountOverlay) String() string {
 func (*ServiceComponentMountOverlay) ProtoMessage() {}
 
 func (x *ServiceComponentMountOverlay) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[16]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1394,7 +1495,7 @@ func (x *ServiceComponentMountOverlay) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceComponentMountOverlay.ProtoReflect.Descriptor instead.
 func (*ServiceComponentMountOverlay) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{16}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ServiceComponentMountOverlay) GetSource() string {
@@ -1438,7 +1539,7 @@ type ServiceComponentResourceOverlay struct {
 
 func (x *ServiceComponentResourceOverlay) Reset() {
 	*x = ServiceComponentResourceOverlay{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[17]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1450,7 +1551,7 @@ func (x *ServiceComponentResourceOverlay) String() string {
 func (*ServiceComponentResourceOverlay) ProtoMessage() {}
 
 func (x *ServiceComponentResourceOverlay) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[17]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1463,7 +1564,7 @@ func (x *ServiceComponentResourceOverlay) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceComponentResourceOverlay.ProtoReflect.Descriptor instead.
 func (*ServiceComponentResourceOverlay) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{17}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ServiceComponentResourceOverlay) GetLimitCpus() string {
@@ -1517,7 +1618,7 @@ type ServiceComponentEndpointOverlay struct {
 
 func (x *ServiceComponentEndpointOverlay) Reset() {
 	*x = ServiceComponentEndpointOverlay{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[18]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1529,7 +1630,7 @@ func (x *ServiceComponentEndpointOverlay) String() string {
 func (*ServiceComponentEndpointOverlay) ProtoMessage() {}
 
 func (x *ServiceComponentEndpointOverlay) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[18]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1542,7 +1643,7 @@ func (x *ServiceComponentEndpointOverlay) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceComponentEndpointOverlay.ProtoReflect.Descriptor instead.
 func (*ServiceComponentEndpointOverlay) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{18}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ServiceComponentEndpointOverlay) GetProtocol() string {
@@ -1610,7 +1711,7 @@ type ServicePreviewReq struct {
 
 func (x *ServicePreviewReq) Reset() {
 	*x = ServicePreviewReq{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[19]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1622,7 +1723,7 @@ func (x *ServicePreviewReq) String() string {
 func (*ServicePreviewReq) ProtoMessage() {}
 
 func (x *ServicePreviewReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[19]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1635,7 +1736,7 @@ func (x *ServicePreviewReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServicePreviewReq.ProtoReflect.Descriptor instead.
 func (*ServicePreviewReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{19}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ServicePreviewReq) GetJoinTraefikNetwork() bool {
@@ -1654,7 +1755,7 @@ type ServicePreviewResp struct {
 
 func (x *ServicePreviewResp) Reset() {
 	*x = ServicePreviewResp{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[20]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1666,7 +1767,7 @@ func (x *ServicePreviewResp) String() string {
 func (*ServicePreviewResp) ProtoMessage() {}
 
 func (x *ServicePreviewResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[20]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1679,7 +1780,7 @@ func (x *ServicePreviewResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServicePreviewResp.ProtoReflect.Descriptor instead.
 func (*ServicePreviewResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{20}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ServicePreviewResp) GetComposeYaml() string {
@@ -1702,7 +1803,7 @@ type ServiceDeployReq struct {
 
 func (x *ServiceDeployReq) Reset() {
 	*x = ServiceDeployReq{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[21]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1714,7 +1815,7 @@ func (x *ServiceDeployReq) String() string {
 func (*ServiceDeployReq) ProtoMessage() {}
 
 func (x *ServiceDeployReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[21]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1727,7 +1828,7 @@ func (x *ServiceDeployReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceDeployReq.ProtoReflect.Descriptor instead.
 func (*ServiceDeployReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{21}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ServiceDeployReq) GetForceRecreate() bool {
@@ -1775,7 +1876,7 @@ type ServiceDeployResp struct {
 
 func (x *ServiceDeployResp) Reset() {
 	*x = ServiceDeployResp{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[22]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1787,7 +1888,7 @@ func (x *ServiceDeployResp) String() string {
 func (*ServiceDeployResp) ProtoMessage() {}
 
 func (x *ServiceDeployResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[22]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1800,7 +1901,7 @@ func (x *ServiceDeployResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceDeployResp.ProtoReflect.Descriptor instead.
 func (*ServiceDeployResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{22}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ServiceDeployResp) GetDeploymentId() string {
@@ -1826,7 +1927,7 @@ type ServiceStopReq struct {
 
 func (x *ServiceStopReq) Reset() {
 	*x = ServiceStopReq{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[23]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1838,7 +1939,7 @@ func (x *ServiceStopReq) String() string {
 func (*ServiceStopReq) ProtoMessage() {}
 
 func (x *ServiceStopReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[23]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1851,7 +1952,7 @@ func (x *ServiceStopReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceStopReq.ProtoReflect.Descriptor instead.
 func (*ServiceStopReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{23}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ServiceStopReq) GetRemoveVolumes() bool {
@@ -1869,7 +1970,7 @@ type ServiceRestartReq struct {
 
 func (x *ServiceRestartReq) Reset() {
 	*x = ServiceRestartReq{}
-	mi := &file_orbit_v1_service_service_proto_msgTypes[24]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1881,7 +1982,7 @@ func (x *ServiceRestartReq) String() string {
 func (*ServiceRestartReq) ProtoMessage() {}
 
 func (x *ServiceRestartReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_service_service_proto_msgTypes[24]
+	mi := &file_orbit_v1_service_service_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1894,7 +1995,7 @@ func (x *ServiceRestartReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceRestartReq.ProtoReflect.Descriptor instead.
 func (*ServiceRestartReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{24}
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{25}
 }
 
 var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
@@ -1951,7 +2052,7 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\"E\n" +
 	"\x13ServiceEnvUpdateReq\x12.\n" +
-	"\x03env\x18\x01 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\"\xa1\a\n" +
+	"\x03env\x18\x01 \x03(\v2\x1c.orbit.v1.service.ServiceEnvR\x03env\"\x9f\b\n" +
 	"\x14ServiceComponentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -1977,15 +2078,20 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\acommand\x18\x10 \x01(\tH\x01R\acommand\x88\x01\x01\x12$\n" +
 	"\vpull_policy\x18\x11 \x01(\tH\x02R\n" +
 	"pullPolicy\x88\x01\x01\x12*\n" +
-	"\x0erestart_policy\x18\x12 \x01(\tH\x03R\rrestartPolicy\x88\x01\x01B\r\n" +
+	"\x0erestart_policy\x18\x12 \x01(\tH\x03R\rrestartPolicy\x88\x01\x01\x12\x17\n" +
+	"\x04user\x18\x13 \x01(\tH\x04R\x04user\x88\x01\x01\x12L\n" +
+	"\tgroup_add\x18\x14 \x01(\v2*.orbit.v1.service.ServiceComponentGroupAddH\x05R\bgroupAdd\x88\x01\x01B\r\n" +
 	"\v_entrypointB\n" +
 	"\n" +
 	"\b_commandB\x0e\n" +
 	"\f_pull_policyB\x11\n" +
-	"\x0f_restart_policy\"\xd0\x01\n" +
+	"\x0f_restart_policyB\a\n" +
+	"\x05_userB\f\n" +
+	"\n" +
+	"_group_add\"\xd0\x01\n" +
 	"\x1aServiceComponentDetailResp\x12S\n" +
 	"\x11service_component\x18\x01 \x01(\v2&.orbit.v1.service.ServiceComponentRespR\x10serviceComponent\x12]\n" +
-	"\x11version_component\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\x10versionComponent\"\xa3\x04\n" +
+	"\x11version_component\x18\x02 \x01(\v20.orbit.v1.service.ServiceComponentDefinitionRespR\x10versionComponent\"\xe2\x04\n" +
 	"\x1eServiceComponentDefinitionResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -2001,18 +2107,22 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"entrypoint\x18\n" +
 	" \x01(\tR\n" +
 	"entrypoint\x12*\n" +
-	"\x0erestart_policy\x18\v \x01(\tH\x00R\rrestartPolicy\x88\x01\x01B\x11\n" +
-	"\x0f_restart_policy\"E\n" +
+	"\x0erestart_policy\x18\v \x01(\tH\x00R\rrestartPolicy\x88\x01\x01\x12\x17\n" +
+	"\x04user\x18\f \x01(\tH\x01R\x04user\x88\x01\x01\x12\x1b\n" +
+	"\tgroup_add\x18\r \x03(\tR\bgroupAddB\x11\n" +
+	"\x0f_restart_policyB\a\n" +
+	"\x05_user\"E\n" +
 	"\x1bServiceComponentDeclaredEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xbc\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xd4\x01\n" +
 	"\x1dServiceComponentDeclaredMount\x12\x1f\n" +
 	"\vsource_type\x18\x01 \x01(\tR\n" +
 	"sourceType\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\tR\x06source\x12\x16\n" +
 	"\x06target\x18\x03 \x01(\tR\x06target\x12\x1b\n" +
 	"\tread_only\x18\x04 \x01(\bR\breadOnly\x12-\n" +
-	"\x13source_is_host_path\x18\x05 \x01(\bR\x10sourceIsHostPath\"\x9f\x02\n" +
+	"\x13source_is_host_path\x18\x05 \x01(\bR\x10sourceIsHostPath\x12\x16\n" +
+	"\x06shared\x18\x06 \x01(\bR\x06shared\"\x9f\x02\n" +
 	"!ServiceComponentDeclaredResources\x12\"\n" +
 	"\n" +
 	"limit_cpus\x18\x01 \x01(\tH\x00R\tlimitCpus\x88\x01\x01\x12&\n" +
@@ -2038,7 +2148,7 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\r_bind_addressB\x0e\n" +
 	"\f_listen_portB\r\n" +
 	"\v_entrypointB\x0e\n" +
-	"\f_path_prefix\"\xa0\x04\n" +
+	"\f_path_prefix\"\x9e\x05\n" +
 	" ServiceComponentOverlayUpdateReq\x12>\n" +
 	"\x03env\x18\x01 \x03(\v2,.orbit.v1.service.ServiceComponentEnvOverlayR\x03env\x12F\n" +
 	"\x06mounts\x18\x02 \x03(\v2..orbit.v1.service.ServiceComponentMountOverlayR\x06mounts\x12O\n" +
@@ -2050,12 +2160,20 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\acommand\x18\x06 \x01(\tH\x01R\acommand\x88\x01\x01\x12$\n" +
 	"\vpull_policy\x18\a \x01(\tH\x02R\n" +
 	"pullPolicy\x88\x01\x01\x12*\n" +
-	"\x0erestart_policy\x18\b \x01(\tH\x03R\rrestartPolicy\x88\x01\x01B\r\n" +
+	"\x0erestart_policy\x18\b \x01(\tH\x03R\rrestartPolicy\x88\x01\x01\x12\x17\n" +
+	"\x04user\x18\t \x01(\tH\x04R\x04user\x88\x01\x01\x12L\n" +
+	"\tgroup_add\x18\n" +
+	" \x01(\v2*.orbit.v1.service.ServiceComponentGroupAddH\x05R\bgroupAdd\x88\x01\x01B\r\n" +
 	"\v_entrypointB\n" +
 	"\n" +
 	"\b_commandB\x0e\n" +
 	"\f_pull_policyB\x11\n" +
-	"\x0f_restart_policy\"i\n" +
+	"\x0f_restart_policyB\a\n" +
+	"\x05_userB\f\n" +
+	"\n" +
+	"_group_add\"2\n" +
+	"\x18ServiceComponentGroupAdd\x12\x16\n" +
+	"\x06values\x18\x01 \x03(\tR\x06values\"i\n" +
 	"\x1aServiceComponentEnvOverlay\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x19\n" +
 	"\x05value\x18\x02 \x01(\tH\x00R\x05value\x88\x01\x01\x12\x14\n" +
@@ -2131,7 +2249,7 @@ func file_orbit_v1_service_service_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_service_service_proto_rawDescData
 }
 
-var file_orbit_v1_service_service_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_orbit_v1_service_service_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_orbit_v1_service_service_proto_goTypes = []any{
 	(*ServiceResp)(nil),                       // 0: orbit.v1.service.ServiceResp
 	(*ServiceListResp)(nil),                   // 1: orbit.v1.service.ServiceListResp
@@ -2148,16 +2266,17 @@ var file_orbit_v1_service_service_proto_goTypes = []any{
 	(*ServiceComponentDeclaredResources)(nil), // 12: orbit.v1.service.ServiceComponentDeclaredResources
 	(*ServiceComponentDeclaredEndpoint)(nil),  // 13: orbit.v1.service.ServiceComponentDeclaredEndpoint
 	(*ServiceComponentOverlayUpdateReq)(nil),  // 14: orbit.v1.service.ServiceComponentOverlayUpdateReq
-	(*ServiceComponentEnvOverlay)(nil),        // 15: orbit.v1.service.ServiceComponentEnvOverlay
-	(*ServiceComponentMountOverlay)(nil),      // 16: orbit.v1.service.ServiceComponentMountOverlay
-	(*ServiceComponentResourceOverlay)(nil),   // 17: orbit.v1.service.ServiceComponentResourceOverlay
-	(*ServiceComponentEndpointOverlay)(nil),   // 18: orbit.v1.service.ServiceComponentEndpointOverlay
-	(*ServicePreviewReq)(nil),                 // 19: orbit.v1.service.ServicePreviewReq
-	(*ServicePreviewResp)(nil),                // 20: orbit.v1.service.ServicePreviewResp
-	(*ServiceDeployReq)(nil),                  // 21: orbit.v1.service.ServiceDeployReq
-	(*ServiceDeployResp)(nil),                 // 22: orbit.v1.service.ServiceDeployResp
-	(*ServiceStopReq)(nil),                    // 23: orbit.v1.service.ServiceStopReq
-	(*ServiceRestartReq)(nil),                 // 24: orbit.v1.service.ServiceRestartReq
+	(*ServiceComponentGroupAdd)(nil),          // 15: orbit.v1.service.ServiceComponentGroupAdd
+	(*ServiceComponentEnvOverlay)(nil),        // 16: orbit.v1.service.ServiceComponentEnvOverlay
+	(*ServiceComponentMountOverlay)(nil),      // 17: orbit.v1.service.ServiceComponentMountOverlay
+	(*ServiceComponentResourceOverlay)(nil),   // 18: orbit.v1.service.ServiceComponentResourceOverlay
+	(*ServiceComponentEndpointOverlay)(nil),   // 19: orbit.v1.service.ServiceComponentEndpointOverlay
+	(*ServicePreviewReq)(nil),                 // 20: orbit.v1.service.ServicePreviewReq
+	(*ServicePreviewResp)(nil),                // 21: orbit.v1.service.ServicePreviewResp
+	(*ServiceDeployReq)(nil),                  // 22: orbit.v1.service.ServiceDeployReq
+	(*ServiceDeployResp)(nil),                 // 23: orbit.v1.service.ServiceDeployResp
+	(*ServiceStopReq)(nil),                    // 24: orbit.v1.service.ServiceStopReq
+	(*ServiceRestartReq)(nil),                 // 25: orbit.v1.service.ServiceRestartReq
 }
 var file_orbit_v1_service_service_proto_depIdxs = []int32{
 	7,  // 0: orbit.v1.service.ServiceResp.components:type_name -> orbit.v1.service.ServiceComponentResp
@@ -2165,26 +2284,28 @@ var file_orbit_v1_service_service_proto_depIdxs = []int32{
 	0,  // 2: orbit.v1.service.ServiceListResp.items:type_name -> orbit.v1.service.ServiceResp
 	0,  // 3: orbit.v1.service.ServicePaginatedResp.items:type_name -> orbit.v1.service.ServiceResp
 	5,  // 4: orbit.v1.service.ServiceEnvUpdateReq.env:type_name -> orbit.v1.service.ServiceEnv
-	15, // 5: orbit.v1.service.ServiceComponentResp.env:type_name -> orbit.v1.service.ServiceComponentEnvOverlay
-	16, // 6: orbit.v1.service.ServiceComponentResp.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
-	17, // 7: orbit.v1.service.ServiceComponentResp.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
-	18, // 8: orbit.v1.service.ServiceComponentResp.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
+	16, // 5: orbit.v1.service.ServiceComponentResp.env:type_name -> orbit.v1.service.ServiceComponentEnvOverlay
+	17, // 6: orbit.v1.service.ServiceComponentResp.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
+	18, // 7: orbit.v1.service.ServiceComponentResp.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
+	19, // 8: orbit.v1.service.ServiceComponentResp.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
 	13, // 9: orbit.v1.service.ServiceComponentResp.effective_endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
-	7,  // 10: orbit.v1.service.ServiceComponentDetailResp.service_component:type_name -> orbit.v1.service.ServiceComponentResp
-	9,  // 11: orbit.v1.service.ServiceComponentDetailResp.version_component:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
-	10, // 12: orbit.v1.service.ServiceComponentDefinitionResp.env:type_name -> orbit.v1.service.ServiceComponentDeclaredEnv
-	11, // 13: orbit.v1.service.ServiceComponentDefinitionResp.mounts:type_name -> orbit.v1.service.ServiceComponentDeclaredMount
-	12, // 14: orbit.v1.service.ServiceComponentDefinitionResp.resources:type_name -> orbit.v1.service.ServiceComponentDeclaredResources
-	13, // 15: orbit.v1.service.ServiceComponentDefinitionResp.endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
-	15, // 16: orbit.v1.service.ServiceComponentOverlayUpdateReq.env:type_name -> orbit.v1.service.ServiceComponentEnvOverlay
-	16, // 17: orbit.v1.service.ServiceComponentOverlayUpdateReq.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
-	17, // 18: orbit.v1.service.ServiceComponentOverlayUpdateReq.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
-	18, // 19: orbit.v1.service.ServiceComponentOverlayUpdateReq.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
-	20, // [20:20] is the sub-list for method output_type
-	20, // [20:20] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	15, // 10: orbit.v1.service.ServiceComponentResp.group_add:type_name -> orbit.v1.service.ServiceComponentGroupAdd
+	7,  // 11: orbit.v1.service.ServiceComponentDetailResp.service_component:type_name -> orbit.v1.service.ServiceComponentResp
+	9,  // 12: orbit.v1.service.ServiceComponentDetailResp.version_component:type_name -> orbit.v1.service.ServiceComponentDefinitionResp
+	10, // 13: orbit.v1.service.ServiceComponentDefinitionResp.env:type_name -> orbit.v1.service.ServiceComponentDeclaredEnv
+	11, // 14: orbit.v1.service.ServiceComponentDefinitionResp.mounts:type_name -> orbit.v1.service.ServiceComponentDeclaredMount
+	12, // 15: orbit.v1.service.ServiceComponentDefinitionResp.resources:type_name -> orbit.v1.service.ServiceComponentDeclaredResources
+	13, // 16: orbit.v1.service.ServiceComponentDefinitionResp.endpoints:type_name -> orbit.v1.service.ServiceComponentDeclaredEndpoint
+	16, // 17: orbit.v1.service.ServiceComponentOverlayUpdateReq.env:type_name -> orbit.v1.service.ServiceComponentEnvOverlay
+	17, // 18: orbit.v1.service.ServiceComponentOverlayUpdateReq.mounts:type_name -> orbit.v1.service.ServiceComponentMountOverlay
+	18, // 19: orbit.v1.service.ServiceComponentOverlayUpdateReq.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
+	19, // 20: orbit.v1.service.ServiceComponentOverlayUpdateReq.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
+	15, // 21: orbit.v1.service.ServiceComponentOverlayUpdateReq.group_add:type_name -> orbit.v1.service.ServiceComponentGroupAdd
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_service_service_proto_init() }
@@ -2197,19 +2318,19 @@ func file_orbit_v1_service_service_proto_init() {
 	file_orbit_v1_service_service_proto_msgTypes[12].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[13].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[14].OneofWrappers = []any{}
-	file_orbit_v1_service_service_proto_msgTypes[15].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[16].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[17].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[18].OneofWrappers = []any{}
 	file_orbit_v1_service_service_proto_msgTypes[19].OneofWrappers = []any{}
-	file_orbit_v1_service_service_proto_msgTypes[21].OneofWrappers = []any{}
+	file_orbit_v1_service_service_proto_msgTypes[20].OneofWrappers = []any{}
+	file_orbit_v1_service_service_proto_msgTypes[22].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_service_service_proto_rawDesc), len(file_orbit_v1_service_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

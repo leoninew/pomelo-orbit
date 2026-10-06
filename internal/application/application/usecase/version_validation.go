@@ -181,6 +181,9 @@ func validateComponentDevices(component string, devices []model.VersionComponent
 }
 
 func validateComponentMount(mount model.VersionComponentMount) error {
+	if err := model.ValidateSharedMount(mount.SourceType, mount.Source, mount.Shared); err != nil {
+		return err
+	}
 	if mount.Source == "" || mount.Target == "" {
 		return fmt.Errorf("source and target are required")
 	}

@@ -64,6 +64,8 @@ type VersionComponentInput struct {
 	Resources     *model.VersionComponentResources
 	PullPolicy    string
 	RestartPolicy *string
+	User          *string
+	GroupAdd      []string
 	Tmpfs         []model.VersionComponentTmpfs
 	Ulimits       []model.VersionComponentUlimit
 	Devices       []model.VersionComponentDeviceRequest
@@ -76,6 +78,11 @@ type VersionComponentBasicUpdateInput struct {
 	Command       string
 	PullPolicy    string
 	RestartPolicy *string
+}
+
+type VersionComponentIdentityUpdateInput struct {
+	User     *string
+	GroupAdd []string
 }
 
 type VersionComponentRuntimeUpdateInput struct {

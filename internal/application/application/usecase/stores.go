@@ -116,6 +116,10 @@ func (s stores) UpdateVersionComponentBasic(ctx context.Context, projectId strin
 	return s.application.UpdateVersionComponentBasic(ctx, projectId, component, oldName)
 }
 
+func (s stores) UpdateVersionComponentIdentity(ctx context.Context, projectId string, component model.VersionComponent) error {
+	return s.application.UpdateVersionComponentIdentity(ctx, projectId, component)
+}
+
 func (s stores) UpdateVersionComponentRuntime(ctx context.Context, projectId string, component model.VersionComponent) error {
 	return s.application.UpdateVersionComponentRuntime(ctx, projectId, component)
 }

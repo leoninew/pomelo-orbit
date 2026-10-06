@@ -326,6 +326,15 @@ func (s Service) UpdateVersionComponentBasic(ctx context.Context, userId string,
 	})
 }
 
+func (s Service) UpdateVersionComponentIdentity(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentIdentityUpdateInput) (model.VersionComponent, error) {
+	return s.updateVersionComponentGroup(ctx, userId, projectId, versionId, componentId, func(component *model.VersionComponent) {
+		component.User = model.EffectiveComponentUser(input.User)
+		component.GroupAdd = append([]string(nil), input.GroupAdd...)
+	}, func(ctx context.Context, projectId string, component model.VersionComponent, _ string) error {
+		return s.store.UpdateVersionComponentIdentity(ctx, projectId, component)
+	})
+}
+
 func (s Service) UpdateVersionComponentRuntime(ctx context.Context, userId string, projectId string, versionId string, componentId string, input applicationdto.VersionComponentRuntimeUpdateInput) (model.VersionComponent, error) {
 	healthcheck, err := componentHealthcheckFromInput(input.Healthcheck)
 	if err != nil {
@@ -602,6 +611,7 @@ func versionComponentsFromInputs(inputs []applicationdto.VersionComponentInput) 
 			Mounts:       append([]model.VersionComponentMount(nil), input.Mounts...),
 			Dependencies: append([]model.VersionComponentDependency(nil), input.Dependencies...), Healthcheck: healthcheck,
 			Resources: cloneComponentResources(input.Resources), PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy,
+			User: model.EffectiveComponentUser(input.User), GroupAdd: append([]string(nil), input.GroupAdd...),
 			Tmpfs: append([]model.VersionComponentTmpfs(nil), input.Tmpfs...), Ulimits: append([]model.VersionComponentUlimit(nil), input.Ulimits...),
 			Devices: cloneComponentDeviceRequests(input.Devices),
 		})
@@ -617,6 +627,8 @@ func cloneVersionDefinitionComponents(input []model.VersionComponent) []model.Ve
 		copy.VersionId = ""
 		copy.Entrypoint = append([]string(nil), component.Entrypoint...)
 		copy.Command = append([]string(nil), component.Command...)
+		copy.User = model.EffectiveComponentUser(component.User)
+		copy.GroupAdd = append([]string(nil), component.GroupAdd...)
 		copy.Env = append([]model.VersionComponentEnv(nil), component.Env...)
 		copy.Endpoints = append([]model.VersionComponentEndpoint(nil), component.Endpoints...)
 		copy.Mounts = append([]model.VersionComponentMount(nil), component.Mounts...)

@@ -251,8 +251,8 @@ func (q *Queries) DeleteVersionComponents(ctx context.Context, arg DeleteVersion
 
 const insertVersionComponent = `-- name: InsertVersionComponent :exec
 INSERT INTO version_component (
-  id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, container_user, group_add_json, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentParams struct {
@@ -269,6 +269,8 @@ type InsertVersionComponentParams struct {
 	CommandJson              string         `db:"command_json"`
 	PullPolicy               string         `db:"pull_policy"`
 	RestartPolicy            sql.NullString `db:"restart_policy"`
+	ContainerUser            sql.NullString `db:"container_user"`
+	GroupAddJson             sql.NullString `db:"group_add_json"`
 	CreatedAt                time.Time      `db:"created_at"`
 	UpdatedAt                time.Time      `db:"updated_at"`
 }
@@ -288,6 +290,8 @@ func (q *Queries) InsertVersionComponent(ctx context.Context, arg InsertVersionC
 		arg.CommandJson,
 		arg.PullPolicy,
 		arg.RestartPolicy,
+		arg.ContainerUser,
+		arg.GroupAddJson,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -430,8 +434,8 @@ func (q *Queries) InsertVersionComponentHealthcheck(ctx context.Context, arg Ins
 
 const insertVersionComponentMount = `-- name: InsertVersionComponentMount :exec
 INSERT INTO version_component_mount (
-  component_id, source_type, source, target, read_only, source_is_host_path, content, mode, ignore_if_exists, position
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  component_id, source_type, source, target, read_only, source_is_host_path, shared, content, mode, ignore_if_exists, position
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertVersionComponentMountParams struct {
@@ -441,6 +445,7 @@ type InsertVersionComponentMountParams struct {
 	Target           string         `db:"target"`
 	ReadOnly         int64          `db:"read_only"`
 	SourceIsHostPath int64          `db:"source_is_host_path"`
+	Shared           int64          `db:"shared"`
 	Content          sql.NullString `db:"content"`
 	Mode             string         `db:"mode"`
 	IgnoreIfExists   int64          `db:"ignore_if_exists"`
@@ -455,6 +460,7 @@ func (q *Queries) InsertVersionComponentMount(ctx context.Context, arg InsertVer
 		arg.Target,
 		arg.ReadOnly,
 		arg.SourceIsHostPath,
+		arg.Shared,
 		arg.Content,
 		arg.Mode,
 		arg.IgnoreIfExists,
@@ -867,6 +873,37 @@ func (q *Queries) UpdateVersionComponentEntrypoint(ctx context.Context, arg Upda
 	return err
 }
 
+const updateVersionComponentIdentity = `-- name: UpdateVersionComponentIdentity :exec
+UPDATE version_component
+SET container_user = ?, group_add_json = ?, updated_at = ?
+WHERE version_component.id = ?
+  AND EXISTS (
+    SELECT 1 FROM version
+    JOIN application ON application.id = version.application_id
+    WHERE version.id = version_component.version_id
+      AND application.project_id = ?
+  )
+`
+
+type UpdateVersionComponentIdentityParams struct {
+	ContainerUser sql.NullString `db:"container_user"`
+	GroupAddJson  sql.NullString `db:"group_add_json"`
+	UpdatedAt     time.Time      `db:"updated_at"`
+	Id            string         `db:"id"`
+	ProjectId     sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) UpdateVersionComponentIdentity(ctx context.Context, arg UpdateVersionComponentIdentityParams) error {
+	_, err := q.db.ExecContext(ctx, updateVersionComponentIdentity,
+		arg.ContainerUser,
+		arg.GroupAddJson,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+	)
+	return err
+}
+
 const updateVersionComponentSummary = `-- name: UpdateVersionComponentSummary :exec
 UPDATE version
 SET component_summary = ?, updated_at = ?
@@ -929,7 +966,7 @@ func (q *Queries) VersionById(ctx context.Context, arg VersionByIdParams) (Versi
 }
 
 const versionComponentById = `-- name: VersionComponentById :one
-SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, container_user, group_add_json, created_at, updated_at
 FROM version_component
 WHERE version_component.id = ?
   AND EXISTS (
@@ -959,6 +996,8 @@ type VersionComponentByIdRow struct {
 	CommandJson              string         `db:"command_json"`
 	PullPolicy               string         `db:"pull_policy"`
 	RestartPolicy            sql.NullString `db:"restart_policy"`
+	ContainerUser            sql.NullString `db:"container_user"`
+	GroupAddJson             sql.NullString `db:"group_add_json"`
 	CreatedAt                time.Time      `db:"created_at"`
 	UpdatedAt                time.Time      `db:"updated_at"`
 }
@@ -980,6 +1019,8 @@ func (q *Queries) VersionComponentById(ctx context.Context, arg VersionComponent
 		&i.CommandJson,
 		&i.PullPolicy,
 		&i.RestartPolicy,
+		&i.ContainerUser,
+		&i.GroupAddJson,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -1156,7 +1197,7 @@ func (q *Queries) VersionComponentHealthcheckByComponent(ctx context.Context, co
 }
 
 const versionComponentMountsByComponent = `-- name: VersionComponentMountsByComponent :many
-SELECT component_id, source_type, source, target, read_only, source_is_host_path, content, mode, ignore_if_exists, position
+SELECT component_id, source_type, source, target, read_only, source_is_host_path, shared, content, mode, ignore_if_exists, position
 FROM version_component_mount
 WHERE component_id = ?
 ORDER BY position
@@ -1169,6 +1210,7 @@ type VersionComponentMountsByComponentRow struct {
 	Target           string         `db:"target"`
 	ReadOnly         int64          `db:"read_only"`
 	SourceIsHostPath int64          `db:"source_is_host_path"`
+	Shared           int64          `db:"shared"`
 	Content          sql.NullString `db:"content"`
 	Mode             string         `db:"mode"`
 	IgnoreIfExists   int64          `db:"ignore_if_exists"`
@@ -1191,6 +1233,7 @@ func (q *Queries) VersionComponentMountsByComponent(ctx context.Context, compone
 			&i.Target,
 			&i.ReadOnly,
 			&i.SourceIsHostPath,
+			&i.Shared,
 			&i.Content,
 			&i.Mode,
 			&i.IgnoreIfExists,
@@ -1301,7 +1344,7 @@ func (q *Queries) VersionComponentUlimitsByComponent(ctx context.Context, compon
 }
 
 const versionComponentsByVersion = `-- name: VersionComponentsByVersion :many
-SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, created_at, updated_at
+SELECT id, version_id, name, image, artifact_id, artifact_name, artifact_image_ref, artifact_local_image_sha256, artifact_source_commit_sha, entrypoint_json, command_json, pull_policy, restart_policy, container_user, group_add_json, created_at, updated_at
 FROM version_component
 WHERE version_id = ?
   AND EXISTS (
@@ -1332,6 +1375,8 @@ type VersionComponentsByVersionRow struct {
 	CommandJson              string         `db:"command_json"`
 	PullPolicy               string         `db:"pull_policy"`
 	RestartPolicy            sql.NullString `db:"restart_policy"`
+	ContainerUser            sql.NullString `db:"container_user"`
+	GroupAddJson             sql.NullString `db:"group_add_json"`
 	CreatedAt                time.Time      `db:"created_at"`
 	UpdatedAt                time.Time      `db:"updated_at"`
 }
@@ -1359,6 +1404,8 @@ func (q *Queries) VersionComponentsByVersion(ctx context.Context, arg VersionCom
 			&i.CommandJson,
 			&i.PullPolicy,
 			&i.RestartPolicy,
+			&i.ContainerUser,
+			&i.GroupAddJson,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

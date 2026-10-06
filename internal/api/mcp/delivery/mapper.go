@@ -24,7 +24,7 @@ func componentInput(input *applicationv1.VersionComponentReq) (applicationdto.Ve
 		Image:         input.Image,
 		Command:       input.Command,
 		PullPolicy:    input.PullPolicy,
-		RestartPolicy: input.RestartPolicy, Env: componentEnvInput(input.Env), Endpoints: componentEndpointsInput(input.Endpoints),
+		RestartPolicy: input.RestartPolicy, User: input.User, GroupAdd: input.GroupAdd, Env: componentEnvInput(input.Env), Endpoints: componentEndpointsInput(input.Endpoints),
 		Mounts: componentMountsInput(input.Mounts), Dependencies: componentDependenciesInput(input.Dependencies),
 		Healthcheck: healthcheckInput(input.Healthcheck), Resources: resourcesInput(input.Resources), Tmpfs: tmpfsInput(input.Tmpfs),
 		Ulimits: ulimitsInput(input.Ulimits), Devices: devicesInput(input.Devices),
@@ -59,7 +59,7 @@ func componentMountsInput(values []*applicationv1.ComponentMount) []model.Versio
 		if value == nil {
 			continue
 		}
-		result = append(result, model.VersionComponentMount{SourceType: value.SourceType, Source: value.Source, Target: value.Target, ReadOnly: value.ReadOnly, SourceIsHostPath: value.SourceIsHostPath, Content: stringValue(value.Content), Mode: value.Mode, IgnoreIfExists: value.IgnoreIfExists})
+		result = append(result, model.VersionComponentMount{SourceType: value.SourceType, Source: value.Source, Target: value.Target, ReadOnly: value.ReadOnly, SourceIsHostPath: value.SourceIsHostPath, Shared: value.Shared, Content: stringValue(value.Content), Mode: value.Mode, IgnoreIfExists: value.IgnoreIfExists})
 	}
 	return result
 }
@@ -126,7 +126,7 @@ func serviceOverlayInput(input *servicev1.ServiceComponentOverlayUpdateReq) serv
 	if input == nil {
 		return servicedto.ServiceComponentOverlayInput{}
 	}
-	result := servicedto.ServiceComponentOverlayInput{Entrypoint: input.Entrypoint, Command: input.Command, PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy, Resources: serviceResourcesInput(input.Resources)}
+	result := servicedto.ServiceComponentOverlayInput{Entrypoint: input.Entrypoint, Command: input.Command, PullPolicy: input.PullPolicy, RestartPolicy: input.RestartPolicy, User: input.User, GroupAdd: serviceGroupAddInput(input.GroupAdd), Resources: serviceResourcesInput(input.Resources)}
 	for _, value := range input.Env {
 		if value == nil {
 			continue
@@ -146,6 +146,20 @@ func serviceOverlayInput(input *servicev1.ServiceComponentOverlayUpdateReq) serv
 		result.Endpoints = append(result.Endpoints, model.ServiceComponentEndpoint{Protocol: value.Protocol, ContainerPort: int(value.ContainerPort), Mode: value.Mode, BindAddress: value.BindAddress, ListenPort: intPtr(value.ListenPort), Entrypoint: value.Entrypoint, PathPrefix: value.PathPrefix, State: model.ServiceComponentOverlayState(value.State)})
 	}
 	return result
+}
+
+func serviceGroupAddInput(value *servicev1.ServiceComponentGroupAdd) []string {
+	if value == nil {
+		return nil
+	}
+	return append([]string{}, value.Values...)
+}
+
+func serviceGroupAddOutput(values []string) any {
+	if values == nil {
+		return nil
+	}
+	return map[string]any{"values": append([]string{}, values...)}
 }
 
 func serviceResourcesInput(value *servicev1.ServiceComponentResourceOverlay) *model.ServiceComponentResources {
@@ -260,7 +274,7 @@ func componentOutput(value model.VersionComponent) map[string]any {
 	}
 	mounts := make([]map[string]any, 0, len(value.Mounts))
 	for _, item := range value.Mounts {
-		mounts = append(mounts, map[string]any{"source_type": item.SourceType, "source": item.Source, "target": item.Target, "read_only": item.ReadOnly, "source_is_host_path": item.SourceIsHostPath, "content": item.Content, "mode": item.Mode, "ignore_if_exists": item.IgnoreIfExists})
+		mounts = append(mounts, map[string]any{"source_type": item.SourceType, "source": item.Source, "target": item.Target, "read_only": item.ReadOnly, "source_is_host_path": item.SourceIsHostPath, "shared": item.Shared, "content": item.Content, "mode": item.Mode, "ignore_if_exists": item.IgnoreIfExists})
 	}
 	dependencies := make([]map[string]any, 0, len(value.Dependencies))
 	for _, item := range value.Dependencies {
@@ -278,7 +292,7 @@ func componentOutput(value model.VersionComponent) map[string]any {
 	for _, item := range value.Devices {
 		devices = append(devices, map[string]any{"driver": item.Driver, "count": item.Count, "capabilities": item.Capabilities})
 	}
-	result := map[string]any{"id": value.Id, "version_id": value.VersionId, "name": value.Name, "image": value.Image, "command": commandline.Format(value.Command), "env": env, "endpoints": endpoints, "mounts": mounts, "dependencies": dependencies, "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "tmpfs": tmpfs, "ulimits": ulimits, "devices": devices, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
+	result := map[string]any{"id": value.Id, "version_id": value.VersionId, "name": value.Name, "image": value.Image, "command": commandline.Format(value.Command), "env": env, "endpoints": endpoints, "mounts": mounts, "dependencies": dependencies, "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "user": value.User, "group_add": value.GroupAdd, "tmpfs": tmpfs, "ulimits": ulimits, "devices": devices, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 	if value.Healthcheck != nil {
 		result["healthcheck"] = healthcheckOutput(*value.Healthcheck)
 	}
@@ -316,7 +330,7 @@ func serviceOutput(value servicedto.ServiceView) map[string]any {
 }
 
 func serviceComponentOutput(value model.ServiceComponent) map[string]any {
-	return map[string]any{"id": value.Id, "service_id": value.ServiceId, "source_version_component_id": value.SourceVersionComponentId, "component_name": value.ComponentName, "entrypoint": optionalCommandOutput(value.Entrypoint), "command": optionalCommandOutput(value.Command), "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
+	return map[string]any{"id": value.Id, "service_id": value.ServiceId, "source_version_component_id": value.SourceVersionComponentId, "component_name": value.ComponentName, "entrypoint": optionalCommandOutput(value.Entrypoint), "command": optionalCommandOutput(value.Command), "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "user": value.User, "group_add": serviceGroupAddOutput(value.GroupAdd), "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
 func optionalCommandOutput(value []string) any {

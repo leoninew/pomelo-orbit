@@ -302,7 +302,7 @@ func (r Repository) VersionComponentsByVersion(ctx context.Context, projectId st
 	}
 	items := make([]model.VersionComponent, 0, len(rows))
 	for _, row := range rows {
-		component, err := r.componentFromRow(ctx, r.q(ctx), row.Id, row.VersionId, row.Name, row.Image, row.ArtifactId, row.ArtifactName, row.ArtifactImageRef, row.ArtifactLocalImageSha256, row.ArtifactSourceCommitSha, row.EntrypointJson, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.CreatedAt, row.UpdatedAt)
+		component, err := r.componentFromRow(ctx, r.q(ctx), row.Id, row.VersionId, row.Name, row.Image, row.ArtifactId, row.ArtifactName, row.ArtifactImageRef, row.ArtifactLocalImageSha256, row.ArtifactSourceCommitSha, row.EntrypointJson, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.ContainerUser, row.GroupAddJson, row.CreatedAt, row.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -316,7 +316,7 @@ func (r Repository) VersionComponent(ctx context.Context, projectId string, id s
 	if err != nil {
 		return model.VersionComponent{}, fmt.Errorf("load version component %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	component, err := r.componentFromRow(ctx, r.q(ctx), row.Id, row.VersionId, row.Name, row.Image, row.ArtifactId, row.ArtifactName, row.ArtifactImageRef, row.ArtifactLocalImageSha256, row.ArtifactSourceCommitSha, row.EntrypointJson, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.CreatedAt, row.UpdatedAt)
+	component, err := r.componentFromRow(ctx, r.q(ctx), row.Id, row.VersionId, row.Name, row.Image, row.ArtifactId, row.ArtifactName, row.ArtifactImageRef, row.ArtifactLocalImageSha256, row.ArtifactSourceCommitSha, row.EntrypointJson, row.CommandJson, row.PullPolicy, row.RestartPolicy, row.ContainerUser, row.GroupAddJson, row.CreatedAt, row.UpdatedAt)
 	if err != nil {
 		return model.VersionComponent{}, err
 	}
@@ -399,6 +399,21 @@ func (r Repository) UpdateVersionComponentBasic(ctx context.Context, projectId s
 		}); err != nil {
 			return fmt.Errorf("rename version component dependencies: %w", err)
 		}
+	}
+	return r.updateComponentSummary(ctx, q, projectId, component.VersionId)
+}
+
+func (r Repository) UpdateVersionComponentIdentity(ctx context.Context, projectId string, component model.VersionComponent) error {
+	q := r.q(ctx)
+	groupAddJSON, err := dbmodel.StringListJSON(component.GroupAdd)
+	if err != nil {
+		return fmt.Errorf("encode component group_add: %w", err)
+	}
+	if err := q.UpdateVersionComponentIdentity(ctx, applicationsqlc.UpdateVersionComponentIdentityParams{
+		ContainerUser: dbmodel.NullString(component.User), GroupAddJson: groupAddJSON,
+		UpdatedAt: time.Now().UTC(), Id: component.Id, ProjectId: projectScopeId(projectId),
+	}); err != nil {
+		return fmt.Errorf("update component identity: %w", err)
 	}
 	return r.updateComponentSummary(ctx, q, projectId, component.VersionId)
 }
@@ -489,7 +504,7 @@ func versionFrom(row applicationsqlc.Version) model.Version {
 	}
 }
 
-func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Queries, id string, versionId string, name string, image string, artifactId, artifactName, artifactImageRef, artifactLocalImageSha256, artifactSourceCommitSha sql.NullString, entrypointValue string, commandValue string, pullPolicy string, restartPolicy sql.NullString, createdAt time.Time, updatedAt time.Time) (model.VersionComponent, error) {
+func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Queries, id string, versionId string, name string, image string, artifactId, artifactName, artifactImageRef, artifactLocalImageSha256, artifactSourceCommitSha sql.NullString, entrypointValue string, commandValue string, pullPolicy string, restartPolicy, containerUser, groupAddValue sql.NullString, createdAt time.Time, updatedAt time.Time) (model.VersionComponent, error) {
 	entrypoint, err := commandFromJSON(entrypointValue)
 	if err != nil {
 		return model.VersionComponent{}, fmt.Errorf("decode version component entrypoint %s: %w", id, err)
@@ -498,10 +513,14 @@ func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Que
 	if err != nil {
 		return model.VersionComponent{}, fmt.Errorf("decode version component command %s: %w", id, err)
 	}
+	groupAdd, err := dbmodel.StringListFromJSON(groupAddValue)
+	if err != nil {
+		return model.VersionComponent{}, fmt.Errorf("decode version component group_add %s: %w", id, err)
+	}
 	component := model.VersionComponent{
 		Id: id, VersionId: versionId, Name: name, Image: image, ArtifactId: dbmodel.StringPtr(artifactId),
 		Entrypoint: entrypoint, Command: command,
-		PullPolicy: pullPolicy, RestartPolicy: dbmodel.StringPtr(restartPolicy),
+		PullPolicy: pullPolicy, RestartPolicy: dbmodel.StringPtr(restartPolicy), User: dbmodel.StringPtr(containerUser), GroupAdd: groupAdd,
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 	env, err := q.VersionComponentEnvByComponent(ctx, component.Id)
@@ -529,7 +548,7 @@ func (r Repository) componentFromRow(ctx context.Context, q *applicationsqlc.Que
 	for _, item := range mounts {
 		component.Mounts = append(component.Mounts, model.VersionComponentMount{
 			SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: dbmodel.IntBool(item.ReadOnly),
-			SourceIsHostPath: dbmodel.IntBool(item.SourceIsHostPath), Content: ptrValue(dbmodel.StringPtr(item.Content)),
+			SourceIsHostPath: dbmodel.IntBool(item.SourceIsHostPath), Shared: dbmodel.IntBool(item.Shared), Content: ptrValue(dbmodel.StringPtr(item.Content)),
 			Mode: item.Mode, IgnoreIfExists: dbmodel.IntBool(item.IgnoreIfExists),
 		})
 	}
@@ -625,10 +644,14 @@ func insertVersionComponent(ctx context.Context, q *applicationsqlc.Queries, com
 		artifactLocalImageSha256 = sql.NullString{String: artifact.LocalImageSha256, Valid: artifact.LocalImageSha256 != ""}
 		artifactSourceCommitSha = sql.NullString{String: artifact.SourceCommitSha, Valid: artifact.SourceCommitSha != ""}
 	}
+	groupAddJSON, err := dbmodel.StringListJSON(component.GroupAdd)
+	if err != nil {
+		return fmt.Errorf("encode version component group_add %s: %w", component.Name, err)
+	}
 	if err := q.InsertVersionComponent(ctx, applicationsqlc.InsertVersionComponentParams{
 		Id: component.Id, VersionId: component.VersionId, Name: component.Name, Image: component.Image, ArtifactId: artifactId,
 		ArtifactName: artifactName, ArtifactImageRef: artifactImageRef, ArtifactLocalImageSha256: artifactLocalImageSha256, ArtifactSourceCommitSha: artifactSourceCommitSha, EntrypointJson: entrypointJSON, CommandJson: commandJSON,
-		PullPolicy: component.PullPolicy, RestartPolicy: dbmodel.NullString(component.RestartPolicy),
+		PullPolicy: component.PullPolicy, RestartPolicy: dbmodel.NullString(component.RestartPolicy), ContainerUser: dbmodel.NullString(component.User), GroupAddJson: groupAddJSON,
 		CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}); err != nil {
 		return fmt.Errorf("insert version component %s: %w", component.Name, err)
@@ -700,7 +723,7 @@ func insertVersionComponentMountsConfig(ctx context.Context, q *applicationsqlc.
 	for position, item := range component.Mounts {
 		if err := q.InsertVersionComponentMount(ctx, applicationsqlc.InsertVersionComponentMountParams{
 			ComponentId: component.Id, SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: dbmodel.BoolInt(item.ReadOnly),
-			SourceIsHostPath: dbmodel.BoolInt(item.SourceIsHostPath), Content: optionalText(item.Content),
+			SourceIsHostPath: dbmodel.BoolInt(item.SourceIsHostPath), Shared: dbmodel.BoolInt(item.Shared), Content: optionalText(item.Content),
 			Mode: item.Mode, IgnoreIfExists: dbmodel.BoolInt(item.IgnoreIfExists), Position: int64(position),
 		}); err != nil {
 			return fmt.Errorf("insert component mount: %w", err)

@@ -9,6 +9,7 @@ import type {
   ComponentUlimit,
   VersionComponentAdvancedUpdateReq,
   VersionComponentBasicUpdateReq,
+  VersionComponentIdentityUpdateReq,
   VersionComponentCreateReq,
   VersionComponentDependenciesUpdateReq,
   VersionComponentDevicesUpdateReq,
@@ -19,6 +20,7 @@ import type {
   VersionComponentResp,
   VersionComponentRuntimeUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
+import { parseGroupAdd, validComponentUser } from '@/utils/componentIdentity';
 
 export interface PortRow {
   protocol?: string;
@@ -36,6 +38,7 @@ export interface MountRow {
   target: string;
   read_only: boolean;
   source_is_host_path: boolean;
+  shared: boolean;
   content: string;
   mode: string;
   ignore_if_exists: boolean;
@@ -69,6 +72,8 @@ export interface ComponentForm {
   image: string;
   entrypoint: string;
   command: string;
+  user: string;
+  group_add: string;
   env: ComponentEnv[];
   ports: PortRow[];
   mounts: MountRow[];
@@ -103,6 +108,8 @@ export type ComponentFormError =
   | 'componentName'
   | 'pullPolicy'
   | 'restartPolicy'
+  | 'user'
+  | 'groupAdd'
   | 'command'
   | 'env'
   | 'ports'
@@ -123,6 +130,8 @@ export function emptyComponentForm(): ComponentForm {
     image: '',
     entrypoint: '',
     command: '',
+    user: '',
+    group_add: '',
     env: [],
     ports: [],
     mounts: [],
@@ -158,6 +167,8 @@ export function componentFormFromResponse(component: VersionComponentResp): Comp
     image: component.image,
     entrypoint: component.entrypoint,
     command: component.command,
+    user: component.user ?? '',
+    group_add: component.group_add.join(', '),
     env: component.env.map((item) => ({ key: item.key, value: item.value })),
     ports: component.endpoints.map((item) => ({
       protocol: item.protocol,
@@ -174,6 +185,7 @@ export function componentFormFromResponse(component: VersionComponentResp): Comp
       target: item.target,
       read_only: item.read_only,
       source_is_host_path: item.source_is_host_path,
+      shared: item.shared,
       content: inputText(item.content),
       mode: inputText(item.mode),
       ignore_if_exists: item.ignore_if_exists,
@@ -337,6 +349,9 @@ function buildMounts(rows: MountRow[]): ComponentMount[] | null {
     if (row.source_is_host_path && row.source_type !== 'directory' && row.source_type !== 'file') {
       return null;
     }
+    if (row.shared && (row.source_type !== 'directory' || !isAbsoluteMountSource(row.source))) {
+      return null;
+    }
     if (
       ['directory', 'file', 'controlled_file'].includes(row.source_type) &&
       (!isExplicitMountSource(row.source) ||
@@ -353,6 +368,7 @@ function buildMounts(rows: MountRow[]): ComponentMount[] | null {
       target: row.target,
       read_only: row.read_only,
       source_is_host_path: row.source_is_host_path,
+      shared: row.shared,
       content: optionalText(row.content),
       mode: row.mode,
       ignore_if_exists: row.ignore_if_exists,
@@ -453,6 +469,10 @@ export function componentRequestFromForm(form: ComponentForm): ComponentFormVali
   if (!basic.valid) {
     return basic;
   }
+  const identity = componentIdentityRequestFromForm(form);
+  if (!identity.valid) {
+    return identity;
+  }
   const runtime = componentRuntimeRequestFromForm(form);
   if (!runtime.valid) {
     return runtime;
@@ -485,6 +505,7 @@ export function componentRequestFromForm(form: ComponentForm): ComponentFormVali
     valid: true,
     value: {
       ...basic.value,
+      ...identity.value,
       ...runtime.value,
       ...ports.value,
       ...env.value,
@@ -524,32 +545,31 @@ export function componentBasicRequestFromForm(
   };
 }
 
+export function componentIdentityRequestFromForm(
+  form: Pick<ComponentForm, 'user' | 'group_add'>
+): ComponentFormValidation<VersionComponentIdentityUpdateReq> {
+  if (!validComponentUser(form.user)) {
+    return { valid: false, error: 'user' };
+  }
+  const groupAdd = parseGroupAdd(form.group_add);
+  if (groupAdd === null) {
+    return { valid: false, error: 'groupAdd' };
+  }
+  return { valid: true, value: { user: optionalText(form.user), group_add: groupAdd } };
+}
+
 export function componentCreateRequestFromForm(
   form: ComponentForm
 ): ComponentFormValidation<VersionComponentCreateReq> {
-  if (form.name === '' || form.image === '') {
-    return { valid: false, error: 'nameImage' };
+  const basic = componentBasicRequestFromForm(form);
+  if (!basic.valid) {
+    return basic;
   }
-  if (!/^[a-z][a-z0-9-]*$/.test(form.name)) {
-    return { valid: false, error: 'componentName' };
+  const identity = componentIdentityRequestFromForm(form);
+  if (!identity.valid) {
+    return identity;
   }
-  if (!['always', 'missing', 'never'].includes(form.pull_policy)) {
-    return { valid: false, error: 'pullPolicy' };
-  }
-  if (!['no', 'on-failure', 'always', 'unless-stopped'].includes(form.restart_policy)) {
-    return { valid: false, error: 'restartPolicy' };
-  }
-  return {
-    valid: true,
-    value: {
-      name: form.name,
-      image: form.image,
-      entrypoint: form.entrypoint,
-      command: form.command,
-      pull_policy: form.pull_policy,
-      restart_policy: form.restart_policy,
-    },
-  };
+  return { valid: true, value: { ...basic.value, ...identity.value } };
 }
 
 export function componentRuntimeRequestFromForm(

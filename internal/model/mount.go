@@ -5,6 +5,13 @@ import (
 	"strings"
 )
 
+func ValidateSharedMount(sourceType, source string, shared bool) error {
+	if shared && (sourceType != "directory" || !isAbsoluteMountSource(source)) {
+		return fmt.Errorf("shared is only allowed for absolute directory sources")
+	}
+	return nil
+}
+
 // ValidateMountSource validates a mount source independently from its target
 // and type-specific content options.
 func ValidateMountSource(sourceType, source string, sourceIsHostPath bool) error {

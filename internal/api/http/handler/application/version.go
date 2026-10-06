@@ -61,6 +61,24 @@ func (h Handler) UpdateVersionComponentBasic(c *gin.Context) {
 	transport.WriteProtoJSON(c, http.StatusOK, resp)
 }
 
+func (h Handler) UpdateVersionComponentIdentity(c *gin.Context) {
+	current, ok := h.authenticator.CurrentUser(c)
+	if !ok {
+		return
+	}
+	var req applicationv1.VersionComponentIdentityUpdateReq
+	if err := transport.DecodeJSON(c, &req); err != nil {
+		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
+		return
+	}
+	component, err := h.service.UpdateVersionComponentIdentity(c.Request.Context(), current.Id, c.Query("project_id"), c.Param("version_id"), c.Param("component_id"), versionComponentIdentityUpdateInput(&req))
+	if err != nil {
+		transport.WriteError(c, err)
+		return
+	}
+	transport.WriteProtoJSON(c, http.StatusOK, versionComponentResponse(component))
+}
+
 func (h Handler) UpdateVersionComponentRuntime(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {

@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-06
+最后修改时间: 2026-10-06 16:22:19
 
 Doc role: living architecture
 
@@ -90,6 +90,10 @@ Web 容器日志流可在操作进行中订阅；按 Service code 的 Compose pr
 文件日志采用精确字节游标；容器日志按时间戳重叠两秒补读，前端采用有界记录次数去重。来源变化和不能保证补齐的恢复显示缺口；Docker 删除的历史无法恢复。客户端断开仅取消读取命令/session，不停止部署任务或容器。SSE 心跳 15 秒，慢连接单次写入超时 10 秒；新增日志 SSE 路由关闭响应正文捕获，保留请求元信息。
 
 ## 部署目录与执行边界
+
+组件运行身份通过有效计划统一合并和渲染：Version 保存可选 `user` 与 `group_add`，Service 的 nullable 用户和列表保留继承/显式清空。有效空值不输出 Compose 身份字段，hash 对等价空值归一化。两张组件表使用 `container_user`、`group_add_json`；Service HTTP/Proto 列表使用 presence wrapper。
+
+绝对 directory mount 的 `shared` 声明随有效挂载渲染到容器标签 `io.pomelo-orbit.shared-mounts`，值为共享容器 target 的 JSON 数组。占用检查读取目标 daemon 上实际运行容器的标签和 `Mounts`，仅当实际共享 bind source 包含写入源时放行。嵌套非共享 bind 独立检查；Service 确认/运行目录仍受保护。未部署的配置编辑不会改变判定，不依赖应用名称、当前 worker 容器或控制面角色；local、SSH 与外部 worker 遵循同一规则。已有 DooD 容器识别与最长挂载前缀映射继续复用。
 
 部署请求在现有写事务中保存确认目录与 Deployment 的 `working_directory` 快照。Worker 在目标修订校验后展开目标主目录，检查目录归属、写入权限和挂载映射，准备 Compose 与受控文件；准备成功且即将执行 Compose 时用短数据库更新绑定运行目录。绑定前失败保留旧目录，命令执行中失败或取消保留新运行操作目录。状态更新不得覆盖目录绑定。部署不移动、复制或删除旧数据。
 

@@ -81,6 +81,8 @@ message ServiceComponentResp {
   optional string command = 16;
   optional string pull_policy = 17;
   optional string restart_policy = 18;
+  optional string user = 19;
+  optional ServiceComponentGroupAdd group_add = 20;
 }
 
 // ServiceComponentDetailResp provides the Version declaration and sparse
@@ -103,6 +105,8 @@ message ServiceComponentDefinitionResp {
   repeated ServiceComponentDeclaredEndpoint endpoints = 9;
   string entrypoint = 10;
   optional string restart_policy = 11;
+  optional string user = 12;
+  repeated string group_add = 13;
 }
 
 message ServiceComponentDeclaredEnv {
@@ -116,6 +120,7 @@ message ServiceComponentDeclaredMount {
   string target = 3;
   bool read_only = 4;
   bool source_is_host_path = 5;
+  bool shared = 6;
 }
 
 message ServiceComponentDeclaredResources {
@@ -144,6 +149,13 @@ message ServiceComponentOverlayUpdateReq {
   optional string command = 6;
   optional string pull_policy = 7;
   optional string restart_policy = 8;
+  optional string user = 9;
+  optional ServiceComponentGroupAdd group_add = 10;
+}
+
+// Presence distinguishes inheritance from explicitly removing all extra groups.
+message ServiceComponentGroupAdd {
+  repeated string values = 1;
 }
 
 message ServiceComponentEnvOverlay {

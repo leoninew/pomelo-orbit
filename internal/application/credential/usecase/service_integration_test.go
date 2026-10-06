@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"testing"
+	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -95,10 +96,21 @@ func TestCredentialServiceTracksUpdatesWithoutChangingCreationTime(t *testing.T)
 		t.Fatal(err)
 	}
 
+	created.CreatedAt = time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)
+	created.UpdatedAt = created.CreatedAt
+	if _, err := database.ExecContext(ctx, `UPDATE repository_credential SET created_at = ?, updated_at = ? WHERE id = ?`, created.CreatedAt, created.UpdatedAt, created.Id); err != nil {
+		t.Fatal(err)
+	}
+
 	name := "Tracked renamed credential"
 	data := "updated-token"
 	previous := created
 	for _, input := range []credentialdto.CredentialUpdateInput{{Name: &name}, {Data: &data}} {
+		// A known prior timestamp avoids depending on the system clock resolution.
+		previous.UpdatedAt = created.UpdatedAt
+		if _, err := database.ExecContext(ctx, `UPDATE repository_credential SET updated_at = ? WHERE id = ?`, previous.UpdatedAt, created.Id); err != nil {
+			t.Fatal(err)
+		}
 		updated, err := service.UpdateCredential(ctx, ciTestUserId, ciTestProjectId, created.Id, input)
 		if err != nil {
 			t.Fatal(err)

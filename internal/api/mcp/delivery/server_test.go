@@ -27,8 +27,8 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 60 {
-		t.Fatalf("tool count = %d, want 60", len(tools.Tools))
+	if len(tools.Tools) != 61 {
+		t.Fatalf("tool count = %d, want 61", len(tools.Tools))
 	}
 
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
@@ -44,6 +44,7 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 		tool     string
 		property string
 	}{
+		{"orbit_update_version_component_identity", "group_add"},
 		{"orbit_update_version_component_endpoints", "endpoints"},
 		{"orbit_update_version_component_env", "env"},
 		{"orbit_update_version_component_mounts", "mounts"},
@@ -196,6 +197,34 @@ func TestCreateVersionComponentPassesPolicies(t *testing.T) {
 	}
 	if application.input.PullPolicy != "missing" || application.input.RestartPolicy == nil || *application.input.RestartPolicy != "unless-stopped" {
 		t.Fatalf("component input policies = pull %q, restart %#v; want submitted values", application.input.PullPolicy, application.input.RestartPolicy)
+	}
+}
+
+func TestVersionComponentIdentityToolReplacesAndClearsIdentity(t *testing.T) {
+	application := &versionComponentApplicationService{}
+	server, err := NewServer(withReadyScope(Dependencies{Application: application}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	session := connectInMemory(t, server)
+	for _, arguments := range []map[string]any{
+		{"version_id": "version-1", "component_id": "component-1", "user": "1000:1000", "group_add": []string{"988"}},
+		{"version_id": "version-1", "component_id": "component-1", "group_add": []string{}},
+	} {
+		result, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_version_component_identity", Arguments: arguments})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.IsError {
+			t.Fatalf("identity tool failed: %#v", result.Content)
+		}
+		if user, ok := arguments["user"].(string); ok {
+			if application.identityInput.User == nil || *application.identityInput.User != user || len(application.identityInput.GroupAdd) != 1 || application.identityInput.GroupAdd[0] != "988" {
+				t.Fatalf("identity request was lost: %+v", application.identityInput)
+			}
+		} else if application.identityInput.User != nil || len(application.identityInput.GroupAdd) != 0 {
+			t.Fatalf("identity clear was lost: %+v", application.identityInput)
+		}
 	}
 }
 
@@ -566,7 +595,7 @@ var deliveryToolNames = []string{
 	"orbit_provision_gateway", "orbit_get_gateway", "orbit_update_gateway",
 	"orbit_create_application", "orbit_get_application", "orbit_delete_application", "orbit_list_versions", "orbit_get_version",
 	"orbit_create_version_component", "orbit_create_version", "orbit_update_version",
-	"orbit_update_version_component_basic", "orbit_update_version_component_runtime", "orbit_update_version_component_endpoints",
+	"orbit_update_version_component_basic", "orbit_update_version_component_identity", "orbit_update_version_component_runtime", "orbit_update_version_component_endpoints",
 	"orbit_update_version_component_env", "orbit_update_version_component_mounts", "orbit_update_version_component_dependencies",
 	"orbit_update_version_component_devices", "orbit_update_version_component_advanced", "orbit_update_version_component_resources",
 	"orbit_update_version_component_tmpfs", "orbit_update_version_component_ulimits", "orbit_publish_version", "orbit_delete_version",
@@ -803,7 +832,13 @@ type mountApplicationService struct {
 
 type versionComponentApplicationService struct {
 	ApplicationService
-	input applicationdto.VersionComponentInput
+	input         applicationdto.VersionComponentInput
+	identityInput applicationdto.VersionComponentIdentityUpdateInput
+}
+
+func (s *versionComponentApplicationService) UpdateVersionComponentIdentity(_ context.Context, _, _ string, versionId, componentId string, input applicationdto.VersionComponentIdentityUpdateInput) (model.VersionComponent, error) {
+	s.identityInput = input
+	return model.VersionComponent{Id: componentId, VersionId: versionId, User: input.User, GroupAdd: input.GroupAdd}, nil
 }
 
 func (s *versionComponentApplicationService) CreateVersionComponent(_ context.Context, _, _, _ string, input applicationdto.VersionComponentInput) (model.VersionComponent, error) {

@@ -91,6 +91,14 @@ func TestEffectiveServicePlanHashTracksTraefikNetworkOption(t *testing.T) {
 	if withGatewayPolicyChange != original {
 		t.Fatalf("gateway policy changed plan hash: original=%s changed=%s", original, withGatewayPolicyChange)
 	}
+	plan.Gateway = nil
+	withoutGatewayProjection, err := EffectiveServicePlanHash(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withoutGatewayProjection != original {
+		t.Fatalf("service detail and deployment plan hashes differ: detail=%s deployment=%s", withoutGatewayProjection, original)
+	}
 	disabled := false
 	plan.JoinTraefikNetwork = &disabled
 	withoutNetwork, err := EffectiveServicePlanHash(plan)

@@ -1,5 +1,5 @@
 # 组件运行身份、共享挂载与 Orbit 停机迁移实施计划
-最后修改时间: 2026-10-06 17:16:29
+最后修改时间: 2026-10-06 17:53:32
 
 Review status: Accepted
 
@@ -40,7 +40,7 @@ Version 组件详情的运行身份为独立区域，`PUT /api/version/:version_
 4. Web：Version 新建支持初始身份，已存组件详情通过独立运行身份区域及接口保存；mount 编辑支持 shared；Service runtime 支持身份覆盖、显式清空和恢复继承。
 5. 占用检查：按运行标签匹配实际 bind target；保留根目录、普通数据与嵌套非共享源保护。
 6. 活文档及迁移指南：说明共享语义与普通应用迁移步骤，保留现有文档编辑。
-7. 执行固定工程检查与最小有效测试，Implementation 完成后等待用户授权验证；进入 Verification 后记录验证结果并修复发现的问题，不执行远端迁移或 Git 写操作。
+7. 执行固定工程检查与最小有效测试，Implementation 完成后等待用户授权验证；进入 Verification 后记录验证结果并修复发现的问题。真实迁移按用户后续执行指令推进，不执行 Git 写操作。
 
 ## Files to change
 
@@ -75,7 +75,7 @@ local DooD 的确认目录使用容器内路径，如 /app/data/deployment/pomel
 - SQLite 升级验证；MySQL/PostgreSQL 迁移结构核对，未实测明确说明。
 - 渲染标签和实际挂载判定：共享源下部署允许，未标记/嵌套普通 bind/Service 根目录仍拒绝，运行标签不依赖待部署规格。覆盖 Linux、Windows/Desktop 路径及现有 DooD 映射回归。
 - 运行 task proto、task sqlc、yarn --cwd web lint:fix、yarn --cwd web typecheck、task check、go test ./cmd/... ./internal/... 和聚焦 Web 测试、git diff --check。
-- 腾讯停机迁移、真实 Docker DooD 与域名验收未获执行指令，只记录后续步骤，不以代码测试声称通过。
+- 腾讯停机迁移、真实 Docker DooD 与域名验收按用户后续授权执行，代码测试不能替代真实验收；用户接手后续实测后停止提交远端任务。
 
 ## Risks and rollback
 
@@ -91,4 +91,6 @@ Service 显式空在 JSON/SQL 中丢失会误变成继承，优先测试。share
 
 用户要求编辑界面简化为两个单行文本框，已落实。再次进入验证时明确要求修复发现的问题，凭据更新时间测试修正纳入验证修复，未扩展凭据产品行为；补充 local DooD/SSH 完整目录检查和 CI 派生版本配置保留的正向回归。
 
-用户禁止操作其浏览器；本轮不继续浏览器验证，页面视觉验收由用户执行。真实 Tencent 迁移及 Docker 部署仍按原有范围留待后续指令。
+用户禁止操作其浏览器；本轮不继续浏览器验证，页面视觉验收由用户执行。
+
+用户随后授权实际迁移，要求最终通过本地 `orbit.preflite.cn` 项目部署 `pomelo-orbit-default`，正常运行且能部署其他服务。初次迁移、PostgreSQL 升级、域名及 DooD/SSH 部署已执行，实际证据见 Verification。发现详情配置摘要问题后，用户要求描述问题及复现步骤并接手真实测试；摘要修正和自动化检查完成，r1 镜像已构建但不继续远端升级或测试。

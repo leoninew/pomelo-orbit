@@ -1,7 +1,7 @@
 # Orbit 作为普通应用的停机迁移
-最后修改时间: 2026-10-06 16:27:36
+最后修改时间: 2026-10-06 17:53:32
 
-本指南依据 2026-10-06 Tencent 只读核查，操作入口为 `ssh tencent`。以下是后续执行步骤，未表示远端迁移已经完成。Orbit 使用普通 Application / Version / Service，通过目录和 Docker socket 挂载使用现有 DooD。
+本指南记录普通应用迁移步骤，操作入口为 `ssh tencent`。2026-10-06 已执行初次迁移；实际证据、发现的问题、备份位置及修正版待人工验收状态见 [本次 Verification](../verification/20261006-component-user-group-add.md#tencent-execution-and-handoff)。Orbit 使用普通 Application / Version / Service，通过目录和 Docker socket 挂载使用现有 DooD。
 
 ## 1. 前置准备
 

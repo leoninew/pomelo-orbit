@@ -369,8 +369,8 @@ func EffectiveServicePlanHash(plan model.EffectiveServicePlan) (string, error) {
 	}
 	sort.Slice(components, func(i, j int) bool { return components[i].Name < components[j].Name })
 	gatewayNetworkName := ""
-	if plan.JoinsTraefikNetwork() && plan.Gateway != nil {
-		gatewayNetworkName = plan.Gateway.NetworkName
+	if plan.JoinsTraefikNetwork() {
+		gatewayNetworkName = model.GatewayNetworkName()
 	}
 	data := fingerprint{AppCode: plan.Application.Code, AppKind: plan.Application.Kind, VersionLabel: plan.Version.Label, ServiceCode: plan.Service.Code, DeploymentDirectory: plan.Service.DeploymentDirectory, DirectoryTargetRevision: plan.Service.DirectoryTargetRevision, JoinTraefikNetwork: plan.JoinsTraefikNetwork(), GatewayNetworkName: gatewayNetworkName, Components: components}
 	raw, err := json.Marshal(data)

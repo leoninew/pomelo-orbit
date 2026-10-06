@@ -1,5 +1,5 @@
 # 组件运行身份、共享挂载与 Orbit 迁移验证
-最后修改时间: 2026-10-06 17:53:32
+最后修改时间: 2026-10-06 21:49:12
 
 Review status: Draft
 
@@ -12,6 +12,10 @@ Mode: standard
 验证期间用户补充的独立运行身份区域、独立保存接口及两个单行文本框已落实。用户再次要求验证并修复发现的问题；本轮修复失败测试并补足高风险路径的回归覆盖。
 
 用户随后授权真实 Tencent 停机迁移，要求最终通过本地 `orbit.preflite.cn` 项目部署 `pomelo-orbit-default`，并验证新 Orbit 能部署其他服务。初次迁移与部署验证已执行；发现配置摘要问题后，用户要求描述问题及复现步骤，后续真实测试由用户完成，不再提交新的远端部署或测试任务。
+
+用户进一步授权 `ssh oracle` 按相同流程先检查再迁移，并在 Oracle 的既有数据库中补齐 Orbit 普通应用与服务记录；本轮执行该迁移及最小 DooD 验证。
+
+用户随后要求将 Tencent、Oracle 的原 ENV 补进普通应用库存：组件保存占位符，服务保存真实值。本轮通过业务接口补齐并核对保存结果及部署预览，没有重新部署。
 
 ## Spec alignment
 
@@ -126,9 +130,63 @@ Service 根目录、未共享 bind、嵌套私有 bind 和父目录写入仍受�
 
 回归测试在 `TestEffectiveServicePlanHashTracksTraefikNetworkOption` 中以带 Gateway 投影的计划作为部署基线，移除投影后断言摘要相同；该断言在原实现下不成立。随后断言关闭网络仍改变摘要，避免把真实网络配置变化也消除。相关测试、Go 全量测试与 `task check` 均通过；使用当前代码读取本地已成功部署的 Orbit，`pending_deploy=false`，没有补写成功记录。
 
-修正版镜像已构建为 `pomelo-orbit:20261006-migration-24a016038-r1`，image ID `sha256:73580ae7dfa5785890e348a0ecf0b18a1314526db88acabd21d468b0eabaf68d`，来源为 `24a016038` 加本次未提交的摘要修正。**尚未部署**，当前运行镜像仍为初次迁移镜像。
+交接时修正版镜像已构建为 `pomelo-orbit:20261006-migration-24a016038-r1`，image ID `sha256:73580ae7dfa5785890e348a0ecf0b18a1314526db88acabd21d468b0eabaf68d`，来源为 `24a016038` 加本次未提交的摘要修正。当时尚未部署；用户后续自行构建和部署的镜像及观察结果见下节。
 
 用户后续真实验收：确保 HTTP/MCP/worker 使用当前代码；旧 MCP 是长期运行进程，需刷新会话。通过本地 `orbit.preflite.cn` 项目将既有 Orbit 组件镜像更新为 r1，再部署相同普通目录。部署成功后应为 running 且 pending_deploy=false；修改一项环境值或运行身份应变为 true，再成功部署后恢复 false。再从新 Orbit 部署隔离服务，检查共享目录、socket、HTTPS 与真实登录。此轮不继续执行这些操作。
+
+## 用户部署后的只读观察
+
+用户自行远程构建和部署后，于 2026-10-06 20:53（Asia/Shanghai）请求观察。此轮只查询记录、接口、容器与日志，没有提交部署、修改配置或操作浏览器。
+
+| 项目 | 观察结果 |
+| --- | --- |
+| 最新部署 | `01M48KZZRA0WKN5PTZKS8TQEP6`，`ran_to_completion`；完成时间 `2026-10-06T12:46:13Z` |
+| 实际镜像 | `pomelo-orbit:20261006-124314`；image ID `sha256:144bea916756bbd143f9cbfa9f630970610c1f713905027275e6baa294d982e8`；容器 `b015823b2a40` |
+| 目录与详情 | 本地服务详情接口返回 running、`pending_deploy=false`、`effective_error=""`、`active_deployment=false`；确认目录与运行目录均为 `/opt/pomelo-orbit/data/deployment/pomelo-orbit-default`，目标与运行修订均为 1 |
+| 运行一致性 | `verify_deployment` 返回 consistent、stable；无漂移，13 次采样均为 running、restart_count=0 |
+| 启动日志 | PostgreSQL 52 -> 52，dirty=false；HTTP 服务及 `orbit-tencent-managed` worker 已启动；所查启动日志无异常 |
+| DooD 条件 | 用户 `1000:1000`、附加组 `988`；原 data/logs/.env/socket 挂载及共享 data 标签保留；容器内 Docker Server 27.5.1 可访问，`/app/data` 可写 |
+| HTTPS | Web 返回 200；远端 `/api/health` 返回 200、`{"status":"ok"}` |
+
+这次实际成功部署后的“待部署”误判未再出现。修改配置后的标记切换、此次新镜像的真实 DooD 部署、登录及 CI 仍由用户验收；只读运行条件检查不能替代这些完整流程。Verification 保持 Draft。
+
+## Oracle execution
+
+2026-10-06 用户授权后，先检查 `ssh oracle` 的运行容器和通过本地 `5434` 转发的 Oracle PostgreSQL。旧 Orbit 由手工 Compose 运行，项目为 `pomelo-orbit`，目录 `/data/apps/pomelo-orbit/dist/20260908`，尚无共享 data 标签。数据库中没有 Orbit 自身的 Application/Service；既有默认 Project 的 local Environment 使用 `/app/data`，target revision=3，保留该目标与修订。
+
+| 项目 | 实际结果 |
+| --- | --- |
+| 库存 | Oracle 数据库的默认 Project `01KRRKK0K3T519ZQZES3M4QA9Z`；Application `01M48N0AQXHP31MF2E2R9DF3WF`、Version `01M48N0AQXHP31MF2E2TW4XA8Y`、Component `01M48N0BFDQ73PDVB0D0WEXW6Z`、Service `01M48N2BJ1156HD21HQBDJ95HB`，服务编码 `pomelo-orbit-default`；全部由业务接口创建 |
+| 普通部署 | `deployment/01M48NAMHZACR4BD8PZPFJ5SZX`，ran_to_completion；临时外部执行端日志确认领取和完成部署任务 |
+| 目录 | Service 确认及运行目录均为 `/app/data/deployment/pomelo-orbit-default`，修订均为 3；映射宿主目录为 `/data/apps/pomelo-orbit/dist/20260908/data/deployment/pomelo-orbit-default` |
+| 镜像与状态 | `pomelo-orbit:20261006-124804`，image ID `sha256:9df40d2d1484d5f23c9936dc457c0d13869c152ce59dd8a6cd58592c41cf19e4`；新容器 `a5d4e4caec7b`，running、restart_count=0、OOMKilled=false；详情 pending_deploy=false、effective_error 为空 |
+| 身份与挂载 | 重新核查用户 `1000:1000`、socket 附加组 `989`；原 data/logs/.env/socket 来源保留，`.env` 仍为只读；data 标签为共享；data/logs 可写，容器内 Docker Server 29.8.0 可查询 |
+| 数据库及 worker | PostgreSQL 保持 52，dirty=false；HTTP 和 `orbit-oracle-managed` worker 启动成功，原数据库、JWT/加密密钥及其他启动配置沿用 |
+| 原入口 | 保留 `127.0.0.1:9020`；既有 `orbit` Route `01M2EPSFABD0CQVTQB640J11HT` 从自定义 `http://pomelo-orbit` 改为新 Service 的 HTTP 80 受管 target；只预览并发布此条 Route，configuration_match=matched，未重部署 Gateway |
+| 外部访问 | `https://orbit.oracle.preflite.cn` 返回 200；其 `/api/health` 返回 200、`{"status":"ok"}`；既有 HTTPS 属性保留 |
+| 新 Orbit 的 DooD | 临时执行端退出后，新 Orbit worker 完成 `deployment/01M48NMPNDJZXP2T4QC7Y9MRD7`；隔离服务的受控 `index.html` 实际 bind source 为宿主部署子目录，HTTP 18087 返回 200、`orbit-oracle-dood-ok` |
+| 测试清理 | `deployment/01M48NQ7WWQPJDE8EYPGD625SQ` 通过业务 stop 完成；测试容器已移除，测试应用与停止状态的 Service 记录及小型目录保留 |
+
+数据库 dump、原 `.env`/Compose 和 Gateway 文件归档保存于 `/home/opc/orbit-migration-backup-20261006-ordinary`，目录权限 0700；dump 的 archive list 校验成功。另保留实际旧镜像标签 `pomelo-orbit:pre-oracle-migration-20261006`。旧 `pomelo-orbit` 容器保留为 exited、restart=no；未发现对应 systemd unit 或用户 crontab 启动项。没有搬移整个父目录、重置数据、修改目标修订或以 SQL 补写成功状态。
+
+迁移使用临时容器 `orbit-oracle-migration-worker` 提供外部业务入口和 worker，完成主部署后已停止并移除。临时启动首次因 Windows CRLF 导致 `serve` 参数带 `\r` 失败，旧服务当时未停；清理该临时容器并去除输入 CR 后重建成功。隔离测试首次 `01M48NHMRCDAHMMVME1EYDNDYX` 因 Oracle 已有 Alpine 镜像没有 `httpd` 失败；通过业务 fork 改用已有 Nginx 镜像重部署成功，失败记录保留。没有新增辅助脚本文件或操作浏览器；本轮临时 SSH 转发和本地操作会话均已关闭。
+
+停机回退没有实际执行。真实登录、CI 和用户人工验收未完成；普通应用后续更新自身仍须外部 worker。Verification 保持 Draft。
+
+## ENV configuration correction
+
+迁移时保留了原 `.env` 文件挂载，但遗漏将全部环境值纳入普通应用库存。Tencent 原文件 `/opt/pomelo-orbit/.env` 包含 15 项，组件仅声明 3 项、Service 仅保存 JWT 一项；Oracle 原文件 `/data/apps/pomelo-orbit/dist/20260908/.env` 包含 19 项，组件仅声明 5 项、Service ENV 为空。原文件仍存在并挂载至 `/app/.env`；业务详情中的环境配置不完整，后续不能只依靠挂载文件维护配置。
+
+按用户要求合并原文件的全部变量、容器中的业务环境及现有库存值，保留暂时不用的键；已有 Service 值和当前生效覆盖优先，数据库连接及 JWT/凭据加密密钥保持原值。两个服务均没有组件级 ENV 覆盖。原版本已发布，因此通过业务 fork 创建修正版，将所有组件 ENV 改为同名 `${KEY}`，在 Service ENV 保存真实值，发布修正版并切换服务选用版本。
+
+| 环境 | 修正版 Version | 组件占位符 / Service 真实值 | 保留的原文件键 |
+| --- | --- | --- | --- |
+| Tencent，本地 `orbit.preflite.cn` 项目 | `01M48Q852DRF2TYXG685ESPPXQ`，`build-20261006-124314-env-20261006` | 19 / 19 | 15 / 15 |
+| Oracle，远端默认项目 | `01M48Q8MNN8QTTPYH2S9Z4QCJA`，`pomelo-orbit-env-20261006` | 24 / 24 | 19 / 19 |
+
+保存后重新读取 Service 与 Version，逐项核对真实值及全部占位符；原已发布版本未变。修正版除 ENV 外的组件配置完整保留，包括镜像、挂载/共享属性、运行用户、附加组、端点及制品引用；服务编码、确认/运行目录和目标修订未变。两份 Service 预览经 YAML 解析及 `docker compose -f - config --format json --no-path-resolution` 验证，最终 environment 与保存的真实值逐项一致，Compose 没有再次插值改变实际值。Oracle 一次接口读取超时，重试完成核对。
+
+运行容器 ID、启动时间、重启次数、镜像、实际 ENV 与挂载均与修改前一致。Docker inspect 返回的挂载列表顺序不同，按目标路径排序后内容一致。两个服务仍为 running，`effective_error` 为空、无进行中的 Deployment；`pending_deploy=true` 是已保存 ENV 修正尚未部署的预期状态。本轮未创建 Deployment、重启容器或改动原 `.env` 文件及挂载，真实部署由用户执行。迁移指南已补充 ENV 入库、占位符与 Compose 核对步骤，没有新增辅助脚本文件。
 
 ## Issues and fixes
 
@@ -136,6 +194,7 @@ Service 根目录、未共享 bind、嵌套私有 bind 和父目录写入仍受�
 2. 凭据更新时间测试要求极短间隔的连续 `time.Now()` 必然严格递增，Windows 上反复失败。测试以明确的过去时间作为持久化基线，分别验证名称和内容更新刷新更新时间、保留创建时间及列表返回值；保留严格更新断言，没有加入 sleep、重试或业务时间兜底。连续 20 次和全量测试通过。
 3. 共享规则原有测试主要验证底层挂载判定，CI 身份保留主要靠普通 fork 覆盖。本轮补充完整目录检查的 local DooD/SSH 正向与未标记拒绝回归，以及经过 SQLite 保存再读取的 CI 派生版本配置保留测试。
 4. 真实部署发现详情与部署摘要因 Gateway 网络投影差异而不一致，按上文修正并完成自动化验证；修正版真实升级由用户接手。
+5. 两环境迁移保留了 `.env` 挂载但未补齐 ENV 库存，按用户要求通过业务接口补齐组件占位符和 Service 真实值，重新读取及 Compose 解析验证通过；本轮未部署。
 
 ## Missed or expanded scope
 
@@ -143,17 +202,22 @@ Service 根目录、未共享 bind、嵌套私有 bind 和父目录写入仍受�
 
 没有新增控制面特例、DooD 路径映射、兼容接口、业务默认 UID/GID 或额外第三方依赖。真实迁移及普通业务库存写入为用户后续明确授权；没有以 SQL 伪造部署记录或运行绑定，没有管理开发服务器或执行 Git 写操作。用户明确禁止浏览器操作后没有继续相关验证；后续真实测试交接后没有继续提交远端任务。
 
+Oracle 的新增真实迁移与隔离服务部署按用户后续明确授权执行，与 Tencent 修正版镜像的人工验收交接分别记录。
+
+两环境 ENV 补齐按用户后续明确要求执行，仅保存业务配置和验证预览；没有通过 SQL 写入库存，也没有操作浏览器或管理开发服务器。
+
 ## Risks and incomplete items
 
 - 初次 Tencent、Docker 权限、Gateway、域名和两种部署链路已有上文实际证据；未执行停机回退，不能将备份和 rollback Compose 校验称为实际回退成功。
 - PostgreSQL 已实际升级至 52；MySQL 仍未用真实数据库验证。
 - 已运行容器需要重新部署才带有共享标签；声明共享不释放 Service 根目录或嵌套私有挂载。
 - `988` 只是 Tencent 核查值；迁移时重查 socket GID、进程身份及 data/logs 写权限。
-- Orbit 更新自身仍需外部 worker。本轮未启动额外 worker；远端 DooD 验收任务只由新 Orbit 的远端队列 worker 执行。真实 CI、登录和修正版镜像升级仍待用户验收。
+- Orbit 更新自身仍需外部 worker。Tencent 初次迁移未启动额外 worker；初次远端 DooD 验收任务只由新 Orbit 的远端队列 worker 执行。Oracle 迁移的临时执行端已移除，隔离部署由其新 Orbit worker 完成。Tencent 后续构建部署的镜像已完成上文只读观察，真实 CI、登录及此次 Tencent 镜像的 DooD 完整流程仍待用户验收。
 - 当前会话的旧 MCP 进程未刷新，旧工具表和摘要可能与当前 worker 不一致；后续测试前刷新客户端 MCP 会话，不引入新旧逻辑兼容层。
-- 已构建的 r1 镜像未替换当前运行镜像。配置摘要修正只完成代码、自动化检查和当前代码读取结果验证，远端真实验收由用户完成。
+- 已构建的 r1 镜像未直接用于运行；用户自行部署了 `pomelo-orbit:20261006-124314`。本地详情在此次实际成功部署后为 `pending_deploy=false`；修改配置后标记变为 true、再次部署后恢复 false 的流程仍由用户完成。
 - 页面视觉验收由用户完成。Verification 保持 Draft，待用户人工接受。
+- 两环境已选用 ENV 修正版，尚未实际部署；此时 `pending_deploy=true` 为预期结果。原 `.env` 挂载保留，后续 ENV 变更应维护 Service 真实值及组件同名占位符。
 
 ## Conclusion
 
-初次普通应用迁移及 DooD/SSH 隔离服务部署成功。实际部署发现的配置摘要问题已修正，自动化检查通过；r1 镜像已构建但未部署，复现与人工验收步骤已明确。后续真实测试交由用户，Verification 保持 Draft。
+Tencent 初次普通应用迁移及 DooD/SSH 隔离服务部署成功。配置摘要问题已修正、自动化检查通过；用户后续自行构建部署的 Tencent 镜像运行一致且稳定，本地详情未再出现“待部署”误判。Oracle 也已通过普通业务记录与部署完成迁移，既有入口可用，新 Orbit worker 完成隔离 DooD 部署及停止。两环境 ENV 库存现已补齐，部署预览与 Compose 解析逐项一致；ENV 修正尚未实际部署，此时“待部署”为预期状态。其余真实验收由用户完成，Verification 保持 Draft。

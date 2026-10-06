@@ -1,5 +1,5 @@
 # Orbit 作为普通应用的停机迁移
-最后修改时间: 2026-10-06 17:53:32
+最后修改时间: 2026-10-06 21:49:12
 
 本指南记录普通应用迁移步骤，操作入口为 `ssh tencent`。2026-10-06 已执行初次迁移；实际证据、发现的问题、备份位置及修正版待人工验收状态见 [本次 Verification](../verification/20261006-component-user-group-add.md#tencent-execution-and-handoff)。Orbit 使用普通 Application / Version / Service，通过目录和 Docker socket 挂载使用现有 DooD。
 
@@ -22,7 +22,11 @@ Fork 可编辑的 Orbit Version，配置镜像、`restart_policy=unless-stopped`
 | `/opt/pomelo-orbit/.env` | `/app/.env` | file | absolute host-path，沿用实际访问模式 |
 | `/var/run/docker.sock` | `/var/run/docker.sock` | file | absolute host-path，沿用实际访问模式 |
 
-不把共享 data 改为新部署目录下的相对 `./data`，也不将整棵 `/opt/pomelo-orbit` 搬进自己的子目录。`.env` 继续由 Orbit 的现有启动加载读取；保存数据库和凭据加密/JWT 密钥。声明 `HOME=/app/data`，核对 `orbit.root`、`workspace.root` 和部署日志配置使用有挂载映射的容器内路径，并检查 UID 对 data/logs 可写。
+不把共享 data 改为新部署目录下的相对 `./data`，也不将整棵 `/opt/pomelo-orbit` 搬进自己的子目录。核对 `orbit.root`、`workspace.root` 和部署日志配置使用有挂载映射的容器内路径，并检查 UID 对 data/logs 可写。
+
+将旧 `.env` 的全部环境变量及当前 Compose/容器中的业务环境覆盖补进普通应用库存，暂时不用的变量也保留。Version component 的每项 ENV 声明使用同名占位符 `${KEY}`，Service ENV 保存对应真实值，包括 `HOME=/app/data` 等既有运行配置。已有 Service 值及当前生效的覆盖优先于旧文件；必须保留当前数据库连接和凭据加密/JWT 密钥，不能从旧文件恢复过期密钥。已发布 Version 通过 fork 创建修正版，补齐 ENV 后发布并由 Service 选用。
+
+现有 `.env` 文件及其挂载在本次交接中保留，但不能只依靠文件保存环境变更。后续部署从 Service ENV 解析组件占位符，显式生成 Compose environment；Orbit 启动加载 `.env` 不覆盖已设置的进程环境。保存后重新读取 Version 和 Service，核对所有原键及实际值，再验证 Service 部署预览和 Docker Compose 解析结果，防止占位符未解析或实际值再次被插值。保存配置不等于已经部署，重新部署和运行验收应单独执行。
 
 声明 HTTP 80 endpoint，保留接入现有 `traefik` 网络，发布 Version。缺失的 mount/env/endpoint 必须在 Version 补齐，Service 不能新增未声明项。
 

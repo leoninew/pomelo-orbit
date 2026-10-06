@@ -94,12 +94,11 @@ type ServiceVersionSelector interface {
 }
 
 type Workspace struct {
-	Location      ServiceLocation
-	AdoptExisting bool
-	Directories   []string
-	Files         []WorkspaceFile
-	Compose       string
-	DeploymentId  string
+	Location     ServiceLocation
+	Directories  []string
+	Files        []WorkspaceFile
+	Compose      string
+	DeploymentId string
 }
 
 // Runtime is the only deployment execution boundary. Every operation receives

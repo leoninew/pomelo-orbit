@@ -1,17 +1,65 @@
 package sshrunner
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"os"
+	"path"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf16"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func TestRuntimeUpdatesExistingCompose(t *testing.T) {
+	target, _ := startSessionServer(t)
+	runtime := NewRuntime()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx, closeSession, err := runtime.OpenSession(ctx, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeSession()
+	client, cleanup, err := runtime.openSFTP(ctx, target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cleanup()
+	directory, err := newSFTPPathResolver(client, target.Environment.SSH.Platform).resolve("~/workspace")
+	if err != nil {
+		t.Fatal(err)
+	}
+	composePath := path.Join(directory, "docker-compose.yml")
+	file, err := client.Create(composePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, writeErr := file.Write([]byte("services:\n  api:\n    image: api:old\n"))
+	closeErr := file.Close()
+	if writeErr != nil || closeErr != nil {
+		t.Fatalf("write existing Compose: %v, close: %v", writeErr, closeErr)
+	}
+	workspace := deploymentport.Workspace{
+		Location: deploymentport.ServiceLocation{Code: "api", Directory: "~/workspace"},
+		Compose:  "services: {}\n",
+	}
+	if err := runtime.StageWorkspace(ctx, target, workspace); err != nil {
+		t.Fatal(err)
+	}
+	target.FileScope = directory
+	if body, err := runtime.ReadFile(ctx, target, composePath); err != nil || string(body) != workspace.Compose {
+		t.Fatalf("staged Compose=%q err=%v", body, err)
+	}
+	if body, err := runtime.ReadFile(ctx, target, path.Join(directory, "fixture.txt")); err != nil || string(body) != "fixture" {
+		t.Fatalf("existing file=%q err=%v", body, err)
+	}
+}
 
 type workspaceRenamerStub struct {
 	files       map[string]bool

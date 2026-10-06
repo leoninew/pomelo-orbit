@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-05 00:12:46
+最后修改时间: 2026-10-06
 
 Doc role: living architecture
 
@@ -97,4 +97,4 @@ local 在 Orbit 可见路径写文件，DooD 将每个具体相对 bind source �
 
 Gateway 路由、证书、ACME 及发布记录沿用运行目录；文件接口限制在显式服务范围。目录与目标修订属于 publication preview 依赖，目录变更使旧预览失效，不自动发布业务 Route。
 
-目录准备写入 `.orbit-service-owner`，以 Environment ID 和服务编码标记归属；拒绝其他服务的目录和无归属的既有 Compose。当前目标修订下有运行目录依据的旧服务可以认领原目录。local 与 SSH 文件范围同时检查解析后的路径，防止符号链接越界；部署期间复用已有 target session。
+目录归属以当前目标修订下各 Service 的确认目录、运行目录及实际运行容器的 bind mount 为依据，拒绝其他服务的目录和运行挂载占用。通过检查后按本次确认目录准备文件，既有 Compose 按有效计划替换；运行目录为空不阻止部署。local 与 SSH 文件范围同时检查解析后的路径，防止符号链接越界；部署期间复用已有 target session。

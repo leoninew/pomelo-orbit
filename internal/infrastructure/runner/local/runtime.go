@@ -96,36 +96,6 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 	if err := os.MkdirAll(serviceDir, 0o750); err != nil {
 		return fmt.Errorf("create local service workspace: %w", err)
 	}
-	ownerPath := filepath.Join(serviceDir, ".orbit-service-owner")
-	if err := ensureWorkspacePath(serviceDir, ownerPath); err != nil {
-		return err
-	}
-	owner := target.Environment.Id + "\n" + workspace.Location.Code
-	if body, err := os.ReadFile(ownerPath); err == nil {
-		if string(body) != owner {
-			return errors.New("deployment directory belongs to another service")
-		}
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
-	} else {
-		if _, err := os.Stat(filepath.Join(serviceDir, "docker-compose.yml")); err == nil && !workspace.AdoptExisting {
-			return errors.New("deployment directory contains an unowned Compose configuration")
-		} else if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		file, err := os.OpenFile(ownerPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-		if err != nil {
-			return err
-		}
-		_, writeErr := file.WriteString(owner)
-		closeErr := file.Close()
-		if writeErr != nil {
-			return writeErr
-		}
-		if closeErr != nil {
-			return closeErr
-		}
-	}
 	for _, directory := range workspace.Directories {
 		if err := ensureWorkspacePath(serviceDir, directory); err != nil {
 			return err

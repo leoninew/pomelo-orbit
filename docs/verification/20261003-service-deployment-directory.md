@@ -148,7 +148,7 @@ TMPDIR 使用规范化的 macOS 临时路径；没有修改项目或全局环境
 | /app/b | /host/b |
 | /app/b/data | /host/shared |
 
-当服务 A 已在 /app/a 运行，服务 B 在 /app/b 部署并使用相对挂载 ./data 时，原检查只将 /host/b、/host/shared 与 /host/a 比较，返回成功。根目录的 .orbit-service-owner 也不会发现此问题，因为标记位于两个独立根目录。
+当服务 A 已在 /app/a 运行，服务 B 在 /app/b 部署并使用相对挂载 ./data 时，原检查只将 /host/b、/host/shared 与 /host/a 比较，返回成功。仅检查两个独立的服务根目录也不会发现此问题，必须核对实际运行挂载。
 
 临时单元诊断使用上述路径映射替身，调用真实 checkDirectoryOwnership，预期拒绝但实际成功。测试失败输出为 shared nested DooD data source was accepted。该诊断没有连接 Docker、SSH 或数据库。
 

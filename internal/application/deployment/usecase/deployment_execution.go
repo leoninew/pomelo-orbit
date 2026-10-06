@@ -468,17 +468,6 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 	if err != nil {
 		return err
 	}
-	current, err := s.executionStore.Service(ctx, svc.ProjectId, svc.Id)
-	if err != nil {
-		return err
-	}
-	if current.RuntimeTargetRevision == target.Environment.TargetRevision && current.RuntimeDirectory != "" {
-		oldDir, err := s.runtime.ResolveDirectory(ctx, target, deploymentport.ServiceLocation{Code: svc.Code, Directory: current.RuntimeDirectory})
-		if err != nil {
-			return err
-		}
-		workspace.AdoptExisting = oldDir == serviceDir
-	}
 	if err := s.checkDirectoryOwnership(ctx, target, svc, serviceDir, result.ResolvedMounts); err != nil {
 		return err
 	}

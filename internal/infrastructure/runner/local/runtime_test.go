@@ -105,12 +105,18 @@ func TestRuntimeRejectsNonLocalTargetsAndMissingResolver(t *testing.T) {
 	}
 }
 
-func TestCustomWorkspaceOwnershipProtectsExistingCompose(t *testing.T) {
+func TestRuntimeUpdatesExistingCompose(t *testing.T) {
 	ctx := context.Background()
 	runtime := NewRuntime(nil)
 	target := localTarget(t.TempDir())
-	target.Environment.Id = "environment-1"
 	directory := filepath.Join(t.TempDir(), "custom-service")
+	if err := os.MkdirAll(directory, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	compose := filepath.Join(directory, "docker-compose.yml")
+	if err := os.WriteFile(compose, []byte("services:\n  api:\n    image: api:old\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	workspace := deploymentport.Workspace{Location: deploymentport.ServiceLocation{Code: "api", Directory: directory}, Compose: "services: {}\n"}
 	if err := runtime.StageWorkspace(ctx, target, workspace); err != nil {
 		t.Fatal(err)
@@ -118,25 +124,6 @@ func TestCustomWorkspaceOwnershipProtectsExistingCompose(t *testing.T) {
 	target.FileScope = directory
 	if body, err := runtime.ReadFile(ctx, target, filepath.Join(directory, "docker-compose.yml")); err != nil || string(body) != workspace.Compose {
 		t.Fatalf("custom workspace content=%q err=%v", body, err)
-	}
-	workspace.Location.Code = "another-service"
-	if err := runtime.StageWorkspace(ctx, target, workspace); err == nil {
-		t.Fatal("another service claimed the directory")
-	}
-	unowned := filepath.Join(t.TempDir(), "unowned")
-	if err := os.MkdirAll(unowned, 0o750); err != nil {
-		t.Fatal(err)
-	}
-	compose := filepath.Join(unowned, "docker-compose.yml")
-	if err := os.WriteFile(compose, []byte("existing compose"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	workspace.Location.Directory = unowned
-	if err := runtime.StageWorkspace(ctx, target, workspace); err == nil {
-		t.Fatal("unowned Compose was overwritten")
-	}
-	if body, err := os.ReadFile(compose); err != nil || string(body) != "existing compose" {
-		t.Fatalf("existing Compose=%q err=%v", body, err)
 	}
 }
 
@@ -163,7 +150,7 @@ func TestCustomWorkspaceRejectsSymlinkEscapes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := runtime.StageWorkspace(context.Background(), target, deploymentport.Workspace{
-		Location: deploymentport.ServiceLocation{Code: "api", Directory: directory}, AdoptExisting: true, Compose: "replacement",
+		Location: deploymentport.ServiceLocation{Code: "api", Directory: directory}, Compose: "replacement",
 	}); err == nil {
 		t.Fatal("Compose escaped the workspace")
 	}

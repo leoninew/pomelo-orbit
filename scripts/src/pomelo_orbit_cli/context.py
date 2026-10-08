@@ -19,7 +19,11 @@ class AppContext:
 
 def app_context(ctx: click.Context) -> AppContext:
     """Return the root context object or fail with a clear programming error."""
-    value = ctx.find_root().obj
+    root = ctx.find_root()
+    # Remote command arguments can contain --help without requesting CLI help.
+    if root.obj is None and "initialize_runtime" in root.meta:
+        root.meta["initialize_runtime"]()
+    value = root.obj
     if not isinstance(value, AppContext):
         raise RuntimeError("CLI context was not initialized")
     return value

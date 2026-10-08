@@ -70,5 +70,13 @@ jobs:
           yarn --cwd web test
           go test ./cmd/... ./internal/... ./sql
 
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install locked CLI dependencies
+        run: uv --directory scripts sync --locked --no-dev
+
       - name: Build release packages
-        run: task release
+        run: uv --directory scripts run --locked --no-sync pomelo-orbit-cli release

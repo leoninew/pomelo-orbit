@@ -27,8 +27,6 @@ task webapi:dev
 task check   # 类型检查、格式化和 lint
 task test    # 前后端测试
 task build   # 构建 Docker 镜像
-task release # 构建直接运行发布包（dist/）
-task version # 根据 Git 历史计算版本，只读预览
 ```
 
 更多产品、架构和操作文档见 [`docs`](./docs/)。

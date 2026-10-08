@@ -1,11 +1,5 @@
 version: '3'
 
-# This Taskfile requires a POSIX-compatible shell (Cygwin, Git Bash, or MSYS2)
-# for shell scripts and release packaging commands.
-vars:
-  VERSION:
-    sh: cat VERSION
-
 tasks:
   default:
     desc: Show available tasks
@@ -125,58 +119,8 @@ tasks:
         docker build -f "$DOCKERFILE" -t "pomelo-orbit:$TAG" .
         printf "image built: pomelo-orbit:%s\n" "$TAG"
 
-  version:
-    desc: Calculate the version from complete Git history; use -- --apply to update release metadata
-    cmds:
-      - uv --directory scripts run version-calc.py {{.CLI_ARGS}}
-
   install:
     desc: Install or refresh the local agent plugin
     cmds:
       - uv --directory scripts run install.py plugin check
       - uv --directory scripts run install.py plugin apply
-
-  release:
-    desc: Build Windows, Linux, and macOS x64 zip packages in dist/ (POSIX shell required)
-    env:
-      CGO_ENABLED: '0'
-    vars:
-      WINDOWS_ROOT: 'dist/package/pomelo-orbit-v{{.VERSION}}-windows-x64'
-      LINUX_ROOT: 'dist/package/pomelo-orbit-v{{.VERSION}}-linux-x64'
-      MACOS_ROOT: 'dist/package/pomelo-orbit-v{{.VERSION}}-macos-x64'
-    cmds:
-      - rm -rf {{.WINDOWS_ROOT}} {{.LINUX_ROOT}} {{.MACOS_ROOT}} "dist/pomelo-orbit-v{{.VERSION}}-windows-x64.zip" "dist/pomelo-orbit-v{{.VERSION}}-linux-x64.zip" "dist/pomelo-orbit-v{{.VERSION}}-macos-x64.zip"
-      - mkdir -p {{.WINDOWS_ROOT}}/static {{.WINDOWS_ROOT}}/configs {{.LINUX_ROOT}}/static {{.LINUX_ROOT}}/configs {{.MACOS_ROOT}}/static {{.MACOS_ROOT}}/configs
-      - yarn --cwd web build
-      - cmd: go build -trimpath -o {{.WINDOWS_ROOT}}/pomelo-orbit.exe ./cmd/server
-        env:
-          GOOS: windows
-          GOARCH: amd64
-      - cmd: go build -trimpath -o {{.LINUX_ROOT}}/pomelo-orbit ./cmd/server
-        env:
-          GOOS: linux
-          GOARCH: amd64
-      - cmd: go build -trimpath -o {{.MACOS_ROOT}}/pomelo-orbit ./cmd/server
-        env:
-          GOOS: darwin
-          GOARCH: amd64
-      - cp -R web/dist/. {{.WINDOWS_ROOT}}/static/
-      - cp -R web/dist/. {{.LINUX_ROOT}}/static/
-      - cp -R web/dist/. {{.MACOS_ROOT}}/static/
-      - cp configs/config.yaml {{.WINDOWS_ROOT}}/configs/config.yaml
-      - cp configs/config.yaml {{.LINUX_ROOT}}/configs/config.yaml
-      - cp configs/config.yaml {{.MACOS_ROOT}}/configs/config.yaml
-      - cp .env.example VERSION {{.WINDOWS_ROOT}}/
-      - cp .env.example VERSION {{.LINUX_ROOT}}/
-      - cp .env.example VERSION {{.MACOS_ROOT}}/
-      - cp scripts/package/env.release {{.WINDOWS_ROOT}}/.env.release
-      - cp scripts/package/env.release {{.LINUX_ROOT}}/.env.release
-      - cp scripts/package/env.release {{.MACOS_ROOT}}/.env.release
-      - cp scripts/package/pomelo-orbit.cmd {{.WINDOWS_ROOT}}/
-      - cp scripts/package/pomelo-orbit.sh {{.WINDOWS_ROOT}}/
-      - cp scripts/package/pomelo-orbit.sh {{.LINUX_ROOT}}/
-      - cp scripts/package/pomelo-orbit.sh {{.MACOS_ROOT}}/
-      - chmod +x {{.WINDOWS_ROOT}}/pomelo-orbit.sh {{.LINUX_ROOT}}/pomelo-orbit {{.MACOS_ROOT}}/pomelo-orbit {{.LINUX_ROOT}}/pomelo-orbit.sh {{.MACOS_ROOT}}/pomelo-orbit.sh
-      - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-windows-x64.zip pomelo-orbit-v{{.VERSION}}-windows-x64
-      - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-linux-x64.zip pomelo-orbit-v{{.VERSION}}-linux-x64
-      - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-macos-x64.zip pomelo-orbit-v{{.VERSION}}-macos-x64

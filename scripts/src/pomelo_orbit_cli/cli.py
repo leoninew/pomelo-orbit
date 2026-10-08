@@ -6,7 +6,10 @@ import click
 
 from pomelo_orbit_cli import __version__
 from pomelo_orbit_cli.commands.cert import cert
+from pomelo_orbit_cli.commands.remote import remote
+from pomelo_orbit_cli.commands.release import release_command
 from pomelo_orbit_cli.commands.ulid import ulid_command
+from pomelo_orbit_cli.commands.version import version_command
 from pomelo_orbit_cli.context import AppContext
 from pomelo_orbit_cli.errors import ConfigurationError
 from pomelo_orbit_cli.logging_config import configure_logging
@@ -39,18 +42,25 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
         return
-    if ctx.meta.get("help_requested"):
-        return
-    try:
-        settings = load_settings()
-    except ConfigurationError as error:
-        raise click.ClickException(str(error)) from error
-    configure_logging(settings.logging_level, verbose)
-    ctx.obj = AppContext(settings=settings, verbose=verbose)
+
+    def initialize_runtime() -> None:
+        try:
+            settings = load_settings()
+        except ConfigurationError as error:
+            raise click.ClickException(str(error)) from error
+        configure_logging(settings.logging_level, verbose)
+        ctx.obj = AppContext(settings=settings, verbose=verbose)
+
+    ctx.meta["initialize_runtime"] = initialize_runtime
+    if not ctx.meta.get("help_requested"):
+        initialize_runtime()
 
 
 cli.add_command(cert)
+cli.add_command(remote)
+cli.add_command(release_command)
 cli.add_command(ulid_command)
+cli.add_command(version_command)
 
 
 def main() -> None:

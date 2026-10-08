@@ -49,7 +49,7 @@ uv --directory scripts run install.py plugin remove --claude
 task install
 ```
 
-该任务只负责 plugin 的预检和原生 CLI 安装或更新；应用三平台压缩包仍由 `task release`
-负责，两者不会互相触发。
+该任务只负责 plugin 的预检和原生 CLI 安装或更新；应用三平台压缩包由
+`uv --directory scripts run --locked pomelo-orbit-cli release` 负责，两者不会互相触发。
 
 成功发布后重新开始对应 agent session，使新的 skill inventory 生效。

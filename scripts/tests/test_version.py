@@ -1,19 +1,14 @@
 from __future__ import annotations
 
-import importlib.util
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
+from click.testing import CliRunner
 
-SCRIPT_PATH = Path(__file__).resolve().parents[1] / "version-calc.py"
-SPEC = importlib.util.spec_from_file_location("version_calc", SCRIPT_PATH)
-assert SPEC is not None
-assert SPEC.loader is not None
-version_calc = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = version_calc
-SPEC.loader.exec_module(version_calc)
+from pomelo_orbit_cli import cli as cli_module
+from pomelo_orbit_cli.commands import version as version_module
+from pomelo_orbit_cli.settings import Settings
 
 
 def git(repository: Path, *args: str) -> str:
@@ -42,21 +37,20 @@ def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "repository"
     root.mkdir()
     git(root, "init")
-    monkeypatch.setattr(version_calc, "REPO_ROOT", root)
-    for name, relative_path, body in (
-        ("VERSION_FILE", "VERSION", b"0.271.0\n"),
+    monkeypatch.setattr(
+        cli_module, "load_settings", lambda: Settings("INFO", "development", root, None)
+    )
+    for relative_path, body in (
+        ("VERSION", b"0.271.0\n"),
         (
-            "CONFIG_FILE",
             "configs/config.yaml",
             b"app:\r\n  name: Orbit\r\n  version: 0.271.0 # release\r\n",
         ),
         (
-            "ENV_EXAMPLE_FILE",
             ".env.example",
             b"# App version\r\n# POMELO_ORBIT_APP__VERSION=0.271.0\r\n",
         ),
         (
-            "PACKAGE_JSON",
             "web/package.json",
             b'{\r\n  "name": "orbit",\r\n  "version": "0.271.0"\r\n}\r\n',
         ),
@@ -64,18 +58,17 @@ def repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         path = root / relative_path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(body)
-        monkeypatch.setattr(version_calc, name, path)
     return root
 
 
-def metadata() -> dict[Path, bytes]:
+def metadata(root: Path) -> dict[Path, bytes]:
     return {
         path: path.read_bytes()
         for path in (
-            version_calc.VERSION_FILE,
-            version_calc.CONFIG_FILE,
-            version_calc.ENV_EXAMPLE_FILE,
-            version_calc.PACKAGE_JSON,
+            root / "VERSION",
+            root / "configs" / "config.yaml",
+            root / ".env.example",
+            root / "web" / "package.json",
         )
     }
 
@@ -84,33 +77,35 @@ def test_version_advances_with_commits_and_resets_patch_for_features(
     repository: Path,
 ) -> None:
     git(repository, "commit", "--allow-empty", "-m", "chore: initialize")
-    assert version_calc.calculate_version() == "0.0.1"
+    assert version_module.calculate_version(repository) == "0.0.1"
     git(repository, "commit", "--allow-empty", "-m", "feat(route): add routing")
-    assert version_calc.calculate_version() == "0.1.0"
+    assert version_module.calculate_version(repository) == "0.1.0"
     git(repository, "commit", "--allow-empty", "-m", "fix(route): restore routes")
-    assert version_calc.calculate_version() == "0.1.1"
+    assert version_module.calculate_version(repository) == "0.1.1"
     git(repository, "commit", "--allow-empty", "-m", "refactor: organize settings")
     git(repository, "commit", "--allow-empty", "-m", "docs: record verification")
-    assert version_calc.calculate_version() == "0.1.3"
+    assert version_module.calculate_version(repository) == "0.1.3"
     git(repository, "commit", "--allow-empty", "-m", "feat: add gateway")
-    assert version_calc.calculate_version() == "0.2.0"
+    assert version_module.calculate_version(repository) == "0.2.0"
 
 
 def test_preview_is_read_only_and_apply_updates_all_metadata_without_git_changes(
-    repository: Path, capsys: pytest.CaptureFixture[str]
+    repository: Path,
 ) -> None:
     git(repository, "commit", "--allow-empty", "-m", "feat: initialize")
     git(repository, "commit", "--allow-empty", "-m", "fix: update")
     head = git(repository, "rev-parse", "HEAD")
-    before = metadata()
+    before = metadata(repository)
 
-    assert version_calc.main([]) == 0
-    assert capsys.readouterr().out == "version: 0.1.1\n"
-    assert metadata() == before
+    preview = CliRunner().invoke(cli_module.cli, ["version"])
+    assert preview.exit_code == 0, preview.output
+    assert preview.output == "version: 0.1.1\n"
+    assert metadata(repository) == before
 
-    assert version_calc.main(["--apply"]) == 0
-    assert capsys.readouterr().out == "version: 0.1.1\n"
-    assert metadata() == {
+    applied = CliRunner().invoke(cli_module.cli, ["version", "--apply"])
+    assert applied.exit_code == 0, applied.output
+    assert applied.output == "version: 0.1.1\n"
+    assert metadata(repository) == {
         path: body.replace(b"0.271.0", b"0.1.1") for path, body in before.items()
     }
     assert git(repository, "rev-parse", "HEAD") == head
@@ -120,13 +115,14 @@ def test_preview_is_read_only_and_apply_updates_all_metadata_without_git_changes
 
 def test_apply_validates_all_metadata_before_writing(repository: Path) -> None:
     git(repository, "commit", "--allow-empty", "-m", "feat: initialize")
-    version_calc.PACKAGE_JSON.write_bytes(b'{"name": "orbit"}\n')
-    before = metadata()
+    (repository / "web" / "package.json").write_bytes(b'{"name": "orbit"}\n')
+    before = metadata(repository)
 
-    with pytest.raises(RuntimeError, match="could not find package version"):
-        version_calc.main(["--apply"])
+    result = CliRunner().invoke(cli_module.cli, ["version", "--apply"])
+    assert result.exit_code == 1
+    assert "could not find package version" in result.output
 
-    assert metadata() == before
+    assert metadata(repository) == before
 
 
 def test_shallow_history_is_rejected(
@@ -136,7 +132,12 @@ def test_shallow_history_is_rejected(
     git(repository, "commit", "--allow-empty", "-m", "fix: update")
     shallow = tmp_path / "shallow"
     git(repository, "clone", "--depth=1", repository.as_uri(), str(shallow))
-    monkeypatch.setattr(version_calc, "REPO_ROOT", shallow)
+    monkeypatch.setattr(
+        cli_module,
+        "load_settings",
+        lambda: Settings("INFO", "development", shallow, None),
+    )
 
-    with pytest.raises(RuntimeError, match="shallow Git history"):
-        version_calc.calculate_version()
+    result = CliRunner().invoke(cli_module.cli, ["version"])
+    assert result.exit_code == 1
+    assert "shallow Git history" in result.output

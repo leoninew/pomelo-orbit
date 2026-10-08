@@ -80,13 +80,16 @@ jobs:
           "$(go env GOPATH)/bin/sqlc" generate
           git diff --exit-code -- internal/gen/sqlc
 
-      - name: Set up Task
-        uses: go-task/setup-task@v1
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
         with:
-          version: 3.x
+          python-version: "3.12"
+
+      - name: Install locked CLI dependencies
+        run: uv --directory scripts sync --locked --no-dev
 
       - name: Build packages
-        run: task release
+        run: uv --directory scripts run --locked --no-sync pomelo-orbit-cli release
 
       - name: Verify release packages
         shell: bash

@@ -23,6 +23,16 @@ from pomelo_orbit_cli.settings import Settings
         (["cert", "new", "--help"], "--cert-dir"),
         (["cert", "check", "--help"], "--cert-dir"),
         (["ulid", "--help"], "--count"),
+        (["version", "--help"], "--apply"),
+        (["release", "--help"], "ZIP packages"),
+        (["remote", "--help"], "tunnel"),
+        (["remote", "ssh", "--help"], "SSH session"),
+        (["remote", "exec", "--help"], "--workdir"),
+        (["remote", "scp", "--help"], "--recursive"),
+        (["remote", "tunnel", "--help"], "status"),
+        (["remote", "tunnel", "start", "--help"], "--verbose"),
+        (["remote", "tunnel", "stop", "--help"], "recorded"),
+        (["remote", "tunnel", "status", "--help"], "port forwards"),
     ],
 )
 def test_cli_help_and_version_without_runtime_configuration(

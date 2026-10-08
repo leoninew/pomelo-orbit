@@ -23,5 +23,6 @@ data/exports/*
 bin/
 dist/
 __pycache__/
+scripts/.remote-tunnels.json*
 .gocache/
 .gotmp/

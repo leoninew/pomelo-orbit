@@ -11,6 +11,7 @@ dependencies = [
   "click>=8.1,<9",
   "cryptography>=44,<46",
   "dynaconf>=3.3,<4",
+  "psutil>=7,<8",
   "python-dotenv>=1.0,<2",
   "ulid-py>=1.1.0,<2",
 ]
@@ -23,6 +24,7 @@ dev = [
   "mypy",
   "pytest",
   "ruff",
+  "types-psutil",
 ]
 
 [tool.ruff]
@@ -32,7 +34,7 @@ target-version = "py312"
 select = ["E4", "E7", "E9", "F"]
 
 [tool.mypy]
-files = ["src", "tests", "manage.py", "version-calc.py"]
+files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
 module = ["dynaconf", "ulid"]

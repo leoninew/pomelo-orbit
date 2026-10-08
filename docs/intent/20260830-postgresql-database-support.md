@@ -1,5 +1,5 @@
 # PostgreSQL 数据库支持
-最后修改时间: 2026-08-30 20:37:18
+最后修改时间: 2026-10-08
 
 - Flow mode: `standard`
 - Stage: `Requirement`
@@ -39,12 +39,10 @@
 
 ```yaml
 database:
-  driver: postgres
-  postgres:
-    dsn: "postgres://user:password@127.0.0.1:5432/pomelo_orbit?sslmode=disable"
+  url: "postgres://user:password@127.0.0.1:5432/pomelo_orbit?sslmode=disable"
 ```
 
-或使用对应的 `POMELO_ORBIT_DATABASE__POSTGRES__DSN` 环境变量。配置加载和校验成功后，server、worker、MCP 和 migrate 命令均能使用该数据库。
+或使用对应的 `POMELO_ORBIT_DATABASE__URL` 环境变量。驱动由 URL scheme 判断；配置加载和校验成功后，server、worker、MCP 和 migrate 命令均能使用该数据库。
 
 ### PostgreSQL 初始化和重复迁移
 
@@ -60,7 +58,7 @@ SQLite 默认配置和 MySQL 配置继续通过原有连接、迁移和仓储测
 
 ## Acceptance
 
-1. `database.driver` 接受 `sqlite`、`mysql` 和 `postgres`；选择 PostgreSQL 时必须要求非空 `database.postgres.dsn`，错误信息明确指向 PostgreSQL 配置。
+1. `database.url` 接受 `sqlite://`、`mysql://`、`postgres://` 和 `postgresql://` URL，由 scheme 判断驱动；缺失或非法 URL 在启动时失败，错误信息指向配置键且不泄露凭据。
 2. PostgreSQL DSN 能被连接层打开并 Ping；连接失败会在启动阶段返回带数据库类型的可诊断错误。
 3. `MigrateUp`、`MigrateTo` 和 `ReadMigrationVersion` 支持 PostgreSQL，且 PostgreSQL 迁移目录与现有迁移版本/方向完整对应。
 4. PostgreSQL 空库可完成当前迁移链和 seed；重复迁移保持 clean，关键表和系统 seed 数据可查询。
@@ -72,13 +70,13 @@ SQLite 默认配置和 MySQL 配置继续通过原有连接、迁移和仓储测
 ## Open questions
 
 - PostgreSQL 的最低支持版本是否有部署约束？当前草稿按主流 PostgreSQL 版本、无需使用特定新版本特性处理。
-- DSN 是否只接受 `postgres://` / `postgresql://` URL，还是同时要求支持 lib/pq 的 keyword/value 格式？当前示例使用 URL 形式，具体实现应以选定驱动的稳定输入格式为准。
+- PostgreSQL 只接受 `postgres://` / `postgresql://` URL，不接受 lib/pq 的 keyword/value 格式。
 - 是否需要在 CI 中启动真实 PostgreSQL 服务执行迁移和仓储 E2E？若没有现成 CI 服务，本地/环境变量驱动的可选 E2E 可以先作为验收路径。
 - SQLC 是否继续以 MySQL 作为唯一生成 engine，并在数据库适配层转换参数，还是改为 PostgreSQL engine 并为旧数据库增加适配？该选择应在 Plan 阶段根据代码量、生成类型和三种数据库兼容性验证确定。
 
 ## Decisions
 
-- PostgreSQL driver 名称统一使用 `postgres`，配置节点统一使用 `database.postgres.dsn`。
+- PostgreSQL driver 名称统一使用 `postgres`，从 `database.url` 的 `postgres` / `postgresql` scheme 推导；2026-10-08 起数据库配置统一为单一 URL。
 - 既有 SQLite/MySQL migration 文件视为已执行历史，不修改；新增 PostgreSQL migration 文件与现有版本号对齐。
 - 迁移和 seed 的最终语义以当前 SQLite/MySQL 迁移链和代码实际使用的 schema 为准，不引入新的业务表或数据流程。
 - 过程文档使用中文为主，代码标识符和数据库标准术语保留英文。

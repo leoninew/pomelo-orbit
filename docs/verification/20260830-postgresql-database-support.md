@@ -1,5 +1,5 @@
 # PostgreSQL 数据库支持验证
-最后修改时间: 2026-08-30 23:07:45
+最后修改时间: 2026-10-08
 
 流程：标准模式 / standard
 
@@ -9,7 +9,7 @@ Review status: `Accepted`
 
 ## Requirement Alignment
 
-- `database.driver` 现支持 `sqlite`、`mysql`、`postgres`；PostgreSQL 使用 `database.postgres.dsn`，配置校验、环境变量绑定、启动 secret 注册和示例配置已同步。
+- 2026-10-08 起数据库配置统一使用 `database.url` / `POMELO_ORBIT_DATABASE__URL`，从 scheme 推导 `sqlite`、`mysql`、`postgres`；PostgreSQL 接受 `postgres://` 与 `postgresql://`，配置校验、环境变量绑定、启动 secret 注册和示例配置已同步。
 - `internal/infrastructure/database` 使用 `lib/pq` 打开、Ping 和管理 PostgreSQL 连接池；SQLC 的 MySQL `?` 占位符与反引号标识符在 PostgreSQL connector 边界转换，根连接、Prepare 和事务路径共享该行为。
 - `sql/migration/postgres/` 已包含与 SQLite/MySQL 一致的 40 个 up/down 迁移文件；嵌入与 `golang-migrate` PostgreSQL driver 已接线。
 - 可空 SQLC 参数在空筛选时使用显式类型上下文：文本为 `CAST(sqlc.narg(...) AS CHAR) IS NULL`，时间为 `CAST(sqlc.narg(...) AS DATE) IS NULL`。E2E 覆盖 nil、非空 ULID、搜索字符串和时间筛选，避免重新出现 `could not determine data type of parameter`。

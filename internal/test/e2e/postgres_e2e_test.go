@@ -29,8 +29,8 @@ const (
 
 func TestPostgreSQLMigrationE2E(t *testing.T) {
 	cfg := loadPostgreSQLE2EConfig(t)
-	if cfg.Database.Driver != config.DatabaseDriverPostgres {
-		t.Fatalf("expected postgres config, got %s", cfg.Database.Driver)
+	if cfg.Database.Driver() != config.DatabaseDriverPostgres {
+		t.Fatalf("expected postgres config, got %s", cfg.Database.Driver())
 	}
 
 	database := openPostgresE2EDatabase(t, cfg)
@@ -61,9 +61,7 @@ func loadPostgreSQLE2EConfig(t *testing.T) config.Config {
 		t.Skip("set BACKEND_GO_POSTGRES_E2E_CONFIG or BACKEND_GO_POSTGRES_E2E_DSN to run PostgreSQL e2e")
 	}
 	return loadE2EConfig(t, []byte(fmt.Sprintf(`database:
-  driver: postgres
-  postgres:
-    dsn: %q
+  url: %q
 `, dsn)))
 }
 

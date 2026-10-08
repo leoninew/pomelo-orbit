@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"database/sql/driver"
+	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,7 +14,7 @@ import (
 )
 
 func TestOpenSQLiteConfiguresPragmas(t *testing.T) {
-	database, err := openSQLite(config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "pomelo.db")})
+	database, err := Open(config.DatabaseConfig{Url: "sqlite:///" + filepath.ToSlash(filepath.Join(t.TempDir(), "pomelo.db"))})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +58,11 @@ func TestMySQLModeConnectorConfiguresSession(t *testing.T) {
 }
 
 func TestMySQLDsnCountsMatchedRows(t *testing.T) {
-	dsn, err := mysqlDsn("user:pass@tcp(localhost:3306)/orbit")
+	parsed, err := url.Parse("mysql://user:p%40ss%3Aword@localhost/orbit?parseTime=true&loc=Asia%2FShanghai&timeout=5s")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dsn, err := mysqlDsn(parsed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,8 +70,67 @@ func TestMySQLDsnCountsMatchedRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !cfg.ClientFoundRows {
-		t.Fatal("expected matched-row semantics for pipeline locking")
+	if !cfg.ClientFoundRows || !cfg.MultiStatements {
+		t.Fatal("expected matched-row semantics and multi-statement migrations")
+	}
+	if cfg.User != "user" || cfg.Passwd != "p@ss:word" || cfg.Addr != "localhost:3306" || cfg.DBName != "orbit" {
+		t.Fatal("MySQL URL connection fields were not preserved")
+	}
+	if !cfg.ParseTime || cfg.Loc.String() != "Asia/Shanghai" || cfg.Timeout.String() != "5s" {
+		t.Fatal("MySQL URL options were not preserved")
+	}
+}
+
+func TestOpenSQLiteUrlPaths(t *testing.T) {
+	t.Chdir(t.TempDir())
+	absolutePath := filepath.Join(t.TempDir(), "orbit.db")
+	for _, tc := range []struct {
+		name string
+		url  string
+		path string
+	}{
+		{name: "relative", url: "sqlite:///nested/orbit.db", path: "nested/orbit.db"},
+		{name: "absolute", url: "sqlite:///" + filepath.ToSlash(absolutePath), path: absolutePath},
+		{name: "escaped path", url: "sqlite:///nested/orbit%20%23test.db", path: "nested/orbit #test.db"},
+		{name: "memory", url: "sqlite:///:memory:", path: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			database, err := Open(config.DatabaseConfig{Url: tc.url})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = database.Close() }()
+			if _, err := database.Exec("CREATE TABLE url_test (id INTEGER PRIMARY KEY)"); err != nil {
+				t.Fatal(err)
+			}
+			if tc.path != "" {
+				if _, err := os.Stat(tc.path); err != nil {
+					t.Fatalf("SQLite database missing at URL path: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestOpenSQLiteUrlPreservesQuery(t *testing.T) {
+	databaseUrl := "sqlite:///" + filepath.ToSlash(filepath.Join(t.TempDir(), "orbit%20%23test.db"))
+	database, err := Open(config.DatabaseConfig{Url: databaseUrl})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec("CREATE TABLE url_test (id INTEGER PRIMARY KEY)"); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Close(); err != nil {
+		t.Fatal(err)
+	}
+	readOnly, err := Open(config.DatabaseConfig{Url: databaseUrl + "?mode=ro"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = readOnly.Close() }()
+	if _, err := readOnly.Exec("INSERT INTO url_test (id) VALUES (1)"); err == nil {
+		t.Fatal("SQLite URL mode=ro did not prevent writes")
 	}
 }
 

@@ -87,8 +87,7 @@ func TestWindowsSSHEnvironmentHTTPIntegration(t *testing.T) {
 	cfg := config.Config{
 		Server: config.ServerConfig{ApiPathPrefixes: []string{"/api"}},
 		Database: config.DatabaseConfig{
-			Driver: config.DatabaseDriverSQLite,
-			SQLite: config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "pomelo-orbit-e2e.db")},
+			Url: "sqlite:///" + filepath.ToSlash(filepath.Join(t.TempDir(), "pomelo-orbit-e2e.db")),
 		},
 		Workspace: config.WorkspaceConfig{Root: t.TempDir()},
 		Logging:   config.LoggingConfig{DeploymentRoot: t.TempDir()},

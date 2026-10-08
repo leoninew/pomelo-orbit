@@ -5,8 +5,11 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	gomysql "github.com/go-sql-driver/mysql"
@@ -17,23 +20,30 @@ import (
 )
 
 func Open(cfg config.DatabaseConfig) (*sql.DB, error) {
-	switch cfg.Driver {
+	parsed, err := cfg.ParseUrl()
+	if err != nil {
+		return nil, err
+	}
+	switch cfg.Driver() {
 	case config.DatabaseDriverSQLite:
-		return openSQLite(cfg.SQLite)
+		return openSQLite(parsed)
 	case config.DatabaseDriverMySQL:
-		return openMySQL(cfg.MySQL)
+		return openMySQL(parsed)
 	case config.DatabaseDriverPostgres:
-		return openPostgres(cfg.Postgres)
+		return openPostgres(parsed.String())
 	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Driver)
+		return nil, fmt.Errorf("unsupported database driver: %s", cfg.Driver())
 	}
 }
 
-func openSQLite(cfg config.SQLiteConfig) (*sql.DB, error) {
-	if err := os.MkdirAll(filepath.Dir(cfg.Path), 0o755); err != nil {
+func openSQLite(parsed *url.URL) (*sql.DB, error) {
+	// Three slashes introduce a relative path; four retain the absolute path's slash.
+	databasePath := filepath.FromSlash(strings.TrimPrefix(parsed.Path, "/"))
+	if err := os.MkdirAll(filepath.Dir(databasePath), 0o755); err != nil {
 		return nil, fmt.Errorf("create sqlite directory: %w", err)
 	}
-	database, err := sql.Open("sqlite", cfg.Path)
+	fileUrl := url.URL{Scheme: "file", OmitHost: true, Path: filepath.ToSlash(databasePath), RawQuery: parsed.RawQuery}
+	database, err := sql.Open("sqlite", fileUrl.String())
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite database: %w", err)
 	}
@@ -63,8 +73,8 @@ func configureSQLite(database *sql.DB) error {
 	return nil
 }
 
-func openMySQL(cfg config.MySQLConfig) (*sql.DB, error) {
-	dsn, err := mysqlDsn(cfg.Dsn)
+func openMySQL(parsed *url.URL) (*sql.DB, error) {
+	dsn, err := mysqlDsn(parsed)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +97,8 @@ func openMySQL(cfg config.MySQLConfig) (*sql.DB, error) {
 	return database, nil
 }
 
-func openPostgres(cfg config.PostgresConfig) (*sql.DB, error) {
-	connector, err := pq.NewConnector(cfg.Dsn)
+func openPostgres(dsn string) (*sql.DB, error) {
+	connector, err := pq.NewConnector(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("parse postgres dsn: %w", err)
 	}
@@ -130,7 +140,23 @@ func (c mysqlModeConnector) Connect(ctx context.Context) (driver.Conn, error) {
 	return connection, nil
 }
 
-func mysqlDsn(dsn string) (string, error) {
+func mysqlDsn(parsed *url.URL) (string, error) {
+	connection := gomysql.NewConfig()
+	if parsed.User != nil {
+		connection.User = parsed.User.Username()
+		connection.Passwd, _ = parsed.User.Password()
+	}
+	connection.Net = "tcp"
+	port := parsed.Port()
+	if port == "" {
+		port = "3306"
+	}
+	connection.Addr = net.JoinHostPort(parsed.Hostname(), port)
+	connection.DBName = strings.TrimPrefix(parsed.Path, "/")
+	dsn := connection.FormatDSN()
+	if parsed.RawQuery != "" {
+		dsn += "?" + parsed.RawQuery
+	}
 	cfg, err := gomysql.ParseDSN(dsn)
 	if err != nil {
 		return "", fmt.Errorf("parse mysql dsn: %w", err)

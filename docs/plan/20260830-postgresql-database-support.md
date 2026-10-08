@@ -1,5 +1,5 @@
 # PostgreSQL 数据库支持
-最后修改时间: 2026-08-30 22:54:33
+最后修改时间: 2026-10-08
 
 流程：标准模式 / standard
 
@@ -28,7 +28,7 @@ PostgreSQL 连接使用 database/sql connector 适配器，在 driver connection
 
 增加固定版本的 github.com/lib/pq 直接依赖，使用其 NewConnector 打开 PostgreSQL，并复用 golang-migrate/migrate/v4/database/postgres 的 WithInstance 迁移适配器。连接池参数沿用 MySQL 的服务型默认值，并在 Ping 失败时关闭数据库返回包含 postgres 上下文的错误。
 
-DSN 接受驱动支持的 PostgreSQL URL/keyword-value 格式；文档默认展示 postgres://...?...，不在配置层复制解析逻辑或保存明文 secret。
+数据库配置统一使用 URL，接受 postgres://...?... 和 postgresql://...?...；启动时集中校验，连接和迁移从 scheme 推导 driver，设置页标记为 secret。
 
 ### 3. PostgreSQL migration 单独维护
 
@@ -55,9 +55,9 @@ SQLC/MySQL 生成的重复 `?` 在 PostgreSQL connector 中会成为独立的 `$
 
 ### Step 1 — 配置契约
 
-1. 在 internal/config/config.go 增加 DatabaseDriverPostgres、PostgresConfig 和 DatabaseConfig.Postgres。
-2. 在环境变量绑定、启动校验和 secret key 列表中增加 database.postgres.dsn / database__postgres__dsn。
-3. 更新 configs/config.yaml、.env.example 和配置单测，覆盖 PostgreSQL DSN 成功加载、空 DSN 失败、未知 driver 错误信息和默认 SQLite 不变。
+1. 在 internal/config/config.go 定义单一 DatabaseConfig.Url，从 URL scheme 推导 DatabaseDriverPostgres 等驱动。
+2. 环境变量绑定使用 database.url / POMELO_ORBIT_DATABASE__URL，启动校验检查 URL，secret key 列表使用 database__url。
+3. 更新 configs/config.yaml、.env.example 和配置单测，覆盖 PostgreSQL URL 成功加载、空或非法 URL 失败、凭据脱敏和默认 SQLite 不变。
 
 ### Step 2 — PostgreSQL 连接与参数适配
 

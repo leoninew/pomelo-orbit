@@ -21,8 +21,8 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.Database.Driver != DatabaseDriverSQLite {
-		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver)
+	if cfg.Database.Driver() != DatabaseDriverSQLite {
+		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver())
 	}
 	if cfg.App.Name != "Pomelo Orbit Backend Go" {
 		t.Fatalf("unexpected app name: %s", cfg.App.Name)
@@ -183,8 +183,7 @@ func TestLoadConfigMergesEnvConfig(t *testing.T) {
     response_body_limit: 1024
     skip_asset_enabled: false
 database:
-  sqlite:
-    path: "data/test.db"
+  url: "sqlite:///data/test.db"
 orbit:
   root: "../.."
 worker:
@@ -238,8 +237,7 @@ func TestLoadConfigRejectsInvalidEnvConfig(t *testing.T) {
 	setupDefaultConfig(t)
 	t.Setenv("POMELO_ORBIT_APP__ENV", "develop")
 	writeEnvConfig(t, "develop", `database:
-  sqlite:
-    path: [invalid]
+  url: [invalid]
 `)
 
 	if _, err := Load(); err == nil {
@@ -254,8 +252,7 @@ func TestLoadConfigEnvOverrides(t *testing.T) {
   host: "127.0.0.1"
   port: 9000
 database:
-  sqlite:
-    path: "data/test.db"
+  url: "sqlite:///data/test.db"
 worker:
   concurrency: 1
 `)
@@ -264,7 +261,7 @@ worker:
 	t.Setenv("POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS", "https://orbit.preflite.cn/,https://preview.preflite.cn,https://orbit.preflite.cn")
 	t.Setenv("POMELO_ORBIT_SERVER__API_PATH_PREFIXES", "/api/,/graphql,/api")
 	t.Setenv("POMELO_ORBIT_SERVER__PUBLIC_URL", "https://orbit-api.preflite.cn/")
-	t.Setenv("POMELO_ORBIT_DATABASE__SQLITE__PATH", "/data/pomelo-repository.db")
+	t.Setenv("POMELO_ORBIT_DATABASE__URL", "sqlite:////data/pomelo-repository.db")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_SIZE_MB", "25")
 	t.Setenv("POMELO_ORBIT_LOGGING__MAX_BACKUPS", "4")
 	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__ENABLED", "true")
@@ -308,8 +305,8 @@ worker:
 	if cfg.Server.PublicUrl != "https://orbit-api.preflite.cn" {
 		t.Fatalf("unexpected server public url: %s", cfg.Server.PublicUrl)
 	}
-	if cfg.Database.SQLite.Path != "/data/pomelo-repository.db" {
-		t.Fatalf("unexpected sqlite path: %s", cfg.Database.SQLite.Path)
+	if cfg.Database.Url != "sqlite:////data/pomelo-repository.db" {
+		t.Fatalf("unexpected database URL: %s", cfg.Database.Url)
 	}
 	if cfg.Logging.MaxSizeMB != 25 {
 		t.Fatalf("unexpected logging max size: %d", cfg.Logging.MaxSizeMB)
@@ -612,10 +609,11 @@ func TestLoadConfigRejectsInvalidCorsOrigin(t *testing.T) {
 
 func TestLoadConfigEnvFileOverridesConfig(t *testing.T) {
 	setupDefaultConfig(t)
-	preserveEnv(t, "POMELO_ORBIT_SERVER__PORT", "POMELO_ORBIT_TURNSTILE__SITE_KEY", "POMELO_ORBIT_TURNSTILE__SECRET_KEY")
+	preserveEnv(t, "POMELO_ORBIT_SERVER__PORT", "POMELO_ORBIT_TURNSTILE__SITE_KEY", "POMELO_ORBIT_TURNSTILE__SECRET_KEY", "POMELO_ORBIT_DATABASE__URL")
 	writeDotEnv(t, `POMELO_ORBIT_SERVER__PORT=8081
 POMELO_ORBIT_TURNSTILE__SITE_KEY=site-from-dotenv
 POMELO_ORBIT_TURNSTILE__SECRET_KEY=secret-from-dotenv
+POMELO_ORBIT_DATABASE__URL=postgresql://user:pass@localhost/orbit
 `)
 
 	cfg, err := Load()
@@ -630,6 +628,9 @@ POMELO_ORBIT_TURNSTILE__SECRET_KEY=secret-from-dotenv
 	}
 	if cfg.Turnstile.SecretKey != "secret-from-dotenv" {
 		t.Fatalf("unexpected turnstile secret key: %s", cfg.Turnstile.SecretKey)
+	}
+	if cfg.Database.Driver() != DatabaseDriverPostgres {
+		t.Fatalf("unexpected dotenv database driver: %s", cfg.Database.Driver())
 	}
 }
 
@@ -695,8 +696,7 @@ func TestLoadConfigRejectsInvalidEnvFile(t *testing.T) {
 func TestLoadConfigJwtEnvOverride(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", `database:
-  sqlite:
-    path: "data/test.db"
+  url: "sqlite:///data/test.db"
 jwt:
   secret_key: "from-yaml"
 `)
@@ -718,12 +718,11 @@ func TestLoadConfigBaseIgnoresEnvOverrides(t *testing.T) {
   host: "127.0.0.1"
   port: 9000
 database:
-  sqlite:
-    path: "data/test.db"
+  url: "sqlite:///data/test.db"
 `)
 	t.Setenv("POMELO_ORBIT_SERVER__PORT", "8088")
 	t.Setenv("POMELO_ORBIT_LOGGING__LEVEL", "DEBUG")
-	t.Setenv("POMELO_ORBIT_DATABASE__SQLITE__PATH", "/overridden/db.sqlite")
+	t.Setenv("POMELO_ORBIT_DATABASE__URL", "postgres://user:pass@localhost/orbit")
 
 	cfg, err := Load()
 	if err != nil {
@@ -744,8 +743,8 @@ database:
 	if cfg.Base.Logging.Level != "info" {
 		t.Fatalf("expected base logging level info from defaults, got %s", cfg.Base.Logging.Level)
 	}
-	if cfg.Base.Database.SQLite.Path != "data/test.db" {
-		t.Fatalf("expected base sqlite path from env config, got %s", cfg.Base.Database.SQLite.Path)
+	if cfg.Database.Driver() != DatabaseDriverPostgres || cfg.Base.Database.Url != "sqlite:///data/test.db" {
+		t.Fatalf("unexpected database configuration: current=%s base=%s", cfg.Database.Driver(), cfg.Base.Database.Url)
 	}
 }
 
@@ -801,65 +800,84 @@ func TestValidateJwtSecretKeyRejectsInvalidFernetKeys(t *testing.T) {
 func TestLoadConfigMySQL(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", `database:
-  driver: mysql
-  mysql:
-    dsn: "user:pass@tcp(127.0.0.1:3306)/pomelo_orbit?parseTime=true"
+  url: "mysql://user:pass@127.0.0.1:3306/pomelo_orbit?parseTime=true"
 `)
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.Database.Driver != DatabaseDriverMySQL {
-		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver)
-	}
-	if cfg.Database.MySQL.Dsn == "" {
-		t.Fatal("expected mysql dsn")
+	if cfg.Database.Driver() != DatabaseDriverMySQL {
+		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver())
 	}
 }
 
 func TestLoadConfigPostgres(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", `database:
-  driver: postgres
-  postgres:
-    dsn: "postgres://user:pass@127.0.0.1:5432/pomelo_orbit?sslmode=disable"
+  url: "postgres://user:pass@127.0.0.1:5432/pomelo_orbit?sslmode=disable"
 `)
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load returned error: %v", err)
 	}
-	if cfg.Database.Driver != DatabaseDriverPostgres {
-		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver)
-	}
-	if cfg.Database.Postgres.Dsn == "" {
-		t.Fatal("expected postgres dsn")
+	if cfg.Database.Driver() != DatabaseDriverPostgres {
+		t.Fatalf("unexpected database driver: %s", cfg.Database.Driver())
 	}
 }
 
-func TestLoadConfigRequiresPostgresDsn(t *testing.T) {
+func TestLoadConfigRequiresDatabaseUrl(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", `database:
-  driver: postgres
-  postgres:
-    dsn: ""
+  url: ""
 `)
 
-	if _, err := Load(); err == nil {
-		t.Fatal("expected error for empty postgres dsn")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "database.url is required") {
+		t.Fatalf("Load error = %v", err)
 	}
 }
 
-func TestLoadConfigRequiresSQLitePath(t *testing.T) {
-	setupDefaultConfig(t)
-	writeEnvConfig(t, "develop", `database:
-  sqlite:
-    path: ""
-`)
+func TestLoadConfigRejectsInvalidDatabaseUrl(t *testing.T) {
+	for _, databaseUrl := range []string{
+		"sqlite:///",
+		"mysql://user:private-password@localhost/",
+		"postgres://user:private-password@localhost:invalid/orbit",
+		"postgres://user:private-password@localhost/orbit?sslmode=%zz",
+		"https://user:private-password@localhost/orbit",
+	} {
+		setupDefaultConfig(t)
+		writeEnvConfig(t, "develop", fmt.Sprintf("database:\n  url: %q\n", databaseUrl))
+		_, err := Load()
+		if err == nil || !strings.Contains(err.Error(), "database.url") {
+			t.Fatalf("Load error = %v", err)
+		}
+		if strings.Contains(err.Error(), "private-password") {
+			t.Fatalf("database URL credentials leaked: %v", err)
+		}
+	}
+}
 
-	if _, err := Load(); err == nil {
-		t.Fatal("expected error for empty sqlite path")
+func TestDatabaseUrlDerivesDriver(t *testing.T) {
+	for _, tc := range []struct {
+		url    string
+		driver string
+	}{
+		{url: "sqlite:///data/orbit.db", driver: DatabaseDriverSQLite},
+		{url: "sqlite:////data/orbit.db", driver: DatabaseDriverSQLite},
+		{url: "sqlite:///D:/data/orbit.db", driver: DatabaseDriverSQLite},
+		{url: "sqlite:///:memory:", driver: DatabaseDriverSQLite},
+		{url: "mysql://user:pass@localhost/orbit", driver: DatabaseDriverMySQL},
+		{url: "postgres://user:pass@localhost/orbit", driver: DatabaseDriverPostgres},
+		{url: "postgresql://user:pass@localhost/orbit", driver: DatabaseDriverPostgres},
+	} {
+		cfg := DatabaseConfig{Url: tc.url}
+		if _, err := cfg.ParseUrl(); err != nil {
+			t.Fatal(err)
+		}
+		if driver := cfg.Driver(); driver != tc.driver {
+			t.Fatalf("driver = %q, want %q", driver, tc.driver)
+		}
 	}
 }
 
@@ -1047,13 +1065,7 @@ logging:
     response_body_limit: 4096
     skip_asset_enabled: true
 database:
-  driver: sqlite
-  sqlite:
-    path: data/db/pomelo-repository.db
-  mysql:
-    dsn: ""
-  postgres:
-    dsn: ""
+  url: sqlite:///data/db/pomelo-repository.db
 workspace:
   root: data
 route:
@@ -1089,8 +1101,7 @@ turnstile:
   verify_url: "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 settings:
   secret_keys:
-    - database__mysql__dsn
-    - database__postgres__dsn
+    - database__url
     - jwt__secret_key
     - turnstile__secret_key
 llm:

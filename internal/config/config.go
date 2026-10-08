@@ -89,22 +89,44 @@ const (
 )
 
 type DatabaseConfig struct {
-	Driver   string         `mapstructure:"driver" yaml:"driver"`
-	SQLite   SQLiteConfig   `mapstructure:"sqlite" yaml:"sqlite"`
-	MySQL    MySQLConfig    `mapstructure:"mysql" yaml:"mysql"`
-	Postgres PostgresConfig `mapstructure:"postgres" yaml:"postgres"`
+	Url string `mapstructure:"url" yaml:"url"`
 }
 
-type SQLiteConfig struct {
-	Path string `mapstructure:"path" yaml:"path"`
+func (c DatabaseConfig) Driver() string {
+	parsed, err := url.Parse(strings.TrimSpace(c.Url))
+	if err != nil {
+		return ""
+	}
+	if parsed.Scheme == "postgresql" {
+		return DatabaseDriverPostgres
+	}
+	return parsed.Scheme
 }
 
-type MySQLConfig struct {
-	Dsn string `mapstructure:"dsn" yaml:"dsn"`
-}
-
-type PostgresConfig struct {
-	Dsn string `mapstructure:"dsn" yaml:"dsn"`
+func (c DatabaseConfig) ParseUrl() (*url.URL, error) {
+	if strings.TrimSpace(c.Url) == "" {
+		return nil, errors.New("database.url is required")
+	}
+	parsed, err := url.Parse(strings.TrimSpace(c.Url))
+	if err != nil || parsed.Opaque != "" || parsed.Fragment != "" {
+		return nil, errors.New("database.url must be a valid database URL without a fragment")
+	}
+	if _, err := url.ParseQuery(parsed.RawQuery); err != nil {
+		return nil, errors.New("database.url contains invalid query parameters")
+	}
+	switch parsed.Scheme {
+	case DatabaseDriverSQLite:
+		if parsed.Host != "" || parsed.User != nil || !strings.HasPrefix(parsed.Path, "/") || len(parsed.Path) == 1 {
+			return nil, errors.New("database.url must use sqlite:///path with a non-empty file path")
+		}
+	case DatabaseDriverMySQL, DatabaseDriverPostgres, "postgresql":
+		if parsed.Hostname() == "" || strings.TrimPrefix(parsed.Path, "/") == "" {
+			return nil, errors.New("database.url must include a host and database name")
+		}
+	default:
+		return nil, errors.New("database.url must use sqlite, mysql, postgres or postgresql scheme")
+	}
+	return parsed, nil
 }
 
 // WorkspaceConfig contains the Orbit workspace root. Relative values resolve
@@ -355,10 +377,7 @@ func bindEnv(loader *viper.Viper) {
 		"logging.http.request_body_limit",
 		"logging.http.response_body_limit",
 		"logging.http.skip_asset_enabled",
-		"database.driver",
-		"database.sqlite.path",
-		"database.mysql.dsn",
-		"database.postgres.dsn",
+		"database.url",
 		"workspace.root",
 		"route.gateway_lock_timeout",
 		"route.state_load_timeout",
@@ -408,21 +427,8 @@ func (c Config) Validate() error {
 	if err := validateServerRuntimeOriginConfig(c.Server); err != nil {
 		return err
 	}
-	switch c.Database.Driver {
-	case DatabaseDriverSQLite:
-		if c.Database.SQLite.Path == "" {
-			return errors.New("database.sqlite.path is required")
-		}
-	case DatabaseDriverMySQL:
-		if c.Database.MySQL.Dsn == "" {
-			return errors.New("database.mysql.dsn is required")
-		}
-	case DatabaseDriverPostgres:
-		if c.Database.Postgres.Dsn == "" {
-			return errors.New("database.postgres.dsn is required")
-		}
-	default:
-		return fmt.Errorf("database.driver must be %s, %s or %s", DatabaseDriverSQLite, DatabaseDriverMySQL, DatabaseDriverPostgres)
+	if _, err := c.Database.ParseUrl(); err != nil {
+		return err
 	}
 	if strings.TrimSpace(c.Logging.File) == "" {
 		return errors.New("logging.file is required")
@@ -780,8 +786,4 @@ func validateJwtSecretKey(secretKey string) error {
 
 func (c Config) OrbitRoot() string {
 	return filepath.Clean(c.Orbit.Root)
-}
-
-func (c Config) SQLitePath() string {
-	return filepath.Clean(c.Database.SQLite.Path)
 }

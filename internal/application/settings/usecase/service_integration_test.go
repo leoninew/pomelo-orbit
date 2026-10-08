@@ -78,6 +78,39 @@ func TestConfigIncludesDeploymentDialogueToolCallRounds(t *testing.T) {
 	}
 }
 
+func TestConfigDatabaseUrlPersistsAsSecret(t *testing.T) {
+	envFilePath := filepath.Join(t.TempDir(), ".env")
+	cfg := config.Config{
+		Database: config.DatabaseConfig{Url: "sqlite:///data/orbit.db"},
+		Settings: config.SettingsConfig{SecretKeys: []string{"database__url"}},
+	}
+	service := New(Definitions(cfg), envfile.NewStore(envFilePath))
+	ctx := context.Background()
+	initial, err := service.Config(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, ok := findConfigItem(initial.Items, "database__url")
+	if !ok || !item.Secret || item.Value != cfg.Database.Url || item.IsOverridden {
+		t.Fatalf("unexpected database URL setting: %+v", item)
+	}
+	updated, err := service.Update(ctx, "database__url", "postgres://user:pass@localhost/orbit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	item, ok = findConfigItem(updated.Items, "database__url")
+	if !ok || !item.Secret || !item.IsOverridden {
+		t.Fatalf("unexpected database URL override: %+v", item)
+	}
+	content, err := os.ReadFile(envFilePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != "POMELO_ORBIT_DATABASE__URL=postgres://user:pass@localhost/orbit\n" {
+		t.Fatal("database URL was not persisted to its environment key")
+	}
+}
+
 func findConfigItem(items []settingsdto.ConfigItem, key string) (settingsdto.ConfigItem, bool) {
 	for _, item := range items {
 		if item.Key == key {

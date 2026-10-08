@@ -17,12 +17,10 @@ const (
 
 func TestSQLiteMigrationE2E(t *testing.T) {
 	cfg := loadE2EConfig(t, []byte(fmt.Sprintf(`database:
-  driver: sqlite
-  sqlite:
-    path: %q
-`, filepath.Join(t.TempDir(), "pomelo-orbit.db"))))
-	if cfg.Database.Driver != config.DatabaseDriverSQLite {
-		t.Fatalf("expected sqlite config, got %s", cfg.Database.Driver)
+  url: %q
+`, "sqlite:///"+filepath.ToSlash(filepath.Join(t.TempDir(), "pomelo-orbit.db")))))
+	if cfg.Database.Driver() != config.DatabaseDriverSQLite {
+		t.Fatalf("expected sqlite config, got %s", cfg.Database.Driver())
 	}
 
 	runMigrationE2E(t, cfg)
@@ -42,8 +40,8 @@ func TestMySQLMigrationE2E(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := loadE2EConfig(t, envConfig)
-	if cfg.Database.Driver != config.DatabaseDriverMySQL {
-		t.Fatalf("expected mysql config, got %s", cfg.Database.Driver)
+	if cfg.Database.Driver() != config.DatabaseDriverMySQL {
+		t.Fatalf("expected mysql config, got %s", cfg.Database.Driver())
 	}
 
 	runMigrationE2E(t, cfg)
@@ -96,13 +94,13 @@ func runMigrationE2E(t *testing.T, cfg config.Config) {
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := db.MigrateUp(database, cfg.Database.Driver); err != nil {
+	if err := db.MigrateUp(database, cfg.Database.Driver()); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.MigrateUp(database, cfg.Database.Driver); err != nil {
+	if err := db.MigrateUp(database, cfg.Database.Driver()); err != nil {
 		t.Fatal(err)
 	}
-	version, err := db.ReadMigrationVersion(database, cfg.Database.Driver)
+	version, err := db.ReadMigrationVersion(database, cfg.Database.Driver())
 	if err != nil {
 		t.Fatal(err)
 	}

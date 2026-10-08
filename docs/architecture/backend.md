@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-09-26
+最后修改时间: 2026-10-08
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -62,6 +62,7 @@ cmd/server, cmd/migrate
 
 ## 数据与迁移
 
+- 数据库配置只使用 `database.url` / `POMELO_ORBIT_DATABASE__URL`。连接和迁移从 URL scheme 判断驱动：`sqlite`、`mysql`、`postgres` / `postgresql`；启动时集中校验 URL，系统设置将其标记为 secret。默认 `sqlite:///data/db/pomelo-orbit.db` 相对进程工作目录；Unix 绝对路径使用 `sqlite:////data/pomelo-orbit.db`，Windows 使用 `sqlite:///D:/data/pomelo-orbit.db`，内存库使用 `sqlite:///:memory:`。MySQL 使用 `mysql://user:password@host:3306/database?parseTime=true`，PostgreSQL 使用 `postgres://user:password@host:5432/database?sslmode=disable`；用户名和密码中的 URL 特殊字符须百分号编码。
 - Schema 与 seed 均为普通编号迁移，统一位于 `sql/migration/{sqlite,mysql,postgres}/`，由 `MigrateUp` 按版本顺序执行和跟踪；不设独立 data migration 加载流程。
 - 默认**不修改已执行的迁移文件**（项目约束）。Repository/Repository Credential 全局共享任务按用户明确要求就地修订了既有迁移，这仅定义新库从头运行的终态；已执行这些版本的数据库不会自动变化，须另行审计并转换，或确认后重建。
 - 终态 CD 表见 `*_cd_schema*` 类迁移（application/version/component/expose/environment/gateway_config/service/deployment/route 等）；**无** 旧表 `application_config_file`、`application_service`、`application_route`、`environment_binding` 作为现行 schema。

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io/fs"
 	"log/slog"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -14,7 +14,7 @@ import (
 
 func TestRunMigrationsLogsEachMigrationWithoutSQL(t *testing.T) {
 	cfg := config.Config{
-		Database: config.DatabaseConfig{Driver: config.DatabaseDriverSQLite, SQLite: config.SQLiteConfig{Path: path.Join(t.TempDir(), "pomelo-orbit.db")}},
+		Database: config.DatabaseConfig{Url: "sqlite:///" + filepath.ToSlash(filepath.Join(t.TempDir(), "pomelo-orbit.db"))},
 	}
 	database, err := OpenDatabase(cfg)
 	if err != nil {

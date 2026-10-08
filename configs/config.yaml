@@ -24,13 +24,7 @@ logging:
     skip_asset_enabled: true
 
 database:
-  driver: sqlite
-  sqlite:
-    path: data/db/pomelo-orbit.db
-  mysql:
-    dsn: ""
-  postgres:
-    dsn: ""
+  url: sqlite:///data/db/pomelo-orbit.db
 
 workspace:
   root: data
@@ -76,8 +70,7 @@ turnstile:
 
 settings:
   secret_keys:
-    - database__mysql__dsn
-    - database__postgres__dsn
+    - database__url
     - jwt__secret_key
     - turnstile__secret_key
     - llm__api_key

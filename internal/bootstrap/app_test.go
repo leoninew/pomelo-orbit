@@ -15,7 +15,7 @@ import (
 
 func TestMigrateAppliesSchemaAndSeedData(t *testing.T) {
 	cfg := config.Config{
-		Database: config.DatabaseConfig{Driver: config.DatabaseDriverSQLite, SQLite: config.SQLiteConfig{Path: filepath.Join(t.TempDir(), "pomelo-orbit.db")}},
+		Database: config.DatabaseConfig{Url: "sqlite:///" + filepath.ToSlash(filepath.Join(t.TempDir(), "pomelo-orbit.db"))},
 	}
 	app := New(cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err := app.Migrate(); err != nil {

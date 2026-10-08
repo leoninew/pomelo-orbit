@@ -5,7 +5,8 @@ from __future__ import annotations
 import click
 
 from pomelo_orbit_cli import __version__
-from pomelo_orbit_cli.commands.database_transfer import database_transfer
+from pomelo_orbit_cli.commands.cert import cert
+from pomelo_orbit_cli.commands.ulid import ulid_command
 from pomelo_orbit_cli.context import AppContext
 from pomelo_orbit_cli.errors import ConfigurationError
 from pomelo_orbit_cli.logging_config import configure_logging
@@ -48,7 +49,8 @@ def cli(ctx: click.Context, verbose: bool) -> None:
     ctx.obj = AppContext(settings=settings, verbose=verbose)
 
 
-cli.add_command(database_transfer)
+cli.add_command(cert)
+cli.add_command(ulid_command)
 
 
 def main() -> None:

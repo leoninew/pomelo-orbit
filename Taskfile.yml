@@ -19,16 +19,40 @@ tasks:
       GOBIN: '{{.TASKFILE_DIR}}/bin'
       GOPROXY: direct
       GOTOOLCHAIN: local
-      PATH: '{{.TASKFILE_DIR}}/bin:{{.PATH}}'
+      PATH: '{{.TASKFILE_DIR}}/bin{{if eq OS "windows"}};{{else}}:{{end}}{{.PATH}}'
     cmds:
       - yarn --cwd web install --frozen-lockfile
       - uv --directory scripts sync --locked
       - mkdir -p bin
-      - go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
-      - go install github.com/bufbuild/buf/cmd/buf@v1.59.0
-      - go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
-      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
-      - go install github.com/air-verse/air@v1.66.0
+      - |
+        set -e
+        tool_ext="$(go env GOEXE)"
+        install_tool() {
+          tool="$1"
+          package="$2"
+          version="$3"
+          binary="$GOBIN/$tool$tool_ext"
+          installed_version=""
+          if [ -f "$binary" ] && { [ "$tool_ext" = .exe ] || [ -x "$binary" ]; }; then
+            installed_version="$(go version -m "$binary" 2>/dev/null |
+              while read -r field module module_version checksum; do
+                if [ "$field" = mod ]; then
+                  printf '%s' "$module_version"
+                  break
+                fi
+              done)"
+          fi
+          if [ "$installed_version" = "$version" ]; then
+            printf "%s %s is ready; skipping install\n" "$tool" "$version"
+          else
+            go install "$package@$version"
+          fi
+        }
+        install_tool sqlc github.com/sqlc-dev/sqlc/cmd/sqlc v1.30.0
+        install_tool buf github.com/bufbuild/buf/cmd/buf v1.59.0
+        install_tool protoc-gen-go google.golang.org/protobuf/cmd/protoc-gen-go v1.36.11
+        install_tool golangci-lint github.com/golangci/golangci-lint/v2/cmd/golangci-lint v2.12.2
+        install_tool air github.com/air-verse/air v1.66.0
       - go mod download
 
   sqlc:
@@ -45,14 +69,14 @@ tasks:
       - ./bin/buf generate
       - ./bin/buf generate . --template web/buf.gen.yaml --output web
 
-  dev:webapi:
+  webapi:dev:
     desc: Start the Go development server with hot reload
     env:
       POMELO_ORBIT_APP__ENV: development
     cmds:
       - ./bin/air -c .air.server.toml
 
-  dev:web:
+  web:dev:
     desc: Start the frontend development server
     cmds:
       - yarn --cwd web dev
@@ -72,14 +96,6 @@ tasks:
       - ./bin/golangci-lint config verify
       - ./bin/golangci-lint fmt {{.FIX_FORMAT_ARGS}} ./cmd/... ./internal/... ./sql
       - ./bin/golangci-lint run {{.FIX_LINT_ARGS}} ./cmd/... ./internal/... ./sql
-
-  scripts:check:
-    desc: Run Python script format, lint, type, and test checks
-    cmds:
-      - uv --directory scripts run ruff format --check .
-      - uv --directory scripts run ruff check .
-      - uv --directory scripts run mypy
-      - uv --directory scripts run pytest
 
   test:
     desc: Run web and Go tests; use -- --cov to collect coverage
@@ -110,14 +126,9 @@ tasks:
         printf "image built: pomelo-orbit:%s\n" "$TAG"
 
   version:
-    desc: Calculate the version from complete Git history
+    desc: Calculate the version from complete Git history; use -- --apply to update release metadata
     cmds:
-      - uv --directory scripts run version-calc.py
-
-  version:apply:
-    desc: Write the calculated version to release metadata
-    cmds:
-      - uv --directory scripts run version-calc.py --no-dry-run
+      - uv --directory scripts run version-calc.py {{.CLI_ARGS}}
 
   install:
     desc: Install or refresh the local agent plugin
@@ -169,17 +180,3 @@ tasks:
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-windows-x64.zip pomelo-orbit-v{{.VERSION}}-windows-x64
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-linux-x64.zip pomelo-orbit-v{{.VERSION}}-linux-x64
       - cd dist/package && zip -r ../pomelo-orbit-v{{.VERSION}}-macos-x64.zip pomelo-orbit-v{{.VERSION}}-macos-x64
-
-  release:docker:
-    desc: Build the Docker image tagged with VERSION, optionally with cn=1
-    cmds:
-      - task: build
-        vars:
-          TAG: '{{.VERSION}}'
-          cn: '{{.cn}}'
-
-  clean:
-    desc: Remove local build artifacts (POSIX shell required)
-    cmds:
-      - rm -rf bin dist web/dist web/coverage
-      - printf "clean complete\n"

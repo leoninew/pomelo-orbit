@@ -1,5 +1,5 @@
 # 文档主题索引
-最后修改时间: 2026-10-06 16:22:19
+最后修改时间: 2026-10-08 11:39:56
 
 独立索引文件（与 [README.md](./README.md) 分工：README 讲规则与阅读顺序，本页讲主题 → 路径）。
 
@@ -35,7 +35,6 @@
 | Orbit 作为普通应用的停机迁移 | [guides/orbit-self-migration.md](./guides/orbit-self-migration.md) |
 | CI Pipeline（模板、应用流水线、制品与运行） | [guides/ci-pipeline-design.md](./guides/ci-pipeline-design.md) |
 | CI Pipeline 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |
-| 服务导出导入（dbtalk JSONL） | [guides/service-data-transfer.md](./guides/service-data-transfer.md) |
 | Agent Plugin 与 Skill 发布 | [guides/plugin-release.md](./guides/plugin-release.md) |
 | 权限 RBAC | [guides/permissions.md](./guides/permissions.md) |
 | MCP 直接操作 | [guides/mcp-direct-operations.md](./guides/mcp-direct-operations.md) |

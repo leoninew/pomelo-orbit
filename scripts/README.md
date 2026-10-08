@@ -5,34 +5,39 @@
 ```bash
 make deps
 make run
-make run ARGS="database-transfer --help"
-make run POMELO_ORBIT_APP__ENV=production ARGS="database-transfer --help"
+make run -- --help
+make run -- cert --help
+make run -- ulid -n 3
+make run POMELO_ORBIT_APP__ENV=production -- --version
 make check
 make test
 ```
 
-`make deps` syncs the locked dependency groups and installs `pomelo-orbit-cli` into the scripts project environment. `make run` defaults `POMELO_ORBIT_APP__ENV` to `development`; override it on the command line or in the process environment. `make check fix=1` applies Ruff format and lint fixes. Equivalent uv commands from the Orbit repository root:
+`make deps` syncs the locked dependency groups and installs `pomelo-orbit-cli` into the scripts project environment. `make run` defaults `POMELO_ORBIT_APP__ENV` to `development`; override it on the command line or in the process environment. For arguments containing spaces or `=`, use `make run ARGS='cert new -n app.localhost --cert-dir "./local certs"'`. `make check fix=1` applies Ruff format and lint fixes. Equivalent uv commands from the Orbit repository root:
 
 ```bash
 uv --directory scripts sync --all-groups --locked
 POMELO_ORBIT_APP__ENV=development uv --directory scripts run --locked pomelo-orbit-cli --help
-POMELO_ORBIT_APP__ENV=development uv --directory scripts run --locked pomelo-orbit-cli database-transfer --help
+POMELO_ORBIT_APP__ENV=development uv --directory scripts run --locked pomelo-orbit-cli --version
 ```
 
 The CLI locates the Orbit repository, then loads the same configuration layers as the Go service: `configs/config.yaml`, optional `configs/config.<env>.yaml`, `.env` or `.env.<env>`, and process environment overrides. `make run` selects the development profile unless `POMELO_ORBIT_APP__ENV` is already set.
 
-Database reset, SQLite data copy, and native database backups use `database-ops.py` and `scripts/.env`:
+## Commands
+
+`cert` and `ulid` are top-level commands:
 
 ```bash
-./scripts/database-ops.sh reset                 # show the reset plan
-./scripts/database-ops.sh reset --no-dry-run    # execute the reset
-./scripts/database-ops.sh copy-from-sqlite                # show the copy plan
-./scripts/database-ops.sh copy-from-sqlite --no-dry-run   # copy data into the migrated schema
-./scripts/database-ops.sh backup                 # write a PostgreSQL .dump to scripts/backup
-./scripts/database-ops.sh backup --engine mysql  # write a MySQL .sql to scripts/backup
+uv --directory scripts run --locked pomelo-orbit-cli cert new -n app.localhost --cert-dir ./certs
+uv --directory scripts run --locked pomelo-orbit-cli cert check -n app.localhost --cert-dir ./certs
+uv --directory scripts run --locked pomelo-orbit-cli ulid -n 3
 ```
 
-Backups use the database DSN in `scripts/.env`. MySQL backup requires `MYSQL_DSN`; PostgreSQL backup uses `POSTGRES_DSN`. Execution needs a native dump client, a matching local database container, or an already available Docker client image. The command does not download an image.
+`cert` requires `mkcert`; run `mkcert -install` once to set up the local CA. `new` writes the certificate and private key to `<cert-dir>/<domain>.pem`, overwriting an existing file. `check` inspects the certificate and trust chain and connects to `<domain>:443`. See the [certificate management guide](../docs/guides/certificate-management.md) for upload and Gateway usage.
+
+`ulid` prints one identifier per line. It generates one by default; `-n` / `--count` sets the quantity.
+
+Standalone scripts such as `manage.py`, `install.py`, and `version-calc.py` remain available through uv. Remote deployment commands in `manage.py` use `scripts/.env`.
 
 Run the script quality checks with:
 
@@ -48,8 +53,8 @@ uv --directory scripts run --locked pytest
 From the repository root:
 
 ```bash
-task version        # calculate from Git history without writing files
-task version:apply  # write the calculated version to release metadata
+task version            # calculate from Git history without writing files
+task version -- --apply # write the calculated version to release metadata
 ```
 
 The calculator walks all commits reachable from `HEAD`, oldest first, starting
@@ -61,11 +66,11 @@ Complete Git history is required; for a shallow clone, fetch it with
 `git fetch --unshallow` first.
 
 `task version` prints the candidate version and leaves all metadata untouched.
-`task version:apply` updates `VERSION`, `configs/config.yaml` (`app.version`),
+`task version -- --apply` updates `VERSION`, `configs/config.yaml` (`app.version`),
 `.env.example` and `web/package.json`, validating every target before writing.
 It does not stage, commit or tag the changes.
 
 `VERSION` records the selected release version. Package names, Docker release
-tags and release CI continue to use that file, so run `task version:apply` when
+tags and release CI continue to use that file, so run `task version -- --apply` when
 preparing a release. The Git history calculation can advance after further
 commits while the stored release version remains unchanged.

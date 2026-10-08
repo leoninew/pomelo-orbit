@@ -11,7 +11,7 @@
   "plugins": [
     {
       "name": "pomelo-orbit",
-      "description": "Pomelo Orbit deployment, data transfer, and service operations skills.",
+      "description": "Pomelo Orbit deployment and service operations skills.",
       "author": {
         "name": "Local developer"
       },

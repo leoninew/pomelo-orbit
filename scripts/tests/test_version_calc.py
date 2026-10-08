@@ -108,7 +108,7 @@ def test_preview_is_read_only_and_apply_updates_all_metadata_without_git_changes
     assert capsys.readouterr().out == "version: 0.1.1\n"
     assert metadata() == before
 
-    assert version_calc.main(["--no-dry-run"]) == 0
+    assert version_calc.main(["--apply"]) == 0
     assert capsys.readouterr().out == "version: 0.1.1\n"
     assert metadata() == {
         path: body.replace(b"0.271.0", b"0.1.1") for path, body in before.items()
@@ -124,7 +124,7 @@ def test_apply_validates_all_metadata_before_writing(repository: Path) -> None:
     before = metadata()
 
     with pytest.raises(RuntimeError, match="could not find package version"):
-        version_calc.main(["--no-dry-run"])
+        version_calc.main(["--apply"])
 
     assert metadata() == before
 

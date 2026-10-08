@@ -1,23 +1,15 @@
-#!/usr/bin/env python3
-"""
-cert.py - 证书工具
+"""Certificate creation and diagnostics for the Orbit CLI."""
 
-用法:
-  uv run --project scripts python scripts/cert.py new -n <domain> --cert-dir <directory>
-  uv run --project scripts python scripts/cert.py check -n <domain> --cert-dir <directory>
-"""
-
-import argparse
 import datetime
 import logging
 import socket
 import ssl
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+import click
+
 logger = logging.getLogger(__name__)
 
 
@@ -149,30 +141,26 @@ def cmd_new(domain: str, cert_dir: Path) -> None:
         cert_file = tmp_path / "cert.pem"
         key_file = tmp_path / "key.pem"
 
-        def to_native(p: Path) -> str:
-            r = run(["cygpath", "-w", str(p)])
-            return r.stdout.strip() if r.returncode == 0 else str(p)
-
         result = run(
             [
                 "mkcert",
                 "-cert-file",
-                to_native(cert_file),
+                str(cert_file),
                 "-key-file",
-                to_native(key_file),
+                str(key_file),
                 domain,
             ]
         )
         if result.returncode != 0:
-            logger.error(result.stderr)
-            sys.exit(1)
+            raise click.ClickException(
+                result.stderr.strip() or "mkcert certificate generation failed"
+            )
 
         out_file.write_bytes(cert_file.read_bytes() + key_file.read_bytes())
 
     first_line = out_file.read_text().splitlines()[0]
     if first_line != "-----BEGIN CERTIFICATE-----":
-        logger.error(f"合并结果首行异常: {first_line}")
-        sys.exit(1)
+        raise click.ClickException(f"合并结果首行异常: {first_line}")
 
     pem_text = out_file.read_text()
     logger.info(f"输出: {out_file}")
@@ -210,7 +198,7 @@ def cmd_check(domain: str, cert_dir: Path) -> None:
     if not pem_file.exists():
         logger.warning(f"文件不存在: {pem_file}")
         logger.info(
-            f"修复: uv run --project scripts python scripts/cert.py new -n {domain} --cert-dir {cert_dir}"
+            f"修复: uv --directory scripts run --locked pomelo-orbit-cli cert new -n {domain} --cert-dir {cert_dir}"
         )
     else:
         logger.info(f"文件: {pem_file}")
@@ -274,43 +262,41 @@ def cmd_check(domain: str, cert_dir: Path) -> None:
         logger.error(f"TLS 握手失败: {e}")
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="cert.py",
-        description="mkcert 证书工具",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=(
-            "示例:\n"
-            "  uv run --project scripts python scripts/cert.py new -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs\n"
-            "  uv run --project scripts python scripts/cert.py check -n pomelo-orbit.localhost --cert-dir /srv/orbit/cd/traefik/data/certs"
-        ),
-    )
-    sub = parser.add_subparsers(dest="cmd")
-
-    p_new = sub.add_parser("new", help="生成 mkcert 证书并输出合并 PEM")
-    p_new.add_argument("-n", dest="domain", required=True, metavar="domain")
-    p_new.add_argument(
-        "--cert-dir", required=True, type=Path, help="PEM output directory"
-    )
-
-    p_check = sub.add_parser("check", help="检查证书信任链（CA → 叶证书 → TLS 握手）")
-    p_check.add_argument("-n", dest="domain", required=True, metavar="domain")
-    p_check.add_argument("--cert-dir", required=True, type=Path, help="PEM directory")
-    return parser
+@click.group(invoke_without_command=True)
+@click.pass_context
+def cert(ctx: click.Context) -> None:
+    """Generate and inspect local development certificates."""
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
 
 
-def main() -> None:
-    parser = build_parser()
+@cert.command("new")
+@click.option("-n", "--domain", required=True, help="Certificate DNS name.")
+@click.option(
+    "--cert-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    required=True,
+    help="PEM output directory.",
+)
+def new_command(domain: str, cert_dir: Path) -> None:
+    """Generate a combined certificate and private key PEM."""
+    try:
+        cmd_new(domain, cert_dir.expanduser().resolve())
+    except OSError as error:
+        raise click.ClickException(str(error)) from error
 
-    args = parser.parse_args()
 
-    if args.cmd == "new":
-        cmd_new(args.domain, args.cert_dir.expanduser().resolve())
-    elif args.cmd == "check":
-        cmd_check(args.domain, args.cert_dir.expanduser().resolve())
-    else:
-        parser.print_help()
-
-
-if __name__ == "__main__":
-    main()
+@cert.command("check")
+@click.option("-n", "--domain", required=True, help="Certificate DNS name.")
+@click.option(
+    "--cert-dir",
+    type=click.Path(path_type=Path, file_okay=False),
+    required=True,
+    help="PEM directory.",
+)
+def check_command(domain: str, cert_dir: Path) -> None:
+    """Check the local certificate, CA, trust store, and TLS handshake."""
+    try:
+        cmd_check(domain, cert_dir.expanduser().resolve())
+    except OSError as error:
+        raise click.ClickException(str(error)) from error

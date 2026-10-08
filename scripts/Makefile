@@ -13,6 +13,15 @@ endif
 
 .PHONY: help deps check test run
 
+ifeq ($(firstword $(MAKECMDGOALS)),run)
+RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+RUN_GOALS := $(filter-out run,$(RUN_ARGS))
+# Goals after run are CLI arguments, including names of Make targets.
+ifneq ($(RUN_GOALS),)
+.PHONY: $(RUN_GOALS)
+$(RUN_GOALS): ; @:
+endif
+else
 help: ## Show available targets.
 	@echo "Usage: make <target>"
 	@echo ""
@@ -20,7 +29,7 @@ help: ## Show available targets.
 	@echo "  deps   Sync locked dependencies and install pomelo-orbit-cli"
 	@echo "  check  Run Ruff and Mypy quality checks (fix=1 enables fixes)"
 	@echo "  test   Run unit tests"
-	@echo "  run    Run pomelo-orbit-cli (default POMELO_ORBIT_APP__ENV=development); pass ARGS='database-transfer --help'"
+	@echo "  run    Run pomelo-orbit-cli (default POMELO_ORBIT_APP__ENV=development); use make run -- <args> or ARGS='<args>'"
 
 deps: ## Sync locked development dependencies and install the project.
 	$(UV) sync --all-groups --locked
@@ -32,7 +41,8 @@ check: ## Run Ruff and Mypy checks without tests; use fix=1 to fix Ruff issues.
 
 test: ## Run unit tests.
 	$(UV_RUN) pytest
+endif
 
 run: export POMELO_ORBIT_APP__ENV ?= development
 run: ## Run pomelo-orbit-cli; default POMELO_ORBIT_APP__ENV=development.
-	$(UV_RUN) pomelo-orbit-cli $(ARGS)
+	$(UV_RUN) pomelo-orbit-cli $(ARGS) $(RUN_ARGS)

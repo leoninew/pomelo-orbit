@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-10-04 00:16:31
+最后修改时间: 2026-10-08 11:39:56
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -48,6 +48,7 @@ Doc role: living SoT
 | X-12 | MCP 浏览器 grant、loopback callback、token file、HTTP /mcp Bearer transport | C-18；显式进程凭据与内存 Core |
 | X-13 | Project 创建时自动预建 local Environment，空库预置 Gateway/Service | C-19；Project 与 membership 创建后由 Web Wizard 配置 Environment、Probe 与 Gateway |
 | X-14 | local Environment 工作目录来自 `workspace.deployment` 或运行时 YAML 回退 | `Environment.workspace_root` 为已保存的唯一工作区根；当前 CI 只在 local 执行，CD 按 local/ssh 目标执行 |
+| X-15 | Python 数据库重置、SQLite 复制、原生备份及 Service / Environment JSONL 传输命令 | 2026-10-08 移除 `database-ops`、`database-transfer` 与对应 skill、测试和 dbtalk 依赖；保留 `pomelo-orbit-cli` 框架供后续整合脚本。相关过程文档归档至 `docs/archive/specflow/`，[旧操作指南](../archive/guides/service-data-transfer.md)归档至 `docs/archive/guides/`；Project CD 接管 API / Web 继续使用现有业务实现 |
 
 ## Backlog（非本账本承诺交付）
 

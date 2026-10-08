@@ -7,11 +7,11 @@ and reset the patch version; every other commit increases the patch version.
 The major version remains 0.
 
 By default, print the calculated version without writing files. Pass
-``--no-dry-run`` to update VERSION and the app's release metadata.
+``--apply`` to update VERSION and the app's release metadata.
 Git is used only to read history, never to commit or tag changes.
 
     uv --directory scripts run version-calc.py
-    uv --directory scripts run version-calc.py --no-dry-run
+    uv --directory scripts run version-calc.py --apply
 """
 
 from __future__ import annotations
@@ -111,9 +111,8 @@ def _prepare_version_replacement(
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Calculate a version from Git history")
     parser.add_argument(
-        "--no-dry-run",
-        action="store_false",
-        dest="dry_run",
+        "--apply",
+        action="store_true",
         help="write the calculated version to VERSION and app metadata",
     )
     return parser.parse_args(argv)
@@ -123,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     version = calculate_version()
     print(f"version: {version}")
-    if not args.dry_run:
+    if args.apply:
         apply_version(version)
     return 0
 

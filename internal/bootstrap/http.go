@@ -190,7 +190,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		ProjectService:               projectService,
 		ProjectHandoverService:       projectHandoverService,
 		ProjectInitializationService: projectInitializationService,
-		SettingsService:              settingssvc.New(settingssvc.Definitions(cfg), envfile.NewStore(cfg.EnvFilePath)),
+		SettingsService:              settingssvc.New(cfg.Runtime, envfile.NewStore(cfg.Runtime.OverridePath())),
 		CredentialService:            credentialService,
 		EnvironmentService:           environmentService,
 		EnvironmentTerminalService:   environmentsvc.NewTerminalService(environmentService),

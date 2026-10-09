@@ -23,15 +23,23 @@ const (
 )
 
 type ConfigItemResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	Value         *structpb.Value        `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	Default       *structpb.Value        `protobuf:"bytes,3,opt,name=default,proto3" json:"default,omitempty"`
-	IsOverridden  bool                   `protobuf:"varint,4,opt,name=is_overridden,json=isOverridden,proto3" json:"is_overridden,omitempty"`
-	Secret        bool                   `protobuf:"varint,5,opt,name=secret,proto3" json:"secret,omitempty"`
-	Description   string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Key            string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Value          *structpb.Value        `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Default        *structpb.Value        `protobuf:"bytes,3,opt,name=default,proto3" json:"default,omitempty"`
+	IsOverridden   bool                   `protobuf:"varint,4,opt,name=is_overridden,json=isOverridden,proto3" json:"is_overridden,omitempty"`
+	Secret         bool                   `protobuf:"varint,5,opt,name=secret,proto3" json:"secret,omitempty"`
+	Description    string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	OverrideValue  *structpb.Value        `protobuf:"bytes,7,opt,name=override_value,json=overrideValue,proto3" json:"override_value,omitempty"`
+	NextValue      *structpb.Value        `protobuf:"bytes,8,opt,name=next_value,json=nextValue,proto3" json:"next_value,omitempty"`
+	Type           string                 `protobuf:"bytes,9,opt,name=type,proto3" json:"type,omitempty"`
+	PendingRestart bool                   `protobuf:"varint,10,opt,name=pending_restart,json=pendingRestart,proto3" json:"pending_restart,omitempty"`
+	ValueSource    string                 `protobuf:"bytes,11,opt,name=value_source,json=valueSource,proto3" json:"value_source,omitempty"`
+	DefaultSource  string                 `protobuf:"bytes,12,opt,name=default_source,json=defaultSource,proto3" json:"default_source,omitempty"`
+	NextSource     string                 `protobuf:"bytes,13,opt,name=next_source,json=nextSource,proto3" json:"next_source,omitempty"`
+	NextValueKnown bool                   `protobuf:"varint,14,opt,name=next_value_known,json=nextValueKnown,proto3" json:"next_value_known,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ConfigItemResp) Reset() {
@@ -106,11 +114,70 @@ func (x *ConfigItemResp) GetDescription() string {
 	return ""
 }
 
+func (x *ConfigItemResp) GetOverrideValue() *structpb.Value {
+	if x != nil {
+		return x.OverrideValue
+	}
+	return nil
+}
+
+func (x *ConfigItemResp) GetNextValue() *structpb.Value {
+	if x != nil {
+		return x.NextValue
+	}
+	return nil
+}
+
+func (x *ConfigItemResp) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *ConfigItemResp) GetPendingRestart() bool {
+	if x != nil {
+		return x.PendingRestart
+	}
+	return false
+}
+
+func (x *ConfigItemResp) GetValueSource() string {
+	if x != nil {
+		return x.ValueSource
+	}
+	return ""
+}
+
+func (x *ConfigItemResp) GetDefaultSource() string {
+	if x != nil {
+		return x.DefaultSource
+	}
+	return ""
+}
+
+func (x *ConfigItemResp) GetNextSource() string {
+	if x != nil {
+		return x.NextSource
+	}
+	return ""
+}
+
+func (x *ConfigItemResp) GetNextValueKnown() bool {
+	if x != nil {
+		return x.NextValueKnown
+	}
+	return false
+}
+
 type SystemConfigResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Items         []*ConfigItemResp      `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Items           []*ConfigItemResp      `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Revision        string                 `protobuf:"bytes,2,opt,name=revision,proto3" json:"revision,omitempty"`
+	PendingRestart  bool                   `protobuf:"varint,3,opt,name=pending_restart,json=pendingRestart,proto3" json:"pending_restart,omitempty"`
+	NextConfigError string                 `protobuf:"bytes,4,opt,name=next_config_error,json=nextConfigError,proto3" json:"next_config_error,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SystemConfigResp) Reset() {
@@ -150,7 +217,28 @@ func (x *SystemConfigResp) GetItems() []*ConfigItemResp {
 	return nil
 }
 
-type SystemConfigUpdateReq struct {
+func (x *SystemConfigResp) GetRevision() string {
+	if x != nil {
+		return x.Revision
+	}
+	return ""
+}
+
+func (x *SystemConfigResp) GetPendingRestart() bool {
+	if x != nil {
+		return x.PendingRestart
+	}
+	return false
+}
+
+func (x *SystemConfigResp) GetNextConfigError() string {
+	if x != nil {
+		return x.NextConfigError
+	}
+	return ""
+}
+
+type ConfigUpdateItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Value         *structpb.Value        `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
@@ -158,9 +246,62 @@ type SystemConfigUpdateReq struct {
 	sizeCache     protoimpl.SizeCache
 }
 
+func (x *ConfigUpdateItem) Reset() {
+	*x = ConfigUpdateItem{}
+	mi := &file_orbit_v1_settings_settings_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConfigUpdateItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConfigUpdateItem) ProtoMessage() {}
+
+func (x *ConfigUpdateItem) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_settings_settings_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConfigUpdateItem.ProtoReflect.Descriptor instead.
+func (*ConfigUpdateItem) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_settings_settings_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *ConfigUpdateItem) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *ConfigUpdateItem) GetValue() *structpb.Value {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+type SystemConfigUpdateReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Revision      string                 `protobuf:"bytes,3,opt,name=revision,proto3" json:"revision,omitempty"`
+	Updates       []*ConfigUpdateItem    `protobuf:"bytes,4,rep,name=updates,proto3" json:"updates,omitempty"`
+	ResetKeys     []string               `protobuf:"bytes,5,rep,name=reset_keys,json=resetKeys,proto3" json:"reset_keys,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
 func (x *SystemConfigUpdateReq) Reset() {
 	*x = SystemConfigUpdateReq{}
-	mi := &file_orbit_v1_settings_settings_proto_msgTypes[2]
+	mi := &file_orbit_v1_settings_settings_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -172,7 +313,7 @@ func (x *SystemConfigUpdateReq) String() string {
 func (*SystemConfigUpdateReq) ProtoMessage() {}
 
 func (x *SystemConfigUpdateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_settings_settings_proto_msgTypes[2]
+	mi := &file_orbit_v1_settings_settings_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -185,19 +326,26 @@ func (x *SystemConfigUpdateReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemConfigUpdateReq.ProtoReflect.Descriptor instead.
 func (*SystemConfigUpdateReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_settings_settings_proto_rawDescGZIP(), []int{2}
+	return file_orbit_v1_settings_settings_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *SystemConfigUpdateReq) GetKey() string {
+func (x *SystemConfigUpdateReq) GetRevision() string {
 	if x != nil {
-		return x.Key
+		return x.Revision
 	}
 	return ""
 }
 
-func (x *SystemConfigUpdateReq) GetValue() *structpb.Value {
+func (x *SystemConfigUpdateReq) GetUpdates() []*ConfigUpdateItem {
 	if x != nil {
-		return x.Value
+		return x.Updates
+	}
+	return nil
+}
+
+func (x *SystemConfigUpdateReq) GetResetKeys() []string {
+	if x != nil {
+		return x.ResetKeys
 	}
 	return nil
 }
@@ -205,13 +353,14 @@ func (x *SystemConfigUpdateReq) GetValue() *structpb.Value {
 type SystemConfigResetReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Keys          []string               `protobuf:"bytes,1,rep,name=keys,proto3" json:"keys,omitempty"`
+	Revision      string                 `protobuf:"bytes,2,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SystemConfigResetReq) Reset() {
 	*x = SystemConfigResetReq{}
-	mi := &file_orbit_v1_settings_settings_proto_msgTypes[3]
+	mi := &file_orbit_v1_settings_settings_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -223,7 +372,7 @@ func (x *SystemConfigResetReq) String() string {
 func (*SystemConfigResetReq) ProtoMessage() {}
 
 func (x *SystemConfigResetReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_settings_settings_proto_msgTypes[3]
+	mi := &file_orbit_v1_settings_settings_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -236,7 +385,7 @@ func (x *SystemConfigResetReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemConfigResetReq.ProtoReflect.Descriptor instead.
 func (*SystemConfigResetReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_settings_settings_proto_rawDescGZIP(), []int{3}
+	return file_orbit_v1_settings_settings_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SystemConfigResetReq) GetKeys() []string {
@@ -246,25 +395,52 @@ func (x *SystemConfigResetReq) GetKeys() []string {
 	return nil
 }
 
+func (x *SystemConfigResetReq) GetRevision() string {
+	if x != nil {
+		return x.Revision
+	}
+	return ""
+}
+
 var File_orbit_v1_settings_settings_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_settings_settings_proto_rawDesc = "" +
 	"\n" +
-	" orbit/v1/settings/settings.proto\x12\x11orbit.v1.settings\x1a\x1cgoogle/protobuf/struct.proto\"\xe1\x01\n" +
+	" orbit/v1/settings/settings.proto\x12\x11orbit.v1.settings\x1a\x1cgoogle/protobuf/struct.proto\"\xa9\x04\n" +
 	"\x0eConfigItemResp\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12,\n" +
 	"\x05value\x18\x02 \x01(\v2\x16.google.protobuf.ValueR\x05value\x120\n" +
 	"\adefault\x18\x03 \x01(\v2\x16.google.protobuf.ValueR\adefault\x12#\n" +
 	"\ris_overridden\x18\x04 \x01(\bR\fisOverridden\x12\x16\n" +
 	"\x06secret\x18\x05 \x01(\bR\x06secret\x12 \n" +
-	"\vdescription\x18\x06 \x01(\tR\vdescription\"K\n" +
+	"\vdescription\x18\x06 \x01(\tR\vdescription\x12=\n" +
+	"\x0eoverride_value\x18\a \x01(\v2\x16.google.protobuf.ValueR\roverrideValue\x125\n" +
+	"\n" +
+	"next_value\x18\b \x01(\v2\x16.google.protobuf.ValueR\tnextValue\x12\x12\n" +
+	"\x04type\x18\t \x01(\tR\x04type\x12'\n" +
+	"\x0fpending_restart\x18\n" +
+	" \x01(\bR\x0ependingRestart\x12!\n" +
+	"\fvalue_source\x18\v \x01(\tR\vvalueSource\x12%\n" +
+	"\x0edefault_source\x18\f \x01(\tR\rdefaultSource\x12\x1f\n" +
+	"\vnext_source\x18\r \x01(\tR\n" +
+	"nextSource\x12(\n" +
+	"\x10next_value_known\x18\x0e \x01(\bR\x0enextValueKnown\"\xbc\x01\n" +
 	"\x10SystemConfigResp\x127\n" +
-	"\x05items\x18\x01 \x03(\v2!.orbit.v1.settings.ConfigItemRespR\x05items\"W\n" +
-	"\x15SystemConfigUpdateReq\x12\x10\n" +
+	"\x05items\x18\x01 \x03(\v2!.orbit.v1.settings.ConfigItemRespR\x05items\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\tR\brevision\x12'\n" +
+	"\x0fpending_restart\x18\x03 \x01(\bR\x0ependingRestart\x12*\n" +
+	"\x11next_config_error\x18\x04 \x01(\tR\x0fnextConfigError\"R\n" +
+	"\x10ConfigUpdateItem\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12,\n" +
-	"\x05value\x18\x02 \x01(\v2\x16.google.protobuf.ValueR\x05value\"*\n" +
+	"\x05value\x18\x02 \x01(\v2\x16.google.protobuf.ValueR\x05value\"\xa9\x01\n" +
+	"\x15SystemConfigUpdateReq\x12\x1a\n" +
+	"\brevision\x18\x03 \x01(\tR\brevision\x12=\n" +
+	"\aupdates\x18\x04 \x03(\v2#.orbit.v1.settings.ConfigUpdateItemR\aupdates\x12\x1d\n" +
+	"\n" +
+	"reset_keys\x18\x05 \x03(\tR\tresetKeysJ\x04\b\x01\x10\x02J\x04\b\x02\x10\x03R\x03keyR\x05value\"F\n" +
 	"\x14SystemConfigResetReq\x12\x12\n" +
-	"\x04keys\x18\x01 \x03(\tR\x04keysB\xd3\x01\n" +
+	"\x04keys\x18\x01 \x03(\tR\x04keys\x12\x1a\n" +
+	"\brevision\x18\x02 \x01(\tR\brevisionB\xd3\x01\n" +
 	"\x15com.orbit.v1.settingsB\rSettingsProtoP\x01ZEgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/settings\xa2\x02\x03OVS\xaa\x02\x11Orbit.V1.Settings\xca\x02\x11Orbit\\V1\\Settings\xe2\x02\x1dOrbit\\V1\\Settings\\GPBMetadata\xea\x02\x13Orbit::V1::Settingsb\x06proto3"
 
 var (
@@ -279,24 +455,28 @@ func file_orbit_v1_settings_settings_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_settings_settings_proto_rawDescData
 }
 
-var file_orbit_v1_settings_settings_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_orbit_v1_settings_settings_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_orbit_v1_settings_settings_proto_goTypes = []any{
 	(*ConfigItemResp)(nil),        // 0: orbit.v1.settings.ConfigItemResp
 	(*SystemConfigResp)(nil),      // 1: orbit.v1.settings.SystemConfigResp
-	(*SystemConfigUpdateReq)(nil), // 2: orbit.v1.settings.SystemConfigUpdateReq
-	(*SystemConfigResetReq)(nil),  // 3: orbit.v1.settings.SystemConfigResetReq
-	(*structpb.Value)(nil),        // 4: google.protobuf.Value
+	(*ConfigUpdateItem)(nil),      // 2: orbit.v1.settings.ConfigUpdateItem
+	(*SystemConfigUpdateReq)(nil), // 3: orbit.v1.settings.SystemConfigUpdateReq
+	(*SystemConfigResetReq)(nil),  // 4: orbit.v1.settings.SystemConfigResetReq
+	(*structpb.Value)(nil),        // 5: google.protobuf.Value
 }
 var file_orbit_v1_settings_settings_proto_depIdxs = []int32{
-	4, // 0: orbit.v1.settings.ConfigItemResp.value:type_name -> google.protobuf.Value
-	4, // 1: orbit.v1.settings.ConfigItemResp.default:type_name -> google.protobuf.Value
-	0, // 2: orbit.v1.settings.SystemConfigResp.items:type_name -> orbit.v1.settings.ConfigItemResp
-	4, // 3: orbit.v1.settings.SystemConfigUpdateReq.value:type_name -> google.protobuf.Value
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 0: orbit.v1.settings.ConfigItemResp.value:type_name -> google.protobuf.Value
+	5, // 1: orbit.v1.settings.ConfigItemResp.default:type_name -> google.protobuf.Value
+	5, // 2: orbit.v1.settings.ConfigItemResp.override_value:type_name -> google.protobuf.Value
+	5, // 3: orbit.v1.settings.ConfigItemResp.next_value:type_name -> google.protobuf.Value
+	0, // 4: orbit.v1.settings.SystemConfigResp.items:type_name -> orbit.v1.settings.ConfigItemResp
+	5, // 5: orbit.v1.settings.ConfigUpdateItem.value:type_name -> google.protobuf.Value
+	2, // 6: orbit.v1.settings.SystemConfigUpdateReq.updates:type_name -> orbit.v1.settings.ConfigUpdateItem
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_settings_settings_proto_init() }
@@ -310,7 +490,7 @@ func file_orbit_v1_settings_settings_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_settings_settings_proto_rawDesc), len(file_orbit_v1_settings_settings_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

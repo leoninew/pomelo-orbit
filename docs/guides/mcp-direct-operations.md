@@ -1,5 +1,5 @@
 # MCP 直接操作
-最后修改时间: 2026-10-06 16:50:33
+最后修改时间: 2026-10-09 17:03:08
 
 ## 命名与启动约定
 
@@ -10,7 +10,7 @@ Grok 与 Codex 的注册名都是 `pomelo-orbit-mcp`，本地 stdio 入口都是
 | Grok | 仓库 `.grok/config.toml` 的 `[mcp_servers.pomelo-orbit-mcp]` | `pomelo-orbit-mcp__orbit_*`（`search_tool` / `use_tool`） |
 | Codex | 仓库 `.codex/config.toml` 的 `[mcp_servers.pomelo-orbit-mcp]` | `mcp__pomelo-orbit-mcp__orbit_*` |
 
-先在已登录的 Orbit Web 控制台“系统管理 / 访问令牌”创建一个命名 PAT，并在创建窗口中复制一次。`initialize` 和 `tools/list` 不读取或验证凭据；每次实际 `tools/call` 都使用 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 调用同一 Auth Service 查找 PAT 摘要、校验未撤销/未过期及用户 enabled 状态，并把 session 固定到首次通过校验的用户。
+先在已登录的 Orbit Web 控制台“系统管理 / 访问令牌”创建一个命名 PAT，并在创建窗口中复制一次。`initialize` 和 `tools/list` 不读取或验证凭据；每次实际 `tools/call` 都使用统一配置加载后的 MCP access_token 调用同一 Auth Service 查找 PAT 摘要、校验未撤销/未过期及用户 enabled 状态，并把 session 固定到首次通过校验的用户。启动 ENV 的 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 是基线，工作目录 overwrite.env 中的同名值优先；修改后分别重启 MCP 进程。
 
 不要将 token 写入 `.grok/config.toml`、`.codex/config.toml`、浏览器 localStorage 或用户配置目录。把它放在启动 Grok/Codex 的父进程环境中，或 gitignored 的 `.env.<env>`（Go 配置加载器读取，OS 环境优先）。Grok 和 Codex 的项目配置都把 `POMELO_ORBIT_APP__ENV` 写成 `development`，不使用 Shell 占位符。Codex 另用 `env_vars` 透传父进程的 `POMELO_ORBIT_MCP__ACCESS_TOKEN`，不把 PAT 写进 TOML。PAT 默认不过期，也可创建为有限有效期；撤销、到期或替换后，更新父进程环境或 dotenv 并重启 MCP session。stdio 仍需运行在可访问同一 Orbit 数据库、签名配置、Docker 和 workspace 的可信环境。不要使用已废弃的注册名、浏览器授权页面或 Python MCP 命令。
 

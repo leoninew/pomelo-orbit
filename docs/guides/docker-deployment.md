@@ -1,5 +1,5 @@
 # Docker 部署与服务器首次部署指南
-最后修改时间: 2026-10-09 17:19:54
+最后修改时间: 2026-10-09 19:55:36
 
 Doc role: living guide（运维向）。与代码冲突时以代码为准；领域模型见 [CD 模型](../product/cd-model.md)。
 
@@ -42,6 +42,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /opt/pomelo-orbit/data:/app/data
+      - /opt/pomelo-orbit/data/config/overwrite.env:/app/overwrite.env:rw
       - /opt/pomelo-orbit/logs:/app/logs
     environment:
       - HOME=/app/data
@@ -72,8 +73,10 @@ cat > /opt/pomelo-orbit/.env << 'EOF'
 POMELO_ORBIT_JWT__SECRET_KEY=REPLACE_WITH_A_REAL_FERNET_KEY
 EOF
 printf 'DOCKER_SOCKET_GID=%s\n' "$(stat -c %g /var/run/docker.sock)" >> /opt/pomelo-orbit/.env
-mkdir -p /opt/pomelo-orbit/data/db /opt/pomelo-orbit/logs
-sudo chown -- 1000:1000 /opt/pomelo-orbit/data /opt/pomelo-orbit/data/db /opt/pomelo-orbit/logs
+mkdir -p /opt/pomelo-orbit/data/db /opt/pomelo-orbit/data/config /opt/pomelo-orbit/logs
+touch /opt/pomelo-orbit/data/config/overwrite.env
+chmod 600 /opt/pomelo-orbit/data/config/overwrite.env
+sudo chown -- 1000:1000 /opt/pomelo-orbit/data /opt/pomelo-orbit/data/db /opt/pomelo-orbit/data/config /opt/pomelo-orbit/data/config/overwrite.env /opt/pomelo-orbit/logs
 ```
 
 必须将 `POMELO_ORBIT_JWT__SECRET_KEY` 替换为真实的 Fernet 密钥，否则启动后无法登录。生成方法（需要 Python 和 `cryptography`）：
@@ -151,12 +154,12 @@ docker compose up -d
 ├── docker-compose.yml   # 容器编排配置（手动维护）
 ├── .env                 # 宿主机环境变量，通过 env_file 注入容器
 ├── data/                # 统一工作区根（含 db、pipeline、deployment 与部署日志）
+│   └── config/          # overwrite.env、文件锁与写入恢复记录
 └── logs/                # 控制面应用日志
 ```
 
-`.env` 有两个层面，但内容相同：
+宿主机 `/opt/pomelo-orbit/.env` 通过手动维护 Compose 的 env_file 注入启动基线。Orbit 后端渲染器目前从组件 ENV 生成 environment，没有 env_file 字段。
 
-- 宿主机 `/opt/pomelo-orbit/.env`：通过 `env_file` 注入容器环境变量，供应用读取
-- Pomelo Orbit 管理的应用配置模板：部署时由系统渲染写入，路径由系统管理
+应用固定读取 `/app/overwrite.env`，设置页将主动修改项保存到它，覆盖容器 ENV。它独立于 Compose env_file；修改覆盖后普通重启容器即可生效，修改启动基线则重新创建容器。普通升级保留 data/config/overwrite.env 及该目录内恢复材料。
 
-首次手动部署时只需关注宿主机的 `.env`。
+覆盖文件由 go-envparse 解析，使用字面量 ENV 值，保存时采用双引号和标准字符串转义，美元符号不插值。单行上限约 64 KiB，包含键名及转义后的值；设置保存前检查编码结果可被读取，超限会拒绝保存并保留原内容。重置删除对应覆盖项，重启恢复启动基线。覆盖文件缺失或为空表示没有覆盖，其他读取与校验错误会阻止启动。手动修正前停止所有共享该文件的写入进程；若留有 overwrite.env.prepared，先将其内容恢复到覆盖文件再移除 prepared，committed 表示写入已经提交。备份时保留覆盖文件及 data/config 恢复材料。

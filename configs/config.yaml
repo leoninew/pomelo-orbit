@@ -72,6 +72,7 @@ settings:
   secret_keys:
     - database__url
     - jwt__secret_key
+    - mcp__access_token
     - turnstile__secret_key
     - llm__api_key
     - project_initialization__gateway__dns_api_token
@@ -83,8 +84,7 @@ llm:
   timeout: 60s
   max_tool_call_rounds: 64
 
-# Local Codex stdio MCP PAT. Set POMELO_ORBIT_MCP__ACCESS_TOKEN only in the
-# parent process environment; do not store a real token in this file.
+# Local stdio MCP PAT. Supply through startup ENV or overwrite.env.
 mcp:
   access_token: ""
 

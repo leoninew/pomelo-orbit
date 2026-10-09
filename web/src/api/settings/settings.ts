@@ -7,12 +7,12 @@ import request from '@/utils/request';
 
 export const settingApi = {
   getConfig(): Promise<SystemConfigResp> {
-    return request.get('/api/settings/config');
+    return request.get('/api/setting/config');
   },
   updateConfig(data: SystemConfigUpdateReq): Promise<SystemConfigResp> {
-    return request.put('/api/settings/config', data);
+    return request.put('/api/setting/config', data);
   },
   resetConfig(data: SystemConfigResetReq): Promise<SystemConfigResp> {
-    return request.delete('/api/settings/config', { data });
+    return request.delete('/api/setting/config', { data });
   },
 };

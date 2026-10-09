@@ -2,223 +2,156 @@ package settingssvc
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
-	"sort"
-	"strconv"
+	"reflect"
 	"strings"
+	"time"
 
 	settingsdto "github.com/leoninew/pomelo-orbit/internal/application/settings/dto"
 	settingsport "github.com/leoninew/pomelo-orbit/internal/application/settings/port"
+	"github.com/leoninew/pomelo-orbit/internal/common/envfile"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 )
 
-const envPrefix = "POMELO_ORBIT_"
-
 type Service struct {
-	definitions []settingsdto.Definition
-	envStore    settingsport.EnvStore
+	runtime  *config.Runtime
+	envStore settingsport.EnvStore
 }
 
-func New(definitions []settingsdto.Definition, envStore settingsport.EnvStore) Service {
-	return Service{definitions: definitions, envStore: envStore}
-}
-
-func Definitions(cfg config.Config) []settingsdto.Definition {
-	if cfg.Base != nil {
-		return settingDefinitions(*cfg.Base)
-	}
-	return settingDefinitions(cfg)
+func New(runtime *config.Runtime, envStore settingsport.EnvStore) Service {
+	return Service{runtime: runtime, envStore: envStore}
 }
 
 func (s Service) Config(ctx context.Context) (settingsdto.SystemConfig, error) {
-	envMap, err := s.envStore.Load(ctx)
+	values, err := s.envStore.Load(ctx)
 	if err != nil {
-		return settingsdto.SystemConfig{}, err
+		return settingsdto.SystemConfig{}, storeError(err)
 	}
-	definitions := s.definitions
-	definitionByKey := make(map[string]settingsdto.Definition, len(definitions))
-	orderedKeys := make([]string, 0, len(definitions))
-	for _, definition := range definitions {
-		definitionByKey[definition.Key] = definition
-		orderedKeys = append(orderedKeys, definition.Key)
-	}
-	seen := map[string]struct{}{}
-	for _, key := range orderedKeys {
-		seen[key] = struct{}{}
-	}
-	var extraKeys []string
-	for envKey := range envMap {
-		key, ok := settingKeyFromEnv(envKey)
-		if ok {
-			if _, exists := seen[key]; !exists {
-				extraKeys = append(extraKeys, key)
-			}
-		}
-	}
-	sort.Strings(extraKeys)
-	orderedKeys = append(orderedKeys, extraKeys...)
+	resolved, resolveErr := s.runtime.Resolve(values)
+	return s.describe(values, resolved, resolveErr), nil
+}
 
-	items := make([]settingsdto.ConfigItem, 0, len(orderedKeys))
-	for _, key := range orderedKeys {
-		definition, hasDefinition := definitionByKey[key]
-		envKey := settingEnvKey(key)
-		rawValue, overridden := envMap[envKey]
-		defaultValue := any("")
-		description := ""
-		secret := false
-		if hasDefinition {
-			defaultValue = definition.Default
-			description = settingDescription(definition.Description)
-			secret = definition.Secret
+func (s Service) Update(ctx context.Context, expectedRevision string, updates []settingsdto.Update, resetKeys []string) (settingsdto.SystemConfig, error) {
+	if expectedRevision == "" || len(updates)+len(resetKeys) == 0 {
+		return settingsdto.SystemConfig{}, apperror.New(apperror.KindValidation, "revision and configuration changes are required")
+	}
+	fields := make(map[string]config.Field)
+	for _, field := range config.Fields() {
+		fields[field.Key] = field
+	}
+	changes := make(map[string]string)
+	seen := make(map[string]bool)
+	for _, update := range updates {
+		field, ok := fields[update.Key]
+		if !ok || seen[update.Key] {
+			return settingsdto.SystemConfig{}, apperror.New(apperror.KindValidation, "unknown or repeated configuration key")
 		}
-		value := defaultValue
+		seen[update.Key] = true
+		value, err := field.Encode(update.Value)
+		if err != nil {
+			return settingsdto.SystemConfig{}, apperror.New(apperror.KindValidation, err.Error())
+		}
+		changes[field.EnvName] = value
+	}
+	var deletes []string
+	for _, key := range resetKeys {
+		field, ok := fields[key]
+		if !ok || seen[key] {
+			return settingsdto.SystemConfig{}, apperror.New(apperror.KindValidation, "unknown or repeated configuration key")
+		}
+		seen[key] = true
+		deletes = append(deletes, field.EnvName)
+	}
+	var response settingsdto.SystemConfig
+	_, err := s.envStore.Mutate(ctx, func(values map[string]string) error {
+		if revision(values) != expectedRevision {
+			return apperror.NewWithCode(apperror.KindConflict, "settings_revision_conflict", "Configuration changed; reload before saving")
+		}
+		for key, value := range changes {
+			values[key] = value
+		}
+		for _, key := range deletes {
+			delete(values, key)
+		}
+		resolved, err := s.runtime.Resolve(values)
+		if err != nil {
+			return apperror.New(apperror.KindValidation, err.Error())
+		}
+		response = s.describe(values, resolved, nil)
+		return nil
+	})
+	if err != nil {
+		return settingsdto.SystemConfig{}, storeError(err)
+	}
+	return response, nil
+}
+
+func (s Service) Reset(ctx context.Context, expectedRevision string, keys []string) (settingsdto.SystemConfig, error) {
+	return s.Update(ctx, expectedRevision, nil, keys)
+}
+
+func (s Service) describe(values map[string]string, next config.Resolved, nextErr error) settingsdto.SystemConfig {
+	effective, initial := s.runtime.Effective(), s.runtime.Initial()
+	secretKeys := make(map[string]bool)
+	for _, key := range effective.Settings.SecretKeys {
+		secretKeys[strings.TrimSpace(key)] = true
+	}
+	response := settingsdto.SystemConfig{Revision: revision(values)}
+	if nextErr != nil {
+		response.NextConfigError = nextErr.Error()
+		response.PendingRestart = true
+	}
+	for _, field := range config.Fields() {
+		raw, overridden := values[field.EnvName]
+		var override any
 		if overridden {
-			value = parseSettingValue(rawValue, defaultValue)
-		}
-		items = append(items, settingsdto.ConfigItem{Key: key, Value: value, Default: defaultValue, IsOverridden: overridden, Secret: secret, Description: description})
-	}
-	return settingsdto.SystemConfig{Items: items}, nil
-}
-
-func (s Service) Update(ctx context.Context, key string, value any) (settingsdto.SystemConfig, error) {
-	key = strings.TrimSpace(key)
-	if key == "" {
-		return settingsdto.SystemConfig{}, apperror.New(apperror.KindValidation, "key is required")
-	}
-	if err := s.envStore.Set(ctx, map[string]string{settingEnvKey(key): settingValueString(value)}); err != nil {
-		return settingsdto.SystemConfig{}, err
-	}
-	return s.Config(ctx)
-}
-
-func (s Service) Reset(ctx context.Context, keys []string) (settingsdto.SystemConfig, error) {
-	envKeys := make([]string, 0, len(keys))
-	for _, key := range keys {
-		key = strings.TrimSpace(key)
-		if key != "" {
-			envKey := settingEnvKey(key)
-			envKeys = append(envKeys, envKey)
-		}
-	}
-	if err := s.envStore.Delete(ctx, envKeys); err != nil {
-		return settingsdto.SystemConfig{}, err
-	}
-	return s.Config(ctx)
-}
-
-func settingDefinitions(cfg config.Config) []settingsdto.Definition {
-	secretKeys := map[string]struct{}{}
-	for _, key := range cfg.Settings.SecretKeys {
-		key = strings.TrimSpace(key)
-		if key != "" {
-			secretKeys[key] = struct{}{}
-		}
-	}
-	markSecret := func(definition settingsdto.Definition) settingsdto.Definition {
-		_, definition.Secret = secretKeys[definition.Key]
-		return definition
-	}
-	definitions := []settingsdto.Definition{
-		{Key: "server__host", Default: cfg.Server.Host, Description: "HTTP server bind host"},
-		{Key: "server__port", Default: cfg.Server.Port, Description: "HTTP server bind port"},
-		{Key: "logging__level", Default: cfg.Logging.Level, Description: "Application log level"},
-		{Key: "logging__file", Default: cfg.Logging.File, Description: "Backend log file path"},
-		{Key: "logging__max_size_mb", Default: cfg.Logging.MaxSizeMB, Description: "Maximum size of one log file in MB"},
-		{Key: "logging__max_backups", Default: cfg.Logging.MaxBackups, Description: "Maximum number of rotated log files"},
-		{Key: "logging__http__enabled", Default: cfg.Logging.HTTP.Enabled, Description: "Enable HTTP access logging"},
-		{Key: "logging__http__request_body_limit", Default: cfg.Logging.HTTP.RequestBodyLimit, Description: "Maximum HTTP request body bytes to log; 0 disables body logging"},
-		{Key: "logging__http__response_body_limit", Default: cfg.Logging.HTTP.ResponseBodyLimit, Description: "Maximum HTTP response body bytes to log; 0 disables body logging"},
-		{Key: "logging__http__skip_asset_enabled", Default: cfg.Logging.HTTP.SkipAssetEnabled, Description: "Skip successful HTTP access logs for /assets"},
-		{Key: "database__url", Default: cfg.Database.Url, Description: "Database connection URL"},
-		{Key: "jwt__secret_key", Default: cfg.Jwt.SecretKey, Description: "JWT signing secret"},
-		{Key: "project_initialization__environment__local_workspace_root", Default: cfg.ProjectInitialization.Environment.LocalWorkspaceRoot, Description: "Default local Environment workspace_root for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__image", Default: cfg.ProjectInitialization.Gateway.Image, Description: "Default Gateway image for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__rest_api_url", Default: cfg.ProjectInitialization.Gateway.RestApiUrl, Description: "Default Gateway REST URL for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__internal_domain", Default: cfg.ProjectInitialization.Gateway.InternalDomain, Description: "Default Gateway internal domain for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__external_domain", Default: cfg.ProjectInitialization.Gateway.ExternalDomain, Description: "Default Gateway external domain for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__rest_ready_timeout", Default: cfg.ProjectInitialization.Gateway.RestReadyTimeout.String(), Description: "Default Gateway REST readiness timeout for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__default_entrypoint", Default: cfg.ProjectInitialization.Gateway.DefaultEntrypoint, Description: "Default Gateway entrypoint for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__tls_mode", Default: cfg.ProjectInitialization.Gateway.TLSMode, Description: "Default Gateway TLS mode for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__acme_profile", Default: cfg.ProjectInitialization.Gateway.AcmeProfile, Description: "Default Gateway ACME profile for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__acme_email", Default: cfg.ProjectInitialization.Gateway.AcmeEmail, Description: "Default Gateway ACME email for the Project initialization Wizard"},
-		{Key: "project_initialization__gateway__dns_api_token", Default: cfg.ProjectInitialization.Gateway.DNSApiToken, Description: "Default Gateway DNS API token for the Project initialization Wizard"},
-		{Key: "turnstile__enabled", Default: cfg.Turnstile.Enabled, Description: "Enable Cloudflare Turnstile verification"},
-		{Key: "turnstile__site_key", Default: cfg.Turnstile.SiteKey, Description: "Cloudflare Turnstile site key"},
-		{Key: "turnstile__secret_key", Default: cfg.Turnstile.SecretKey, Description: "Cloudflare Turnstile secret key"},
-		{Key: "turnstile__verify_url", Default: cfg.Turnstile.VerifyUrl, Description: "Cloudflare Turnstile siteverify URL"},
-		{Key: "settings__secret_keys", Default: cfg.Settings.SecretKeys, Description: "Settings fields marked as secret"},
-		{Key: "pipeline_run__execution_timeout", Default: cfg.PipelineRun.ExecutionTimeout.String(), Description: "Maximum pipeline execution duration"},
-		{Key: "worker__id", Default: cfg.Worker.Id, Description: "Background worker Id"},
-		{Key: "worker__poll_interval", Default: cfg.Worker.PollInterval.String(), Description: "Background worker poll interval"},
-		{Key: "worker__lease_duration", Default: cfg.Worker.LeaseDuration.String(), Description: "Background task lease duration"},
-		{Key: "worker__max_attempts", Default: cfg.Worker.MaxAttempts, Description: "Attempts frozen into each new background task"},
-		{Key: "worker__concurrency", Default: cfg.Worker.Concurrency, Description: "Background worker concurrency"},
-		{Key: "llm__max_tool_call_rounds", Default: cfg.LLM.MaxToolCallRounds, Description: "Maximum LLM-to-MCP tool-call rounds per deployment dialogue turn"},
-	}
-	for index := range definitions {
-		definitions[index] = markSecret(definitions[index])
-	}
-	return definitions
-}
-
-func settingDescription(description string) string {
-	if description == "" {
-		return "Requires pomelo-orbit restart to take effect"
-	}
-	return description + " (requires pomelo-orbit restart to take effect)"
-}
-
-func settingEnvKey(key string) string {
-	return envPrefix + strings.ToUpper(key)
-}
-
-func settingKeyFromEnv(envKey string) (string, bool) {
-	if !strings.HasPrefix(envKey, envPrefix) {
-		return "", false
-	}
-	return strings.ToLower(strings.TrimPrefix(envKey, envPrefix)), true
-}
-
-func settingValueString(value any) string {
-	switch typed := value.(type) {
-	case bool:
-		return strconv.FormatBool(typed)
-	case float64:
-		if typed == float64(int64(typed)) {
-			return strconv.FormatInt(int64(typed), 10)
-		}
-		return strconv.FormatFloat(typed, 'f', -1, 64)
-	case string:
-		return typed
-	case []string:
-		return strings.Join(typed, ",")
-	default:
-		return fmt.Sprint(typed)
-	}
-}
-
-func parseSettingValue(raw string, defaultValue any) any {
-	switch defaultValue.(type) {
-	case bool:
-		return strings.EqualFold(raw, "true")
-	case int:
-		if parsed, err := strconv.Atoi(raw); err == nil {
-			return parsed
-		}
-	case []string:
-		parts := strings.Split(raw, ",")
-		values := make([]string, 0, len(parts))
-		for _, part := range parts {
-			part = strings.TrimSpace(part)
-			if part != "" {
-				values = append(values, part)
+			parsed, err := field.ParseEnv(raw)
+			if err != nil {
+				override = raw
+			} else if duration, ok := parsed.(time.Duration); ok {
+				override = duration.String()
+			} else {
+				override = parsed
 			}
 		}
-		return values
+		item := settingsdto.ConfigItem{
+			Key: field.Key, Type: field.Type, Description: field.Description,
+			Value: field.Value(effective), Default: next.Baseline[field.Key], OverrideValue: override,
+			IsOverridden: overridden, Secret: secretKeys[field.Key],
+			ValueSource: s.runtime.Source(field.Key), DefaultSource: next.BaselineSources[field.Key], NextSource: next.Sources[field.Key],
+			NextValueKnown: nextErr == nil, PendingRestart: nextErr != nil,
+		}
+		if nextErr == nil {
+			item.NextValue = field.Value(next.Config)
+			item.PendingRestart = !reflect.DeepEqual(field.Value(initial), item.NextValue)
+			if field.Key == "worker__id" && next.Config.Worker.Id == "" {
+				item.NextValue = nil
+				item.NextValueKnown = false
+				item.NextSource = "derived"
+			}
+		}
+		response.PendingRestart = response.PendingRestart || item.PendingRestart
+		response.Items = append(response.Items, item)
 	}
-	if strings.EqualFold(raw, "true") || strings.EqualFold(raw, "false") {
-		return strings.EqualFold(raw, "true")
+	return response
+}
+
+func revision(values map[string]string) string {
+	content, _ := envfile.Encode(values)
+	digest := sha256.Sum256(content)
+	return hex.EncodeToString(digest[:])
+}
+
+func storeError(err error) error {
+	if _, ok := apperror.As(err); ok {
+		return err
 	}
-	return raw
+	if errors.Is(err, envfile.ErrBusy) {
+		return apperror.WrapWithCode(apperror.KindUnavailable, "settings_store_busy", "Configuration file is busy", err)
+	}
+	return apperror.Wrap(apperror.KindInternal, fmt.Sprintf("Failed to access %s", config.OverrideFile), err)
 }

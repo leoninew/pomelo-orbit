@@ -10,6 +10,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+overwrite.env
 
 # pomelo-pw
 .pomelo-pw

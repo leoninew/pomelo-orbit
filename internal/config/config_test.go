@@ -114,8 +114,8 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.LLM.MaxToolCallRounds != 32 {
 		t.Fatalf("unexpected deployment dialogue tool-call rounds: %d", cfg.LLM.MaxToolCallRounds)
 	}
-	if cfg.EnvFilePath != filepath.Join(currentDir(t), ".env") {
-		t.Fatalf("unexpected env file path: %s", cfg.EnvFilePath)
+	if cfg.Runtime.OverridePath() != filepath.Join(currentDir(t), "overwrite.env") {
+		t.Fatalf("unexpected override file path: %s", cfg.Runtime.OverridePath())
 	}
 }
 
@@ -711,7 +711,7 @@ jwt:
 	}
 }
 
-func TestLoadConfigBaseIgnoresEnvOverrides(t *testing.T) {
+func TestLoadConfigBaselineIncludesStartupEnvironment(t *testing.T) {
 	setupDefaultConfig(t)
 	t.Setenv("POMELO_ORBIT_APP__ENV", "develop")
 	writeEnvConfig(t, "develop", `server:
@@ -734,17 +734,12 @@ database:
 	if cfg.Logging.Level != "DEBUG" {
 		t.Fatalf("expected full config logging level DEBUG, got %s", cfg.Logging.Level)
 	}
-	if cfg.Base == nil {
-		t.Fatal("expected base config to be populated")
+	baseline, err := cfg.Runtime.Resolve(nil)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if cfg.Base.Server.Port != 9000 {
-		t.Fatalf("expected base port 9000 from env config, got %d", cfg.Base.Server.Port)
-	}
-	if cfg.Base.Logging.Level != "info" {
-		t.Fatalf("expected base logging level info from defaults, got %s", cfg.Base.Logging.Level)
-	}
-	if cfg.Database.Driver() != DatabaseDriverPostgres || cfg.Base.Database.Url != "sqlite:///data/test.db" {
-		t.Fatalf("unexpected database configuration: current=%s base=%s", cfg.Database.Driver(), cfg.Base.Database.Url)
+	if baseline.Baseline["server__port"] != 8088 || baseline.Baseline["logging__level"] != "DEBUG" || baseline.Baseline["database__url"] != cfg.Database.Url {
+		t.Fatalf("baseline did not retain process ENV: %#v", baseline.Baseline)
 	}
 }
 

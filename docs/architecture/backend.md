@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-10-08
+最后修改时间: 2026-10-09 16:59:28
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -12,7 +12,7 @@ Doc role: living SoT
 | 语言 | Go（见 `go.mod`） |
 | HTTP | Gin |
 | API 契约 | Protobuf（`proto/orbit`）+ 生成代码 `internal/gen/proto`；HTTP 映射在 handler |
-| 配置 | Viper + 环境变量；启动校验（`internal/config`） |
+| 配置 | Viper + YAML + ENV；固定 overwrite.env 应用覆盖；启动校验（`internal/config`） |
 | DB | SQLite / MySQL / PostgreSQL；**golang-migrate** embed（`sql/migration`） |
 | SQL | **sqlc**（部分域）+ **sqlx**（CD 等仍用 sqlx 实现，以 `internal/repository/impl` 为准） |
 | 队列 | DB 后台任务 + 同进程 worker（单节点；API 与 worker 可同启） |
@@ -69,9 +69,13 @@ cmd/server, cmd/migrate
 
 ## 运行形态
 
+配置优先级为默认 YAML < profile YAML < 启动 dotenv < 启动进程 ENV < `<工作目录>/overwrite.env`。配置字段由 typed Config 的 mapstructure 标签自动发现，覆盖、设置页和 ENV 映射使用同一字段定义；不修改 OS ENV。HTTP/worker/MCP/migrate 均调用 config.Load，保存只写覆盖文件，各进程重启后分别生效。设置接口为 `/api/setting/config`，显示当前快照、启动基线、下次值及服务端待重启状态，批量更新和重置经过完整配置校验。
+
+覆盖文件保持 inode 原地写入，跨进程锁和 prepared/committed ENV 恢复记录位于 `<工作目录>/data/config`，启动与接口读取都先恢复中断事务。容器文件挂载及 data 目录必须持久化，见 Docker 与卷挂载指南。
+
 - `App.Serve`：普通迁移（含 seed）→ HTTP → **同进程** background worker（见 `internal/bootstrap/app.go`）。
 - `App.RunWorker`：普通迁移（含 seed）→ 可单独跑 worker。
-- `App.RunMCP`：本地 stdio MCP；工具发现无认证副作用，每次 `tools/call` 校验 `POMELO_ORBIT_MCP__ACCESS_TOKEN` 中的 MCP PAT，并固定 session actor。Grok 通过仓库 `.grok/config.toml` 启动该进程，Codex 通过 `.codex/config.toml`。它直连 application usecase，不暴露 HTTP `/mcp`，也不使用浏览器 grant、loopback callback、本地 token 文件或 Web JWT。
+- `App.RunMCP`：本地 stdio MCP；工具发现无认证副作用，每次 `tools/call` 校验统一配置加载后的 MCP PAT，并固定 session actor。Grok 通过仓库 `.grok/config.toml` 启动该进程，Codex 通过 `.codex/config.toml`。它直连 application usecase，不暴露 HTTP `/mcp`，也不使用浏览器 grant、loopback callback、本地 token 文件或 Web JWT。
 - Deployment Dialogue：HTTP 入站认证后的 actor 通过每 turn 的内存 MCP session 调用与 stdio 相同的 Core；不转发浏览器 Authorization。
 - 单节点挂载 Docker socket 执行 CI/CD 容器操作；不做 API→远程 worker 协议主路径。
 

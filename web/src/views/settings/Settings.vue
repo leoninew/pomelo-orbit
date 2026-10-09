@@ -9,12 +9,14 @@
       />
     </ToolbarRoot>
 
-    <!-- Restart Warning -->
-    <div v-if="needsRestart" class="app-tip border-amber-200 bg-amber-50">
+    <div v-if="config?.pending_restart" class="app-tip border-amber-200 bg-amber-50">
       <p class="text-sm text-amber-800">{{ t('settings.restartWarning') }}</p>
     </div>
+    <p v-if="config?.next_config_error" class="app-field-error" role="alert">
+      {{ config.next_config_error }}
+    </p>
+    <p v-if="submitError" class="app-field-error" role="alert">{{ submitError }}</p>
 
-    <!-- Config Table -->
     <div v-if="configLoading" class="app-surface">
       <AppLoadingState />
     </div>
@@ -44,7 +46,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in filteredConfig" :key="item.key">
+            <tr v-for="item in filteredConfig" :key="item.key" :data-config-key="item.key">
               <td
                 class="max-w-0 text-foreground"
                 :title="item.description ? `${item.key}: ${item.description}` : item.key"
@@ -61,34 +63,48 @@
                 </span>
               </td>
               <td class="max-w-0 text-muted-foreground">
-                <AppTruncatedText :text="displayConfigValue(item.default)" />
+                <SensitiveValue
+                  v-if="item.secret"
+                  :value="displayConfigValue(item.default)"
+                  :label="item.key"
+                  :show-label="t('settings.showValue')"
+                  :hide-label="t('settings.hideValue')"
+                />
+                <AppTruncatedText v-else :text="displayConfigValue(item.default)" />
               </td>
               <td class="max-w-0">
-                <!-- Editing Mode -->
-                <div v-if="editingState.key === item.key">
-                  <!-- Boolean -->
+                <div v-if="drafts[item.key]" class="space-y-2">
                   <RawValueSelect
-                    v-if="typeof item.default === 'boolean'"
-                    v-model="editingState.boolValue"
+                    v-if="item.type === 'boolean'"
+                    v-model="drafts[item.key]!.text"
                     :values="booleanValues"
+                    :disabled="operating"
+                    :aria-label="item.key"
                     width-class="w-28"
                   />
-                  <!-- Select -->
-                  <RawValueSelect
-                    v-else-if="selectOptions[item.key]"
-                    v-model="editingState.stringValue"
-                    :values="getSettingValues(item.key)"
-                    width-class="w-40"
+                  <textarea
+                    v-else-if="item.type === 'string_list'"
+                    v-model="drafts[item.key]!.text"
+                    class="app-input min-h-24 w-full"
+                    :aria-label="item.key"
+                    :disabled="operating"
                   />
-                  <!-- Text -->
                   <input
                     v-else
-                    v-model="editingState.stringValue"
-                    type="text"
-                    class="app-input h-9"
+                    :value="drafts[item.key]!.text"
+                    :type="item.type === 'integer' ? 'number' : item.secret ? 'password' : 'text'"
+                    step="1"
+                    class="app-input h-9 max-w-full"
+                    :class="{ 'app-input-error': fieldErrors[item.key] }"
+                    :aria-label="item.key"
+                    :aria-invalid="!!fieldErrors[item.key]"
+                    :disabled="operating"
+                    @input="updateText(item.key, $event)"
                   />
+                  <p v-if="fieldErrors[item.key]" class="app-field-error" role="alert">
+                    {{ fieldErrors[item.key] }}
+                  </p>
                 </div>
-                <!-- Display Mode -->
                 <div
                   v-else
                   class="min-w-0"
@@ -96,21 +112,38 @@
                     item.is_overridden ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
                   "
                 >
-                  <AppTruncatedText :text="displayConfigValue(item.value)" />
+                  <SensitiveValue
+                    v-if="item.secret"
+                    :value="displayConfigValue(item.value)"
+                    :label="item.key"
+                    :show-label="t('settings.showValue')"
+                    :hide-label="t('settings.hideValue')"
+                  />
+                  <AppTruncatedText v-else :text="displayConfigValue(item.value)" />
+                  <p v-if="resetKeys.has(item.key)" class="mt-1 text-xs text-amber-700">
+                    {{ t('settings.resetPending') }}
+                  </p>
                 </div>
               </td>
               <td v-if="canWriteSettings" class="whitespace-nowrap">
-                <div v-if="editingState.key === item.key" class="flex gap-2">
-                  <button :disabled="operating" class="app-link" @click="handleSave(item)">
-                    {{ t('common.save') }}
+                <div v-if="drafts[item.key] || resetKeys.has(item.key)" class="flex gap-2">
+                  <button :disabled="operating" class="app-link" @click="handleSave">
+                    {{ changeCount > 1 ? t('settings.saveAll') : t('common.save') }}
                   </button>
-                  <button class="text-muted-foreground hover:text-foreground" @click="cancelEdit">
+                  <button
+                    :disabled="operating"
+                    class="text-muted-foreground hover:text-foreground"
+                    @click="cancelEdit(item.key)"
+                  >
                     {{ t('common.cancel') }}
                   </button>
                 </div>
                 <div v-else class="flex gap-2">
-                  <button class="app-link" @click="startEdit(item)">{{ t('common.edit') }}</button>
+                  <button :disabled="operating" class="app-link" @click="startEdit(item)">
+                    {{ t('common.edit') }}
+                  </button>
                   <button
+                    :disabled="operating || !item.is_overridden"
                     class="text-muted-foreground hover:text-foreground"
                     @click="confirmReset(item.key)"
                   >
@@ -130,14 +163,11 @@
       width-class="w-[min(400px,calc(100vw-32px))]"
     >
       <p class="text-sm text-muted-foreground">{{ t('settings.resetDialog.description') }}</p>
-      <p v-if="resetSubmitError" class="app-field-error mt-3" role="alert">
-        {{ resetSubmitError }}
-      </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
           @cancel="isResetDialogOpen = false"
-          @confirm="handleReset"
+          @confirm="stageReset"
         />
       </template>
     </AppDialog>
@@ -156,19 +186,33 @@
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
   import SearchControl from '@/components/SearchControl.vue';
   import RawValueSelect from '@/components/RawValueSelect.vue';
+  import SensitiveValue from '@/components/SensitiveValue.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { PERMISSIONS } from '@/constants/permissions';
   import { useAuthStore } from '@/stores/auth';
-  import type { ConfigItemResp, SystemConfigResp } from '@/gen/proto/orbit/v1/settings/settings';
+  import type {
+    ConfigItemResp,
+    ConfigUpdateItem,
+    SystemConfigResp,
+  } from '@/gen/proto/orbit/v1/settings/settings';
 
+  interface Draft {
+    text: string;
+  }
   const { t } = useI18n();
   const authStore = useAuthStore();
   const toast = useToast();
-
   const config = ref<SystemConfigResp>();
   const searchText = ref('');
   const appliedSearch = ref('');
+  const drafts = ref<Record<string, Draft>>({});
+  const resetKeys = ref(new Set<string>());
+  const fieldErrors = ref<Record<string, string>>({});
+  const submitError = ref('');
+  const isResetDialogOpen = ref(false);
+  const pendingResetKey = ref('');
+  const booleanValues = ['true', 'false'];
   const {
     status: configStatus,
     error: configError,
@@ -176,56 +220,26 @@
     execute,
   } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
-  const needsRestart = ref(false);
   const canWriteSettings = computed(() => authStore.hasPermission(PERMISSIONS.SETTING_WRITE));
-
+  const changeCount = computed(() => Object.keys(drafts.value).length + resetKeys.value.size);
   const filteredConfig = computed(() => {
-    if (!config.value?.items) {
-      return [];
-    }
-    if (!appliedSearch.value.trim()) {
-      return config.value.items;
-    }
-    const search = appliedSearch.value.toLowerCase();
-    return config.value.items.filter(
+    const search = appliedSearch.value.trim().toLowerCase();
+    return (config.value?.items || []).filter(
       (item) =>
-        item.key.toLowerCase().includes(search) || item.description?.toLowerCase().includes(search)
+        !search ||
+        item.key.toLowerCase().includes(search) ||
+        item.description.toLowerCase().includes(search)
     );
   });
 
-  const selectOptions: Record<string, string[]> = {
-    cert__letsencrypt__challenge: ['http', 'dns'],
-  };
-  const booleanValues = ['true', 'false'];
-
-  interface EditingState {
-    key: string | null;
-    stringValue: string;
-    boolValue: string;
-  }
-
-  function createEditingState(): EditingState {
-    return {
-      key: null,
-      stringValue: '',
-      boolValue: 'false',
-    };
-  }
-
-  const editingState = ref<EditingState>(createEditingState());
-
-  function getSettingValues(key: string) {
-    return selectOptions[key];
-  }
-
   function displayConfigValue(value: unknown) {
-    if (typeof value === 'boolean') {
-      return value ? 'true' : 'false';
+    if (value === null || value === undefined) {
+      return t('settings.unknown');
     }
-    if (value === null || value === undefined || value === '') {
-      return '-';
+    if (Array.isArray(value)) {
+      return JSON.stringify(value);
     }
-    return String(value);
+    return value === '' ? '""' : String(value);
   }
 
   async function fetchConfig() {
@@ -240,75 +254,93 @@
 
   function handleSearch() {
     appliedSearch.value = searchText.value;
-    void fetchConfig();
   }
 
-  function startEdit(record: ConfigItemResp) {
-    if (!canWriteSettings.value) {
+  function startEdit(item: ConfigItemResp) {
+    if (!canWriteSettings.value || operating.value) {
       return;
     }
-    const boolValue = record.value ?? record.default;
-    editingState.value = {
-      key: record.key,
-      stringValue: typeof record.default === 'boolean' ? '' : String(record.value ?? ''),
-      boolValue: typeof boolValue === 'boolean' ? String(boolValue) : 'false',
+    const value = item.is_overridden ? item.override_value : (item.default ?? item.value);
+    drafts.value[item.key] = {
+      text: Array.isArray(value) ? value.join('\n') : String(value ?? ''),
     };
+    submitError.value = '';
   }
 
-  function cancelEdit() {
-    editingState.value = createEditingState();
+  function cancelEdit(key: string) {
+    delete drafts.value[key];
+    resetKeys.value.delete(key);
+    delete fieldErrors.value[key];
+    submitError.value = '';
   }
 
-  async function handleSave(record: ConfigItemResp) {
-    if (!canWriteSettings.value) {
-      return;
+  function updateText(key: string, event: Event) {
+    const draft = drafts.value[key];
+    if (draft) {
+      draft.text = (event.target as HTMLInputElement).value;
     }
-    const currentEditing = editingState.value;
-    try {
-      await executeOp(async () => {
-        const value =
-          typeof record.default === 'boolean'
-            ? currentEditing.boolValue === 'true'
-            : currentEditing.stringValue;
-        config.value = await settingApi.updateConfig({ key: record.key, value });
-        needsRestart.value = true;
-        cancelEdit();
-        toast.warning(t('settings.saveSuccess'));
-      });
-    } catch {
-      toast.error(t('settings.saveFailed'));
-    }
+    delete fieldErrors.value[key];
   }
-
-  const isResetDialogOpen = ref(false);
-  const pendingResetKey = ref('');
-  const resetSubmitError = ref('');
 
   function confirmReset(key: string) {
-    if (!canWriteSettings.value) {
+    if (!canWriteSettings.value || operating.value) {
       return;
     }
     pendingResetKey.value = key;
-    resetSubmitError.value = '';
     isResetDialogOpen.value = true;
   }
 
-  async function handleReset() {
-    if (!canWriteSettings.value) {
+  function stageReset() {
+    resetKeys.value.add(pendingResetKey.value);
+    delete drafts.value[pendingResetKey.value];
+    delete fieldErrors.value[pendingResetKey.value];
+    isResetDialogOpen.value = false;
+  }
+
+  async function handleSave() {
+    if (!canWriteSettings.value || !config.value || !changeCount.value || operating.value) {
       return;
     }
-    resetSubmitError.value = '';
+    fieldErrors.value = {};
+    submitError.value = '';
+    const updates: ConfigUpdateItem[] = [];
+    for (const item of config.value.items) {
+      const draft = drafts.value[item.key];
+      if (!draft) {
+        continue;
+      }
+      let value: unknown = draft.text;
+      if (item.type === 'boolean') {
+        value = draft.text === 'true';
+      } else if (item.type === 'integer') {
+        const number = Number(draft.text);
+        if (!draft.text.trim() || !Number.isSafeInteger(number)) {
+          fieldErrors.value[item.key] = t('settings.integerRequired');
+          continue;
+        }
+        value = number;
+      } else if (item.type === 'string_list') {
+        value = draft.text === '' ? [] : draft.text.split('\n');
+      }
+      updates.push({ key: item.key, value });
+    }
+    if (Object.keys(fieldErrors.value).length) {
+      return;
+    }
+    const request = { revision: config.value.revision, updates, reset_keys: [...resetKeys.value] };
     try {
       await executeOp(async () => {
-        config.value = await settingApi.resetConfig({
-          keys: [pendingResetKey.value],
-        });
-        needsRestart.value = true;
-        isResetDialogOpen.value = false;
-        toast.warning(t('settings.resetSuccess'));
+        config.value = await settingApi.updateConfig(request);
+        drafts.value = {};
+        resetKeys.value = new Set();
+        if (config.value.pending_restart) {
+          toast.warning(t('settings.saveSuccess'));
+        } else {
+          toast.success(t('settings.saved'));
+        }
       });
-    } catch {
-      resetSubmitError.value = t('settings.resetFailed');
+    } catch (error) {
+      submitError.value = error instanceof Error ? error.message : t('settings.saveFailed');
     }
   }
 

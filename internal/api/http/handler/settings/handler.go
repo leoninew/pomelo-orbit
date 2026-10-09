@@ -45,7 +45,7 @@ func (h Handler) UpdateConfig(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	resp, err := h.service.Update(c.Request.Context(), req.Key, configUpdateValue(&req))
+	resp, err := h.service.Update(c.Request.Context(), req.Revision, configUpdates(&req), req.ResetKeys)
 	if err != nil {
 		transport.WriteError(c, err)
 		return
@@ -63,7 +63,7 @@ func (h Handler) ResetConfig(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	resp, err := h.service.Reset(c.Request.Context(), req.Keys)
+	resp, err := h.service.Reset(c.Request.Context(), req.Revision, req.Keys)
 	if err != nil {
 		transport.WriteError(c, err)
 		return

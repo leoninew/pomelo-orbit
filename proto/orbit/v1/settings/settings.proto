@@ -12,17 +12,37 @@ message ConfigItemResp {
   bool is_overridden = 4;
   bool secret = 5;
   string description = 6;
+  google.protobuf.Value override_value = 7;
+  google.protobuf.Value next_value = 8;
+  string type = 9;
+  bool pending_restart = 10;
+  string value_source = 11;
+  string default_source = 12;
+  string next_source = 13;
+  bool next_value_known = 14;
 }
 
 message SystemConfigResp {
   repeated ConfigItemResp items = 1;
+  string revision = 2;
+  bool pending_restart = 3;
+  string next_config_error = 4;
 }
 
-message SystemConfigUpdateReq {
+message ConfigUpdateItem {
   string key = 1;
   google.protobuf.Value value = 2;
 }
 
+message SystemConfigUpdateReq {
+  reserved 1, 2;
+  reserved "key", "value";
+  string revision = 3;
+  repeated ConfigUpdateItem updates = 4;
+  repeated string reset_keys = 5;
+}
+
 message SystemConfigResetReq {
   repeated string keys = 1;
+  string revision = 2;
 }

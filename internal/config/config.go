@@ -14,7 +14,6 @@ import (
 	"time"
 
 	mapstructure "github.com/go-viper/mapstructure/v2"
-	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 
 	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
@@ -47,8 +46,7 @@ type Config struct {
 	Settings              SettingsConfig              `mapstructure:"settings" yaml:"settings"`
 	LLM                   LLMConfig                   `mapstructure:"llm" yaml:"llm"`
 	MCP                   MCPConfig                   `mapstructure:"mcp" yaml:"mcp"`
-	EnvFilePath           string                      `mapstructure:"-" yaml:"-"`
-	Base                  *Config                     `mapstructure:"-" yaml:"-"`
+	Runtime               *Runtime                    `mapstructure:"-" yaml:"-"`
 }
 
 type AppConfig struct {
@@ -218,100 +216,12 @@ type LLMConfig struct {
 }
 
 // MCPConfig contains the credential supplied to the local stdio MCP process.
-// It is intentionally not exposed as a writable system setting.
 type MCPConfig struct {
 	AccessToken string `mapstructure:"access_token" yaml:"access_token"`
 }
 
 func Load() (Config, error) {
-	envName := strings.TrimSpace(os.Getenv("POMELO_ORBIT_APP__ENV"))
-	envPath, err := envFilePath(envName)
-	if err != nil {
-		return Config{}, err
-	}
-	if err := loadEnvFile(envPath); err != nil {
-		return Config{}, err
-	}
-
-	loader := newLoader()
-	loader.SetConfigFile(DefaultConfigFile)
-	if err := loader.ReadInConfig(); err != nil {
-		return Config{}, fmt.Errorf("read base config: %w", err)
-	}
-
-	if envName != "" {
-		loader.SetConfigFile(EnvConfigFile(envName))
-		if err := loader.MergeInConfig(); err != nil && !isOptionalConfigMissing(err) {
-			return Config{}, fmt.Errorf("read env config: %w", err)
-		}
-	}
-
-	var cfg Config
-	if err := loader.Unmarshal(&cfg, configDecodeHook()); err != nil {
-		return Config{}, fmt.Errorf("parse config: %w", err)
-	}
-
-	normalizeServerRuntimeOriginConfig(&cfg.Server)
-	normalizeLogHTTPConfig(&cfg.Logging.HTTP)
-	if err := normalizeLoggingConfig(&cfg.Logging, cfg.OrbitRoot()); err != nil {
-		return Config{}, err
-	}
-	if err := normalizeWorkspaceConfig(&cfg.Workspace, cfg.OrbitRoot()); err != nil {
-		return Config{}, err
-	}
-	if err := normalizeProjectInitializationConfig(&cfg.ProjectInitialization); err != nil {
-		return Config{}, err
-	}
-	if cfg.Worker.Id == "" {
-		hostname, err := os.Hostname()
-		if err != nil {
-			return Config{}, fmt.Errorf("get hostname: %w", err)
-		}
-		cfg.Worker.Id = fmt.Sprintf("%s-%d", hostname, os.Getpid())
-	}
-
-	cfg.EnvFilePath = envPath
-	if err := cfg.Validate(); err != nil {
-		return Config{}, err
-	}
-
-	base, err := loadBaseConfig(envName)
-	if err != nil {
-		return Config{}, err
-	}
-	cfg.Base = &base
-	return cfg, nil
-}
-
-func loadBaseConfig(envName string) (Config, error) {
-	loader := viper.New()
-	loader.SetConfigType("yaml")
-	loader.SetConfigFile(DefaultConfigFile)
-	if err := loader.ReadInConfig(); err != nil {
-		return Config{}, fmt.Errorf("read default config: %w", err)
-	}
-	if envName != "" {
-		loader.SetConfigFile(EnvConfigFile(envName))
-		if err := loader.MergeInConfig(); err != nil && !isOptionalConfigMissing(err) {
-			return Config{}, fmt.Errorf("read env config: %w", err)
-		}
-	}
-	var base Config
-	if err := loader.Unmarshal(&base, configDecodeHook()); err != nil {
-		return Config{}, fmt.Errorf("parse default config: %w", err)
-	}
-	normalizeServerRuntimeOriginConfig(&base.Server)
-	normalizeLogHTTPConfig(&base.Logging.HTTP)
-	if err := normalizeLoggingConfig(&base.Logging, base.OrbitRoot()); err != nil {
-		return Config{}, err
-	}
-	if err := normalizeWorkspaceConfig(&base.Workspace, base.OrbitRoot()); err != nil {
-		return Config{}, err
-	}
-	if err := normalizeProjectInitializationConfig(&base.ProjectInitialization); err != nil {
-		return Config{}, err
-	}
-	return base, nil
+	return loadRuntime()
 }
 
 func isOptionalConfigMissing(err error) bool {
@@ -319,108 +229,11 @@ func isOptionalConfigMissing(err error) bool {
 	return errors.As(err, &notFound) || errors.Is(err, os.ErrNotExist)
 }
 
-func envFilePath(envName string) (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("get working directory: %w", err)
-	}
-	if envName == "" {
-		return filepath.Join(cwd, ".env"), nil
-	}
-	return filepath.Join(cwd, fmt.Sprintf(".env.%s", envName)), nil
-}
-
-func loadEnvFile(path string) error {
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return fmt.Errorf("stat env file: %w", err)
-	}
-	if err := godotenv.Load(path); err != nil {
-		return fmt.Errorf("read env file: %w", err)
-	}
-	return nil
-}
-
-func newLoader() *viper.Viper {
-	loader := viper.New()
-	loader.SetConfigType("yaml")
-	bindEnv(loader)
-	return loader
-}
-
 func configDecodeHook() viper.DecoderConfigOption {
 	return viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 		mapstructure.StringToTimeDurationHookFunc(),
 		mapstructure.StringToSliceHookFunc(","),
 	))
-}
-
-func bindEnv(loader *viper.Viper) {
-	keys := []string{
-		"app.name",
-		"app.version",
-		"app.env",
-		"app.debug",
-		"server.host",
-		"server.port",
-		"server.cors_allowed_origins",
-		"server.api_path_prefixes",
-		"server.public_url",
-		"logging.level",
-		"logging.file",
-		"logging.deployment_root",
-		"logging.max_size_mb",
-		"logging.max_backups",
-		"logging.http.enabled",
-		"logging.http.request_body_limit",
-		"logging.http.response_body_limit",
-		"logging.http.skip_asset_enabled",
-		"database.url",
-		"workspace.root",
-		"route.gateway_lock_timeout",
-		"route.state_load_timeout",
-		"route.file_publication_timeout",
-		"route.api_request_timeout",
-		"route.reload_timeout",
-		"route.configuration_match_timeout",
-		"route.recovery_timeout",
-		"pipeline_run.execution_timeout",
-		"orbit.root",
-		"jwt.secret_key",
-		"project_initialization.environment.local_workspace_root",
-		"project_initialization.gateway.image",
-		"project_initialization.gateway.rest_api_url",
-		"project_initialization.gateway.internal_domain",
-		"project_initialization.gateway.external_domain",
-		"project_initialization.gateway.rest_ready_timeout",
-		"project_initialization.gateway.default_entrypoint",
-		"project_initialization.gateway.tls_mode",
-		"project_initialization.gateway.acme_profile",
-		"project_initialization.gateway.acme_email",
-		"project_initialization.gateway.dns_api_token",
-		"turnstile.enabled",
-		"turnstile.site_key",
-		"turnstile.secret_key",
-		"turnstile.verify_url",
-		"worker.id",
-		"worker.poll_interval",
-		"worker.lease_duration",
-		"worker.max_attempts",
-		"worker.concurrency",
-		"settings.secret_keys",
-		"llm.base_url",
-		"llm.api_key",
-		"llm.model",
-		"llm.timeout",
-		"llm.max_tool_call_rounds",
-		"mcp.access_token",
-	}
-	for _, key := range keys {
-		envName := "POMELO_ORBIT_" + strings.ToUpper(strings.ReplaceAll(key, ".", "__"))
-		_ = loader.BindEnv(key, envName)
-	}
 }
 
 func (c Config) Validate() error {

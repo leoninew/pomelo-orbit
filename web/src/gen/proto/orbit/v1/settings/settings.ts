@@ -15,17 +15,35 @@ export interface ConfigItemResp {
   is_overridden: boolean;
   secret: boolean;
   description: string;
+  override_value: any | undefined;
+  next_value: any | undefined;
+  type: string;
+  pending_restart: boolean;
+  value_source: string;
+  default_source: string;
+  next_source: string;
+  next_value_known: boolean;
 }
 
 export interface SystemConfigResp {
   items: ConfigItemResp[];
+  revision: string;
+  pending_restart: boolean;
+  next_config_error: string;
 }
 
-export interface SystemConfigUpdateReq {
+export interface ConfigUpdateItem {
   key: string;
   value: any | undefined;
 }
 
+export interface SystemConfigUpdateReq {
+  revision: string;
+  updates: ConfigUpdateItem[];
+  reset_keys: string[];
+}
+
 export interface SystemConfigResetReq {
   keys: string[];
+  revision: string;
 }

@@ -1,5 +1,5 @@
 # Pomelo Orbit 工作目录与挂载
-最后修改时间: 2026-10-06 16:22:19
+最后修改时间: 2026-10-09 17:19:54
 
 Doc role: living guide。与代码冲突时以代码为准。
 
@@ -20,6 +20,14 @@ Service 目录默认候选为 `<Environment.workspace_root>/deployment/<service-
 除 `named_volume` 外，Version mount source 必须是绝对路径或显式 `./` 相对路径。部署渲染将 `./` source 解析到 target Service 目录，并由 local filesystem 或 SFTP materialize 受控文件或目录；absolute source 保持目标宿主机路径语义。`ignore_if_exists` 只影响受控文件首次写入。
 
 Orbit 运行在容器内时，`workspace.root`（及其 `pipeline/` 子目录）与 `logging.deployment_root` 需要满足对应的 host path 映射。local Environment 保存的 `workspace_root` 必须同时对控制面可写、对 Docker daemon 可见；Probe 验证工作区及 Docker/Compose 可用性，具体服务的目录可写和挂载映射在部署时检查。SSH Environment 不使用本地 path resolver。
+
+## Orbit 配置覆盖文件
+
+原生 Windows/Linux 以启动工作目录定位 `configs/`、启动 dotenv、`overwrite.env` 和 `data/config`，不是以可执行文件位置定位。Windows 服务、Linux systemd 或启动脚本必须明确工作目录；Windows 运行账号需要覆盖文件的读写权限及 `data/config` 的创建、修改权限，Linux 文件与目录归运行账号所有，覆盖文件建议 `0600`、恢复目录建议 `0700`。覆盖文件可先不创建，设置页首次保存时创建；启动读取仍需要创建锁文件的目录权限。修改启动 dotenv 或进程 ENV 后重启，设置页修改只写覆盖文件，保存与重置同样在重启后生效。
+
+Orbit 固定读取启动工作目录下的 `overwrite.env`，当前镜像位置为 `/app/overwrite.env`。复用通用 `controlled_file`：source `./data/config/overwrite.env`，target `/app/overwrite.env`，content 空，mode `0600`，read_only=false，ignore_if_exists=true。local 与 SSH 实际 writer 在文件已存在时直接跳过，后续部署保留应用写入内容。
+
+同时将同一持久化 data 目录普通挂载到 `/app/data`，运行账号对文件和 `/app/data/config` 可写。文件锁和写入恢复记录存在该目录；只有一个覆盖文件挂载而没有持久化恢复目录不能提供本方案的中断恢复保证。应用保存保持目标文件 inode，避免单文件 bind mount 的 rename 冲突。设置保存后重启 Orbit 读取，不需要后端尚未实现的 Compose env_file。
 
 ## Traefik 证书
 

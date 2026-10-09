@@ -265,6 +265,7 @@ type EnvironmentResp struct {
 	CreatedAt            string                      `protobuf:"bytes,13,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt            string                      `protobuf:"bytes,14,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	Local                *EnvironmentLocalTargetResp `protobuf:"bytes,15,opt,name=local,proto3" json:"local,omitempty"`
+	TargetMayBeShared    bool                        `protobuf:"varint,16,opt,name=target_may_be_shared,json=targetMayBeShared,proto3" json:"target_may_be_shared,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -395,6 +396,13 @@ func (x *EnvironmentResp) GetLocal() *EnvironmentLocalTargetResp {
 		return x.Local
 	}
 	return nil
+}
+
+func (x *EnvironmentResp) GetTargetMayBeShared() bool {
+	if x != nil {
+		return x.TargetMayBeShared
+	}
+	return false
 }
 
 type ProjectEnvironmentUpdateReq struct {
@@ -619,7 +627,7 @@ const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\x12\x1a\n" +
 	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x12\n" +
 	"\x04host\x18\x03 \x01(\tR\x04host\x12\x1a\n" +
-	"\busername\x18\x04 \x01(\tR\busername\"\xde\x05\n" +
+	"\busername\x18\x04 \x01(\tR\busername\"\x8f\x06\n" +
 	"\x0fEnvironmentResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -639,7 +647,8 @@ const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"created_at\x18\r \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"updated_at\x18\x0e \x01(\tR\tupdatedAt\x12F\n" +
-	"\x05local\x18\x0f \x01(\v20.orbit.v1.environment.EnvironmentLocalTargetRespR\x05localB\x16\n" +
+	"\x05local\x18\x0f \x01(\v20.orbit.v1.environment.EnvironmentLocalTargetRespR\x05local\x12/\n" +
+	"\x14target_may_be_shared\x18\x10 \x01(\bR\x11targetMayBeSharedB\x16\n" +
 	"\x14_last_probe_revisionB\x14\n" +
 	"\x12_last_probe_statusB\x10\n" +
 	"\x0e_last_probe_atB\x18\n" +

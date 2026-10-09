@@ -78,9 +78,6 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 	if err := validateEnvironment(item, s.localDisplay.Platform, false, false); err != nil {
 		return environmentdto.View{}, err
 	}
-	if err := s.ensureTargetIsAvailable(ctx, project.Id, item); err != nil {
-		return environmentdto.View{}, err
-	}
 	if !creating && environmentTargetChanged(previous, item) {
 		if item.SSH != nil && environmentIdentityChanged(previous, item) {
 			item.SSH.HostKeyFingerprint = ""
@@ -91,7 +88,7 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 		if err := s.environments.CreateEnvironment(ctx, item); err != nil {
 			return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to create project environment", err)
 		}
-		return s.toView(item), nil
+		return s.viewWithTargetWarning(ctx, item)
 	}
 	if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
@@ -100,7 +97,7 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 	if err != nil {
 		return environmentdto.View{}, err
 	}
-	return s.toView(item), nil
+	return s.viewWithTargetWarning(ctx, item)
 }
 
 func (s Service) EnvironmentForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error) {
@@ -111,7 +108,7 @@ func (s Service) EnvironmentForUser(ctx context.Context, userId string, projectI
 	if err != nil {
 		return environmentdto.View{}, err
 	}
-	return s.toView(item), nil
+	return s.viewWithTargetWarning(ctx, item)
 }
 
 func (s Service) UpdateForUser(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error) {
@@ -142,7 +139,7 @@ func (s Service) UpdateForUser(ctx context.Context, userId string, projectId str
 	if err != nil {
 		return environmentdto.View{}, err
 	}
-	return s.toView(item), nil
+	return s.viewWithTargetWarning(ctx, item)
 }
 
 func (s Service) environmentForProject(ctx context.Context, projectId string) (model.Environment, error) {

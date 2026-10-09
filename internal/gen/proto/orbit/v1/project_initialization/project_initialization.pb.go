@@ -190,6 +190,7 @@ type ProjectInitializationEnvironmentSnapshot struct {
 	LastProbeDiagnostic *string                                 `protobuf:"bytes,9,opt,name=last_probe_diagnostic,json=lastProbeDiagnostic,proto3,oneof" json:"last_probe_diagnostic,omitempty"`
 	Local               *environment.EnvironmentLocalTargetResp `protobuf:"bytes,10,opt,name=local,proto3" json:"local,omitempty"`
 	Ssh                 *environment.EnvironmentSSHTargetResp   `protobuf:"bytes,11,opt,name=ssh,proto3" json:"ssh,omitempty"`
+	TargetMayBeShared   bool                                    `protobuf:"varint,12,opt,name=target_may_be_shared,json=targetMayBeShared,proto3" json:"target_may_be_shared,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -292,6 +293,13 @@ func (x *ProjectInitializationEnvironmentSnapshot) GetSsh() *environment.Environ
 		return x.Ssh
 	}
 	return nil
+}
+
+func (x *ProjectInitializationEnvironmentSnapshot) GetTargetMayBeShared() bool {
+	if x != nil {
+		return x.TargetMayBeShared
+	}
+	return false
 }
 
 type ProjectInitializationGatewaySnapshot struct {
@@ -722,7 +730,7 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"local_host\x18\f \x01(\tR\tlocalHost\x12%\n" +
 	"\x0elocal_username\x18\r \x01(\tR\rlocalUsername\x12)\n" +
 	"\x11rest_api_host_url\x18\x0e \x01(\tR\x0erestApiHostUrl\x12'\n" +
-	"\x0fexternal_domain\x18\x0f \x01(\tR\x0eexternalDomain\"\xd7\x04\n" +
+	"\x0fexternal_domain\x18\x0f \x01(\tR\x0eexternalDomain\"\x88\x05\n" +
 	"(ProjectInitializationEnvironmentSnapshot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vtarget_type\x18\x02 \x01(\tR\n" +
@@ -735,7 +743,8 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x15last_probe_diagnostic\x18\t \x01(\tH\x03R\x13lastProbeDiagnostic\x88\x01\x01\x12F\n" +
 	"\x05local\x18\n" +
 	" \x01(\v20.orbit.v1.environment.EnvironmentLocalTargetRespR\x05local\x12@\n" +
-	"\x03ssh\x18\v \x01(\v2..orbit.v1.environment.EnvironmentSSHTargetRespR\x03sshB\x16\n" +
+	"\x03ssh\x18\v \x01(\v2..orbit.v1.environment.EnvironmentSSHTargetRespR\x03ssh\x12/\n" +
+	"\x14target_may_be_shared\x18\f \x01(\bR\x11targetMayBeSharedB\x16\n" +
 	"\x14_last_probe_revisionB\x14\n" +
 	"\x12_last_probe_statusB\x10\n" +
 	"\x0e_last_probe_atB\x18\n" +

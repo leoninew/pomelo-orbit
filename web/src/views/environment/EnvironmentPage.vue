@@ -23,7 +23,7 @@
             <KeyRound class="size-4" aria-hidden="true" />
             {{ t('project.initialization.sshCommand') }}
           </button>
-          <button v-if="isSSH" class="app-button h-9 px-3" @click="showTerminal = true">
+          <button class="app-button h-9 px-3" @click="showTerminal = true">
             <SquareTerminal class="size-4" aria-hidden="true" />
             {{ t('project.environment.terminal.title') }}
           </button>
@@ -195,12 +195,13 @@
       :error="sshCommandError"
     />
     <EnvironmentTerminalDrawer
-      v-if="isSSH && environment?.ssh && projectStore.activeProjectId"
-      :key="`${projectStore.activeProjectId}:${environment.target_revision}`"
+      v-if="environment && projectStore.activeProjectId"
+      :key="`${projectStore.activeProjectId}:${environment.id}:${environment.target_type}:${environment.target_revision}`"
       v-model:open="showTerminal"
       :project-id="projectStore.activeProjectId"
-      :host="environment.ssh.host"
-      :username="environment.ssh.username"
+      :target-type="environment.target_type"
+      :host="(isLocal ? environment.local?.host : environment.ssh?.host) || ''"
+      :username="(isLocal ? environment.local?.username : environment.ssh?.username) || ''"
     />
   </div>
 </template>
@@ -362,6 +363,9 @@
         throw new Error(t('project.initialization.sshCommandFailed'));
       }
       environment.value = result.environment;
+      if (result.environment.target_may_be_shared) {
+        toast.warning(t('project.environment.targetMayBeSharedWarning'), 8000);
+      }
       if (editing) {
         isEditDialogOpen.value = false;
       }
@@ -404,7 +408,11 @@
         showSshCommandDialog.value = false;
         sshCommand.value = '';
         sshCommandError.value = '';
-        toast.success(t('project.environment.updated'));
+        if (environment.value.target_may_be_shared) {
+          toast.warning(t('project.environment.targetMayBeSharedWarning'), 8000);
+        } else {
+          toast.success(t('project.environment.updated'));
+        }
         isEditDialogOpen.value = false;
       });
     } catch (error: unknown) {

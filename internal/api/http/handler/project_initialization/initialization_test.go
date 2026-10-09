@@ -21,7 +21,8 @@ func TestInitializationResponseMapsLocalWorkspaceAndDefaults(t *testing.T) {
 		},
 		Environment: &environmentdto.View{
 			Id: "environment-1", TargetType: model.EnvironmentTargetTypeLocal,
-			TargetRevision: 1, LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
+			TargetMayBeShared: true,
+			TargetRevision:    1, LastProbeRevision: &revision, LastProbeStatus: &probeStatus,
 			Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit"},
 		},
 	}
@@ -37,6 +38,9 @@ func TestInitializationResponseMapsLocalWorkspaceAndDefaults(t *testing.T) {
 	}
 	if resp.Environment.Local == nil || resp.Environment.Local.WorkspaceRoot != "/srv/orbit" || resp.Environment.Ssh != nil {
 		t.Fatalf("local snapshot = %#v", resp.Environment.Local)
+	}
+	if !resp.Environment.TargetMayBeShared {
+		t.Fatal("environment snapshot omitted the target warning")
 	}
 	if resp.Gateway != nil {
 		t.Fatalf("gateway snapshot = %#v", resp.Gateway)

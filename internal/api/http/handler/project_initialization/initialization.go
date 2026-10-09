@@ -123,6 +123,7 @@ func initializationResponse(view initdto.StatusView) *initv1.ProjectInitializati
 		resp.Environment = &initv1.ProjectInitializationEnvironmentSnapshot{
 			Id: view.Environment.Id, TargetType: view.Environment.TargetType, WorkspaceRoot: workspaceRoot,
 			TargetRevision:    view.Environment.TargetRevision,
+			TargetMayBeShared: view.Environment.TargetMayBeShared,
 			LastProbeRevision: view.Environment.LastProbeRevision, LastProbeStatus: view.Environment.LastProbeStatus,
 			LastProbeAt:         transport.FormatOptionalTime(view.Environment.LastProbeAt),
 			LastProbeDiagnostic: view.Environment.LastProbeDiagnostic,

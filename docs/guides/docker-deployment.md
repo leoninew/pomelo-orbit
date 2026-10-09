@@ -1,5 +1,5 @@
 # Docker 部署与服务器首次部署指南
-最后修改时间: 2026-09-29 09:28:22
+最后修改时间: 2026-10-09 17:19:54
 
 Doc role: living guide（运维向）。与代码冲突时以代码为准；领域模型见 [CD 模型](../product/cd-model.md)。
 
@@ -13,6 +13,8 @@ Doc role: living guide（运维向）。与代码冲突时以代码为准；领�
 - 宿主机可以访问 Docker socket
 
 Pomelo Orbit 需要 Docker socket、统一工作区根目录、数据库目录和应用日志目录。local Environment 的 `workspace_root` 还必须选择一个同时对 Orbit 容器和 Docker daemon 可见的路径。
+
+环境页的 local 终端在 Orbit 容器内，以 Orbit 进程用户进入保存的工作区；DooD 挂载 Docker socket 不会把终端切到宿主机。容器中可见的文件、环境变量和 Docker socket 权限随进程继承。终端入口不根据 localhost/127.0.0.1 或远程访问地址隐藏，打开终端与 Docker 检查独立，Probe 或 Docker 失败仍可进入 shell；部署操作继续要求最新成功 Probe。
 
 ## 1. 创建部署目录
 

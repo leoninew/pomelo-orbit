@@ -85,8 +85,8 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "other", CredentialRevision: 1},
 		Credential: &environmentdto.SSHCredentialDefinition{PublicKey: "ssh-ed25519 AAAA other", PrivateKey: "OTHER PRIVATE KEY", Revision: 1},
 	})
-	if err == nil {
-		t.Fatal("SaveTargetDefinitionForUser() accepted a Docker target already bound to another project")
+	if err != nil {
+		t.Fatalf("SaveTargetDefinitionForUser() rejected matching target configuration: %v", err)
 	}
 	if _, err := database.ExecContext(ctx, `UPDATE project SET is_active = FALSE WHERE id = 'project-1'`); err != nil {
 		t.Fatal(err)

@@ -25,8 +25,8 @@ type probeDiagnosticError interface {
 }
 
 // ProbeForUser verifies the configured SSH target outside a request transaction.
-// Its single conditional update records a result only for the target revision
-// that was actually probed, preventing stale observations after an edit.
+// Its conditional result update matches the revision that was actually probed;
+// first host keys use a separate narrow update bound to the SSH credentials.
 func (s Service) ProbeForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error) {
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.View{}, err
@@ -48,10 +48,10 @@ func (s Service) ProbeForUser(ctx context.Context, userId string, projectId stri
 			statusValue = model.EnvironmentProbeStatusFailed
 			diagnostic = probeFailureDiagnostic
 		} else {
-			item.SSH.HostKeyFingerprint = observedFingerprint
-			if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
-				return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to record host key fingerprint", err)
+			if err := s.recordHostKey(ctx, item, observedFingerprint); err != nil {
+				return environmentdto.View{}, err
 			}
+			item.SSH.HostKeyFingerprint = observedFingerprint
 		}
 	}
 
@@ -70,6 +70,21 @@ func (s Service) ProbeForUser(ctx context.Context, userId string, projectId stri
 	item.LastProbeAt = &probedAt
 	item.LastProbeDiagnostic = stringPointer(diagnostic)
 	return s.toView(item), nil
+}
+
+func (s Service) recordHostKey(ctx context.Context, item model.Environment, fingerprint string) error {
+	if !item.IsSSH() || !hostKeyFingerprintPattern.MatchString(fingerprint) ||
+		(item.SSH.HostKeyFingerprint != "" && item.SSH.HostKeyFingerprint != fingerprint) {
+		return apperror.New(apperror.KindValidation, "SSH host key fingerprint mismatch")
+	}
+	recorded, err := s.environments.RecordHostKey(ctx, item, fingerprint)
+	if err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to record host key fingerprint", err)
+	}
+	if !recorded {
+		return apperror.New(apperror.KindConflict, "Environment changed while recording SSH host key")
+	}
+	return nil
 }
 
 func (s Service) probeOutcome(ctx context.Context, item model.Environment) (string, string, string) {

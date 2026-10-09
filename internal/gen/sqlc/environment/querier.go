@@ -14,6 +14,7 @@ type Querier interface {
 	EnvironmentById(ctx context.Context, id string) (Environment, error)
 	EnvironmentByProjectId(ctx context.Context, projectID string) (Environment, error)
 	EnvironmentByTarget(ctx context.Context, arg EnvironmentByTargetParams) (Environment, error)
+	RecordEnvironmentHostKey(ctx context.Context, arg RecordEnvironmentHostKeyParams) (int64, error)
 	RecordEnvironmentProbe(ctx context.Context, arg RecordEnvironmentProbeParams) (int64, error)
 	UnbindGatewayApplication(ctx context.Context, arg UnbindGatewayApplicationParams) (int64, error)
 	UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) error

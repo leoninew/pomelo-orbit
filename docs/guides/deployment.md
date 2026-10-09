@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-10-06
+最后修改时间: 2026-10-09 17:16:35
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -24,12 +24,12 @@ Service 是 Application 下的独立运行绑定。一个 Application 可以按�
 
 Environment 的 target type 是显式 `local | ssh`：
 
-- `local` 直接在 Orbit 控制面宿主机的 Docker daemon 执行，工作目录为 Environment 保存的 `workspace_root`；页面原样展示该值，`~` / `~/...` 只在 Probe 和部署时展开为控制面用户主目录。不显示 SSH 表单、主机指纹或初始化入口。
+- `local` 直接在 Orbit 控制面宿主机的 Docker daemon 执行部署，工作目录为 Environment 保存的 `workspace_root`；页面原样展示该值，`~` / `~/...` 在使用时展开为控制面用户主目录。不显示 SSH 表单、主机指纹或初始化入口。
 - `ssh` 支持 Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。它在目标端按 Environment 保存的 `workspace_root` materialize workspace，`~` / `~/...` 展开为远端登录用户主目录，并使用 `environment_credential` 中的私钥和 pinned host key 执行。
 
 `ssh` 到 `127.0.0.1` 仍是 SSH，不会被解释为 local。没有 hostname heuristic 或 local/SSH fallback。两类目标的 Compose 生命周期、运行时查询、Route 文件/证书发布、Gateway network 与 Traefik API 查询均通过同一 target runtime 执行。
 
-不支持 macOS、其他 Windows Docker 组合或由部署/流水线提交任意 SSH command。环境页可在 SSH target 通过当前修订 Probe 后打开目标宿主机的交互式终端，使用该 Environment 保存的 SSH 用户与受管密钥。宿主机应自行完成 registry 配置和登录；Orbit 不管理多 registry 或 registry credential。
+不支持 macOS、其他 Windows Docker 组合或由部署/流水线提交任意 SSH command。所有已配置环境均可从环境页打开交互式终端，不受站点地址、Probe 状态或 Docker/Compose 可用性影响。local 在 Orbit 所在环境使用进程用户进入工作区，容器部署进入 Orbit 容器；Unix 为 `/bin/sh -i`，Windows 为系统 Windows PowerShell。SSH 使用保存的 SSH 用户和受管密钥进入宿主机默认 shell；首次指纹在认证的实际终端连接中固定。工作区只限定 local 初始目录，不隔离权限。宿主机应自行完成 registry 配置和登录；Orbit 不管理多 registry 或 registry credential。
 
 ## 配置与 Probe
 

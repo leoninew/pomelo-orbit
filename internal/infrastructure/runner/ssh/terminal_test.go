@@ -220,3 +220,23 @@ func TestSSHTerminalClosesWithUnreadOutput(t *testing.T) {
 		t.Fatal("SSH Wait did not complete after Close")
 	}
 }
+
+func TestSSHTerminalObservesFirstHostKeyOnAuthenticatedConnection(t *testing.T) {
+	target, _, _ := terminalSSHServer(t)
+	expected := target.Environment.SSH.HostKeyFingerprint
+	target.Environment.SSH.HostKeyFingerprint = ""
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	session, err := NewRuntime().StartTerminal(ctx, target, 80, 24)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.(environmentport.TerminalHostKey).HostKeyFingerprint() != expected {
+		t.Fatal("terminal did not report the key from its SSH connection")
+	}
+	_ = session.Close()
+	target.Environment.SSH.Username = "unauthorized-user"
+	if _, err := NewRuntime().StartTerminal(ctx, target, 80, 24); err == nil {
+		t.Fatal("terminal accepted first host key without managed key authentication")
+	}
+}

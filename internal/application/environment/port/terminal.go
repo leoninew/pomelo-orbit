@@ -16,3 +16,8 @@ type TerminalSession interface {
 type TerminalRunner interface {
 	StartTerminal(ctx context.Context, target Target, columns, rows int) (TerminalSession, error)
 }
+
+// SSH terminals report the host key from their authenticated connection.
+type TerminalHostKey interface {
+	HostKeyFingerprint() string
+}

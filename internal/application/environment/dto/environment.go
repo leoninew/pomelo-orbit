@@ -66,6 +66,7 @@ type View struct {
 	ProjectId            string
 	Code                 string
 	TargetType           string
+	TargetMayBeShared    bool
 	TargetRevision       int64
 	LastProbeRevision    *int64
 	LastProbeStatus      *string

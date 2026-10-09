@@ -33,6 +33,7 @@ message ProjectInitializationEnvironmentSnapshot {
   optional string last_probe_diagnostic = 9;
   orbit.v1.environment.EnvironmentLocalTargetResp local = 10;
   orbit.v1.environment.EnvironmentSSHTargetResp ssh = 11;
+  bool target_may_be_shared = 12;
 }
 
 message ProjectInitializationGatewaySnapshot {

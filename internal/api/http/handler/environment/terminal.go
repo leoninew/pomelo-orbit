@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	environmentv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment"
 )
@@ -95,20 +96,32 @@ func (h Handler) ConnectTerminal(c *gin.Context) {
 		}
 	}()
 	connectTimer := time.AfterFunc(environmentsvc.TerminalConnectLimit, cancel)
+	defer connectTimer.Stop()
 	session, err := h.runner.StartTerminal(ctx, grant.Target, 80, 24)
-	connectTimer.Stop()
 	if err != nil {
 		_ = writeTerminalControl(ctx, conn, terminalControl{Type: "connection_failed"})
 		_ = conn.Close(websocket.StatusInternalError, "connection_failed")
 		return
 	}
 	defer func() { _ = session.Close() }()
+	fingerprint := ""
+	if metadata, ok := session.(environmentport.TerminalHostKey); ok {
+		fingerprint = metadata.HostKeyFingerprint()
+	}
+	grant, err = h.terminal.ConfirmConnection(ctx, grant, fingerprint)
+	if err != nil {
+		_ = writeTerminalControl(ctx, conn, terminalControl{Type: "connection_failed"})
+		_ = conn.Close(websocket.StatusInternalError, "connection_failed")
+		return
+	}
+	connectTimer.Stop()
 	if err := writeTerminalControl(ctx, conn, terminalControl{Type: "ready"}); err != nil {
 		return
 	}
 	started := time.Now()
 	h.logger.Info("environment terminal connected", "actor_id", grant.ActorId, "project_id", grant.ProjectId,
-		"environment_id", grant.Target.Environment.Id, "ssh_username", grant.Target.Environment.SSH.Username)
+		"environment_id", grant.Target.Environment.Id, "target_type", grant.Target.Environment.TargetType,
+		"runtime_username", h.terminal.RuntimeUsername(grant))
 	var lastActivity atomic.Int64
 	lastActivity.Store(started.UnixNano())
 	outputDone := make(chan struct{})
@@ -215,13 +228,14 @@ func (h Handler) ConnectTerminal(c *gin.Context) {
 		_ = writeTerminalControl(notifyCtx, conn, terminalControl{Type: reason})
 		notifyCancel()
 	}
-	_ = session.Close()
 	if ctx.Err() == nil {
 		_ = conn.Close(websocket.StatusNormalClosure, reason)
 	}
 	cancel()
+	_ = session.Close()
 	h.logger.Info("environment terminal disconnected", "actor_id", grant.ActorId, "project_id", grant.ProjectId,
-		"environment_id", grant.Target.Environment.Id, "ssh_username", grant.Target.Environment.SSH.Username,
+		"environment_id", grant.Target.Environment.Id, "target_type", grant.Target.Environment.TargetType,
+		"runtime_username", h.terminal.RuntimeUsername(grant),
 		"duration_ms", time.Since(started).Milliseconds(), "reason", reason)
 }
 

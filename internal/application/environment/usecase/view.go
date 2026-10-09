@@ -1,9 +1,33 @@
 package environmentsvc
 
 import (
+	"context"
+	"errors"
+
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
+
+func (s Service) viewWithTargetWarning(ctx context.Context, item model.Environment) (environmentdto.View, error) {
+	view := s.toView(item)
+	reader, ok := s.environments.(environmentTargetReader)
+	if !ok {
+		return view, nil
+	}
+	host, port := "", 0
+	if item.SSH != nil {
+		host, port = item.SSH.Host, item.SSH.Port
+	}
+	// Matching configuration suggests overlap; it does not identify a Docker daemon.
+	_, err := reader.EnvironmentByTarget(ctx, item.ProjectId, item.TargetType, host, port)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to check environment target", err)
+	}
+	view.TargetMayBeShared = err == nil
+	return view, nil
+}
 
 func (s Service) toView(item model.Environment) environmentdto.View {
 	view := environmentdto.View{

@@ -11,7 +11,8 @@
       <span class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
         <span>{{ t('project.environment.terminal.title') }}</span>
         <span class="min-w-0 break-all text-sm font-normal text-muted-foreground">
-          {{ username }}@{{ host }}
+          {{ t(`project.environment.targetTypes.${targetType}`) }}
+          <span v-if="identity">· {{ identity }}</span>
         </span>
       </span>
     </template>
@@ -79,11 +80,13 @@
   const props = defineProps<{
     open: boolean;
     projectId: string;
+    targetType: string;
     host: string;
     username: string;
   }>();
   const emit = defineEmits<{ 'update:open': [value: boolean] }>();
   const { t } = useI18n();
+  const identity = computed(() => [props.username, props.host].filter(Boolean).join('@'));
   const { effectiveTheme } = useTheme();
   const terminalTheme = computed(() =>
     effectiveTheme.value === 'dark'
@@ -301,12 +304,9 @@
   });
 
   watch(
-    () => [props.projectId, props.host, props.username, props.open, terminalElement.value] as const,
-    ([projectId, host, username, open, element], previous) => {
-      if (
-        previous &&
-        (projectId !== previous[0] || host !== previous[1] || username !== previous[2])
-      ) {
+    () => [props.projectId, props.open, terminalElement.value] as const,
+    ([projectId, open, element], previous) => {
+      if (previous && projectId !== previous[0]) {
         dispose();
       }
       observer?.disconnect();

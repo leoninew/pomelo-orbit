@@ -40,11 +40,29 @@ func TestProbeHostKeyCallbackAcceptsEmptyExpectedAndRecordsFingerprint(t *testin
 		t.Fatal(err)
 	}
 	var observed string
-	if err := probeHostKeyCallback("", &observed)("example.test:22", nil, signer.PublicKey()); err != nil {
+	callback := probeHostKeyCallback("", &observed)
+	if err := callback("example.test:22", nil, signer.PublicKey()); err != nil {
 		t.Fatalf("empty expected fingerprint rejected: %v", err)
 	}
 	if observed != ssh.FingerprintSHA256(signer.PublicKey()) {
 		t.Fatalf("observed fingerprint = %q", observed)
+	}
+	if err := callback("example.test:22", nil, signer.PublicKey()); err != nil {
+		t.Fatalf("same host key rejected on rekey: %v", err)
+	}
+	_, otherKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherSigner, err := ssh.NewSignerFromKey(otherKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := callback("example.test:22", nil, otherSigner.PublicKey()); err == nil {
+		t.Fatal("first-observation callback accepted a changed key on rekey")
+	}
+	if observed != ssh.FingerprintSHA256(signer.PublicKey()) {
+		t.Fatal("rekey replaced the observed host key")
 	}
 	if err := probeHostKeyCallback("SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", &observed)("example.test:22", nil, signer.PublicKey()); err == nil {
 		t.Fatal("mismatched expected fingerprint accepted")

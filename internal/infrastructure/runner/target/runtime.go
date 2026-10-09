@@ -17,6 +17,20 @@ type Runtime struct {
 	ssh   deploymentport.Runtime
 }
 
+var _ environmentport.TerminalRunner = Runtime{}
+
+func (r Runtime) StartTerminal(ctx context.Context, target environmentport.Target, columns, rows int) (environmentport.TerminalSession, error) {
+	runtime, err := r.forTarget(target)
+	if err != nil {
+		return nil, err
+	}
+	terminals, ok := runtime.(environmentport.TerminalRunner)
+	if !ok {
+		return nil, errors.New("target terminal runtime is not configured")
+	}
+	return terminals.StartTerminal(ctx, target, columns, rows)
+}
+
 func New(local deploymentport.Runtime, ssh deploymentport.Runtime) Runtime {
 	return Runtime{local: local, ssh: ssh}
 }

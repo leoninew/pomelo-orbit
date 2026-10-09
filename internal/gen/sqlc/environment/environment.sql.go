@@ -223,6 +223,42 @@ func (q *Queries) EnvironmentByTarget(ctx context.Context, arg EnvironmentByTarg
 	return i, err
 }
 
+const recordEnvironmentHostKey = `-- name: RecordEnvironmentHostKey :execrows
+UPDATE environment
+SET host_key_fingerprint = ?, updated_at = ?
+WHERE id = ?
+  AND target_type = 'ssh'
+  AND target_revision = ?
+  AND ssh_credential_id = ?
+  AND ssh_credential_revision = ?
+  AND (host_key_fingerprint IS NULL OR host_key_fingerprint = '' OR host_key_fingerprint = ?)
+`
+
+type RecordEnvironmentHostKeyParams struct {
+	Fingerprint           sql.NullString `db:"fingerprint"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+	Id                    string         `db:"id"`
+	TargetRevision        int64          `db:"target_revision"`
+	SSHCredentialId       sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
+}
+
+func (q *Queries) RecordEnvironmentHostKey(ctx context.Context, arg RecordEnvironmentHostKeyParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, recordEnvironmentHostKey,
+		arg.Fingerprint,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.TargetRevision,
+		arg.SSHCredentialId,
+		arg.SshCredentialRevision,
+		arg.Fingerprint,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const recordEnvironmentProbe = `-- name: RecordEnvironmentProbe :execrows
 UPDATE environment
 SET last_probe_revision = ?, last_probe_status = ?, last_probe_at = ?, last_probe_diagnostic = ?,

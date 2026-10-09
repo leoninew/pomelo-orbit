@@ -277,6 +277,10 @@ func (r *Runtime) openSSH(ctx context.Context, target environmentport.Target) (*
 }
 
 func (r *Runtime) dialSSH(ctx context.Context, target environmentport.Target) (*ssh.Client, error) {
+	return r.dialSSHWithHostKey(ctx, target, nil)
+}
+
+func (r *Runtime) dialSSHWithHostKey(ctx context.Context, target environmentport.Target, observed *string) (*ssh.Client, error) {
 	if r == nil || r.dialContext == nil {
 		return nil, errors.New("SSH runtime dialer is not configured")
 	}
@@ -298,6 +302,9 @@ func (r *Runtime) dialSSH(ctx context.Context, target environmentport.Target) (*
 		User:            environment.Username,
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
 		HostKeyCallback: strictHostKeyCallback(environment.HostKeyFingerprint),
+	}
+	if observed != nil {
+		clientConfig.HostKeyCallback = probeHostKeyCallback(environment.HostKeyFingerprint, observed)
 	}
 	clientConnection, channels, requests, err := ssh.NewClientConn(connection, address, clientConfig)
 	if err != nil {

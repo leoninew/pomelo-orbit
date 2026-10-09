@@ -48,9 +48,6 @@ func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, proje
 	if err := validateEnvironment(item, s.localDisplay.Platform, false, false); err != nil {
 		return environmentdto.View{}, "", err
 	}
-	if err := s.ensureTargetIsAvailable(ctx, project.Id, item); err != nil {
-		return environmentdto.View{}, "", err
-	}
 	credential, err := s.ensureEnvironmentCredential(ctx, item)
 	if err != nil {
 		return environmentdto.View{}, "", err
@@ -72,22 +69,9 @@ func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, proje
 	} else if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 		return environmentdto.View{}, "", apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 	}
-	return s.toView(item), strings.TrimSpace(credential.PublicKey), nil
-}
-
-func (s Service) ensureTargetIsAvailable(ctx context.Context, projectId string, item model.Environment) error {
-	reader, ok := s.environments.(environmentTargetReader)
-	if !ok {
-		return nil
+	view, err := s.viewWithTargetWarning(ctx, item)
+	if err != nil {
+		return environmentdto.View{}, "", err
 	}
-	host, port := "", 0
-	if item.SSH != nil {
-		host, port = strings.TrimSpace(item.SSH.Host), item.SSH.Port
-	}
-	if _, err := reader.EnvironmentByTarget(ctx, projectId, item.TargetType, host, port); err == nil {
-		return apperror.New(apperror.KindConflict, "The Docker target is already bound to another project")
-	} else if !errors.Is(err, repository.ErrNotFound) {
-		return apperror.Wrap(apperror.KindInternal, "Failed to check environment target", err)
-	}
-	return nil
+	return view, strings.TrimSpace(credential.PublicKey), nil
 }

@@ -789,6 +789,9 @@
         throw new Error(t('project.initialization.sshCommandFailed'));
       }
       hydrate(result.status);
+      if (result.status.environment?.target_may_be_shared) {
+        toast.warning(t('project.environment.targetMayBeSharedWarning'), 8000);
+      }
       selectedStep.value = 1;
       sshCommand.value =
         environmentForm.platform === 'windows'
@@ -942,7 +945,11 @@
         );
         hydrate(view);
         selectedStep.value = 2;
-        toast.success(t('project.initialization.saved'));
+        if (view.environment?.target_may_be_shared) {
+          toast.warning(t('project.environment.targetMayBeSharedWarning'), 8000);
+        } else {
+          toast.success(t('project.initialization.saved'));
+        }
       });
     } catch (error: unknown) {
       environmentSubmitError.value =

@@ -41,6 +41,7 @@ message EnvironmentResp {
   string created_at = 13;
   string updated_at = 14;
   EnvironmentLocalTargetResp local = 15;
+  bool target_may_be_shared = 16;
 }
 
 message ProjectEnvironmentUpdateReq {

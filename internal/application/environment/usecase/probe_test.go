@@ -298,6 +298,16 @@ func (s *probeEnvironmentStore) UpdateEnvironment(_ context.Context, environment
 	return nil
 }
 
+func (s *probeEnvironmentStore) RecordHostKey(_ context.Context, environment model.Environment, fingerprint string) (bool, error) {
+	if s.stale || !matchesTerminalTarget(terminalTargetIdentity(environment), s.environment) ||
+		(s.environment.SSH.HostKeyFingerprint != "" && s.environment.SSH.HostKeyFingerprint != fingerprint) {
+		return false, nil
+	}
+	s.updated = true
+	s.environment.SSH.HostKeyFingerprint = fingerprint
+	return true, nil
+}
+
 func (s *probeEnvironmentStore) RecordProbe(_ context.Context, _ string, targetRevision int64, status string, _ time.Time, diagnostic string) (bool, error) {
 	s.recorded = true
 	s.targetRevision = targetRevision

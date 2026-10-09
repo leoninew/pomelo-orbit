@@ -46,9 +46,8 @@ func (r Repository) EnvironmentByProject(ctx context.Context, projectId string) 
 	return environmentFrom(row), nil
 }
 
-// EnvironmentByTarget finds another active Project bound to the same Docker
-// target. Deprecated Projects retain their historical Environment but release
-// its target for a successor Project.
+// EnvironmentByTarget finds another active Project with matching target
+// configuration. This does not establish Docker daemon identity.
 func (r Repository) EnvironmentByTarget(ctx context.Context, projectId, targetType, host string, port int) (model.Environment, error) {
 	row, err := r.q(ctx).EnvironmentByTarget(ctx, environmentsqlc.EnvironmentByTargetParams{ProjectId: projectId, TargetType: targetType, Column3: targetType, Host: sql.NullString{String: host, Valid: host != ""}, Port: sql.NullInt64{Int64: int64(port), Valid: port > 0}})
 	if err != nil {
@@ -133,6 +132,31 @@ func (r Repository) RecordProbe(ctx context.Context, environmentId string, targe
 		return false, fmt.Errorf("record environment probe %s: %w", environmentId, err)
 	}
 	return rows == 1, nil
+}
+
+func (r Repository) RecordHostKey(ctx context.Context, environment model.Environment, fingerprint string) (bool, error) {
+	if !environment.IsSSH() {
+		return false, nil
+	}
+	rows, err := r.q(ctx).RecordEnvironmentHostKey(ctx, environmentsqlc.RecordEnvironmentHostKeyParams{
+		Id: environment.Id, TargetRevision: environment.TargetRevision,
+		SSHCredentialId: environmentSSHCredentialId(environment), SshCredentialRevision: environmentSSHCredentialRevision(environment),
+		Fingerprint: sql.NullString{String: fingerprint, Valid: true}, UpdatedAt: time.Now().UTC(),
+	})
+	if err != nil {
+		return false, fmt.Errorf("record environment host key %s: %w", environment.Id, err)
+	}
+	if rows == 1 {
+		return true, nil
+	}
+	// MySQL can report zero affected rows for an identical pin and timestamp.
+	current, err := r.Environment(ctx, environment.Id)
+	if err != nil {
+		return false, err
+	}
+	return current.IsSSH() && current.TargetRevision == environment.TargetRevision &&
+		current.SSH.CredentialId == environment.SSH.CredentialId && current.SSH.CredentialRevision == environment.SSH.CredentialRevision &&
+		current.SSH.HostKeyFingerprint == fingerprint, nil
 }
 func (r Repository) BindGatewayApplication(ctx context.Context, environmentId string, gatewayApplicationId string) (bool, error) {
 	rows, err := r.q(ctx).BindGatewayApplication(ctx, environmentsqlc.BindGatewayApplicationParams{

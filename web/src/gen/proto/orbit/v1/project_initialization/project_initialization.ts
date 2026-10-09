@@ -43,6 +43,7 @@ export interface ProjectInitializationEnvironmentSnapshot {
   last_probe_diagnostic?: string | undefined;
   local: EnvironmentLocalTargetResp | undefined;
   ssh: EnvironmentSSHTargetResp | undefined;
+  target_may_be_shared: boolean;
 }
 
 export interface ProjectInitializationGatewaySnapshot {

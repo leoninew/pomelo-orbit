@@ -28,20 +28,19 @@ func (s Service) TargetDefinitionForUser(ctx context.Context, userId string, pro
 }
 
 // SaveTargetDefinitionForUser persists an already-known deployment target. It
-// performs model and target-exclusivity validation but deliberately does not
+// performs model validation but deliberately does not
 // invoke the SSH reachability probe or any runtime integration.
 func (s Service) SaveTargetDefinitionForUser(ctx context.Context, userId string, projectId string, input environmentdto.TargetDefinition) (environmentdto.TargetDefinition, error) {
-	return s.saveTargetDefinitionForUser(ctx, userId, projectId, input, false, false)
+	return s.saveTargetDefinitionForUser(ctx, userId, projectId, input, false)
 }
 
 // SaveTargetDefinitionForHandover restores the package value exactly. Import
-// persists configuration only; deployment-target availability is checked when
-// the target is subsequently used, not while a package is being restored.
+// persists configuration only and allows a local workspace from another platform.
 func (s Service) SaveTargetDefinitionForHandover(ctx context.Context, userId string, projectId string, input environmentdto.TargetDefinition) (environmentdto.TargetDefinition, error) {
-	return s.saveTargetDefinitionForUser(ctx, userId, projectId, input, true, true)
+	return s.saveTargetDefinitionForUser(ctx, userId, projectId, input, true)
 }
 
-func (s Service) saveTargetDefinitionForUser(ctx context.Context, userId string, projectId string, input environmentdto.TargetDefinition, allowLocalWorkspacePlatformMismatch bool, skipTargetAvailabilityCheck bool) (environmentdto.TargetDefinition, error) {
+func (s Service) saveTargetDefinitionForUser(ctx context.Context, userId string, projectId string, input environmentdto.TargetDefinition, allowLocalWorkspacePlatformMismatch bool) (environmentdto.TargetDefinition, error) {
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.TargetDefinition{}, err
 	}
@@ -71,11 +70,6 @@ func (s Service) saveTargetDefinitionForUser(ctx context.Context, userId string,
 	}
 	if err := validateEnvironment(environment, s.localDisplay.Platform, false, allowLocalWorkspacePlatformMismatch); err != nil {
 		return environmentdto.TargetDefinition{}, err
-	}
-	if !skipTargetAvailabilityCheck {
-		if err := s.ensureTargetAvailable(ctx, environment); err != nil {
-			return environmentdto.TargetDefinition{}, err
-		}
 	}
 	if credential != nil {
 		if credentialCreating {
@@ -226,23 +220,6 @@ func validateProbeState(input environmentdto.TargetDefinition) error {
 	}
 	if *input.LastProbeStatus != model.EnvironmentProbeStatusSucceeded && *input.LastProbeStatus != model.EnvironmentProbeStatusFailed {
 		return apperror.New(apperror.KindValidation, "Environment probe status is invalid")
-	}
-	return nil
-}
-
-func (s Service) ensureTargetAvailable(ctx context.Context, environment model.Environment) error {
-	reader, ok := s.environments.(environmentTargetReader)
-	if !ok {
-		return nil
-	}
-	host, port := "", 0
-	if environment.SSH != nil {
-		host, port = environment.SSH.Host, environment.SSH.Port
-	}
-	if _, err := reader.EnvironmentByTarget(ctx, environment.ProjectId, environment.TargetType, host, port); err == nil {
-		return apperror.New(apperror.KindConflict, "The Docker target is already bound to another project")
-	} else if !errors.Is(err, repository.ErrNotFound) {
-		return apperror.Wrap(apperror.KindInternal, "Failed to check environment target", err)
 	}
 	return nil
 }

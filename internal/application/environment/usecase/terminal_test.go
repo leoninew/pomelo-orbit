@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -26,10 +27,12 @@ func (p *terminalProjectReader) IsProjectMember(context.Context, string, string)
 func newTestTerminalService(t *testing.T) (*TerminalService, *targetEnvironmentStore, *terminalProjectReader, *memoryEnvironmentCredentials) {
 	t.Helper()
 	store := &targetEnvironmentStore{environment: readyTargetEnvironment()}
+	store.environment.Code = "project"
 	projects := &terminalProjectReader{member: true}
 	credentials := credentialsForEnvironment(t, store.environment, "managed-private-key")
-	environments := New(store, projects, credentials, testCredentialSecret, nil, nil)
-	return NewTerminalService(environments, NewTargetResolver(store, credentials, testCredentialSecret)), store, projects, credentials
+	environments := New(store, projects, credentials, testCredentialSecret, nil, nil).
+		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux, Username: "orbit"})
+	return NewTerminalService(environments), store, projects, credentials
 }
 
 func TestTerminalTicketBindsManagedIdentityAndCannotBeReplayed(t *testing.T) {
@@ -53,23 +56,44 @@ func TestTerminalTicketBindsManagedIdentityAndCannotBeReplayed(t *testing.T) {
 	}
 }
 
-func TestTerminalRejectsUnavailableEnvironmentAndNonMember(t *testing.T) {
-	for _, scenario := range []string{"local", "stale probe", "non-member"} {
+func TestTerminalConnectsIndependentlyOfDockerProbe(t *testing.T) {
+	for _, scenario := range []string{"local", "stale probe", "failed probe", "never probed"} {
 		t.Run(scenario, func(t *testing.T) {
-			svc, store, projects, _ := newTestTerminalService(t)
+			svc, store, _, _ := newTestTerminalService(t)
 			switch scenario {
 			case "local":
 				store.environment.TargetType = model.EnvironmentTargetTypeLocal
 				store.environment.SSH = nil
 			case "stale probe":
 				store.environment.TargetRevision++
-			case "non-member":
-				projects.member = false
+			case "failed probe":
+				store.environment.LastProbeStatus = stringPointer(model.EnvironmentProbeStatusFailed)
+			case "never probed":
+				store.environment.LastProbeStatus, store.environment.LastProbeRevision = nil, nil
 			}
-			if _, err := svc.IssueTicket(context.Background(), "actor", store.environment.ProjectId); err == nil {
-				t.Fatal("issued terminal ticket for an unavailable environment or non-member")
+			ctx := context.Background()
+			ticket, err := svc.IssueTicket(ctx, "actor", store.environment.ProjectId)
+			if err != nil {
+				t.Fatal(err)
+			}
+			grant, release, err := svc.RedeemTicket(ctx, store.environment.ProjectId, ticket)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer release()
+			store.environment.LastProbeStatus = stringPointer(model.EnvironmentProbeStatusFailed)
+			if err := svc.ValidateSession(ctx, grant); err != nil {
+				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestTerminalRejectsNonMember(t *testing.T) {
+	svc, store, projects, _ := newTestTerminalService(t)
+	projects.member = false
+	if _, err := svc.IssueTicket(context.Background(), "actor", store.environment.ProjectId); !apperror.IsKind(err, apperror.KindForbidden) {
+		t.Fatalf("non-member ticket error = %v", err)
 	}
 }
 

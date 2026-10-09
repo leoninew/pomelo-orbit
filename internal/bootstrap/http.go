@@ -14,6 +14,7 @@ import (
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	dialoguesvc "github.com/leoninew/pomelo-orbit/internal/application/dialogue/usecase"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
@@ -64,7 +65,7 @@ type applicationServices struct {
 	CredentialService            credentialsvc.Service
 	EnvironmentService           environmentsvc.Service
 	EnvironmentTerminalService   *environmentsvc.TerminalService
-	EnvironmentTerminalRunner    *sshrunner.Runtime
+	EnvironmentTerminalRunner    environmentport.TerminalRunner
 	RepositoryService            repositorysvc.Service
 	PipelineService              pipelinesvc.Service
 	PipelineRunService           pipelinerunsvc.Service
@@ -192,8 +193,8 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		SettingsService:              settingssvc.New(settingssvc.Definitions(cfg), envfile.NewStore(cfg.EnvFilePath)),
 		CredentialService:            credentialService,
 		EnvironmentService:           environmentService,
-		EnvironmentTerminalService:   environmentsvc.NewTerminalService(environmentService, targetResolver),
-		EnvironmentTerminalRunner:    sshrunner.NewRuntime(),
+		EnvironmentTerminalService:   environmentsvc.NewTerminalService(environmentService),
+		EnvironmentTerminalRunner:    runtime,
 		RepositoryService: repositorysvc.New(
 			stores.project,
 			stores.credential,

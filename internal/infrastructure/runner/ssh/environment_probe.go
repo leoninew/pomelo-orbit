@@ -178,11 +178,15 @@ func probeHostKeyCallback(expected string, observed *string) ssh.HostKeyCallback
 	expected = strings.TrimSpace(expected)
 	return func(_ string, _ net.Addr, key ssh.PublicKey) error {
 		fingerprint := ssh.FingerprintSHA256(key)
-		if observed != nil {
-			*observed = fingerprint
-		}
 		if expected != "" && fingerprint != expected {
 			return errors.New("SSH host key fingerprint mismatch")
+		}
+		// A first observation also pins subsequent rekeys on this connection.
+		if expected == "" {
+			expected = fingerprint
+		}
+		if observed != nil && *observed == "" {
+			*observed = fingerprint
 		}
 		return nil
 	}

@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-06 16:22:19
+最后修改时间: 2026-10-09 17:47:40
 
 Doc role: living architecture
 
@@ -20,7 +20,7 @@ Project
 
 组合根按持久化的 `target_type` 注入 local 与 SSH runtime dispatcher；不会根据 hostname、空 SSH 字段或执行失败猜测另一种 runtime。两类 runtime 使用 Service 确认的目录 materialize workspace，首次候选来自 Environment 的 `workspace_root`。保存值可以是绝对路径或 `~` / `~/...`；local 使用时把 `~` 展开为控制面进程用户主目录并交给 Docker daemon，SSH 在远端把 `~` 展开为登录用户主目录后执行。SSH 支持 Linux OpenSSH + Docker，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers，并维持私钥与 host-key pinning。`ssh` 到 loopback 也走 SSH runtime。控制面部署执行日志使用独立的 `logging.deployment_root`，不属于 Environment workspace。
 
-Environment target 是 Project 的独占部署边界：local target 全局唯一，SSH target 按精确 host + port 唯一。这样固定 Gateway 端口和共享 `traefik` 网络不会被多个 Project 同时占用。
+Environment target 配置允许跨 Project 共用。应用层按其他活跃 Project 的配置计算 `target_may_be_shared`：local 与其他 local 匹配，SSH 按保存的 host + port 匹配；两种类型之间不交叉匹配。这个字段是动态响应提示，不持久化，不识别实际 Docker daemon。初始化和项目环境编辑入口在提交成功后显示非阻塞警告；保存与 SSH 初始化命令生成不再以匹配为由返回 409。Gateway 的固定端口、共享 `traefik` 网络及 Compose 命名机制继续适用，配置保存成功不保证实际部署没有资源冲突。
 
 Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志、Route 文件/证书发布和 Traefik API 查询通过同一个 target runtime 执行。Service 首次目录默认为 `<workspace_root>/deployment/<service-code>`，部署和依赖服务目录的操作接收显式服务编码与目录；Web 容器日志流在 Environment 工作区根目录按 Compose project 读取。Pipeline 在控制面本地执行时使用同一根下的 `<workspace_root>/pipeline`，不把 SSH 远端路径作为本地 Docker bind source。local Probe 只验证控制面 Docker/Compose；SSH Probe 使用 Environment binding 的受管私钥验证认证、pinned host key 和目标 Docker prerequisites。
 
@@ -30,7 +30,11 @@ Environment Probe 在 HTTP 请求事务外执行 target I/O。Probe 完成后使
 
 SSH 初始化命令是普通 HTTP 写事务内的无远端 I/O 动作：它以提交的完整 SSH target 更新 Environment，并只在 binding 缺失或失效时创建 `environment_credential`。有效 binding 会原样复用。保存、编辑和 Probe 均不隐式生成密钥；未初始化 SSH target 的 Probe 仅写入“先生成并执行初始化命令”的失败诊断，不启动 SSH runner。
 
-环境页的 SSH 终端在独立 WebSocket 会话中复用当前 Environment 的受管密钥、SSH 用户及 pinned host key，向目标 Linux/Windows 宿主机申请 PTY 并启动默认 shell。Bearer 认证的短请求签发一次性、短时效票据；WebSocket 通过子协议传票据，服务器仅协商固定协议名，不把票据放入 URL 或常规 HTTP 正文日志。会话在请求事务外运行，周期性复核 Project 成员及目标修订，且在输入前复核；有连接数、空闲和最长时长限制。Probe、部署与 CI 仍运行预定的非交互命令，不共享终端输入输出。
+环境页终端通过同一 target dispatcher 按 `local | ssh` 分派，使用独立于部署 resolver 的目标解析，不读取 Probe 状态或执行 Docker 检查。SSH 复用受管密钥、保存的 SSH 用户及现有 PTY/default shell 链路；首次连接从实际受管密钥认证连接取得指纹，在发送 ready 和接受输入前复核并固定。指纹使用只写 `host_key_fingerprint/updated_at` 的条件更新，匹配目标和凭据修订，允许空值或同一指纹；Probe 的首次指纹记录复用该写入，不覆盖 Probe/Gateway 字段。
+
+local 通过 `github.com/aymanbagabas/go-pty` 创建 Unix PTY 或 Windows ConPTY，以 Orbit 用户进入展开后的工作区。Unix 启动 `/bin/sh -i` 并释放父进程 slave；Windows 启动系统 PowerShell，平台适配器持有进程/线程句柄，挂入 kill-on-close Job 后恢复执行，以避免库 v0.2.3 的原始进程句柄遗漏。输出泵保留尾输出，断开时解除消费者背压并清理进程；Unix 清理 shell/前台进程组，Windows 清理 Job。容器部署的 local shell 位于 Orbit 容器内，不使用 Docker 路径映射或宿主命名空间切换。
+
+Bearer 认证的短请求签发一次性、短时效票据；WebSocket 通过子协议传票据，服务器仅协商固定协议名，不把票据放入 URL 或常规 HTTP 正文日志。会话在请求事务外运行，周期性复核 Project 成员、目标类型/修订以及 SSH 凭据与指纹，且在输入前复核；有连接数、空闲和最长时长限制。Probe、部署与 CI 仍运行预定的非交互命令，不共享终端输入输出，部署 resolver 继续要求最新成功 Probe。
 
 ## GatewayConfig 与部署
 

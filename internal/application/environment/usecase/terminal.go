@@ -29,6 +29,7 @@ type terminalTicket struct {
 	actorId            string
 	projectId          string
 	environmentId      string
+	targetType         string
 	targetRevision     int64
 	credentialId       string
 	credentialRevision int64
@@ -43,15 +44,14 @@ type TerminalGrant struct {
 
 type TerminalService struct {
 	environments Service
-	resolver     environmentport.TargetResolver
 	mu           sync.Mutex
 	tickets      map[[32]byte]terminalTicket
 	active       map[string]int
 	activeTotal  int
 }
 
-func NewTerminalService(environments Service, resolver environmentport.TargetResolver) *TerminalService {
-	return &TerminalService{environments: environments, resolver: resolver,
+func NewTerminalService(environments Service) *TerminalService {
+	return &TerminalService{environments: environments,
 		tickets: make(map[[32]byte]terminalTicket), active: make(map[string]int)}
 }
 
@@ -59,12 +59,9 @@ func (s *TerminalService) IssueTicket(ctx context.Context, actorId, projectId st
 	if err := s.environments.ensureProjectMembership(ctx, projectId, actorId); err != nil {
 		return "", err
 	}
-	target, err := s.resolver.ResolveProjectTarget(ctx, projectId)
+	target, err := s.resolveTarget(ctx, projectId)
 	if err != nil {
 		return "", err
-	}
-	if !target.Environment.IsSSH() || target.PrivateKey == nil {
-		return "", apperror.New(apperror.KindValidation, "Terminal requires a ready SSH environment")
 	}
 	var secret [32]byte
 	if _, err := rand.Read(secret[:]); err != nil {
@@ -81,11 +78,9 @@ func (s *TerminalService) IssueTicket(ctx context.Context, actorId, projectId st
 	if len(s.tickets) >= maxTerminalTickets {
 		return "", apperror.New(apperror.KindUnavailable, "Terminal ticket capacity reached")
 	}
-	s.tickets[sha256.Sum256(secret[:])] = terminalTicket{
-		actorId: actorId, projectId: projectId, environmentId: target.Environment.Id,
-		targetRevision: target.Environment.TargetRevision, credentialId: target.Environment.SSH.CredentialId,
-		credentialRevision: target.Environment.SSH.CredentialRevision, expiresAt: now.Add(TerminalTicketLifetime),
-	}
+	ticket := terminalTargetIdentity(target.Environment)
+	ticket.actorId, ticket.projectId, ticket.expiresAt = actorId, projectId, now.Add(TerminalTicketLifetime)
+	s.tickets[sha256.Sum256(secret[:])] = ticket
 	return base64.RawURLEncoding.EncodeToString(secret[:]), nil
 }
 
@@ -105,7 +100,7 @@ func (s *TerminalService) RedeemTicket(ctx context.Context, projectId, token str
 	if err := s.environments.ensureProjectMembership(ctx, projectId, ticket.actorId); err != nil {
 		return TerminalGrant{}, nil, err
 	}
-	target, err := s.resolver.ResolveProjectTarget(ctx, projectId)
+	target, err := s.resolveTarget(ctx, projectId)
 	if err != nil {
 		return TerminalGrant{}, nil, err
 	}
@@ -143,13 +138,16 @@ func (s *TerminalService) ValidateSession(ctx context.Context, grant TerminalGra
 	if err != nil {
 		return err
 	}
-	if !current.HasFreshSuccessfulProbe() || !matchesTerminalTarget(terminalTicket{
-		environmentId: grant.Target.Environment.Id, targetRevision: grant.Target.Environment.TargetRevision,
-		credentialId: grant.Target.Environment.SSH.CredentialId, credentialRevision: grant.Target.Environment.SSH.CredentialRevision,
-	}, current) {
-		return errors.New("project SSH environment changed during terminal session")
+	if !matchesTerminalTarget(terminalTargetIdentity(grant.Target.Environment), current) {
+		return errors.New("project environment changed during terminal session")
 	}
-	credential, err := s.environments.environmentCredentials.EnvironmentCredential(ctx, current.SSH.CredentialId)
+	if current.IsLocal() {
+		return nil
+	}
+	if expected := grant.Target.Environment.SSH.HostKeyFingerprint; expected != "" && current.SSH.HostKeyFingerprint != expected {
+		return errors.New("project SSH host key changed during terminal session")
+	}
+	credential, err := s.environments.environmentCredential(ctx, current.SSH.CredentialId)
 	if err != nil || !matchesEnvironmentCredential(current, credential) {
 		return errors.New("project SSH credential changed during terminal session")
 	}
@@ -157,7 +155,69 @@ func (s *TerminalService) ValidateSession(ctx context.Context, grant TerminalGra
 }
 
 func matchesTerminalTarget(ticket terminalTicket, current model.Environment) bool {
-	return current.IsSSH() && current.Id == ticket.environmentId &&
-		current.TargetRevision == ticket.targetRevision && current.SSH.CredentialId == ticket.credentialId &&
-		current.SSH.CredentialRevision == ticket.credentialRevision && current.HasFreshSuccessfulProbe()
+	if current.Id != ticket.environmentId || current.TargetType != ticket.targetType || current.TargetRevision != ticket.targetRevision {
+		return false
+	}
+	return current.IsLocal() || (current.IsSSH() && current.SSH.CredentialId == ticket.credentialId &&
+		current.SSH.CredentialRevision == ticket.credentialRevision)
+}
+
+func terminalTargetIdentity(environment model.Environment) terminalTicket {
+	ticket := terminalTicket{environmentId: environment.Id, targetType: environment.TargetType, targetRevision: environment.TargetRevision}
+	if environment.IsSSH() {
+		ticket.credentialId, ticket.credentialRevision = environment.SSH.CredentialId, environment.SSH.CredentialRevision
+	}
+	return ticket
+}
+
+func (s *TerminalService) resolveTarget(ctx context.Context, projectId string) (environmentport.Target, error) {
+	item, err := s.environments.environmentForProject(ctx, projectId)
+	if err != nil {
+		return environmentport.Target{}, err
+	}
+	if err := validateEnvironment(item, s.environments.localDisplay.Platform, false, false); err != nil {
+		return environmentport.Target{}, err
+	}
+	target := environmentport.Target{Environment: item}
+	if item.IsLocal() {
+		return target, nil
+	}
+	credential, err := s.environments.environmentCredential(ctx, item.SSH.CredentialId)
+	if err != nil || !matchesEnvironmentCredential(item, credential) {
+		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Environment SSH credential binding is invalid")
+	}
+	privateKey, err := decryptEnvironmentPrivateKey(s.environments.secretKey, credential)
+	if err != nil {
+		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Environment SSH credential binding is invalid")
+	}
+	target.PrivateKey = &privateKey
+	return target, nil
+}
+
+// ConfirmConnection pins the key observed on the authenticated terminal connection
+// before the handler exposes output or accepts browser input.
+func (s *TerminalService) ConfirmConnection(ctx context.Context, grant TerminalGrant, fingerprint string) (TerminalGrant, error) {
+	if err := s.ValidateSession(ctx, grant); err != nil {
+		return TerminalGrant{}, err
+	}
+	if grant.Target.Environment.IsLocal() {
+		return grant, nil
+	}
+	if err := s.environments.recordHostKey(ctx, grant.Target.Environment, fingerprint); err != nil {
+		return TerminalGrant{}, err
+	}
+	ssh := *grant.Target.Environment.SSH
+	ssh.HostKeyFingerprint = fingerprint
+	grant.Target.Environment.SSH = &ssh
+	if err := s.ValidateSession(ctx, grant); err != nil {
+		return TerminalGrant{}, err
+	}
+	return grant, nil
+}
+
+func (s *TerminalService) RuntimeUsername(grant TerminalGrant) string {
+	if grant.Target.Environment.IsLocal() {
+		return s.environments.localDisplay.Username
+	}
+	return grant.Target.Environment.SSH.Username
 }

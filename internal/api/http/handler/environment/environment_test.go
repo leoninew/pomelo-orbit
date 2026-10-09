@@ -11,10 +11,14 @@ import (
 func TestEnvironmentResponseIncludesOnlyApplicableTargetFields(t *testing.T) {
 	local := environmentResponse(environmentdto.View{
 		Id: "local", TargetType: model.EnvironmentTargetTypeLocal,
-		Local: &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit/deployment", Platform: "linux", Host: "orbit-host", Username: "orbit"},
+		TargetMayBeShared: true,
+		Local:             &environmentdto.LocalTargetView{WorkspaceRoot: "/srv/orbit/deployment", Platform: "linux", Host: "orbit-host", Username: "orbit"},
 	})
 	if local.Local == nil || local.Local.WorkspaceRoot != "/srv/orbit/deployment" || local.Local.Platform != "linux" || local.Local.Host != "orbit-host" || local.Local.Username != "orbit" || local.Ssh != nil {
 		t.Fatalf("local response = %#v", local)
+	}
+	if !local.TargetMayBeShared {
+		t.Fatal("local response omitted the target warning")
 	}
 
 	ssh := environmentResponse(environmentdto.View{

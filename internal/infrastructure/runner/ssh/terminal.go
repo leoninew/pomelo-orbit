@@ -20,15 +20,22 @@ type terminalSession struct {
 	output      *io.PipeReader
 	outputWrite *io.PipeWriter
 	once        sync.Once
+	fingerprint string
 }
 
 func (r *Runtime) StartTerminal(ctx context.Context, target environmentport.Target, columns, rows int) (environmentport.TerminalSession, error) {
 	if columns < 1 || rows < 1 {
 		return nil, fmt.Errorf("terminal dimensions are invalid")
 	}
-	client, closeClient, err := r.openSSH(ctx, target)
+	var fingerprint string
+	client, err := r.dialSSHWithHostKey(ctx, target, &fingerprint)
 	if err != nil {
 		return nil, err
+	}
+	stop := context.AfterFunc(ctx, func() { _ = client.Close() })
+	closeClient := func() {
+		stop()
+		_ = client.Close()
 	}
 	session, err := client.NewSession()
 	if err != nil {
@@ -59,8 +66,10 @@ func (r *Runtime) StartTerminal(ctx context.Context, target environmentport.Targ
 		return nil, fmt.Errorf("start remote terminal shell: %w", err)
 	}
 	return &terminalSession{closeClient: closeClient, session: session, stdin: stdin,
-		output: output, outputWrite: outputWrite}, nil
+		output: output, outputWrite: outputWrite, fingerprint: fingerprint}, nil
 }
+
+func (s *terminalSession) HostKeyFingerprint() string { return s.fingerprint }
 
 func (s *terminalSession) Input() io.WriteCloser { return s.stdin }
 func (s *terminalSession) Output() io.Reader     { return s.output }

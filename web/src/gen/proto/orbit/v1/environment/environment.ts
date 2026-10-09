@@ -47,6 +47,7 @@ export interface EnvironmentResp {
   created_at: string;
   updated_at: string;
   local: EnvironmentLocalTargetResp | undefined;
+  target_may_be_shared: boolean;
 }
 
 export interface ProjectEnvironmentUpdateReq {

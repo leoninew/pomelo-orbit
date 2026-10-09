@@ -98,10 +98,11 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function mountTerminal() {
+async function mountTerminal(targetType = 'ssh') {
   const props = reactive({
     open: true,
     projectId: 'project-1',
+    targetType,
     host: 'ssh-host',
     username: 'managed-user',
   });
@@ -198,8 +199,8 @@ describe('Environment terminal', () => {
     expect(document.body.textContent).toContain('7');
   });
 
-  it('preserves the connection, output and terminal across drawer close and reopen', async () => {
-    const props = await mountTerminal();
+  it.each(['local', 'ssh'])('preserves %s across drawer close and reopen', async (targetType) => {
+    const props = await mountTerminal(targetType);
     await vi.waitFor(() => expect(TestWebSocket.instances).toHaveLength(1));
     const socket = socketAt(0);
     socket.open();
@@ -235,21 +236,31 @@ describe('Environment terminal', () => {
     expect(terminalMock.dispose).toHaveBeenCalledOnce();
   });
 
-  it.each(['projectId', 'host', 'username'] as const)(
-    'ends a hidden session when %s changes',
-    async (field) => {
-      const props = await mountTerminal();
-      await vi.waitFor(() => expect(TestWebSocket.instances).toHaveLength(1));
-      const socket = socketAt(0);
-      props.open = false;
-      await nextTick();
-      props[field] = `${props[field]}-changed`;
-      await nextTick();
-      expect(socket.close).toHaveBeenCalledOnce();
-      expect(terminalMock.dispose).toHaveBeenCalledOnce();
-      expect(TestWebSocket.instances).toHaveLength(1);
-    }
-  );
+  it.each(['projectId'] as const)('ends a hidden session when %s changes', async (field) => {
+    const props = await mountTerminal();
+    await vi.waitFor(() => expect(TestWebSocket.instances).toHaveLength(1));
+    const socket = socketAt(0);
+    props.open = false;
+    await nextTick();
+    props[field] = `${props[field]}-changed`;
+    await nextTick();
+    expect(socket.close).toHaveBeenCalledOnce();
+    expect(terminalMock.dispose).toHaveBeenCalledOnce();
+    expect(TestWebSocket.instances).toHaveLength(1);
+  });
+
+  it('updates local display metadata without replacing the session', async () => {
+    const props = await mountTerminal('local');
+    await vi.waitFor(() => expect(TestWebSocket.instances).toHaveLength(1));
+    props.host = 'orbit-container';
+    props.username = 'orbit';
+    await nextTick();
+    expect(socketAt(0).close).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('orbit@orbit-container');
+    expect(document.body.textContent).toContain(
+      i18n.global.t('project.environment.targetTypes.local')
+    );
+  });
 
   it('preserves an explicit disconnect when the drawer reopens and reconnects only on request', async () => {
     const props = await mountTerminal();

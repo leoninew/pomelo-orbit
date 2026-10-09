@@ -99,6 +99,7 @@ func environmentResponse(item environmentdto.View) *environmentv1.EnvironmentRes
 		ProjectId:            item.ProjectId,
 		Code:                 item.Code,
 		TargetType:           item.TargetType,
+		TargetMayBeShared:    item.TargetMayBeShared,
 		TargetRevision:       item.TargetRevision,
 		LastProbeRevision:    item.LastProbeRevision,
 		LastProbeStatus:      item.LastProbeStatus,

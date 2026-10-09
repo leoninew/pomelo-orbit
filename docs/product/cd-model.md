@@ -1,5 +1,5 @@
 # Project 环境与 CD 产品模型
-最后修改时间: 2026-10-06 16:50:33
+最后修改时间: 2026-10-09 17:47:40
 
 Doc role: living product model
 
@@ -16,7 +16,7 @@ Doc role: living product model
 | GatewayConfig | Gateway Application 的业务属性和 ACME profile 选择 |
 | Route | 自定义 HTTP/TCP 入口和受管 target |
 
-`Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。切换当前 Project 就是切换该 Project 已保存的共用环境及关联的 CD Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
+`Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 通过 Web Project Initialization 和项目环境编辑模态窗维护，Gateway 在初始化向导中创建。切换当前 Project 就是切换该 Project 已保存的共用环境及关联的 CD Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
 
 Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD 首次部署默认使用 `<workspace_root>/deployment/<service-code>`，用户可确认或修改完整部署目录，Gateway certificates、独立 Route 文件及发布记录也位于对应 Service 目录下。当前 CI 执行器支持通过最新 Probe 的 `local` Environment，以及受管密钥和 host-key pinning 就绪的 Windows/Linux SSH Environment；分别在本机或远端 `<workspace_root>/pipeline` 中执行。SSH 登录用户还须能写入目标的 `pipeline` 目录，且目标 Docker daemon 能挂载相应宿主路径；Environment Probe 成功不保证已存在的 `pipeline` 子目录可写。SSH 目标绝不能作为控制面 Docker 的本地挂载源，也不在 SSH 失败时回退本地。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
 
@@ -25,13 +25,17 @@ Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD
 Environment 的 target type 是显式联合：
 
 - `local`：在 Orbit 控制面宿主机的 Docker daemon 上执行，工作目录为该 Environment 保存的 `workspace_root`；`~` / `~/...` 在使用时展开为控制面进程用户主目录。它不保存 SSH host、用户、私钥、host key 或 SSH 初始化认证。
-- `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。完整 SSH target 可以先保存为未初始化状态；用户显式生成初始化命令时才创建或复用其 `environment_credential` binding。命令执行并通过首次 Probe 后才记录 host-key fingerprint。工作目录同样由该 Environment 保存的 `workspace_root` 提供；`~` / `~/...` 在使用时展开为远端登录用户主目录。
+- `ssh`：Linux OpenSSH + Docker Engine/Compose，或 Windows native OpenSSH + WSL2 Docker Desktop Linux containers。完整 SSH target 可以先保存为未初始化状态；用户显式生成初始化命令时才创建或复用其 `environment_credential` binding。命令执行后，首次成功 Probe 或受管密钥认证的终端连接可记录 host-key fingerprint。工作目录同样由该 Environment 保存的 `workspace_root` 提供；`~` / `~/...` 在使用时展开为远端登录用户主目录。
 
-一个 Docker target 只能绑定一个活跃 Project。`local` target 全局独占；`ssh` target 按精确的 host + port 独占。已废弃 Project 保留其历史 Environment，但不再占用 target；Gateway 使用固定端口和共享 `traefik` 网络，保存 Environment 时若发现其他活跃 Project 已绑定同一 target 会直接拒绝。
+多个活跃 Project 可以保存相同的 Environment target 配置。初始化或编辑环境提交成功后，若其他活跃 Project 也配置了 `local`，或配置了相同 SSH host + port，界面显示非阻塞警告并继续正常流程。该匹配仅提示可能共用目标，不识别实际 Docker daemon，也不比较工作区、SSH 用户、凭据或主机指纹。已废弃 Project 不参与匹配。生成 SSH 初始化命令和保存已知环境配置同样不因目标匹配拒绝保存。Gateway 使用固定端口和共享 `traefik` 网络，实际部署时仍须由操作者处理端口、容器名称和目录冲突。
 
-`ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。保存、编辑、状态读取和 Probe 不创建、轮换或替换部署密钥；未生成初始化命令时 Probe 返回可恢复诊断。部署私钥只属于 SSH Environment，存在 `environment_credential`，不能通过仓库凭据 API、MCP 或日志读取。Probe、部署和 CI 不使用交互式 shell 或 PTY，也不支持密码认证、端口转发或操作者个人私钥。环境页终端是独立能力：当前 Project 成员可在最新 Probe 成功后，以该 Environment 保存的 SSH 用户和受管密钥打开目标宿主机的交互式 PTY shell；终端不进入应用容器或 Windows 的 WSL2 发行版。
+`ssh` 到 `127.0.0.1` 仍是 SSH target，必须使用密钥认证和 host-key pinning，不会转换为 `local`。保存、编辑、状态读取和 Probe 不创建、轮换或替换部署密钥；未生成初始化命令时 Probe 返回可恢复诊断。部署私钥只属于 SSH Environment，存在 `environment_credential`，不能通过仓库凭据 API、MCP 或日志读取。Probe、部署和 CI 不使用交互式 shell 或 PTY，也不支持密码认证、端口转发或操作者个人私钥。
 
-终端抽屉关闭后保留当前环境页内的终端实例、输出与 SSH 会话，重新打开继续同一会话；离开环境页、切换 Project、目标或凭据变更、主动断开以及服务端会话限制会终止连接。断线后仅手动重连。
+所有已配置 Environment 均显示终端入口，与浏览器访问 localhost、127.0.0.1 或远程站点无关。当前 Project 成员打开 `local` 终端时，以 Orbit 进程用户在 Orbit 所在环境执行 shell：原生部署是本机 shell，容器 / DooD 部署是 Orbit 容器内 shell。local 进入保存的工作区，使用时展开 `~`，根目录不存在时创建；工作区仅是启动目录，不提供文件系统或用户权限隔离。Unix 使用 `/bin/sh -i`，Windows 使用系统 Windows PowerShell。SSH 终端使用保存的 SSH 用户与受管密钥，进入目标宿主机默认 shell，不自动进入应用容器或 WSL2。
+
+打开终端与 Docker 检查独立：local/ssh 的票据、连接及会话复核均不要求 Probe 成功或 Docker/Compose 可用。SSH 首次连接在同一次受管密钥认证的连接中观察并固定指纹，固定完成后才提供交互；后续严格比较已有指纹。部署、CI、Route 的最新成功 Probe 要求继续保留。
+
+终端抽屉关闭后保留当前环境页内的终端实例、输出与会话，重新打开继续同一会话；离开环境页、切换 Project、目标或凭据变更、主动断开以及服务端会话限制会终止连接。Probe 状态变化不会重建或终止终端。断线后仅手动重连。
 
 镜像 registry、登录方式和多 registry 配置是宿主机责任，不属于 Orbit Project 或 Environment 配置。
 

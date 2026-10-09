@@ -63,3 +63,13 @@ SET last_probe_revision = ?, last_probe_status = ?, last_probe_at = ?, last_prob
     updated_at = ?
 WHERE id = ?
   AND target_revision = ?;
+
+-- name: RecordEnvironmentHostKey :execrows
+UPDATE environment
+SET host_key_fingerprint = sqlc.arg(fingerprint), updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id)
+  AND target_type = 'ssh'
+  AND target_revision = sqlc.arg(target_revision)
+  AND ssh_credential_id = sqlc.arg(ssh_credential_id)
+  AND ssh_credential_revision = sqlc.arg(ssh_credential_revision)
+  AND (host_key_fingerprint IS NULL OR host_key_fingerprint = '' OR host_key_fingerprint = sqlc.arg(fingerprint));

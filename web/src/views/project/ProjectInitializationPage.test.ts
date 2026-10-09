@@ -4,6 +4,7 @@ import { createApp, nextTick, type App } from 'vue';
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { projectInitializationApi } from '@/api/project/initialization';
+import { useToast } from '@/composables/useToast';
 import i18n from '@/i18n';
 import { useProjectStore } from '@/stores/project';
 import { ApiError } from '@/utils/request';
@@ -13,6 +14,7 @@ vi.mock('@/api/project/initialization', () => ({
   projectInitializationApi: {
     getStatus: vi.fn(),
     probeEnvironment: vi.fn(),
+    saveEnvironment: vi.fn(),
   },
 }));
 
@@ -69,10 +71,67 @@ afterEach(() => {
   target?.remove();
   mountedApp = undefined;
   target = undefined;
+  useToast().toasts.value = [];
   vi.clearAllMocks();
 });
 
 describe('Project initialization page', () => {
+  it.each([true, false])(
+    'saves the environment and advances with target warning=%s',
+    async (shared) => {
+      const pinia = createPinia();
+      setActivePinia(pinia);
+      vi.mocked(projectInitializationApi.getStatus).mockResolvedValue(incompleteStatus as never);
+      vi.mocked(projectInitializationApi.saveEnvironment).mockResolvedValue({
+        ...incompleteStatus,
+        status: 'needs_probe',
+        environment: {
+          id: 'environment-1',
+          target_type: 'local',
+          target_may_be_shared: shared,
+          target_revision: 1,
+          workspace_root: '~/.pomelo-orbit',
+          local: {
+            platform: 'linux',
+            host: 'orbit-host',
+            username: 'orbit',
+            workspace_root: '~/.pomelo-orbit',
+          },
+        },
+      } as never);
+      const router = initializationRouter();
+      await router.push('/project/project-1/initialization');
+      await router.isReady();
+      target = document.createElement('div');
+      document.body.append(target);
+      mountedApp = createApp(RouterView);
+      mountedApp.use(pinia).use(router).use(i18n).mount(target);
+      await vi.waitFor(() => expect(target?.querySelector('form')).not.toBeNull());
+      target
+        .querySelector('form')
+        ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      await vi.waitFor(() =>
+        expect(projectInitializationApi.saveEnvironment).toHaveBeenCalledOnce()
+      );
+      await flushRender();
+      expect(projectInitializationApi.saveEnvironment).toHaveBeenCalledWith('project-1', {
+        target_type: 'local',
+        local: { workspace_root: '~/.pomelo-orbit' },
+      });
+      expect(target.textContent).toContain(
+        i18n.global.t('project.initialization.probeChecklistTitle')
+      );
+      expect(useToast().toasts.value).toEqual([
+        expect.objectContaining({
+          type: shared ? 'warning' : 'success',
+          text: i18n.global.t(
+            shared ? 'project.environment.targetMayBeSharedWarning' : 'project.initialization.saved'
+          ),
+        }),
+      ]);
+    }
+  );
+
   it('uses the route project when opening the wizard', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);

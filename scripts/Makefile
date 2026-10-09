@@ -15,8 +15,9 @@ endif
 
 ifeq ($(firstword $(MAKECMDGOALS)),run)
 RUN_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
-RUN_GOALS := $(filter-out run,$(RUN_ARGS))
+RUN_GOALS := $(subst :,\:,$(filter-out run,$(RUN_ARGS)))
 # Goals after run are CLI arguments, including names of Make targets.
+# Escape colons in target definitions while preserving the original CLI arguments.
 ifneq ($(RUN_GOALS),)
 .PHONY: $(RUN_GOALS)
 $(RUN_GOALS): ; @:

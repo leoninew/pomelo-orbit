@@ -298,7 +298,11 @@
   import AppDialog from '@/components/AppDialog.vue';
   import AppDialogActions from '@/components/AppDialogActions.vue';
   import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import { primaryNavigation, type PrimaryNavigationKey } from '@/navigation';
+  import {
+    getProjectSwitchListPath,
+    primaryNavigation,
+    type PrimaryNavigationKey,
+  } from '@/navigation';
   import { useAuthStore } from '@/stores/auth';
   import { useProjectStore } from '@/stores/project';
   import { isProjectInitializationPath } from '@/router/projectReadiness';
@@ -389,11 +393,17 @@
     }
     const current = router.currentRoute.value;
     try {
-      projectStore.setActiveProject(projectId);
       if (isProjectInitializationPath(current.path)) {
+        projectStore.setActiveProject(projectId);
         await router.push({ name: 'ProjectInitialization', params: { id: projectId } });
         return;
       }
+      const listPath = getProjectSwitchListPath(current);
+      if (listPath) {
+        // Leave the old detail before its project watchers can request the new project.
+        await router.replace(listPath);
+      }
+      projectStore.setActiveProject(projectId);
       router.go(0);
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : t('project.loadFailed'));

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -104,11 +103,11 @@ func (s Service) resolveManagedRouteTarget(ctx context.Context, projectId string
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to load route target application", err)
 	}
-	plan, err := s.effectiveServicePlan(ctx, projectId, app, service)
+	components, err := s.serviceEndpointComponents(ctx, projectId, app, service)
 	if err != nil {
 		return err
 	}
-	component, endpoint, found := effectiveEndpoint(plan, *route.ComponentName, *route.EndpointProtocol, *route.EndpointContainerPort)
+	component, endpoint, found := effectiveEndpoint(components, *route.ComponentName, *route.EndpointProtocol, *route.EndpointContainerPort)
 	if !found {
 		return apperror.New(apperror.KindValidation, "route target endpoint was not found")
 	}
@@ -174,11 +173,11 @@ func (s Service) componentPortConflict(ctx context.Context, projectId string, li
 			if service.Status != status.ServiceStatusRunning {
 				continue
 			}
-			plan, err := s.effectiveServicePlan(ctx, projectId, app, service)
+			components, err := s.serviceEndpointComponents(ctx, projectId, app, service)
 			if err != nil {
 				return "", err
 			}
-			for _, component := range plan.Components {
+			for _, component := range components {
 				for _, endpoint := range component.Endpoints {
 					if (endpoint.Mode == "local" || endpoint.Mode == "host") && endpoint.ListenPort != nil && *endpoint.ListenPort == listenPort {
 						return app.Code + "/" + service.Code + "/" + component.Name + "/" + model.EndpointDisplayName(endpoint.Protocol, endpoint.ContainerPort), nil
@@ -190,32 +189,53 @@ func (s Service) componentPortConflict(ctx context.Context, projectId string, li
 	return "", nil
 }
 
-func (s Service) effectiveServicePlan(ctx context.Context, projectId string, app model.Application, service model.Service) (model.EffectiveServicePlan, error) {
+func (s Service) serviceEndpointComponents(ctx context.Context, projectId string, app model.Application, service model.Service) ([]model.EffectiveServiceComponent, error) {
 	version, err := s.application.Version(ctx, projectId, service.VersionId)
 	if err != nil {
-		return model.EffectiveServicePlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route target version", err)
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load route target version", err)
 	}
-	components, err := s.application.VersionComponentsByVersion(ctx, projectId, version.Id)
+	if version.ApplicationId != app.Id {
+		return nil, apperror.New(apperror.KindValidation, "route target version does not belong to application")
+	}
+	declarations, err := s.application.VersionComponentsByVersion(ctx, projectId, version.Id)
 	if err != nil {
-		return model.EffectiveServicePlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route target components", err)
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load route target components", err)
 	}
 	overlays, err := s.service.ServiceComponentsByService(ctx, projectId, service.Id)
 	if err != nil {
-		return model.EffectiveServicePlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route target components", err)
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to load route target components", err)
 	}
-	env, err := s.service.ServiceEnvByService(ctx, projectId, service.Id)
-	if err != nil {
-		return model.EffectiveServicePlan{}, apperror.Wrap(apperror.KindInternal, "Failed to load route target environment", err)
+	bySource := make(map[string]model.ServiceComponent, len(overlays))
+	for _, overlay := range overlays {
+		if overlay.ServiceId != service.Id {
+			return nil, apperror.New(apperror.KindValidation, "route target component does not belong to service")
+		}
+		if _, exists := bySource[overlay.SourceVersionComponentId]; exists {
+			return nil, apperror.New(apperror.KindValidation, "route target service has duplicate component mappings")
+		}
+		bySource[overlay.SourceVersionComponentId] = overlay
 	}
-	plan, _, err := deploymentsvc.BuildEffectiveServicePlan(app, version, service, components, overlays, env, nil)
-	if err != nil {
-		return model.EffectiveServicePlan{}, apperror.New(apperror.KindValidation, "route target service has an invalid effective plan: "+err.Error())
+	components := make([]model.EffectiveServiceComponent, 0, len(declarations))
+	for _, declaration := range declarations {
+		overlay, exists := bySource[declaration.Id]
+		if !exists || overlay.ComponentName != declaration.Name {
+			return nil, apperror.New(apperror.KindValidation, "route target component mapping does not match selected version")
+		}
+		endpoints, err := model.MergeServiceComponentEndpoints(declaration, overlay)
+		if err != nil {
+			return nil, apperror.New(apperror.KindValidation, "route target service has invalid endpoints: "+err.Error())
+		}
+		components = append(components, model.EffectiveServiceComponent{Name: declaration.Name, Endpoints: endpoints})
+		delete(bySource, declaration.Id)
 	}
-	return plan, nil
+	if len(bySource) != 0 {
+		return nil, apperror.New(apperror.KindValidation, "route target component mapping does not match selected version")
+	}
+	return components, nil
 }
 
-func effectiveEndpoint(plan model.EffectiveServicePlan, componentName, endpointProtocol string, endpointContainerPort int) (model.EffectiveServiceComponent, model.VersionComponentEndpoint, bool) {
-	for _, component := range plan.Components {
+func effectiveEndpoint(components []model.EffectiveServiceComponent, componentName, endpointProtocol string, endpointContainerPort int) (model.EffectiveServiceComponent, model.VersionComponentEndpoint, bool) {
+	for _, component := range components {
 		if component.Name != componentName {
 			continue
 		}

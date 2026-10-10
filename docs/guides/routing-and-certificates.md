@@ -64,6 +64,8 @@ Environment 切换目标类型、工作目录、SSH 地址/平台/凭据后，�
 
 Traefik 直接重启从持久化文件恢复，Orbit 可以离线。Service 部署/重启与自定义 Route 同步独立：不检查发布记录、YAML/PEM 或已发布上游引用，不因 pending、发布失败或文件缺失阻止部署。Gateway 仅检查 Traefik 管理 API 就绪，不核验自定义 Route；业务 Service 不等待 Gateway API。移除或改名 Component/endpoint、改变网络或 Gateway entrypoint/resolver 后，若需要更新自定义路由，应另行显式同步。Component `endpoint.mode=gateway` 仍是随部署生效的 Docker label 路由，默认 entrypoint/TLS 由 GatewayConfig 控制。
 
+受管 Route 的创建、编辑和同步只解析目标 Service 当前 Version 的组件与端点覆盖，校验归属、端点协议和端口；TCP 监听冲突检查使用运行中 Service 的有效端点。上述操作不构建完整部署计划，也不解析服务环境变量占位符或校验挂载、资源等部署配置，缺少 `HOME` 等环境值不会阻止路由发布。完整部署配置仍在部署预览和执行时校验。
+
 前端 `/routes` 以自定义 Route 为主列表，提供创建、编辑、批量启停草稿和同步入口；Route 详情页提供单条启停草稿、独立证书配置和同步。已启用 Route 修改证书后先保存，页面提示待同步；预览同时展示协议与证书方式。未启用 Route 的证书配置同样直接保存，不提示待同步，启用并同步后才发布。未启用 Route 的创建、编辑和删除也不单独提示待同步。`/route/traefik` 单独展示 Traefik 当前路由，可从主列表进入并返回。
 
 Route 编码为最多 32 字符的小写 DNS 单标签，以字母开头，只允许 `a-z`、`0-9`、`-`，末尾不能是连字符。`external_domain` 可为 `sub.example.com` 等多级子域名，每级标签符合 ASCII 主机名规则，末级标签不能纯数字，最长 220 字符。Gateway 配置 `external_domain` 后，创建和编辑 Route 时修改编码会在现有域名控件中生成 `编码.external_domain`；手工填写的其他域名不会被后续编码修改覆盖。未配置外网域名时，创建表单域名控件留空。保存的是域名控件中的完整域名；外网域名配置本身不创建 DNS 记录或对外路由，也不批量修改已保存 Route。

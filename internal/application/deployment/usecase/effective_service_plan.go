@@ -106,7 +106,6 @@ func MergeServiceComponent(declaration model.VersionComponent, overlay model.Ser
 	// values here would emit both the original and the override.
 	result.Env = make([]model.VersionComponentEnv, 0, len(declaration.Env))
 	result.Mounts = make([]model.VersionComponentMount, 0, len(declaration.Mounts))
-	result.Endpoints = make([]model.VersionComponentEndpoint, 0, len(declaration.Endpoints))
 	envOverlay := make(map[string]model.ServiceComponentEnv, len(overlay.Env))
 	for _, item := range overlay.Env {
 		if _, exists := envOverlay[item.Key]; exists {
@@ -177,49 +176,11 @@ func MergeServiceComponent(declaration model.VersionComponent, overlay model.Ser
 		return result, fmt.Errorf("component %s overlays undeclared resources", declaration.Name)
 	}
 
-	endpointOverlay := make(map[string]model.ServiceComponentEndpoint, len(overlay.Endpoints))
-	for _, item := range overlay.Endpoints {
-		identity := model.EndpointDisplayName(item.Protocol, item.ContainerPort)
-		if _, exists := endpointOverlay[identity]; exists {
-			return result, fmt.Errorf("component %s has duplicate endpoint overlay %s", declaration.Name, identity)
-		}
-		endpointOverlay[identity] = item
+	endpoints, err := model.MergeServiceComponentEndpoints(declaration, overlay)
+	if err != nil {
+		return result, err
 	}
-	for _, item := range declaration.Endpoints {
-		identity := model.EndpointDisplayName(item.Protocol, item.ContainerPort)
-		merged, exists := endpointOverlay[identity]
-		if !exists {
-			result.Endpoints = append(result.Endpoints, item)
-			continue
-		}
-		switch merged.State {
-		case model.ServiceComponentOverlayOverride:
-			if merged.Mode != nil {
-				item.Mode = *merged.Mode
-			}
-			if merged.BindAddress != nil {
-				item.BindAddress = cloneString(merged.BindAddress)
-			}
-			if merged.ListenPort != nil {
-				item.ListenPort = cloneInt(merged.ListenPort)
-			}
-			if merged.Entrypoint != nil {
-				item.Entrypoint = cloneString(merged.Entrypoint)
-			}
-			if merged.PathPrefix != nil {
-				item.PathPrefix = cloneString(merged.PathPrefix)
-			}
-		case model.ServiceComponentOverlayDeleted:
-			item.Mode, item.BindAddress, item.ListenPort, item.Entrypoint, item.PathPrefix = "internal", nil, nil, nil, nil
-		default:
-			return result, fmt.Errorf("component %s endpoint overlay %s has invalid state", declaration.Name, identity)
-		}
-		result.Endpoints = append(result.Endpoints, item)
-		delete(endpointOverlay, identity)
-	}
-	if len(endpointOverlay) != 0 {
-		return result, fmt.Errorf("component %s overlays an undeclared endpoint", declaration.Name)
-	}
+	result.Endpoints = endpoints
 	return result, nil
 }
 
@@ -311,14 +272,6 @@ func cloneStringSlice(value []string) []string {
 	}
 	return append([]string{}, value...)
 }
-func cloneInt(value *int) *int {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
-}
-
 func cloneGatewayConfig(value *model.GatewayConfig) *model.GatewayConfig {
 	if value == nil {
 		return nil

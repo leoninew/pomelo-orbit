@@ -565,7 +565,7 @@ func TestRouteValidationSeparatesIdentityFromCustomTargetUrl(t *testing.T) {
 	}
 }
 
-func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
+func TestRouteServiceCreatesAndSyncsManagedHTTPRouteWithoutServiceEnvironment(t *testing.T) {
 	service, publisher, _, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
@@ -631,7 +631,7 @@ func TestRouteServiceCreatesManagedHTTPRoute(t *testing.T) {
 	}
 }
 
-func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
+func TestRouteServiceCreatesAndSyncsTCPRouteWithoutServiceEnvironment(t *testing.T) {
 	service, publisher, _, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
@@ -714,6 +714,51 @@ func TestRouteServiceCreatesTCPRouteAndValidatesListeners(t *testing.T) {
 	}
 }
 
+func TestRouteTCPPortConflictsUseEndpointOverlays(t *testing.T) {
+	service, _, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
+	target := seedTCPRouteTarget(t, database, routeTestProjectId, "01KROUTETARGETAPP00000000001", "01KROUTETARGETVERSION0000001", "01KROUTETARGETSERVICE0000001")
+	serviceRepo := servicerepo.NewRepository(database)
+	if err := serviceRepo.UpdateServiceStatus(ctx, routeTestProjectId, target.Id, status.ServiceStatusRunning); err != nil {
+		t.Fatal(err)
+	}
+	components, err := serviceRepo.ServiceComponentsByService(ctx, routeTestProjectId, target.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	component := components[0]
+	mode := "host"
+	listenPort := 16382
+	component.Endpoints = []model.ServiceComponentEndpoint{{
+		Protocol: "tcp", ContainerPort: 6380, Mode: &mode, ListenPort: &listenPort, State: model.ServiceComponentOverlayOverride,
+	}}
+	if err := serviceRepo.UpdateServiceComponentOverlay(ctx, routeTestProjectId, component); err != nil {
+		t.Fatal(err)
+	}
+	conflict, err := service.componentPortConflict(ctx, routeTestProjectId, listenPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if conflict != "redis/redis-default/redis/tcp6380" {
+		t.Fatalf("overridden endpoint conflict = %q", conflict)
+	}
+	conflict, err = service.componentPortConflict(ctx, routeTestProjectId, 16380)
+	if err != nil || conflict != "" {
+		t.Fatalf("original endpoint port conflict = %q, err = %v", conflict, err)
+	}
+	component.Endpoints = []model.ServiceComponentEndpoint{{
+		Protocol: "tcp", ContainerPort: 6380, State: model.ServiceComponentOverlayDeleted,
+	}}
+	if err := serviceRepo.UpdateServiceComponentOverlay(ctx, routeTestProjectId, component); err != nil {
+		t.Fatal(err)
+	}
+	conflict, err = service.componentPortConflict(ctx, routeTestProjectId, listenPort)
+	if err != nil || conflict != "" {
+		t.Fatalf("deleted endpoint exposure conflict = %q, err = %v", conflict, err)
+	}
+}
+
 func seedTCPRouteTarget(t *testing.T, database *sql.DB, projectId, appId, versionId, serviceId string) model.Service {
 	t.Helper()
 	ctx := context.Background()
@@ -727,6 +772,7 @@ func seedTCPRouteTarget(t *testing.T, database *sql.DB, projectId, appId, versio
 	version := model.Version{Id: versionId, ApplicationId: app.Id, Label: "v1", Status: status.VersionStatusPublished}
 	component := model.VersionComponent{
 		Id: "01KROUTETARGETCOMPONENT00001", VersionId: version.Id, Name: "redis", Image: "redis:7", PullPolicy: "missing",
+		Env: []model.VersionComponentEnv{{Key: "HOME", Value: "${HOME}"}},
 		Endpoints: []model.VersionComponentEndpoint{
 			{Protocol: "tcp", ContainerPort: 6379, Mode: "internal"},
 			{Protocol: "tcp", ContainerPort: 6380, Mode: "local", ListenPort: &conflictingPort},
@@ -758,6 +804,7 @@ func seedHTTPRouteTarget(t *testing.T, database *sql.DB, projectId, appId, versi
 	version := model.Version{Id: versionId, ApplicationId: app.Id, Label: "v1", Status: status.VersionStatusPublished}
 	component := model.VersionComponent{
 		Id: "01KROUTEHTTPCOMPONENT000001", VersionId: version.Id, Name: "api", Image: "api:test", PullPolicy: "missing",
+		Env: []model.VersionComponentEnv{{Key: "HOME", Value: "${HOME}"}},
 		Endpoints: []model.VersionComponentEndpoint{
 			{Protocol: "http", ContainerPort: 8080, Mode: "internal"},
 			{Protocol: "tcp", ContainerPort: 9090, Mode: "internal"},

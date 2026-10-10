@@ -1,5 +1,6 @@
 import { FolderGit2, Layers, LayoutGrid, Network, Play, Wrench } from '@lucide/vue';
 import type { Component } from 'vue';
+import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { PERMISSIONS } from '@/constants/permissions';
 
 export type NavigationScope = 'home' | 'settings' | 'pipeline' | 'deployment';
@@ -371,4 +372,19 @@ export function getNavigationScope(path: string): NavigationScope | null {
 export function getPrimaryNavigationKey(path: string): PrimaryNavigationKey | null {
   const scope = getNavigationScope(path);
   return scope === 'pipeline' || scope === 'deployment' || scope === 'settings' ? scope : null;
+}
+
+export function getProjectSwitchListPath(route: RouteLocationNormalizedLoaded): string | null {
+  if (Object.keys(route.params).length === 0) {
+    return null;
+  }
+  const scope = getNavigationScope(route.path);
+  if (!scope) {
+    return null;
+  }
+  return (
+    secondaryNavigation[scope]
+      .flatMap((branch) => branch.children)
+      .find((item) => item.key === route.meta.menuKey)?.path ?? null
+  );
 }

@@ -72,13 +72,18 @@ class TestWebSocket {
 
 let app: App | undefined;
 let container: HTMLDivElement | undefined;
+let notifyResize: (() => void) | undefined;
 
 beforeEach(() => {
   TestWebSocket.instances = [];
+  notifyResize = undefined;
   vi.stubGlobal('WebSocket', TestWebSocket);
   vi.stubGlobal(
     'ResizeObserver',
     class {
+      constructor(callback: () => void) {
+        notifyResize = callback;
+      }
       observe() {}
       disconnect() {}
     }
@@ -134,7 +139,7 @@ describe('Environment terminal', () => {
     await nextTick();
 
     const buttons = document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button');
-    expect(buttons).toHaveLength(2);
+    expect(buttons).toHaveLength(3);
     const connectionButton = buttons[0];
     if (!connectionButton) {
       throw new Error('Expected terminal connection control');
@@ -159,6 +164,60 @@ describe('Environment terminal', () => {
     expect(connectionButton.getAttribute('title')).toContain(
       i18n.global.t('project.environment.terminal.connected')
     );
+  });
+
+  it('toggles fullscreen and resizes the existing terminal session', async () => {
+    await mountTerminal();
+    await vi.waitFor(() => expect(TestWebSocket.instances).toHaveLength(1));
+    const socket = socketAt(0);
+    socket.open();
+    socket.message('{"type":"ready"}');
+    await nextTick();
+    const terminalContainer = terminalMock.open.mock.calls[0]?.[0];
+    const drawer = document.querySelector('[role="dialog"]');
+    const fullscreenButton = drawer?.querySelector<HTMLButtonElement>(
+      `button[aria-label="${i18n.global.t('project.environment.terminal.fullscreen')}"]`
+    );
+    if (!fullscreenButton) {
+      throw new Error('Expected terminal fullscreen control');
+    }
+    expect(drawer?.classList.contains('w-[min(960px,100vw)]')).toBe(true);
+    expect(fullscreenButton.getAttribute('aria-pressed')).toBe('false');
+    const fitsBeforeFullscreen = terminalMock.fit.mock.calls.length;
+    socket.send.mockClear();
+
+    fullscreenButton.click();
+    await nextTick();
+    expect(drawer?.classList.contains('w-screen')).toBe(true);
+    expect(drawer?.classList.contains('w-[min(960px,100vw)]')).toBe(false);
+    expect(fullscreenButton.getAttribute('aria-pressed')).toBe('true');
+    expect(fullscreenButton.getAttribute('title')).toBe(
+      i18n.global.t('project.environment.terminal.exitFullscreen')
+    );
+    notifyResize?.();
+    expect(terminalMock.fit).toHaveBeenCalledTimes(fitsBeforeFullscreen + 1);
+    expect(socket.send).toHaveBeenLastCalledWith(
+      JSON.stringify({ type: 'resize', cols: 80, rows: 24 })
+    );
+
+    fullscreenButton.click();
+    await nextTick();
+    expect(drawer?.classList.contains('w-screen')).toBe(false);
+    expect(drawer?.classList.contains('w-[min(960px,100vw)]')).toBe(true);
+    expect(fullscreenButton.getAttribute('aria-pressed')).toBe('false');
+    expect(fullscreenButton.getAttribute('aria-label')).toBe(
+      i18n.global.t('project.environment.terminal.fullscreen')
+    );
+    notifyResize?.();
+    expect(terminalMock.fit).toHaveBeenCalledTimes(fitsBeforeFullscreen + 2);
+    expect(socket.send).toHaveBeenCalledTimes(2);
+    expect(terminalContainer?.isConnected).toBe(true);
+    expect(terminalMock.open).toHaveBeenCalledOnce();
+    expect(terminalMock.reset).toHaveBeenCalledOnce();
+    expect(terminalMock.dispose).not.toHaveBeenCalled();
+    expect(projectEnvironmentApi.terminalTicket).toHaveBeenCalledOnce();
+    expect(socket.close).not.toHaveBeenCalled();
+    expect(TestWebSocket.instances).toHaveLength(1);
   });
 
   it('reports a timeout when the WebSocket never becomes ready', async () => {

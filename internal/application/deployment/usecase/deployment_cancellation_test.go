@@ -41,8 +41,7 @@ func TestReconcileCanceledServiceUsesObservedRuntimeWithoutChangingDeployment(t 
 	}{
 		{name: "running", workspace: true, output: `[{"State":"running"}]`, want: status.ServiceStatusRunning},
 		{name: "stopped", workspace: true, output: "[]", want: status.ServiceStatusStopped},
-		{name: "unobservable", workspace: true, runErr: context.Canceled, want: status.ServiceStatusFaulted},
-		{name: "workspace absent", want: status.ServiceStatusStopped},
+		{name: "unobservable", workspace: true, runErr: context.Canceled},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -52,7 +51,7 @@ func TestReconcileCanceledServiceUsesObservedRuntimeWithoutChangingDeployment(t 
 			runtime.queryOutput = test.output
 			runtime.queryErr = test.runErr
 			service := Service{executionStore: store, runtime: runtime}
-			service.reconcileCanceledService(context.Background(), "project-1", environmentport.Target{}, model.Application{Code: "demo"}, model.Service{Id: "service-1", Code: "demo-default"})
+			service.reconcileCanceledService(context.Background(), "project-1", "deployment-1", environmentport.Target{}, model.Application{Code: "demo"}, model.Service{Id: "service-1", Code: "demo-default"})
 			if store.status != test.want {
 				t.Fatalf("service status = %q, want %q", store.status, test.want)
 			}
@@ -65,11 +64,12 @@ type canceledServiceStore struct {
 	status string
 }
 
-func (s *canceledServiceStore) UpdateServiceStatus(_ context.Context, _, _ string, value string) error {
+func (s *canceledServiceStore) ReconcileServiceAfterCancellation(_ context.Context, _, _, _ string, value string) (bool, error) {
 	s.status = value
-	return nil
+	return true, nil
 }
 
 func (s *canceledServiceStore) Service(context.Context, string, string) (model.Service, error) {
-	return model.Service{Id: "service-1", Code: "demo-default", RuntimeDirectory: "/custom/demo"}, nil
+	currentId := "deployment-1"
+	return model.Service{Id: "service-1", Code: "demo-default", RuntimeDirectory: "/custom/demo", CurrentDeploymentId: &currentId}, nil
 }

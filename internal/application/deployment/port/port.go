@@ -2,7 +2,6 @@ package port
 
 import (
 	"context"
-	"errors"
 	"io"
 	"time"
 
@@ -13,8 +12,6 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-var ErrLogNotReady = errors.New("container log configuration is not ready")
-
 // Dispatcher persists the existing asynchronous task contract for deployment commands.
 type Dispatcher interface {
 	DispatchDeploy(ctx context.Context, input deploymentdto.DeployDispatchInput) error
@@ -24,6 +21,7 @@ type Dispatcher interface {
 
 // CommandStore is the narrow persistence view used to create deployment commands.
 type CommandStore interface {
+	SetServiceCurrentDeployment(ctx context.Context, projectId, id, deploymentId string) error
 	UpdateServiceDeploymentDirectory(ctx context.Context, projectId, id, directory string, targetRevision int64) error
 	Project(ctx context.Context, id string) (model.Project, error)
 	IsProjectMember(ctx context.Context, projectId string, userId string) (bool, error)
@@ -36,14 +34,21 @@ type CommandStore interface {
 	ServiceComponentsByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceComponent, error)
 	UpdateServiceStatus(ctx context.Context, projectId string, id string, status string) error
 	CreateDeployment(ctx context.Context, projectId string, deployment model.Deployment) error
-	HasActiveDeployment(ctx context.Context, projectId string, serviceId string) (bool, error)
+}
+
+type TransactionRunner interface {
+	RunInTransaction(context.Context, func(context.Context) error) error
 }
 
 // ExecutionStore is the worker's narrow persistence view. It deliberately
 // exposes domain models rather than generated SQLC or transport types.
 type ExecutionStore interface {
+	CancelSupersededDeployments(ctx context.Context, projectId, serviceId, currentDeploymentId string) ([]string, error)
+	CancelObsoleteDeployment(ctx context.Context, projectId, id string) (bool, error)
+	UpdateServiceDeploymentResult(ctx context.Context, projectId, id, deploymentId, status string, versionId *string) (bool, error)
+	ReconcileServiceAfterCancellation(ctx context.Context, projectId, id, deploymentId, status string) (bool, error)
 	DirectoryServices(ctx context.Context, projectId string) ([]model.Service, error)
-	BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, targetRevision int64) error
+	BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, targetRevision int64) (bool, error)
 	Application(ctx context.Context, projectId string, id string) (model.Application, error)
 	Deployment(ctx context.Context, projectId string, id string) (model.Deployment, error)
 	Version(ctx context.Context, projectId string, id string) (model.Version, error)
@@ -51,8 +56,6 @@ type ExecutionStore interface {
 	ServiceEnvByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceEnv, error)
 	ServiceComponentsByService(ctx context.Context, projectId string, serviceId string) ([]model.ServiceComponent, error)
 	Service(ctx context.Context, projectId string, id string) (model.Service, error)
-	UpdateServiceStatus(ctx context.Context, projectId string, id string, status string) error
-	UpdateServiceAfterDeploy(ctx context.Context, projectId string, id string, status string, versionId string) error
 	BeginDeployment(ctx context.Context, projectId string, id string) (bool, error)
 	CompleteDeployment(ctx context.Context, projectId string, id string, status string, message string) (bool, error)
 	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)

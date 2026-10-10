@@ -6,7 +6,7 @@
         <button
           v-if="gateway"
           class="app-button-primary h-9 px-3"
-          :disabled="operating || isDeploying"
+          :disabled="operating"
           @click="openDeployDialog"
         >
           <Rocket class="size-4" />
@@ -691,14 +691,9 @@
     remove_volumes: false,
   });
   const operating = computed(() => opStatus.value === 'loading');
-  const isDeploying = computed(() => gateway.value?.active_deployment ?? false);
   const canStop = computed(() => {
     const current = gateway.value;
-    return Boolean(
-      current?.service_id &&
-      !current.active_deployment &&
-      (current.service_status === 'running' || current.service_status === 'faulted')
-    );
+    return Boolean(current?.service_id);
   });
   const noAcmeProfileValue = '__acme_disabled__';
   const entrypointOptions = [

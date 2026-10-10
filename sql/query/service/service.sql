@@ -306,7 +306,7 @@ WHERE s.project_id = sqlc.arg(project_id)
   );
 
 -- name: ListServicesByProject :many
-SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at, s.deployment_directory, s.directory_target_revision, s.runtime_directory, s.runtime_target_revision,
+SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at, s.deployment_directory, s.directory_target_revision, s.runtime_directory, s.runtime_target_revision, s.current_deployment_id,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -330,7 +330,7 @@ ORDER BY s.id DESC
 LIMIT ? OFFSET ?;
 
 -- name: ServiceListItemById :one
-SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at, s.deployment_directory, s.directory_target_revision, s.runtime_directory, s.runtime_target_revision,
+SELECT s.id, s.project_id, s.application_id, s.code, s.version_id, s.status, s.created_at, s.updated_at, s.deployment_directory, s.directory_target_revision, s.runtime_directory, s.runtime_target_revision, s.current_deployment_id,
        a.name AS application_name, a.code AS application_code, a.kind AS application_kind,
        v.label AS version_label
 FROM service s
@@ -346,8 +346,27 @@ WHERE id = sqlc.arg(id) AND project_id = sqlc.arg(project_id);
 -- name: BindServiceRuntimeDirectory :execrows
 UPDATE service SET runtime_directory = sqlc.arg(directory), runtime_target_revision = sqlc.arg(target_revision), updated_at = sqlc.arg(updated_at)
 WHERE service.id = sqlc.arg(id) AND service.project_id = sqlc.arg(project_id)
+  AND service.current_deployment_id = CAST(sqlc.arg(deployment_id) AS CHAR(26))
   AND EXISTS (SELECT 1 FROM environment e WHERE e.project_id = service.project_id AND e.target_revision = sqlc.arg(target_revision))
   AND EXISTS (SELECT 1 FROM deployment d WHERE d.id = sqlc.arg(deployment_id) AND d.service_id = service.id AND d.status = 'running');
 
 -- name: DirectoryServices :many
 SELECT service.* FROM service WHERE project_id = sqlc.arg(project_id);
+
+-- name: SetServiceCurrentDeployment :execrows
+UPDATE service SET current_deployment_id = CAST(sqlc.arg(deployment_id) AS CHAR(26)), updated_at = sqlc.arg(updated_at)
+WHERE service.id = sqlc.arg(id) AND service.project_id = sqlc.arg(project_id)
+  AND EXISTS (SELECT 1 FROM deployment d WHERE d.id = sqlc.arg(deployment_id) AND d.service_id = service.id AND d.project_id = service.project_id AND d.status = 'waiting_to_run');
+
+-- name: UpdateServiceDeploymentResult :execrows
+UPDATE service
+SET status = sqlc.arg(status), version_id = COALESCE(sqlc.narg(version_id), version_id), updated_at = sqlc.arg(updated_at)
+WHERE service.id = sqlc.arg(id) AND service.project_id = sqlc.arg(project_id)
+  AND service.current_deployment_id = CAST(sqlc.arg(deployment_id) AS CHAR(26))
+  AND EXISTS (SELECT 1 FROM deployment d WHERE d.id = sqlc.arg(deployment_id) AND d.service_id = service.id AND d.project_id = service.project_id AND d.status = 'running');
+
+-- name: ReconcileServiceAfterCancellation :execrows
+UPDATE service SET status = sqlc.arg(status), updated_at = sqlc.arg(updated_at)
+WHERE service.id = sqlc.arg(id) AND service.project_id = sqlc.arg(project_id)
+  AND service.current_deployment_id = CAST(sqlc.arg(deployment_id) AS CHAR(26))
+  AND EXISTS (SELECT 1 FROM deployment d WHERE d.id = sqlc.arg(deployment_id) AND d.service_id = service.id AND d.project_id = service.project_id AND d.status = 'canceled');

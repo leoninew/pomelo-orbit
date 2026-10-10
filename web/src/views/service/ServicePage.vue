@@ -106,20 +106,14 @@
               <span :tabindex="svc.application_kind === 'gateway' ? 0 : undefined">
                 <button
                   class="app-link"
-                  :disabled="
-                    operating || svc.active_deployment || svc.application_kind === 'gateway'
-                  "
+                  :disabled="operating || svc.application_kind === 'gateway'"
                   @click="openDeployDialog(svc)"
                 >
                   {{ t('service.actions.deploy') }}
                 </button>
               </span>
             </AppTooltip>
-            <button
-              class="app-link-danger"
-              :disabled="operating || !canStop(svc)"
-              @click="openStopDialog(svc)"
-            >
+            <button class="app-link-danger" :disabled="operating" @click="openStopDialog(svc)">
               {{ t('service.actions.stop') }}
             </button>
           </div>
@@ -189,9 +183,7 @@
                     <span :tabindex="svc.application_kind === 'gateway' ? 0 : undefined">
                       <button
                         class="app-link"
-                        :disabled="
-                          operating || svc.active_deployment || svc.application_kind === 'gateway'
-                        "
+                        :disabled="operating || svc.application_kind === 'gateway'"
                         @click="openDeployDialog(svc)"
                       >
                         {{ t('service.actions.deploy') }}
@@ -200,7 +192,7 @@
                   </AppTooltip>
                   <button
                     class="app-link-danger"
-                    :disabled="operating || !canStop(svc)"
+                    :disabled="operating"
                     @click="openStopDialog(svc)"
                   >
                     {{ t('service.actions.stop') }}
@@ -640,12 +632,6 @@
     }
     createErrors.code = apiError.message;
     return true;
-  }
-
-  function canStop(service: ServiceResp) {
-    return (
-      !service.active_deployment && (service.status === 'running' || service.status === 'faulted')
-    );
   }
 
   async function openDeployDialog(service: ServiceResp) {

@@ -22,8 +22,11 @@ type ServiceReader interface {
 
 // ServiceStore persists runtime service bindings.
 type ServiceStore interface {
+	SetServiceCurrentDeployment(ctx context.Context, projectId, id, deploymentId string) error
+	UpdateServiceDeploymentResult(ctx context.Context, projectId, id, deploymentId, status string, versionId *string) (bool, error)
+	ReconcileServiceAfterCancellation(ctx context.Context, projectId, id, deploymentId, status string) (bool, error)
 	UpdateServiceDeploymentDirectory(ctx context.Context, projectId, id, directory string, targetRevision int64) error
-	BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, targetRevision int64) error
+	BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, targetRevision int64) (bool, error)
 	ServiceReader
 	UpsertService(ctx context.Context, projectId string, svc model.Service) error
 	CreateServiceWithComponents(ctx context.Context, projectId string, svc model.Service, components []model.ServiceComponent) error

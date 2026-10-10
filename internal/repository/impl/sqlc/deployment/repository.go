@@ -234,6 +234,45 @@ func (r Repository) BeginDeployment(ctx context.Context, projectId string, id st
 	return rows == 1, nil
 }
 
+func (r Repository) CancelObsoleteDeployment(ctx context.Context, projectId, id string) (bool, error) {
+	q := r.q(ctx)
+	startedAt, err := q.DeploymentStartedAt(ctx, deploymentsqlc.DeploymentStartedAtParams{ProjectId: projectScopeId(projectId), Id: id})
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("load obsolete deployment %s: %w", id, err)
+	}
+	now := time.Now().UTC()
+	rows, err := q.CancelObsoleteDeployment(ctx, deploymentsqlc.CancelObsoleteDeploymentParams{
+		Id: id, ProjectId: projectScopeId(projectId), FinishedAt: sql.NullTime{Time: now, Valid: true},
+		DurationMs:   sql.NullInt64{Int64: now.Sub(startedAt).Milliseconds(), Valid: true},
+		ErrorMessage: sql.NullString{String: "Superseded by a newer Service operation", Valid: true},
+	})
+	return rows == 1, err
+}
+
+func (r Repository) CancelSupersededDeployments(ctx context.Context, projectId, serviceId, currentDeploymentId string) ([]string, error) {
+	ids, err := r.q(ctx).SupersededDeployments(ctx, deploymentsqlc.SupersededDeploymentsParams{
+		ProjectId: projectScopeId(projectId), ServiceId: sql.NullString{String: serviceId, Valid: true},
+		CurrentDeploymentId: sql.NullString{String: currentDeploymentId, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+	var canceled []string
+	var failures []error
+	for _, id := range ids {
+		changed, err := r.CancelObsoleteDeployment(ctx, projectId, id)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("cancel superseded deployment %s: %w", id, err))
+		} else if changed {
+			canceled = append(canceled, id)
+		}
+	}
+	return canceled, errors.Join(failures...)
+}
+
 func (r Repository) HasActiveDeployment(ctx context.Context, projectId string, serviceId string) (bool, error) {
 	count, err := r.q(ctx).CountActiveDeploymentsByService(ctx, deploymentsqlc.CountActiveDeploymentsByServiceParams{
 		ServiceId:     sql.NullString{String: serviceId, Valid: strings.TrimSpace(serviceId) != ""},

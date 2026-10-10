@@ -38,6 +38,7 @@ type Config struct {
 	Workspace             WorkspaceConfig             `mapstructure:"workspace" yaml:"workspace"`
 	Route                 RouteConfig                 `mapstructure:"route" yaml:"route"`
 	PipelineRun           PipelineRunConfig           `mapstructure:"pipeline_run" yaml:"pipeline_run"`
+	Deployment            DeploymentConfig            `mapstructure:"deployment" yaml:"deployment"`
 	Worker                WorkerConfig                `mapstructure:"worker" yaml:"worker"`
 	Orbit                 OrbitConfig                 `mapstructure:"orbit" yaml:"orbit"`
 	Jwt                   JwtConfig                   `mapstructure:"jwt" yaml:"jwt"`
@@ -154,6 +155,11 @@ type WorkerConfig struct {
 
 type PipelineRunConfig struct {
 	ExecutionTimeout time.Duration `mapstructure:"execution_timeout" yaml:"execution_timeout"`
+}
+
+type DeploymentConfig struct {
+	ExecutionTimeout time.Duration `mapstructure:"execution_timeout" yaml:"execution_timeout"`
+	CancelTimeout    time.Duration `mapstructure:"cancel_timeout" yaml:"cancel_timeout"`
 }
 
 type OrbitConfig struct {
@@ -277,6 +283,12 @@ func (c Config) Validate() error {
 	}
 	if c.PipelineRun.ExecutionTimeout <= 0 {
 		return errors.New("pipeline_run.execution_timeout must be positive")
+	}
+	if c.Deployment.ExecutionTimeout <= 0 {
+		return errors.New("deployment.execution_timeout must be positive")
+	}
+	if c.Deployment.CancelTimeout <= 0 {
+		return errors.New("deployment.cancel_timeout must be positive")
 	}
 	if err := validateRouteConfig(c.Route); err != nil {
 		return err

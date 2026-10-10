@@ -20,6 +20,7 @@ sql:
           created_by_user_id: CreatedByUserId
           created_from_version_id: CreatedFromVersionId
           deployment_id: DeploymentId
+          current_deployment_id: CurrentDeploymentId
           environment_id: EnvironmentId
           fixed_version_id: FixedVersionId
           gateway_application_id: GatewayApplicationId

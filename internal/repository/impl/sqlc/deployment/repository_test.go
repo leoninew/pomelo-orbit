@@ -13,6 +13,7 @@ import (
 	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
+	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
 )
 
 func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
@@ -54,6 +55,9 @@ func TestRepositoryPersistsEffectivePlanHash(t *testing.T) {
 		CommandText: "docker compose up", Status: status.WorkStatusWaitingToRun,
 	}); err != nil {
 		t.Fatalf("create deployment: %v", err)
+	}
+	if err := servicerepo.NewRepository(database).SetServiceCurrentDeployment(context.Background(), "project-1", "service-1", "deployment-1"); err != nil {
+		t.Fatal(err)
 	}
 	begun, err := repository.BeginDeployment(context.Background(), "project-1", "deployment-1")
 	if err != nil || !begun {

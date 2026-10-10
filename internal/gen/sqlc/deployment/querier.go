@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	BeginDeployment(ctx context.Context, arg BeginDeploymentParams) (int64, error)
 	CancelDeployment(ctx context.Context, arg CancelDeploymentParams) (int64, error)
+	CancelObsoleteDeployment(ctx context.Context, arg CancelObsoleteDeploymentParams) (int64, error)
 	ClearProjectDeploymentHistory(ctx context.Context, projectID sql.NullString) error
 	ClearProjectDeploymentRollbackReferences(ctx context.Context, projectID sql.NullString) error
 	CompleteDeployment(ctx context.Context, arg CompleteDeploymentParams) (int64, error)
@@ -24,6 +25,7 @@ type Querier interface {
 	DeploymentStartedAt(ctx context.Context, arg DeploymentStartedAtParams) (time.Time, error)
 	LatestSuccessfulDeploymentPlanHash(ctx context.Context, arg LatestSuccessfulDeploymentPlanHashParams) (sql.NullString, error)
 	ListDeployments(ctx context.Context, arg ListDeploymentsParams) ([]ListDeploymentsRow, error)
+	SupersededDeployments(ctx context.Context, arg SupersededDeploymentsParams) ([]string, error)
 }
 
 var _ Querier = (*Queries)(nil)

@@ -148,6 +148,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		deploymentLogStore,
 		gatewayCore,
 		serviceService,
+		transactionRunner,
 	)
 	gatewayService := gatewayCore
 	pipelineService := pipelinesvc.New(stores.project, stores.pipeline, stores.pipelineRun, stores.application, stores.repository, logger)

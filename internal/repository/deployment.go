@@ -9,6 +9,8 @@ import (
 
 // DeploymentStore persists deployment executions.
 type DeploymentStore interface {
+	CancelSupersededDeployments(ctx context.Context, projectId, serviceId, currentDeploymentId string) ([]string, error)
+	CancelObsoleteDeployment(ctx context.Context, projectId, id string) (bool, error)
 	CreateDeployment(ctx context.Context, projectId string, deployment model.Deployment) error
 	BeginDeployment(ctx context.Context, projectId string, id string) (bool, error)
 	CompleteDeployment(ctx context.Context, projectId string, id string, status string, message string) (bool, error)

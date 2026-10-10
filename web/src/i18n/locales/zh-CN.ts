@@ -310,6 +310,8 @@ export default {
         connectionTimedOut: '终端连接超时',
         disconnect: '断开',
         reconnect: '重新连接',
+        fullscreen: '全屏',
+        exitFullscreen: '退出全屏',
         exited: 'shell 已退出，退出码 {code}',
         idle_timeout: '空闲时间已到，连接已断开',
         session_limit: '会话时长已到，连接已断开',

@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-10-09 17:16:35
+最后修改时间: 2026-10-10 22:14:41
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -67,5 +67,23 @@ TCP entrypoint/host port 是 Gateway Version Component endpoint。需要新的 T
 普通服务部署弹窗同时选择版本并确认完整目录；默认根据当前 Environment 拼出 `<workspace_root>/deployment/<service-code>`。输入可覆盖为平台绝对路径或 `~` / `~/...`，也可位于工作区之外，不再追加服务编码。Gateway 使用 `kind=gateway`，只从网关入口部署；网关弹窗使用同样的路径控件，版本仍按保存的 ACME profile 选择。
 
 已部署服务改目录会警告相对挂载数据、重建和中断风险，但允许直接提交。系统不迁移或清理旧目录。Gateway 改目录还会改变路由、证书和 ACME 文件位置，需要另行显式同步 Route。环境配置发生变化时重新打开弹窗确认目录。
+
+停止与重启优先使用当前环境修订已绑定的运行目录；没有运行目录时，可以使用同修订下已确认的部署目录，不要求库存状态为 running。没有可确定目录或目录属于旧环境修订时，先确认当前目标与服务目录；Orbit 不扫描宿主机或猜测旧位置。
+
+## 重复操作与超时
+
+同一 Service 可在前次操作尚未结束时再次部署、停止或重启。以后成功受理的操作为准，旧任务会尝试取消；旧任务卡住、取消失败或不存在都不要求等待其正常结束。库存状态可能落后于用户在 Docker 中的操作，因此不作为上述命令的准入条件。Gateway 从网关专属入口操作，权限、目标修订和输入校验照常生效。
+
+通过集中配置调整时间边界，两项 duration 均须大于零，配置保存后沿用现有重启生效规则：
+
+```yaml
+deployment:
+  execution_timeout: 1h
+  cancel_timeout: 5s
+```
+
+也可设置 `POMELO_ORBIT_DEPLOYMENT__EXECUTION_TIMEOUT` 和 `POMELO_ORBIT_DEPLOYMENT__CANCEL_TIMEOUT`。总执行超时包含准备文件、Compose 命令与 Gateway readiness，从 Worker 开始处理计算；排队时间不包含在内。取消和收尾超时只记录 warning，新任务继续。当前操作执行超时记录失败并结束等待，迟到结果不会覆盖后续操作。
+
+取消日志通过 `project_id`、`service_id`、`deployment_id`、阶段、时限和 cause 定位，接替日志还记录新旧任务 ID。标记 canceled 不保证 Docker daemon 已停止先前动作；用户带外修改和多个 Project 共用宿主造成的资源冲突仍由实际命令反馈。升级到操作指针模型前处理活动任务，升级后重新提交；本机制不恢复旧任务，不改变 CI。
 
 升级到目录快照模型前，应完成或取消活动部署，升级后重新提交需要执行的任务；新的配置 hash 包含目录和目标修订，旧任务可能因 hash 不匹配而失败。迁移按环境原布局回填确认目录，仅在目标修订匹配的运行或成功任务历史存在时回填运行目录；未知历史的 Deployment 不补写目录。脚本或手工启动、历史记录被清理而没有运行目录的服务，可以确认原目录后重新部署。通过其他服务目录及运行挂载占用检查后，Orbit 按有效计划替换该目录中的 Compose 并绑定运行目录；持久化数据不会自动搬迁。

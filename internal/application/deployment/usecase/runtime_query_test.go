@@ -195,8 +195,16 @@ func (s *runtimeQueryStore) UpdateServiceDeploymentDirectory(_ context.Context, 
 	s.service.DeploymentDirectory, s.service.DirectoryTargetRevision = directory, revision
 	return nil
 }
-func (s *runtimeQueryStore) BindServiceRuntimeDirectory(_ context.Context, _, _, _, directory string, revision int64) error {
+func (s *runtimeQueryStore) BindServiceRuntimeDirectory(_ context.Context, _, _, deploymentId, directory string, revision int64) (bool, error) {
+	if s.service.CurrentDeploymentId == nil || *s.service.CurrentDeploymentId != deploymentId {
+		return false, nil
+	}
 	s.service.RuntimeDirectory, s.service.RuntimeTargetRevision = directory, revision
+	return true, nil
+}
+
+func (s *runtimeQueryStore) SetServiceCurrentDeployment(_ context.Context, _, _, deploymentId string) error {
+	s.service.CurrentDeploymentId = &deploymentId
 	return nil
 }
 func (s *runtimeQueryStore) DirectoryServices(context.Context, string) ([]model.Service, error) {

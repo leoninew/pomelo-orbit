@@ -556,6 +556,7 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
 );
 
 CREATE TABLE IF NOT EXISTS service (
+    current_deployment_id TEXT,
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL,
     application_id TEXT NOT NULL,

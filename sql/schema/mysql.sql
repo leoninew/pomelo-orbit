@@ -507,6 +507,7 @@ CREATE TABLE IF NOT EXISTS gateway_acme_profile_version (
 );
 
 CREATE TABLE IF NOT EXISTS service (
+    current_deployment_id VARCHAR(26),
     deployment_directory VARCHAR(2048) NOT NULL DEFAULT '',
     directory_target_revision BIGINT NOT NULL DEFAULT 0,
     runtime_directory VARCHAR(2048) NOT NULL DEFAULT '',

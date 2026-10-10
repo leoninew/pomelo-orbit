@@ -94,7 +94,10 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 	if err != nil {
 		return err
 	}
-	unlock := r.lock(target.Environment.Id + "\x00" + workspace.Location.Directory)
+	unlock, err := r.lock(ctx, target.Environment.Id+"\x00"+workspace.Location.Directory)
+	if err != nil {
+		return err
+	}
 	defer unlock()
 
 	client, cleanup, err := r.openSFTP(ctx, target)
@@ -111,6 +114,9 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 		return fmt.Errorf("create remote service workspace: %w", err)
 	}
 	for _, directory := range workspace.Directories {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		directory, err = pathResolver.scoped(serviceDir, directory)
 		if err != nil {
 			return err
@@ -124,7 +130,7 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 		if err != nil {
 			return err
 		}
-		if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, workspace.DeploymentId); err != nil {
+		if err := writeWorkspaceFile(ctx, client, target.Environment.SSH.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, workspace.DeploymentId); err != nil {
 			return err
 		}
 	}
@@ -132,7 +138,7 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 	if err != nil {
 		return err
 	}
-	if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, composePath, []byte(workspace.Compose), 0o644, false, workspace.DeploymentId); err != nil {
+	if err := writeWorkspaceFile(ctx, client, target.Environment.SSH.Platform, composePath, []byte(workspace.Compose), 0o644, false, workspace.DeploymentId); err != nil {
 		return err
 	}
 	return nil
@@ -321,14 +327,28 @@ func (r *Runtime) dialSSHWithHostKey(ctx context.Context, target environmentport
 	return client, nil
 }
 
-func (r *Runtime) lock(key string) func() {
-	value, _ := r.locks.LoadOrStore(key, &sync.Mutex{})
-	mutex := value.(*sync.Mutex)
-	mutex.Lock()
-	return mutex.Unlock
+func (r *Runtime) lock(ctx context.Context, key string) (func(), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	value, _ := r.locks.LoadOrStore(key, make(chan struct{}, 1))
+	gate := value.(chan struct{})
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case gate <- struct{}{}:
+		if err := ctx.Err(); err != nil {
+			<-gate
+			return nil, err
+		}
+		return func() { <-gate }, nil
+	}
 }
 
-func writeWorkspaceFile(client *sftp.Client, platform string, filePath string, content []byte, mode uint32, ignoreIfExists bool, revision string) error {
+func writeWorkspaceFile(ctx context.Context, client *sftp.Client, platform string, filePath string, content []byte, mode uint32, ignoreIfExists bool, revision string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	filePath = normalizeRemotePath(filePath)
 	if filePath == "" {
 		return errors.New("remote file path is required")
@@ -369,6 +389,10 @@ func writeWorkspaceFile(client *sftp.Client, platform string, filePath string, c
 			_ = client.Remove(tempPath)
 			return fmt.Errorf("set remote file mode: %w", err)
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		_ = client.Remove(tempPath)
+		return err
 	}
 	if err := commitWorkspaceFile(client, platform, tempPath, filePath); err != nil {
 		_ = client.Remove(tempPath)
@@ -665,7 +689,10 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 	if directory == "" {
 		return errors.New("remote sync directory is required")
 	}
-	unlock := r.lock(target.Environment.Id + "\x00" + directory)
+	unlock, err := r.lock(ctx, target.Environment.Id+"\x00"+directory)
+	if err != nil {
+		return err
+	}
 	defer unlock()
 	client, cleanup, err := r.openSFTP(ctx, target)
 	if err != nil {
@@ -690,7 +717,7 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 			return errors.New("remote sync file must be a direct child of the sync directory")
 		}
 		keep[path.Base(file.Path)] = struct{}{}
-		if err := writeWorkspaceFile(client, target.Environment.SSH.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, "sync"); err != nil {
+		if err := writeWorkspaceFile(ctx, client, target.Environment.SSH.Platform, file.Path, file.Content, file.Mode, file.IgnoreIfExists, "sync"); err != nil {
 			return err
 		}
 	}

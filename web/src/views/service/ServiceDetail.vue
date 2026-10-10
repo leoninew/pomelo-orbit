@@ -20,9 +20,7 @@
             <button
               v-if="service"
               class="app-button-primary h-9 px-3"
-              :disabled="
-                operating || service.active_deployment || service.application_kind === 'gateway'
-              "
+              :disabled="operating || service.application_kind === 'gateway'"
               @click="openDeployDialog"
             >
               <Rocket class="size-4" />
@@ -414,12 +412,7 @@
   const environmentKeyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
   const logsDrawerOpen = ref(false);
   const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
-  const canStopService = computed(
-    () =>
-      !!service.value &&
-      !service.value.active_deployment &&
-      (service.value.status === 'running' || service.value.status === 'faulted')
-  );
+  const canStopService = computed(() => Boolean(service.value));
   const canDeleteService = computed(
     () => service.value?.status === 'stopped' || service.value?.status === 'faulted'
   );

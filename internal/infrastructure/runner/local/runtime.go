@@ -91,12 +91,18 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 	if err != nil {
 		return err
 	}
-	unlock := r.lock(serviceDir)
+	unlock, err := r.lock(ctx, serviceDir)
+	if err != nil {
+		return err
+	}
 	defer unlock()
 	if err := os.MkdirAll(serviceDir, 0o750); err != nil {
 		return fmt.Errorf("create local service workspace: %w", err)
 	}
 	for _, directory := range workspace.Directories {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := ensureWorkspacePath(serviceDir, directory); err != nil {
 			return err
 		}
@@ -105,11 +111,11 @@ func (r *Runtime) StageWorkspace(ctx context.Context, target environmentport.Tar
 		}
 	}
 	for _, file := range workspace.Files {
-		if err := r.writeFile(serviceDir, file); err != nil {
+		if err := r.writeFile(ctx, serviceDir, file); err != nil {
 			return err
 		}
 	}
-	if err := r.writeFile(serviceDir, deploymentport.WorkspaceFile{Path: filepath.Join(serviceDir, "docker-compose.yml"), Content: []byte(workspace.Compose), Mode: 0o644}); err != nil {
+	if err := r.writeFile(ctx, serviceDir, deploymentport.WorkspaceFile{Path: filepath.Join(serviceDir, "docker-compose.yml"), Content: []byte(workspace.Compose), Mode: 0o644}); err != nil {
 		return fmt.Errorf("write local compose configuration: %w", err)
 	}
 	return nil
@@ -165,7 +171,10 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 	if directory == "." || !pathWithin(root, directory) {
 		return errors.New("local sync directory is outside the deployment workspace")
 	}
-	unlock := r.lock(directory)
+	unlock, err := r.lock(ctx, directory)
+	if err != nil {
+		return err
+	}
 	defer unlock()
 	if err := os.MkdirAll(directory, 0o750); err != nil {
 		return fmt.Errorf("create local sync directory: %w", err)
@@ -176,7 +185,7 @@ func (r *Runtime) SyncFiles(ctx context.Context, target environmentport.Target, 
 			return errors.New("local sync file must be a direct child of the sync directory")
 		}
 		keep[filepath.Base(file.Path)] = struct{}{}
-		if err := r.writeFile(directory, file); err != nil {
+		if err := r.writeFile(ctx, directory, file); err != nil {
 			return err
 		}
 	}
@@ -243,7 +252,10 @@ func (r *Runtime) localWorkspaceRoot(target environmentport.Target) (string, err
 	return expanded, nil
 }
 
-func (r *Runtime) writeFile(serviceDir string, file deploymentport.WorkspaceFile) error {
+func (r *Runtime) writeFile(ctx context.Context, serviceDir string, file deploymentport.WorkspaceFile) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	path := filepath.Clean(file.Path)
 	if err := ensureWorkspacePath(serviceDir, path); err != nil {
 		return err
@@ -284,17 +296,31 @@ func (r *Runtime) writeFile(serviceDir string, file deploymentport.WorkspaceFile
 	if closeErr != nil {
 		return fmt.Errorf("close local staged file: %w", closeErr)
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := os.Rename(staged.Name(), path); err != nil {
 		return fmt.Errorf("commit local staged file: %w", err)
 	}
 	return nil
 }
 
-func (r *Runtime) lock(key string) func() {
-	value, _ := r.locks.LoadOrStore(key, &sync.Mutex{})
-	mutex := value.(*sync.Mutex)
-	mutex.Lock()
-	return mutex.Unlock
+func (r *Runtime) lock(ctx context.Context, key string) (func(), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	value, _ := r.locks.LoadOrStore(key, make(chan struct{}, 1))
+	gate := value.(chan struct{})
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case gate <- struct{}{}:
+		if err := ctx.Err(); err != nil {
+			<-gate
+			return nil, err
+		}
+		return func() { <-gate }, nil
+	}
 }
 
 func ensureWorkspacePath(root, value string) error {

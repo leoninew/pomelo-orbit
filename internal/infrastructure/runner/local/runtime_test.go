@@ -2,15 +2,48 @@ package localrunner
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func TestCanceledWorkspaceDoesNotPublishWhileFileLockIsHeld(t *testing.T) {
+	runtime := NewRuntime(nil)
+	root := t.TempDir()
+	directory := filepath.Join(root, "service")
+	unlock, err := runtime.lock(context.Background(), directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- runtime.StageWorkspace(ctx, localTarget(root), deploymentport.Workspace{
+			Location: deploymentport.ServiceLocation{Code: "api", Directory: directory}, Compose: "services: {}\n",
+		})
+	}()
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("canceled workspace returned %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("workspace waited for previous file publisher")
+	}
+	if _, err := os.Stat(directory); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("canceled workspace was published: %v", err)
+	}
+}
 
 func TestRuntimeStagesLocalWorkspaceAndResolvesDockerPath(t *testing.T) {
 	root := t.TempDir()

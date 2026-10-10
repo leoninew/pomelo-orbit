@@ -4,6 +4,7 @@ import "time"
 
 // Service is one runtime binding of an application.
 type Service struct {
+	CurrentDeploymentId     *string   `db:"current_deployment_id"`
 	Id                      string    `db:"id"`
 	ProjectId               string    `db:"project_id"`
 	ApplicationId           string    `db:"application_id"`
@@ -89,6 +90,7 @@ type ServiceComponentEndpoint struct {
 
 // ServiceListItem is Service plus application and version labels.
 type ServiceListItem struct {
+	CurrentDeploymentId     *string   `db:"current_deployment_id"`
 	Id                      string    `db:"id"`
 	ProjectId               string    `db:"project_id"`
 	ApplicationId           string    `db:"application_id"`
@@ -110,7 +112,8 @@ type ServiceListItem struct {
 // Service returns the base runtime binding row.
 func (item ServiceListItem) Service() Service {
 	return Service{
-		Id: item.Id, ProjectId: item.ProjectId,
+		CurrentDeploymentId: item.CurrentDeploymentId,
+		Id:                  item.Id, ProjectId: item.ProjectId,
 		ApplicationId:       item.ApplicationId,
 		Code:                item.Code,
 		VersionId:           item.VersionId,

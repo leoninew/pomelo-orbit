@@ -2,7 +2,7 @@
   <AppDrawer
     :open="open"
     :title="t('project.environment.terminal.title')"
-    width-class="w-[min(960px,100vw)]"
+    :width-class="fullscreen ? 'w-screen' : 'w-[min(960px,100vw)]'"
     header-class="flex shrink-0 items-center justify-between gap-3 border-b border-border px-6 py-3"
     body-class="min-h-0 flex-1 overflow-hidden p-0"
     @update:open="emit('update:open', $event)"
@@ -46,6 +46,17 @@
       <span class="sr-only" role="status">
         {{ t(`project.environment.terminal.${status}`) }}
       </span>
+      <button
+        type="button"
+        class="app-icon-button"
+        :title="fullscreenControlLabel"
+        :aria-label="fullscreenControlLabel"
+        :aria-pressed="fullscreen"
+        @click="fullscreen = !fullscreen"
+      >
+        <Minimize v-if="fullscreen" class="size-4" aria-hidden="true" />
+        <Maximize v-else class="size-4" aria-hidden="true" />
+      </button>
     </template>
     <div class="flex h-full min-h-0 flex-col gap-3 p-6">
       <p
@@ -69,7 +80,7 @@
   import '@xterm/xterm/css/xterm.css';
   import { FitAddon } from '@xterm/addon-fit';
   import { Terminal } from '@xterm/xterm';
-  import { CircleAlert, LoaderCircle, Plug, Unplug } from '@lucide/vue';
+  import { CircleAlert, LoaderCircle, Maximize, Minimize, Plug, Unplug } from '@lucide/vue';
   import { computed, onBeforeUnmount, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { projectEnvironmentApi } from '@/api/project/environment';
@@ -86,6 +97,10 @@
   }>();
   const emit = defineEmits<{ 'update:open': [value: boolean] }>();
   const { t } = useI18n();
+  const fullscreen = ref(false);
+  const fullscreenControlLabel = computed(() =>
+    t(`project.environment.terminal.${fullscreen.value ? 'exitFullscreen' : 'fullscreen'}`)
+  );
   const identity = computed(() => [props.username, props.host].filter(Boolean).join('@'));
   const { effectiveTheme } = useTheme();
   const terminalTheme = computed(() =>

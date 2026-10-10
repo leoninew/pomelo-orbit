@@ -34,6 +34,7 @@ func NewCommandService(
 	logStore deploymentport.ExecutionLogStore,
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 	versionSelector deploymentport.ServiceVersionSelector,
+	transactionRunner deploymentport.TransactionRunner,
 ) Service {
 	store := &stores{
 		project: project, application: application,
@@ -44,7 +45,7 @@ func NewCommandService(
 		service: service, deployment: deployment, store: store, executionStore: store,
 		dispatcher: dispatcher, commandStore: store, logger: logger,
 		targetResolver: targetResolver, runtime: runtime, logStore: logStore,
-		gatewayCoordinator: gatewayCoordinator, versionSelector: versionSelector,
+		gatewayCoordinator: gatewayCoordinator, versionSelector: versionSelector, transactionRunner: transactionRunner,
 	}
 }
 
@@ -60,6 +61,9 @@ func NewExecutionService(
 	runtime deploymentport.Runtime,
 	logStore deploymentport.ExecutionLogStore,
 	pollInterval time.Duration,
+	executionTimeout time.Duration,
+	cancelTimeout time.Duration,
+	transactionRunner deploymentport.TransactionRunner,
 	gatewayReadiness deploymentport.GatewayReadinessChecker,
 ) Service {
 	store := &stores{
@@ -73,15 +77,13 @@ func NewExecutionService(
 		logStore:           logStore,
 		gatewayCoordinator: gatewayCoordinator,
 		gatewayReadiness:   gatewayReadiness,
+		executionTimeout:   executionTimeout, cancelTimeout: cancelTimeout, transactionRunner: transactionRunner,
 	}
 }
 
-func (s Service) DeployService(ctx context.Context, userId string, projectId string, serviceId string, input deploymentdto.DeployServiceInput) (deploymentdto.DeployServiceResult, error) {
+func (s Service) deployService(ctx context.Context, userId string, projectId string, serviceId string, input deploymentdto.DeployServiceInput) (deploymentdto.DeployServiceResult, error) {
 	service, app, err := s.serviceForUser(ctx, userId, projectId, serviceId)
 	if err != nil {
-		return deploymentdto.DeployServiceResult{}, err
-	}
-	if err := s.ensureNoActiveDeployment(ctx, projectId, service.Id); err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
 	target, err := s.resolveProjectTarget(ctx, projectId)
@@ -176,7 +178,7 @@ func (s Service) DeployService(ctx context.Context, userId string, projectId str
 	deployment.ServiceId = &service.Id
 	deployment.EffectivePlanHash = &planHash
 	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), forceRecreate).String()
-	if err := s.commandStore.CreateDeployment(ctx, projectId, deployment); err != nil {
+	if err := s.createCurrentDeployment(ctx, projectId, deployment); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
 	if err := s.dispatcher.DispatchDeploy(ctx, deploymentdto.DeployDispatchInput{ProjectId: projectId, ApplicationId: app.Id, DeploymentId: deployment.Id, ForceRecreate: forceRecreate}); err != nil {
@@ -185,7 +187,7 @@ func (s Service) DeployService(ctx context.Context, userId string, projectId str
 	return deploymentdto.DeployServiceResult{DeploymentId: deployment.Id}, nil
 }
 
-func (s Service) StopApplication(ctx context.Context, userId string, projectId string, applicationId string, input deploymentdto.ServiceTargetInput) (string, error) {
+func (s Service) stopApplication(ctx context.Context, userId string, projectId string, applicationId string, input deploymentdto.ServiceTargetInput) (string, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return "", err
@@ -194,18 +196,11 @@ func (s Service) StopApplication(ctx context.Context, userId string, projectId s
 	if err != nil {
 		return "", err
 	}
-	if err := s.ensureNoActiveDeployment(ctx, projectId, service.Id); err != nil {
-		return "", err
-	}
-	canRemoveStoppedVolumes := service.Status == status.ServiceStatusStopped && input.RemoveVolumes
-	if service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusFaulted && !canRemoveStoppedVolumes {
-		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法停止")
-	}
 	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
 		return "", err
 	}
-	location, err := runtimeServiceLocation(target, service)
+	location, err := lifecycleServiceLocation(target, service)
 	if err != nil {
 		return "", err
 	}
@@ -222,7 +217,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, projectId s
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
-	if err := s.commandStore.CreateDeployment(ctx, projectId, deployment); err != nil {
+	if err := s.createCurrentDeployment(ctx, projectId, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
 	if err := s.dispatcher.DispatchStop(ctx, deploymentdto.StopDispatchInput{ProjectId: projectId, ApplicationId: app.Id, DeploymentId: deployment.Id, RemoveVolumes: input.RemoveVolumes}); err != nil {
@@ -231,18 +226,7 @@ func (s Service) StopApplication(ctx context.Context, userId string, projectId s
 	return deployment.Id, nil
 }
 
-func (s Service) ensureNoActiveDeployment(ctx context.Context, projectId string, serviceId string) error {
-	active, err := s.commandStore.HasActiveDeployment(ctx, projectId, serviceId)
-	if err != nil {
-		return apperror.Wrap(apperror.KindInternal, "Failed to check active deployment", err)
-	}
-	if active {
-		return apperror.New(apperror.KindConflict, "Service already has an active deployment")
-	}
-	return nil
-}
-
-func (s Service) RestartApplication(ctx context.Context, userId string, projectId string, applicationId string, input deploymentdto.ServiceTargetInput) (string, error) {
+func (s Service) restartApplication(ctx context.Context, userId string, projectId string, applicationId string, input deploymentdto.ServiceTargetInput) (string, error) {
 	app, err := s.loadApplicationForUser(ctx, userId, projectId, applicationId)
 	if err != nil {
 		return "", err
@@ -251,17 +235,11 @@ func (s Service) RestartApplication(ctx context.Context, userId string, projectI
 	if err != nil {
 		return "", err
 	}
-	if err := s.ensureNoActiveDeployment(ctx, projectId, service.Id); err != nil {
-		return "", err
-	}
-	if service.Status != status.ServiceStatusRunning && service.Status != status.ServiceStatusFaulted {
-		return "", apperror.New(apperror.KindValidation, "应用未在运行中, 无法重启")
-	}
 	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
 		return "", err
 	}
-	location, err := runtimeServiceLocation(target, service)
+	location, err := lifecycleServiceLocation(target, service)
 	if err != nil {
 		return "", err
 	}
@@ -317,7 +295,7 @@ func (s Service) RestartApplication(ctx context.Context, userId string, projectI
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
-	if err := s.commandStore.CreateDeployment(ctx, projectId, deployment); err != nil {
+	if err := s.createCurrentDeployment(ctx, projectId, deployment); err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
 	if err := s.dispatcher.DispatchRestart(ctx, deploymentdto.RestartDispatchInput{ProjectId: projectId, ApplicationId: app.Id, DeploymentId: deployment.Id}); err != nil {

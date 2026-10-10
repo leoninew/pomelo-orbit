@@ -65,10 +65,14 @@ func TestGatewayDeploymentAndRestartStillRequireGatewayReadiness(t *testing.T) {
 }
 
 func executeIndependentDeployment(service Service, operation string) error {
-	if operation == "restart" {
-		return service.ExecuteApplicationRestart(context.Background(), "project-1", "app-1", "deployment-1")
+	deployment, err := service.executionStore.Deployment(context.Background(), "project-1", "deployment-1")
+	if err != nil {
+		return err
 	}
-	return service.ExecuteApplicationDeploy(context.Background(), "project-1", "app-1", "deployment-1", false)
+	if operation == "restart" {
+		return service.ExecuteApplicationRestart(context.Background(), "project-1", "app-1", deployment.Id)
+	}
+	return service.ExecuteApplicationDeploy(context.Background(), "project-1", "app-1", deployment.Id, false)
 }
 
 func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *independentDeploymentStore, *gatewayDeploymentRuntimeFake, *gatewayReadinessFake) {
@@ -122,9 +126,10 @@ func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *ind
 	}
 	target := deploymentTestTarget(1)
 	applyDeploymentTargetSnapshot(&store.deployment, target, config)
+	store.service.CurrentDeploymentId = &store.deployment.Id
 	runtime := &gatewayDeploymentRuntimeFake{workspaceFake: testWorkspace(t.TempDir())}
 	readiness := &gatewayReadinessFake{}
-	service := Service{executionStore: store, targetResolver: staticTargetResolver{target: target}, runtime: runtime, logStore: runtime, gatewayReadiness: readiness}
+	service := Service{executionStore: store, targetResolver: staticTargetResolver{target: target}, runtime: runtime, logStore: runtime, gatewayReadiness: readiness, executionTimeout: time.Minute, cancelTimeout: time.Second, transactionRunner: testDeploymentTransaction{}}
 	return service, store, runtime, readiness
 }
 
@@ -139,6 +144,7 @@ func (s *independentDeploymentStore) CreateDeployment(_ context.Context, _ strin
 }
 
 func (s *independentDeploymentStore) BeginDeployment(context.Context, string, string) (bool, error) {
+	s.deployment.Status = status.WorkStatusRunning
 	return true, nil
 }
 
@@ -151,9 +157,43 @@ func (s *independentDeploymentStore) CompleteDeployment(_ context.Context, _, _,
 	return true, nil
 }
 
-func (s *independentDeploymentStore) UpdateServiceAfterDeploy(_ context.Context, _, _, value, versionId string) error {
-	s.service.Status, s.service.VersionId = value, versionId
-	return nil
+func (s *independentDeploymentStore) UpdateServiceDeploymentResult(_ context.Context, _, _, deploymentId, value string, versionId *string) (bool, error) {
+	if s.service.CurrentDeploymentId == nil || *s.service.CurrentDeploymentId != deploymentId || s.deployment.Status != status.WorkStatusRunning {
+		return false, nil
+	}
+	s.service.Status = value
+	if versionId != nil {
+		s.service.VersionId = *versionId
+	}
+	return true, nil
+}
+
+func (s *independentDeploymentStore) CancelSupersededDeployments(context.Context, string, string, string) ([]string, error) {
+	return nil, nil
+}
+
+func (s *independentDeploymentStore) ReconcileServiceAfterCancellation(_ context.Context, _, _, deploymentId, value string) (bool, error) {
+	if s.service.CurrentDeploymentId == nil || *s.service.CurrentDeploymentId != deploymentId || s.deployment.Status != status.WorkStatusCanceled {
+		return false, nil
+	}
+	s.service.Status = value
+	return true, nil
+}
+func (s *independentDeploymentStore) CancelObsoleteDeployment(context.Context, string, string) (bool, error) {
+	if s.service.CurrentDeploymentId != nil && *s.service.CurrentDeploymentId == s.deployment.Id {
+		return false, nil
+	}
+	if status.WorkStatusIsComplete(s.deployment.Status) {
+		return false, nil
+	}
+	s.deployment.Status = status.WorkStatusCanceled
+	return true, nil
+}
+
+type testDeploymentTransaction struct{}
+
+func (testDeploymentTransaction) RunInTransaction(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
 }
 
 func (s *independentDeploymentStore) UpdateServiceStatus(_ context.Context, _, _, value string) error {

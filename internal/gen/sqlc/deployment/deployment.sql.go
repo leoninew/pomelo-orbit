@@ -16,9 +16,10 @@ UPDATE deployment
 SET status = ?,
     started_at = ?,
     error_message = NULL
-WHERE id = ?
-  AND project_id = ?
-  AND status = ?
+WHERE deployment.id = ?
+  AND deployment.project_id = ?
+  AND deployment.status = ?
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = deployment.service_id AND s.project_id = deployment.project_id AND s.current_deployment_id = deployment.id)
 `
 
 type BeginDeploymentParams struct {
@@ -82,6 +83,36 @@ func (q *Queries) CancelDeployment(ctx context.Context, arg CancelDeploymentPara
 	return result.RowsAffected()
 }
 
+const cancelObsoleteDeployment = `-- name: CancelObsoleteDeployment :execrows
+UPDATE deployment
+SET status = 'canceled', finished_at = ?, duration_ms = ?, error_message = ?
+WHERE deployment.id = ? AND deployment.project_id = ?
+  AND deployment.status IN ('waiting_to_run', 'running')
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = deployment.service_id AND s.project_id = deployment.project_id AND (s.current_deployment_id IS NULL OR s.current_deployment_id <> deployment.id))
+`
+
+type CancelObsoleteDeploymentParams struct {
+	FinishedAt   sql.NullTime   `db:"finished_at"`
+	DurationMs   sql.NullInt64  `db:"duration_ms"`
+	ErrorMessage sql.NullString `db:"error_message"`
+	Id           string         `db:"id"`
+	ProjectId    sql.NullString `db:"project_id"`
+}
+
+func (q *Queries) CancelObsoleteDeployment(ctx context.Context, arg CancelObsoleteDeploymentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, cancelObsoleteDeployment,
+		arg.FinishedAt,
+		arg.DurationMs,
+		arg.ErrorMessage,
+		arg.Id,
+		arg.ProjectId,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const clearProjectDeploymentHistory = `-- name: ClearProjectDeploymentHistory :exec
 DELETE FROM deployment
 WHERE project_id = ?
@@ -109,9 +140,10 @@ SET status = ?,
     finished_at = ?,
     duration_ms = ?,
     error_message = NULLIF(?, '')
-WHERE id = ?
-  AND project_id = ?
-  AND status = ?
+WHERE deployment.id = ?
+  AND deployment.project_id = ?
+  AND deployment.status = ?
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = deployment.service_id AND s.project_id = deployment.project_id AND s.current_deployment_id = deployment.id)
 `
 
 type CompleteDeploymentParams struct {
@@ -143,9 +175,10 @@ func (q *Queries) CompleteDeployment(ctx context.Context, arg CompleteDeployment
 const countActiveDeploymentsByService = `-- name: CountActiveDeploymentsByService :one
 SELECT COUNT(*)
 FROM deployment
-WHERE service_id = ?
-  AND project_id = ?
-  AND status IN (?, ?)
+WHERE deployment.service_id = ?
+  AND deployment.project_id = ?
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = deployment.service_id AND s.project_id = deployment.project_id AND s.current_deployment_id = deployment.id)
+  AND deployment.status IN (?, ?)
 `
 
 type CountActiveDeploymentsByServiceParams struct {
@@ -533,6 +566,48 @@ func (q *Queries) ListDeployments(ctx context.Context, arg ListDeploymentsParams
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const supersededDeployments = `-- name: SupersededDeployments :many
+SELECT d.id FROM deployment d
+WHERE d.service_id = ? AND d.project_id = ?
+  AND d.status IN ('waiting_to_run', 'running')
+  AND d.id <> ?
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = d.service_id AND s.project_id = d.project_id AND s.current_deployment_id = ?)
+`
+
+type SupersededDeploymentsParams struct {
+	ServiceId           sql.NullString `db:"service_id"`
+	ProjectId           sql.NullString `db:"project_id"`
+	CurrentDeploymentId sql.NullString `db:"current_deployment_id"`
+}
+
+func (q *Queries) SupersededDeployments(ctx context.Context, arg SupersededDeploymentsParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, supersededDeployments,
+		arg.ServiceId,
+		arg.ProjectId,
+		arg.CurrentDeploymentId,
+		arg.CurrentDeploymentId,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

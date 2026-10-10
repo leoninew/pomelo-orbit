@@ -104,11 +104,15 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 		c.Next()
 
 		status := c.Writer.Status()
-		if status >= http.StatusInternalServerError {
+		if status >= http.StatusBadRequest {
 			if lastError := c.Errors.Last(); lastError != nil {
 				failureAttrs := append([]any{}, requestAttrs...)
-				failureAttrs = append(failureAttrs, "status", status, "error", lastError.Err)
-				logger.Error("request failed", failureAttrs...)
+				failureAttrs = append(failureAttrs, "status", status, "code", apperror.Classify(lastError.Err).Code, "error", lastError.Err)
+				level := slog.LevelWarn
+				if status >= http.StatusInternalServerError {
+					level = slog.LevelError
+				}
+				logger.Log(c.Request.Context(), level, "request failed", failureAttrs...)
 			}
 		}
 		if shouldSkipRequestLog(c.Request, status, cfg) {

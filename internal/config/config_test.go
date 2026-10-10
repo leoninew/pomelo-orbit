@@ -489,6 +489,40 @@ worker:
 	}
 }
 
+func TestLoadDeploymentTimeouts(t *testing.T) {
+	setupDefaultConfig(t)
+	writeEnvConfig(t, "develop", "deployment:\n  execution_timeout: 20m\n  cancel_timeout: 3s\n")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Deployment != (DeploymentConfig{ExecutionTimeout: 20 * time.Minute, CancelTimeout: 3 * time.Second}) {
+		t.Fatalf("unexpected YAML deployment timeouts: %+v", cfg.Deployment)
+	}
+	t.Setenv("POMELO_ORBIT_DEPLOYMENT__EXECUTION_TIMEOUT", "45m")
+	t.Setenv("POMELO_ORBIT_DEPLOYMENT__CANCEL_TIMEOUT", "2s")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Deployment != (DeploymentConfig{ExecutionTimeout: 45 * time.Minute, CancelTimeout: 2 * time.Second}) {
+		t.Fatalf("unexpected environment deployment timeouts: %+v", cfg.Deployment)
+	}
+}
+
+func TestLoadRejectsNonPositiveDeploymentTimeouts(t *testing.T) {
+	for _, field := range []string{"execution_timeout", "cancel_timeout"} {
+		t.Run(field, func(t *testing.T) {
+			setupDefaultConfig(t)
+			t.Setenv("POMELO_ORBIT_DEPLOYMENT__"+strings.ToUpper(field), "0s")
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), "deployment."+field+" must be positive") {
+				t.Fatalf("expected positive duration validation, got %v", err)
+			}
+		})
+	}
+}
+
 func TestLoadRouteTimeouts(t *testing.T) {
 	setupDefaultConfig(t)
 	writeEnvConfig(t, "develop", "route:\n  gateway_lock_timeout: 7s\n  state_load_timeout: 10s\n  file_publication_timeout: 5s\n  api_request_timeout: 10s\n  reload_timeout: 5s\n  configuration_match_timeout: 5s\n  recovery_timeout: 20s\n")
@@ -1103,6 +1137,9 @@ llm:
   max_tool_call_rounds: 32
 pipeline_run:
   execution_timeout: 1h
+deployment:
+  execution_timeout: 1h
+  cancel_timeout: 5s
 worker:
   id: ""
   poll_interval: 1s

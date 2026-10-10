@@ -21,7 +21,7 @@ func WriteStatusError(c *gin.Context, status int, message string) {
 func WriteError(c *gin.Context, err error) {
 	classification := apperror.Classify(err)
 	status := httpStatus(err)
-	if err != nil && status >= http.StatusInternalServerError {
+	if err != nil {
 		_ = c.Error(err)
 	}
 	if status == http.StatusUnauthorized {

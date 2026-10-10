@@ -135,8 +135,24 @@ func (s stores) ReplaceGatewayVersionBindings(ctx context.Context, applicationId
 func (s stores) UpdateServiceDeploymentDirectory(ctx context.Context, projectId, id, directory string, revision int64) error {
 	return s.service.UpdateServiceDeploymentDirectory(ctx, projectId, id, directory, revision)
 }
-func (s stores) BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, revision int64) error {
+func (s stores) BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, revision int64) (bool, error) {
 	return s.service.BindServiceRuntimeDirectory(ctx, projectId, id, deploymentId, directory, revision)
+}
+
+func (s stores) SetServiceCurrentDeployment(ctx context.Context, projectId, id, deploymentId string) error {
+	return s.service.SetServiceCurrentDeployment(ctx, projectId, id, deploymentId)
+}
+func (s stores) UpdateServiceDeploymentResult(ctx context.Context, projectId, id, deploymentId, state string, versionId *string) (bool, error) {
+	return s.service.UpdateServiceDeploymentResult(ctx, projectId, id, deploymentId, state, versionId)
+}
+func (s stores) ReconcileServiceAfterCancellation(ctx context.Context, projectId, id, deploymentId, state string) (bool, error) {
+	return s.service.ReconcileServiceAfterCancellation(ctx, projectId, id, deploymentId, state)
+}
+func (s stores) CancelSupersededDeployments(ctx context.Context, projectId, serviceId, currentDeploymentId string) ([]string, error) {
+	return s.deployment.CancelSupersededDeployments(ctx, projectId, serviceId, currentDeploymentId)
+}
+func (s stores) CancelObsoleteDeployment(ctx context.Context, projectId, id string) (bool, error) {
+	return s.deployment.CancelObsoleteDeployment(ctx, projectId, id)
 }
 
 func (s stores) DirectoryServices(ctx context.Context, projectId string) ([]model.Service, error) {

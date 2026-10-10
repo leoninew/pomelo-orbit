@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-10-08 11:39:56
+最后修改时间: 2026-10-10 22:14:41
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -9,7 +9,7 @@ Doc role: living SoT
 | ID | 决策 | 备注 |
 |----|------|------|
 | C-01 | Version = 结构化业务规格，经 Render 生成 compose | 非 compose 全文当 Version 存储 |
-| C-02 | 运行态 SoT = Service（app+env+instance） | 非 Application undeployed/deployed 状态机 |
+| C-02 | Service 记录运行绑定与最近执行结果 | 库存状态可能与带外操作后的容器状态不同，不作为部署、停止或重启的准入条件；按 Service code 定位 |
 | C-03 | Deployment = 操作流水 + 任务状态 | worker 执行 Docker |
 | C-04 | Application.kind 明确区分 `standard` 与 `gateway` | Gateway 创建写入 `gateway`，已有类型按 `gateway_config` 真实关联纠正；服务入口依据应用类型禁用 Gateway 部署。GatewayConfig 保存配置，Environment binding 校验归属，Gateway 从专属入口部署 |
 | C-05 | 暴露 SoT = VersionExpose（protocol + access + ports） | 无域名列 |
@@ -17,7 +17,7 @@ Doc role: living SoT
 | C-07 | Environment = Project 下元数据 | 无域名 / ingress 用户 SoT |
 | C-08 | 平台 Route 与应用 Expose 分流 | Route → 独立 File provider 文件；Expose → Docker labels |
 | C-09 | 单节点 API+worker；挂 Docker socket | 无独立 worker 部署角色主路径 |
-| C-10 | 单 active gateway Service | 同时仅一个 deploying/running gateway |
+| C-10 | 每个 Environment 仅一个 Gateway 受管 Service | 该 Service 的部署、停止与重启允许接替，Gateway 部署保留专属入口 |
 | C-11 | instance_key 默认 default；产品约束以实现为准 | TCP 等路径曾钉死 default |
 | C-12 | 后端 Go + Gin + proto + migrate；前端 web/ Vue3 | 见 architecture |
 | C-13 | API 路径单数资源名 | `/api/ci/repository` |
@@ -29,6 +29,7 @@ Doc role: living SoT
 | C-19 | Project 环境/Gateway 初始化只走 Web Wizard；MCP 使用 connection-local 已就绪 Project scope | Project 创建和 identity seed 不预建 Environment/Gateway；`ProjectInitializationConfig` 只给 Wizard 初值；运行时只读库存；Grok/Codex 先 list/select，后续工具不再传 `project_id` |
 | C-20 | Repository 与 Repository Credential 全局共享，Project 只作成员校验上下文 | 仓库 `code`、凭据名称全局唯一；Application Pipeline、Run、Artifact 和 Environment 仍按 Project 归属；仓库删除检查所有现存应用流水线绑定，应用流水线删除检查其未结束 Run；历史 Run/Snapshot/Artifact 不直接阻止仓库删除 |
 | C-21 | Web CI/CD 日志统一组件、功能与样式，采用 Fetch + SSE | 全部来源运行中持续读取；文件按字节续读，容器跟随并按时间重叠恢复；关闭停止订阅并保留页面缓存；不提供复制/导出，部署终态不结束容器日志，stop 仍不展示容器日志 |
+| C-22 | Service 生命周期以后成功受理操作为准 | 创建 Deployment、设置当前指针和入队同事务；取消旧操作尽力且异常最多 warning，不等待物理退出；SQL 条件防止迟到回写，任务终态与历史删除不恢复旧资格。CD 使用独立 execution/cancel timeout（1h/5s），仅 Service 粒度，不处理 CI、心跳、租约、重启恢复或跨 Project 宿主协调 |
 
 ## 废止（Superseded）
 

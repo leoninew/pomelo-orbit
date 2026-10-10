@@ -66,6 +66,9 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		runtime,
 		deploymentLogStore,
 		cfg.Worker.PollInterval,
+		cfg.Deployment.ExecutionTimeout,
+		cfg.Deployment.CancelTimeout,
+		transactionRunner,
 		routeManager,
 	)
 

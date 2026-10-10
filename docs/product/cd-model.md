@@ -1,5 +1,5 @@
 # Project 环境与 CD 产品模型
-最后修改时间: 2026-10-09 17:47:40
+最后修改时间: 2026-10-10 22:14:41
 
 Doc role: living product model
 
@@ -35,7 +35,7 @@ Environment 的 target type 是显式联合：
 
 打开终端与 Docker 检查独立：local/ssh 的票据、连接及会话复核均不要求 Probe 成功或 Docker/Compose 可用。SSH 首次连接在同一次受管密钥认证的连接中观察并固定指纹，固定完成后才提供交互；后续严格比较已有指纹。部署、CI、Route 的最新成功 Probe 要求继续保留。
 
-终端抽屉关闭后保留当前环境页内的终端实例、输出与会话，重新打开继续同一会话；离开环境页、切换 Project、目标或凭据变更、主动断开以及服务端会话限制会终止连接。Probe 状态变化不会重建或终止终端。断线后仅手动重连。
+终端抽屉支持通过标题栏按钮切换为铺满浏览器页面的全屏显示，再次点击恢复抽屉宽度；切换时沿用同一终端实例与会话，并自动同步终端尺寸。抽屉关闭后保留当前环境页内的终端实例、输出与会话，重新打开继续同一会话；离开环境页、切换 Project、目标或凭据变更、主动断开以及服务端会话限制会终止连接。Probe 状态变化不会重建或终止终端。断线后仅手动重连。
 
 镜像 registry、登录方式和多 registry 配置是宿主机责任，不属于 Orbit Project 或 Environment 配置。
 
@@ -69,6 +69,18 @@ Version 的绝对 directory mount 可声明 `shared=true`，允许其他服务�
 
 ## 服务部署目录
 
-Service 保存确认目录 `deployment_directory` 和运行目录 `runtime_directory`，分别绑定 Environment target revision。首次根据环境根目录拼接，后续按当前修订回填；允许完整目录位于环境工作区之外。部署一次提交版本与目录，Deployment 冻结版本、工作目录和目标修订。重启、停止和状态使用运行目录；Web 容器日志流按 Service code 与可选 Component 标签读取目标 Docker 上的实际容器，不依赖服务的持久化状态、运行目录记录或 Compose 文件。MCP 的 RuntimeComposeLogs 快照读取仍使用运行目录及 Compose 文件。
+Service 保存确认目录 `deployment_directory` 和运行目录 `runtime_directory`，分别绑定 Environment target revision。首次根据环境根目录拼接，后续按当前修订回填；允许完整目录位于环境工作区之外。部署一次提交版本与目录，Deployment 冻结版本、工作目录和目标修订。重启和停止优先使用当前修订的运行目录；未绑定运行目录时，可使用当前修订已确认的部署目录。状态查询仍使用运行目录。Web 容器日志流按 Service code 与可选 Component 标签读取目标 Docker 上的实际容器，不依赖服务的持久化状态、运行目录记录或 Compose 文件。MCP 的 RuntimeComposeLogs 快照读取仍使用运行目录及 Compose 文件。
 
 已部署服务（包括已停止的服务）改目录只警告：相对挂载位置改变、旧数据不会迁移，可能重建容器并中断服务。Gateway 还需注意路由、证书和 ACME 数据，并另行显式同步 Route。警告不阻止提交。
+
+## Service 操作接替
+
+Service 的持久化状态是 Orbit 已记录的执行结果，可能与用户带外操作后的实际容器状态不同。部署、停止和重启不因该状态或已有活动任务而拒绝受理；权限、资源归属、目标修订和所需输入仍须有效。前端只在请求提交期间禁用操作，受理后允许再次提交；Gateway 继续从专属入口部署。
+
+同一 Service 以后成功受理的操作为准。新操作在同一事务中创建 Deployment、设置内部 `current_deployment_id` 并入队；失败回滚，前一个操作继续有效。当前任务结束或历史被清理后保留该指针，旧任务不会重新取得资格。活动任务展示只计算当前指针对应的非终态 Deployment。
+
+旧任务尽力取消，不等待其正常结束或确认物理退出。旧任务已完成、失败或不存在时直接继续；取消失败、超时和退出未确认最多 warning。运行目录、版本、状态及任务结果的条件更新阻止旧操作或当前任务的迟到结果覆盖新状态。
+
+CD 总执行时间由 `deployment.execution_timeout` 限制，基准为 `1h`；尽力取消与收尾使用 `deployment.cancel_timeout`，基准为 `5s`。总执行时间从 Worker 处理开始计算，包含准备、命令和 Gateway readiness，不含排队。超时后结束等待并记录失败，不要求不响应取消的执行先返回。
+
+接替粒度仅为 Service，不按 Environment、物理容器或跨 Project 宿主合并。已发出的 Docker daemon 操作、文件写入或 SFTP 动作无法保证撤销，取消状态不代表容器或远端进程已停止。CI、心跳、租约和重启恢复不在此机制范围内。

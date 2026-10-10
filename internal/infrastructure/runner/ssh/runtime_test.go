@@ -16,6 +16,32 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
+func TestCanceledWorkspaceDoesNotConnectWhileFileLockIsHeld(t *testing.T) {
+	runtime := NewRuntime()
+	target := environmentport.Target{Environment: model.Environment{Id: "environment-1", TargetType: model.EnvironmentTargetTypeSSH, SSH: &model.EnvironmentSSHTarget{Platform: model.EnvironmentPlatformLinux}}}
+	directory := "/workspace/api"
+	unlock, err := runtime.lock(context.Background(), target.Environment.Id+"\x00"+directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unlock()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- runtime.StageWorkspace(ctx, target, deploymentport.Workspace{Location: deploymentport.ServiceLocation{Code: "api", Directory: directory}, Compose: "services: {}\n"})
+	}()
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("canceled workspace returned %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("workspace waited for previous file publisher")
+	}
+}
+
 func TestRuntimeUpdatesExistingCompose(t *testing.T) {
 	target, _ := startSessionServer(t)
 	runtime := NewRuntime()

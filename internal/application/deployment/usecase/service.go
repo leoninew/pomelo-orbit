@@ -32,8 +32,11 @@ type Service struct {
 	executionStore  deploymentport.ExecutionStore
 	dispatcher      deploymentport.Dispatcher
 
-	logger       *slog.Logger
-	pollInterval time.Duration
+	logger            *slog.Logger
+	pollInterval      time.Duration
+	executionTimeout  time.Duration
+	cancelTimeout     time.Duration
+	transactionRunner deploymentport.TransactionRunner
 
 	commandStore       deploymentport.CommandStore
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator

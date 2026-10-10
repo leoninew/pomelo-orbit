@@ -8,6 +8,7 @@ import (
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -42,7 +43,9 @@ func TestGatewayDeploymentOverwritesStaticConfigAndRecreatesContainer(t *testing
 			plan := testGatewayEnrichmentPlan("", "", "")
 			plan.Service.Code = "traefik-default"
 			plan.Service.DeploymentDirectory = "/custom/traefik"
-			service.executionStore = &runtimeQueryStore{service: plan.Service}
+			deploymentId := "deployment-1"
+			plan.Service.CurrentDeploymentId = &deploymentId
+			service.executionStore = &independentDeploymentStore{runtimeQueryStore: &runtimeQueryStore{service: plan.Service}, deployment: model.Deployment{Id: deploymentId, ServiceId: &plan.Service.Id, Status: status.WorkStatusRunning}}
 			plan.Components[0].Image = "traefik:3.6"
 			plan.Components[0].Mounts = plan.Components[0].Mounts[:1]
 			plan.Components[0].Mounts[0].Content = "providers:\n  rest:\n    insecure: true\n"

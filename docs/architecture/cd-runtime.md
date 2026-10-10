@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-09 17:47:40
+最后修改时间: 2026-10-10 22:42:05
 
 Doc role: living architecture
 
@@ -26,6 +26,8 @@ Environment Probe、Compose deploy/restart/stop、运行时查询、容器日志
 
 Deployment 将 `environment_id`、Environment `target_type`、target revision 与可选 Gateway Application identity 保存为正式不可变列。SSH deployment 额外保存 SSH Credential identity/revision；local deployment 的 SSH snapshot 为空。`options_json` 只保存命令选项和 Gateway 配置快照；worker 在执行前以正式列核对当前 Environment，目标变更后的排队任务直接失败，不能落到其他 Project 或新目标。
 
+Compose 渲染在环境变量合并和 Service 占位符解析后，将有效值中的每个 `$` 写为 `$$`，阻止 Compose 再次插值；数据库、页面与有效计划保留原值。单引号或 YAML 字符串引号不能替代这层转义，用户填写的连续 `$$` 也按两个字面字符处理。预览与执行共用此边界，已有工作区文件由下次部署或重启重新生成；不自动改写容器内已初始化的应用数据或账号密码。
+
 Environment Probe 在 HTTP 请求事务外执行 target I/O。Probe 完成后使用带 `target_revision` 条件的单条更新写入结果，旧配置上的探测不会覆盖新配置状态；单表更新本身是原子操作，不额外引入应用层事务编排。
 
 SSH 初始化命令是普通 HTTP 写事务内的无远端 I/O 动作：它以提交的完整 SSH target 更新 Environment，并只在 binding 缺失或失效时创建 `environment_credential`。有效 binding 会原样复用。保存、编辑和 Probe 均不隐式生成密钥；未初始化 SSH target 的 Probe 仅写入“先生成并执行初始化命令”的失败诊断，不启动 SSH runner。
@@ -35,6 +37,18 @@ SSH 初始化命令是普通 HTTP 写事务内的无远端 I/O 动作：它以�
 local 通过 `github.com/aymanbagabas/go-pty` 创建 Unix PTY 或 Windows ConPTY，以 Orbit 用户进入展开后的工作区。Unix 启动 `/bin/sh -i` 并释放父进程 slave；Windows 启动系统 PowerShell，平台适配器持有进程/线程句柄，挂入 kill-on-close Job 后恢复执行，以避免库 v0.2.3 的原始进程句柄遗漏。输出泵保留尾输出，断开时解除消费者背压并清理进程；Unix 清理 shell/前台进程组，Windows 清理 Job。容器部署的 local shell 位于 Orbit 容器内，不使用 Docker 路径映射或宿主命名空间切换。
 
 Bearer 认证的短请求签发一次性、短时效票据；WebSocket 通过子协议传票据，服务器仅协商固定协议名，不把票据放入 URL 或常规 HTTP 正文日志。会话在请求事务外运行，周期性复核 Project 成员、目标类型/修订以及 SSH 凭据与指纹，且在输入前复核；有连接数、空闲和最长时长限制。Probe、部署与 CI 仍运行预定的非交互命令，不共享终端输入输出，部署 resolver 继续要求最新成功 Probe。
+
+## Service 操作控制
+
+部署、停止和重启共享 Service 当前操作指针 `current_deployment_id`。受理通过现有权限、目录和目标校验后，在短事务内创建 Deployment、更新指针并入队；HTTP 沿用请求 UoW，MCP 使用同一事务入口。取消旧记录和 runtime I/O 均位于请求事务外。后置顺序由数据库对 Service 指针的更新确定，不按 Worker 领取顺序或任务 ID 推断。
+
+Worker 只启动当前 waiting 任务。执行 Context 在每秒以内轮询任务取消和当前指针变化；准备 workspace、绑定目录、发出 Compose 及 readiness 前再次检查。新任务对同 Service 的旧 waiting/running 记录尽力标记 canceled，SQL 按当前归属限定查询和每次取消，迟到的取消不会影响更新的任务。终态和缺失旧记录无需取消，异常只 warning。
+
+集中配置 `deployment.execution_timeout=1h` 从 Worker 处理开始限制总执行时间，`deployment.cancel_timeout=5s` 限制取消查询、写入和收尾；两项均须为正，分别支持 `POMELO_ORBIT_DEPLOYMENT__EXECUTION_TIMEOUT` 与 `POMELO_ORBIT_DEPLOYMENT__CANCEL_TIMEOUT`。外层在结果、取消和 deadline 之间选择结束等待，收尾独立限时；内层持有自身 writer/session 并负责关闭，迟到返回不会再次完成任务。当前任务自身超时写 faulted，被接替任务尽力写 canceled；接替容错正常返回，避免通用 Worker 升级为 ERROR。
+
+Service 目录绑定、状态/版本回写以及 Deployment 启动/完成均使用当前指针和任务状态的 SQL 条件。Service 执行结果与 Deployment 完成在同一短事务提交，零行时回滚并退出；手动取消后的运行观测使用单独条件写入，被接替任务不观测回写。历史删除不清空指针，不恢复旧资格；`active_deployment` 只投影当前非终态任务。
+
+local/SSH 仅在既有文件准备范围使用短锁，锁等待和文件准备响应 Context，最终文件发布前再次检查取消；Compose 和镜像拉取不持有该锁。已经进入系统调用的写入或 Docker daemon 动作仍可能继续，外层不能强杀任意 Go goroutine，也不承诺物理操作绝对有序。机制只按 Service 协调，不扩展到 Environment、跨 Project 宿主、CI 或存活恢复。
 
 ## GatewayConfig 与部署
 
@@ -100,6 +114,8 @@ Web 容器日志流可在操作进行中订阅；按 Service code 的 Compose pr
 绝对 directory mount 的 `shared` 声明随有效挂载渲染到容器标签 `io.pomelo-orbit.shared-mounts`，值为共享容器 target 的 JSON 数组。占用检查读取目标 daemon 上实际运行容器的标签和 `Mounts`，仅当实际共享 bind source 包含写入源时放行。嵌套非共享 bind 独立检查；Service 确认/运行目录仍受保护。未部署的配置编辑不会改变判定，不依赖应用名称、当前 worker 容器或控制面角色；local、SSH 与外部 worker 遵循同一规则。已有 DooD 容器识别与最长挂载前缀映射继续复用。
 
 部署请求在现有写事务中保存确认目录与 Deployment 的 `working_directory` 快照。Worker 在目标修订校验后展开目标主目录，检查目录归属、写入权限和挂载映射，准备 Compose 与受控文件；准备成功且即将执行 Compose 时用短数据库更新绑定运行目录。绑定前失败保留旧目录，命令执行中失败或取消保留新运行操作目录。状态更新不得覆盖目录绑定。部署不移动、复制或删除旧数据。
+
+重启和停止优先冻结当前修订的运行目录；运行目录为空时可以冻结同修订已确认的部署目录，库存运行状态不参与准入。有运行目录但修订已变化时仍拒绝猜测位置。缺失目录准确报告 `service_runtime_directory_missing` 及确认目录的安全摘要，日志保留 Service、Environment 与修订上下文，不归类为容器日志配置失败；实际 Compose 文件缺失由执行反馈。
 
 local 在 Orbit 可见路径写文件，DooD 将每个具体相对 bind source 映射到 Docker daemon 可见路径，按最长挂载前缀处理嵌套挂载；未映射路径在命令前失败。SSH 使用远端路径与 SFTP，Linux 沿用 shell 引号，Windows 沿用非交互 PowerShell 和 `Set-Location -LiteralPath`，不通过本地 DooD resolver。
 

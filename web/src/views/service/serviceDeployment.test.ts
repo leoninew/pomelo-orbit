@@ -17,7 +17,7 @@ vi.mock('@/api/service/service', () => ({
   serviceApi: { list: vi.fn(), get: vi.fn(), deploy: vi.fn(), updateBasic: vi.fn() },
 }));
 vi.mock('@/api/application/application', () => ({
-  applicationApi: { listVersions: vi.fn() },
+  applicationApi: { listVersions: vi.fn(), stop: vi.fn() },
 }));
 vi.mock('@/api/project/environment', () => ({ projectEnvironmentApi: { get: vi.fn() } }));
 vi.mock('@/router/projectReadiness', () => ({
@@ -59,8 +59,12 @@ async function flushRender() {
   }
 }
 
-async function mountService(view: 'list' | 'detail', kind: string) {
-  const snapshot = { ...service, application_kind: kind };
+async function mountService(
+  view: 'list' | 'detail',
+  kind: string,
+  overrides: Partial<ServiceResp> = {}
+) {
+  const snapshot = { ...service, application_kind: kind, ...overrides };
   vi.mocked(serviceApi.list).mockResolvedValue({
     items: [snapshot],
     total: 1,
@@ -93,6 +97,7 @@ async function mountService(view: 'list' | 'detail', kind: string) {
     local: { platform: 'linux', workspace_root: '/workspace' },
   } as EnvironmentResp);
   vi.mocked(serviceApi.deploy).mockResolvedValue({ deployment_id: '', warnings: [] });
+  vi.mocked(applicationApi.stop).mockResolvedValue({ deployment_id: '' });
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -114,14 +119,18 @@ async function mountService(view: 'list' | 'detail', kind: string) {
   return target;
 }
 
-function deployButton(root: ParentNode) {
+function actionButton(root: ParentNode, label: string) {
   const button = [...root.querySelectorAll<HTMLButtonElement>('button')].find(
-    (item) => item.textContent?.trim() === i18n.global.t('service.actions.deploy')
+    (item) => item.textContent?.trim() === label
   );
   if (!button) {
-    throw new Error('Service deploy button is missing');
+    throw new Error(`Service action button is missing: ${label}`);
   }
   return button;
+}
+
+function deployButton(root: ParentNode) {
+  return actionButton(root, i18n.global.t('service.actions.deploy'));
 }
 
 afterEach(() => {
@@ -133,6 +142,49 @@ afterEach(() => {
 });
 
 describe('service deployment entry', () => {
+  it.each(['stopped', 'running', 'faulted'])(
+    'allows lifecycle commands with an active operation and stored status %s',
+    async (status) => {
+      const root = await mountService('list', 'standard', { status, active_deployment: true });
+      expect(deployButton(root).disabled).toBe(false);
+      expect(actionButton(root, i18n.global.t('service.actions.stop')).disabled).toBe(false);
+      const cardView = root.querySelector<HTMLButtonElement>(
+        `button[aria-label="${i18n.global.t('service.cardView')}"]`
+      );
+      if (!cardView) {
+        throw new Error('Service card view button is missing');
+      }
+      cardView.click();
+      await flushRender();
+      expect(deployButton(root).disabled).toBe(false);
+      expect(actionButton(root, i18n.global.t('service.actions.stop')).disabled).toBe(false);
+    }
+  );
+
+  it.each(['list', 'detail'] as const)('allows repeated stop submission from %s', async (view) => {
+    const root = await mountService(view, 'standard', {
+      status: 'stopped',
+      active_deployment: true,
+    });
+    for (let index = 0; index < 2; index++) {
+      const stop = actionButton(root, i18n.global.t('service.actions.stop'));
+      expect(stop.disabled).toBe(false);
+      stop.click();
+      await flushRender();
+      const dialog = document.querySelector('[role="dialog"]');
+      if (!dialog) {
+        throw new Error('Service stop dialog is missing');
+      }
+      actionButton(dialog, i18n.global.t('common.stop')).click();
+      await flushRender();
+    }
+    expect(applicationApi.stop).toHaveBeenCalledTimes(2);
+    expect(applicationApi.stop).toHaveBeenCalledWith('project-1', 'app-1', {
+      service_id: 'service-1',
+      remove_volumes: false,
+    });
+  });
+
   it.each(['list', 'detail'] as const)('disables Gateway deployment in %s', async (view) => {
     const root = await mountService(view, 'gateway');
     expect(deployButton(root).disabled).toBe(true);
@@ -155,7 +207,10 @@ describe('service deployment entry', () => {
   it.each(['list', 'detail'] as const)(
     'submits version and edited directory together from %s',
     async (view) => {
-      const root = await mountService(view, 'standard');
+      const root = await mountService(view, 'standard', {
+        status: 'running',
+        active_deployment: true,
+      });
       expect(deployButton(root).disabled).toBe(false);
       deployButton(root).click();
       await flushRender();
@@ -187,6 +242,10 @@ describe('service deployment entry', () => {
         join_traefik_network: true,
       });
       expect(serviceApi.updateBasic).not.toHaveBeenCalled();
+      expect(deployButton(root).disabled).toBe(false);
+      deployButton(root).click();
+      await flushRender();
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
     }
   );
 });

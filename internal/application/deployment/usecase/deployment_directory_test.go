@@ -12,6 +12,7 @@ import (
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
@@ -121,6 +122,69 @@ func TestRestartFreezesRuntimeDirectoryInsteadOfPendingDirectory(t *testing.T) {
 	}
 	if store.service.RuntimeDirectory != "/running/api" {
 		t.Fatalf("runtime directory=%s", store.service.RuntimeDirectory)
+	}
+}
+
+func TestRuntimeOperationsRejectMissingServiceDirectoryWithActionableError(t *testing.T) {
+	for _, operation := range []string{"stop", "restart"} {
+		t.Run(operation, func(t *testing.T) {
+			service, store, _, _ := independentDeploymentTestService(t, false)
+			service.commandStore, service.dispatcher = store, directoryDispatcher{}
+			store.service.Status = status.ServiceStatusFaulted
+			store.service.DeploymentDirectory = ""
+			input := deploymentdto.ServiceTargetInput{ServiceId: store.service.Id}
+			var err error
+			if operation == "stop" {
+				_, err = service.StopApplication(context.Background(), "user-1", "project-1", "app-1", input)
+			} else {
+				_, err = service.RestartApplication(context.Background(), "user-1", "project-1", "app-1", input)
+			}
+			if !apperror.IsKind(err, apperror.KindConflict) || !errors.Is(err, errRuntimeDirectoryNotReady) {
+				t.Fatalf("expected a missing runtime directory conflict, got %v", err)
+			}
+			classification := apperror.Classify(err)
+			if classification.Code != "service_runtime_directory_missing" || !strings.Contains(classification.Message, "Confirm the service directory") {
+				t.Fatalf("unhelpful public error: %+v", classification)
+			}
+			for _, context := range []string{"project_id=project-1", "application_id=app-1", "service_id=service-1", "service_code=demo-default", "service_status=faulted", "environment_target_revision=1", "runtime_target_revision=0"} {
+				if !strings.Contains(err.Error(), context) {
+					t.Fatalf("error is missing %q: %v", context, err)
+				}
+				if strings.Contains(classification.Message, context) {
+					t.Fatalf("internal context leaked into public message: %s", classification.Message)
+				}
+			}
+			if store.deployment.Id != "deployment-1" {
+				t.Fatal("rejected operation created a deployment")
+			}
+		})
+	}
+}
+
+func TestLifecycleOperationsUseConfirmedDirectoryWithoutRuntimeRecord(t *testing.T) {
+	for _, operation := range []string{"stop", "restart"} {
+		for _, serviceState := range []string{status.ServiceStatusStopped, status.ServiceStatusRunning} {
+			t.Run(operation+"/"+serviceState, func(t *testing.T) {
+				service, store, _, _ := independentDeploymentTestService(t, false)
+				service.commandStore, service.dispatcher = store, directoryDispatcher{}
+				service.gatewayCoordinator = &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{ApplicationId: "gateway-1", NetworkName: "traefik"}}
+				store.service.Status = serviceState
+				input := deploymentdto.ServiceTargetInput{ServiceId: store.service.Id}
+				var id string
+				var err error
+				if operation == "stop" {
+					id, err = service.StopApplication(context.Background(), "user-1", "project-1", "app-1", input)
+				} else {
+					id, err = service.RestartApplication(context.Background(), "user-1", "project-1", "app-1", input)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if store.deployment.WorkingDirectory == nil || *store.deployment.WorkingDirectory != "/custom/demo" || store.service.CurrentDeploymentId == nil || *store.service.CurrentDeploymentId != id {
+					t.Fatalf("deployment=%+v service=%+v", store.deployment, store.service)
+				}
+			})
+		}
 	}
 }
 

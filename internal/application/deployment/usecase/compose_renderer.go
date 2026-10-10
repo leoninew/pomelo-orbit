@@ -302,6 +302,10 @@ func renderVersionComponentServiceForPaths(component model.VersionComponent, app
 		service["command"] = append([]string(nil), component.Command...)
 	}
 	if env := componentEnv(component.Env, runtime); len(env) > 0 {
+		// Compose interpolates dollars even in quoted YAML; effective values are literals.
+		for key, value := range env {
+			env[key] = strings.ReplaceAll(value, "$", "$$")
+		}
 		service["environment"] = env
 	}
 	if err := applyComponentRuntimeFields(service, component); err != nil {

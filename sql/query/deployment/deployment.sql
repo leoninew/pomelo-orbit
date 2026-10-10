@@ -98,9 +98,10 @@ UPDATE deployment
 SET status = sqlc.arg(status),
     started_at = sqlc.arg(started_at),
     error_message = NULL
-WHERE id = sqlc.arg(id)
-  AND project_id = sqlc.arg(project_id)
-  AND status = sqlc.arg(waiting_status);
+WHERE deployment.id = sqlc.arg(id)
+  AND deployment.project_id = sqlc.arg(project_id)
+  AND deployment.status = sqlc.arg(waiting_status)
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = deployment.service_id AND s.project_id = deployment.project_id AND s.current_deployment_id = deployment.id);
 
 -- name: CompleteDeployment :execrows
 UPDATE deployment
@@ -108,19 +109,35 @@ SET status = sqlc.arg(status),
     finished_at = sqlc.arg(finished_at),
     duration_ms = sqlc.arg(duration_ms),
     error_message = NULLIF(sqlc.arg(error_message), '')
-WHERE id = sqlc.arg(id)
-  AND project_id = sqlc.arg(project_id)
-  AND status = sqlc.arg(current_status);
+WHERE deployment.id = sqlc.arg(id)
+  AND deployment.project_id = sqlc.arg(project_id)
+  AND deployment.status = sqlc.arg(current_status)
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = deployment.service_id AND s.project_id = deployment.project_id AND s.current_deployment_id = deployment.id);
 
 -- name: CountActiveDeploymentsByService :one
 SELECT COUNT(*)
 FROM deployment
-WHERE service_id = sqlc.arg(service_id)
-  AND project_id = sqlc.arg(project_id)
-  AND status IN (sqlc.arg(waiting_status), sqlc.arg(running_status));
+WHERE deployment.service_id = sqlc.arg(service_id)
+  AND deployment.project_id = sqlc.arg(project_id)
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = deployment.service_id AND s.project_id = deployment.project_id AND s.current_deployment_id = deployment.id)
+  AND deployment.status IN (sqlc.arg(waiting_status), sqlc.arg(running_status));
 
 -- name: DeploymentStartedAt :one
 SELECT started_at
 FROM deployment
 WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
+
+-- name: SupersededDeployments :many
+SELECT d.id FROM deployment d
+WHERE d.service_id = sqlc.arg(service_id) AND d.project_id = sqlc.arg(project_id)
+  AND d.status IN ('waiting_to_run', 'running')
+  AND d.id <> sqlc.narg(current_deployment_id)
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = d.service_id AND s.project_id = d.project_id AND s.current_deployment_id = sqlc.narg(current_deployment_id));
+
+-- name: CancelObsoleteDeployment :execrows
+UPDATE deployment
+SET status = 'canceled', finished_at = sqlc.arg(finished_at), duration_ms = sqlc.arg(duration_ms), error_message = sqlc.arg(error_message)
+WHERE deployment.id = sqlc.arg(id) AND deployment.project_id = sqlc.arg(project_id)
+  AND deployment.status IN ('waiting_to_run', 'running')
+  AND EXISTS (SELECT 1 FROM service s WHERE s.id = deployment.service_id AND s.project_id = deployment.project_id AND (s.current_deployment_id IS NULL OR s.current_deployment_id <> deployment.id));

@@ -84,7 +84,7 @@ func (r Repository) ListServicesByProject(ctx context.Context, projectId, applic
 	}
 	items := make([]model.ServiceListItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.DeploymentDirectory, row.DirectoryTargetRevision, row.RuntimeDirectory, row.RuntimeTargetRevision))
+		items = append(items, serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.DeploymentDirectory, row.DirectoryTargetRevision, row.RuntimeDirectory, row.RuntimeTargetRevision, row.CurrentDeploymentId))
 	}
 	return repository.Page[model.ServiceListItem]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
@@ -94,7 +94,7 @@ func (r Repository) ServiceListItem(ctx context.Context, projectId, id string) (
 	if err != nil {
 		return model.ServiceListItem{}, fmt.Errorf("load service list item %s: %w", id, sqlcommon.TranslateError(err))
 	}
-	return serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.DeploymentDirectory, row.DirectoryTargetRevision, row.RuntimeDirectory, row.RuntimeTargetRevision), nil
+	return serviceListFrom(row.Id, row.ProjectId, row.ApplicationId, row.Code, row.VersionId, row.Status, row.CreatedAt, row.UpdatedAt, row.ApplicationName, row.ApplicationCode, row.ApplicationKind, row.VersionLabel, row.DeploymentDirectory, row.DirectoryTargetRevision, row.RuntimeDirectory, row.RuntimeTargetRevision, row.CurrentDeploymentId), nil
 }
 
 func (r Repository) ServiceByProjectAndCode(ctx context.Context, projectId, code string) (model.Service, error) {
@@ -422,25 +422,40 @@ func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, 
 }
 
 func serviceFrom(row servicesqlc.Service) model.Service {
-	return model.Service{Id: row.Id, ProjectId: row.ProjectId, ApplicationId: row.ApplicationId, Code: row.Code, VersionId: row.VersionId, Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, DeploymentDirectory: row.DeploymentDirectory, DirectoryTargetRevision: row.DirectoryTargetRevision, RuntimeDirectory: row.RuntimeDirectory, RuntimeTargetRevision: row.RuntimeTargetRevision}
+	return model.Service{CurrentDeploymentId: dbmodel.StringPtr(row.CurrentDeploymentId), Id: row.Id, ProjectId: row.ProjectId, ApplicationId: row.ApplicationId, Code: row.Code, VersionId: row.VersionId, Status: row.Status, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, DeploymentDirectory: row.DeploymentDirectory, DirectoryTargetRevision: row.DirectoryTargetRevision, RuntimeDirectory: row.RuntimeDirectory, RuntimeTargetRevision: row.RuntimeTargetRevision}
 }
 
-func serviceListFrom(id, projectId, applicationId, code, versionId, status string, createdAt, updatedAt time.Time, applicationName, applicationCode, applicationKind, versionLabel, deploymentDirectory string, directoryRevision int64, runtimeDirectory string, runtimeRevision int64) model.ServiceListItem {
-	return model.ServiceListItem{Id: id, ProjectId: projectId, ApplicationId: applicationId, Code: code, VersionId: versionId, Status: status, CreatedAt: createdAt, UpdatedAt: updatedAt, ApplicationName: applicationName, ApplicationCode: applicationCode, ApplicationKind: applicationKind, VersionLabel: versionLabel, DeploymentDirectory: deploymentDirectory, DirectoryTargetRevision: directoryRevision, RuntimeDirectory: runtimeDirectory, RuntimeTargetRevision: runtimeRevision}
+func serviceListFrom(id, projectId, applicationId, code, versionId, status string, createdAt, updatedAt time.Time, applicationName, applicationCode, applicationKind, versionLabel, deploymentDirectory string, directoryRevision int64, runtimeDirectory string, runtimeRevision int64, currentDeploymentId sql.NullString) model.ServiceListItem {
+	return model.ServiceListItem{CurrentDeploymentId: dbmodel.StringPtr(currentDeploymentId), Id: id, ProjectId: projectId, ApplicationId: applicationId, Code: code, VersionId: versionId, Status: status, CreatedAt: createdAt, UpdatedAt: updatedAt, ApplicationName: applicationName, ApplicationCode: applicationCode, ApplicationKind: applicationKind, VersionLabel: versionLabel, DeploymentDirectory: deploymentDirectory, DirectoryTargetRevision: directoryRevision, RuntimeDirectory: runtimeDirectory, RuntimeTargetRevision: runtimeRevision}
 }
 
 func (r Repository) UpdateServiceDeploymentDirectory(ctx context.Context, projectId, id, directory string, revision int64) error {
 	return r.q(ctx).UpdateServiceDeploymentDirectory(ctx, servicesqlc.UpdateServiceDeploymentDirectoryParams{ProjectId: projectId, Id: id, Directory: directory, TargetRevision: revision, UpdatedAt: time.Now().UTC()})
 }
-func (r Repository) BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, revision int64) error {
+func (r Repository) BindServiceRuntimeDirectory(ctx context.Context, projectId, id, deploymentId, directory string, revision int64) (bool, error) {
 	rows, err := r.q(ctx).BindServiceRuntimeDirectory(ctx, servicesqlc.BindServiceRuntimeDirectoryParams{ProjectId: projectId, Id: id, DeploymentId: deploymentId, Directory: directory, TargetRevision: revision, UpdatedAt: time.Now().UTC()})
+	return rows == 1, err
+}
+
+func (r Repository) SetServiceCurrentDeployment(ctx context.Context, projectId, id, deploymentId string) error {
+	rows, err := r.q(ctx).SetServiceCurrentDeployment(ctx, servicesqlc.SetServiceCurrentDeploymentParams{ProjectId: projectId, Id: id, DeploymentId: deploymentId, UpdatedAt: time.Now().UTC()})
 	if err != nil {
-		return err
+		return fmt.Errorf("set current deployment for service %s: %w", id, err)
 	}
 	if rows != 1 {
-		return fmt.Errorf("deployment canceled or environment changed before runtime directory binding")
+		return fmt.Errorf("service %s or waiting deployment %s not found", id, deploymentId)
 	}
 	return nil
+}
+
+func (r Repository) UpdateServiceDeploymentResult(ctx context.Context, projectId, id, deploymentId, state string, versionId *string) (bool, error) {
+	rows, err := r.q(ctx).UpdateServiceDeploymentResult(ctx, servicesqlc.UpdateServiceDeploymentResultParams{ProjectId: projectId, Id: id, DeploymentId: deploymentId, Status: state, VersionId: dbmodel.NullString(versionId), UpdatedAt: time.Now().UTC()})
+	return rows == 1, err
+}
+
+func (r Repository) ReconcileServiceAfterCancellation(ctx context.Context, projectId, id, deploymentId, state string) (bool, error) {
+	rows, err := r.q(ctx).ReconcileServiceAfterCancellation(ctx, servicesqlc.ReconcileServiceAfterCancellationParams{ProjectId: projectId, Id: id, DeploymentId: deploymentId, Status: state, UpdatedAt: time.Now().UTC()})
+	return rows == 1, err
 }
 
 func (r Repository) DirectoryServices(ctx context.Context, projectId string) ([]model.Service, error) {

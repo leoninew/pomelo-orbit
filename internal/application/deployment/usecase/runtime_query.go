@@ -6,7 +6,6 @@ import (
 	"path"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
-	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -27,7 +26,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, projectId
 		return nil, err
 	}
 	location, err := runtimeServiceLocation(target, service)
-	if errors.Is(err, deploymentport.ErrLogNotReady) {
+	if errors.Is(err, errRuntimeDirectoryNotReady) {
 		return []deploymentdto.RuntimeContainer{}, nil
 	}
 	if err != nil {

@@ -313,6 +313,8 @@ export default {
         connectionTimedOut: 'Terminal connection timed out',
         disconnect: 'Disconnect',
         reconnect: 'Reconnect',
+        fullscreen: 'Fullscreen',
+        exitFullscreen: 'Exit fullscreen',
         exited: 'Shell exited with code {code}',
         idle_timeout: 'Disconnected after inactivity',
         session_limit: 'Session time limit reached; disconnected',

@@ -29,6 +29,7 @@ type Querier interface {
 	ListServicesByApplication(ctx context.Context, arg ListServicesByApplicationParams) ([]Service, error)
 	ListServicesByProject(ctx context.Context, arg ListServicesByProjectParams) ([]ListServicesByProjectRow, error)
 	ListServicesByVersion(ctx context.Context, arg ListServicesByVersionParams) ([]Service, error)
+	ReconcileServiceAfterCancellation(ctx context.Context, arg ReconcileServiceAfterCancellationParams) (int64, error)
 	ServiceById(ctx context.Context, arg ServiceByIdParams) (Service, error)
 	ServiceByProjectAndCode(ctx context.Context, arg ServiceByProjectAndCodeParams) (Service, error)
 	ServiceComponentById(ctx context.Context, arg ServiceComponentByIdParams) (ServiceComponent, error)
@@ -39,6 +40,7 @@ type Querier interface {
 	ServiceComponentsByService(ctx context.Context, arg ServiceComponentsByServiceParams) ([]ServiceComponent, error)
 	ServiceEnvByService(ctx context.Context, arg ServiceEnvByServiceParams) ([]ServiceEnv, error)
 	ServiceListItemById(ctx context.Context, arg ServiceListItemByIdParams) (ServiceListItemByIdRow, error)
+	SetServiceCurrentDeployment(ctx context.Context, arg SetServiceCurrentDeploymentParams) (int64, error)
 	TouchService(ctx context.Context, arg TouchServiceParams) error
 	UpdateService(ctx context.Context, arg UpdateServiceParams) error
 	UpdateServiceAfterDeploy(ctx context.Context, arg UpdateServiceAfterDeployParams) error
@@ -46,6 +48,7 @@ type Querier interface {
 	UpdateServiceComponentSource(ctx context.Context, arg UpdateServiceComponentSourceParams) error
 	UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error
 	UpdateServiceDeploymentDirectory(ctx context.Context, arg UpdateServiceDeploymentDirectoryParams) error
+	UpdateServiceDeploymentResult(ctx context.Context, arg UpdateServiceDeploymentResultParams) (int64, error)
 	UpdateServiceStatus(ctx context.Context, arg UpdateServiceStatusParams) error
 }
 

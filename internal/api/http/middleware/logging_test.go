@@ -18,6 +18,7 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/requestid"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	authv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth"
 )
 
@@ -488,6 +489,62 @@ func TestLogRequestLogsRecoveredPanicAsInfo(t *testing.T) {
 	}
 	if response.Code != "internal_error" || response.Error != "Internal server error." || response.RequestId != started["request_id"] {
 		t.Fatalf("unexpected recovery error response: %+v", response)
+	}
+}
+
+func TestLogRequestPreservesFailureCauseWithoutResponseBodyCapture(t *testing.T) {
+	for _, test := range []struct {
+		name, level, code, message string
+		err                        error
+		status                     int
+	}{
+		{
+			name: "state conflict", level: "WARN", status: http.StatusConflict,
+			code: "service_runtime_directory_missing", message: "Deploy the service before using runtime operations.",
+			err: apperror.WrapWithCode(apperror.KindConflict, "service_runtime_directory_missing", "Deploy the service before using runtime operations.", errors.New("service_id=service-1 runtime_directory is empty")),
+		},
+		{
+			name: "unexpected failure", level: "ERROR", status: http.StatusInternalServerError,
+			code: "internal_error", message: "Internal server error.",
+			err: errors.New("database operation failed: internal diagnostics"),
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var logBuffer bytes.Buffer
+			logger := slog.New(slog.NewJSONHandler(&logBuffer, nil))
+			gin.SetMode(gin.TestMode)
+			router := gin.New()
+			router.Use(RequestId(), LogRequest(logger, LogRequestConfig{Enabled: true}))
+			router.POST("/api/application/:app_id/stop", func(c *gin.Context) {
+				transport.WriteError(c, test.err)
+			})
+			request := httptest.NewRequest(http.MethodPost, "/api/application/app-1/stop?project_id=project-1", nil)
+			request.Header.Set(RequestIdHeader, "failure-request")
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, request)
+			if recorder.Code != test.status {
+				t.Fatalf("status=%d, want %d", recorder.Code, test.status)
+			}
+			var response transport.ErrorResp
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+				t.Fatal(err)
+			}
+			if response.Code != test.code || response.Error != test.message || response.RequestId != "failure-request" || recorder.Header().Get(RequestIdHeader) != response.RequestId {
+				t.Fatalf("unexpected failure response: %+v", response)
+			}
+			entries := decodeLogEntries(t, logBuffer.String())
+			if len(entries) != 3 {
+				t.Fatalf("expected started, failed and completed logs, got %+v", entries)
+			}
+			failed := entries[1]
+			assertLogValue(t, failed, "msg", "request failed")
+			assertLogValue(t, failed, "level", test.level)
+			assertLogValue(t, failed, "code", test.code)
+			assertLogValue(t, failed, "request_id", response.RequestId)
+			assertLogValue(t, failed, "error", test.err.Error())
+			assertLogNumber(t, failed, "status", test.status)
+			assertLogMissing(t, entries[2], "response_body")
+		})
 	}
 }
 

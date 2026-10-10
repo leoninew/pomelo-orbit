@@ -5,6 +5,7 @@ import { createMemoryHistory, createRouter } from 'vue-router';
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { gatewayApi } from '@/api/gateway/gateway';
+import { applicationApi } from '@/api/application/application';
 import { projectEnvironmentApi } from '@/api/project/environment';
 import { serviceApi } from '@/api/service/service';
 import i18n from '@/i18n';
@@ -93,79 +94,106 @@ afterEach(() => {
 });
 
 describe('Gateway detail editing', () => {
-  it('deploys with an edited directory and keeps profile version selection in the backend', async () => {
-    pinia = createPinia();
-    useProjectStore(pinia).setActiveProject('project-1');
-    vi.mocked(gatewayApi.list).mockResolvedValue({
-      items: [
-        {
-          ...gateway,
-          service_id: 'gateway-service',
-          service_code: 'traefik-default',
-          service_status: 'stopped',
-          deployment_directory: '/custom/gateway',
-          directory_target_revision: 2,
-          runtime_directory: '/old/gateway',
-          runtime_target_revision: 2,
-        },
-      ],
-      total: 1,
-      page: 1,
-      per_page: 1,
-      pages: 1,
-    });
-    vi.mocked(projectEnvironmentApi.get).mockResolvedValue({
-      target_type: 'local',
-      target_revision: 2,
-      local: { platform: 'linux', workspace_root: '/workspace' },
-    } as EnvironmentResp);
-    vi.mocked(serviceApi.deploy).mockResolvedValue({ deployment_id: '', warnings: [] });
-    const router = createRouter({
-      history: createMemoryHistory(),
-      routes: [{ path: '/gateway', component: GatewayDetail }],
-    });
-    await router.push('/gateway');
-    target = document.createElement('div');
-    document.body.append(target);
-    mountedApp = createApp(GatewayDetail);
-    mountedApp.use(pinia).use(router).use(i18n);
-    mountedApp.mount(target);
-    await flushRender();
-    const deployButton = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent?.trim() === i18n.global.t('gateway.actions.deploy')
-    );
-    if (!deployButton) {
-      throw new Error('Gateway deploy button is missing');
+  it.each(['stopped', 'running', 'faulted'])(
+    'allows Gateway operations during an active deployment with stored status %s',
+    async (status) => {
+      pinia = createPinia();
+      useProjectStore(pinia).setActiveProject('project-1');
+      vi.mocked(gatewayApi.list).mockResolvedValue({
+        items: [
+          {
+            ...gateway,
+            service_id: 'gateway-service',
+            service_code: 'traefik-default',
+            service_status: status,
+            active_deployment: true,
+            deployment_directory: '/custom/gateway',
+            directory_target_revision: 2,
+            runtime_directory: '/old/gateway',
+            runtime_target_revision: 2,
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 1,
+        pages: 1,
+      });
+      vi.mocked(projectEnvironmentApi.get).mockResolvedValue({
+        target_type: 'local',
+        target_revision: 2,
+        local: { platform: 'linux', workspace_root: '/workspace' },
+      } as EnvironmentResp);
+      vi.mocked(serviceApi.deploy).mockResolvedValue({ deployment_id: '', warnings: [] });
+      vi.mocked(applicationApi.stop).mockResolvedValue({ deployment_id: '' });
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [{ path: '/gateway', component: GatewayDetail }],
+      });
+      await router.push('/gateway');
+      target = document.createElement('div');
+      document.body.append(target);
+      mountedApp = createApp(GatewayDetail);
+      mountedApp.use(pinia).use(router).use(i18n);
+      mountedApp.mount(target);
+      await flushRender();
+      const deployButton = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+        (button) => button.textContent?.trim() === i18n.global.t('gateway.actions.deploy')
+      );
+      if (!deployButton) {
+        throw new Error('Gateway deploy button is missing');
+      }
+      expect(deployButton.disabled).toBe(false);
+      deployButton.click();
+      await flushRender();
+      const dialog = document.querySelector('[role="dialog"]');
+      const input = dialog?.querySelector<HTMLInputElement>('input[type="text"]');
+      if (!dialog || !input) {
+        throw new Error('Gateway deployment directory input is missing');
+      }
+      expect(input.value).toBe('/custom/gateway');
+      input.value = '/new/gateway';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await flushRender();
+      expect(dialog.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+        i18n.global.t('service.deploy.gatewayDirectoryWarning')
+      );
+      const confirm = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(
+        (button) => button.textContent?.trim() === i18n.global.t('common.confirm')
+      );
+      if (!confirm) {
+        throw new Error('Gateway deployment confirmation button is missing');
+      }
+      expect(confirm.disabled).toBe(false);
+      confirm.click();
+      await flushRender();
+      expect(serviceApi.deploy).toHaveBeenCalledWith('project-1', 'gateway-service', {
+        deployment_directory: '/new/gateway',
+        environment_target_revision: 2,
+        force_recreate: false,
+      });
+      for (let index = 0; index < 2; index++) {
+        const stopButton = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
+          (button) => button.textContent?.trim() === i18n.global.t('gateway.actions.stop')
+        );
+        if (!stopButton) {
+          throw new Error('Gateway stop button is missing');
+        }
+        await vi.waitFor(() => expect(stopButton.disabled).toBe(false));
+        stopButton.click();
+        await flushRender();
+        const stopDialog = document.querySelector('[role="dialog"]');
+        const confirmStop = [
+          ...(stopDialog?.querySelectorAll<HTMLButtonElement>('button') ?? []),
+        ].find((button) => button.textContent?.trim() === i18n.global.t('common.confirm'));
+        if (!confirmStop) {
+          throw new Error('Gateway stop confirmation is missing');
+        }
+        confirmStop.click();
+        await flushRender();
+      }
+      expect(applicationApi.stop).toHaveBeenCalledTimes(2);
     }
-    deployButton.click();
-    await flushRender();
-    const dialog = document.querySelector('[role="dialog"]');
-    const input = dialog?.querySelector<HTMLInputElement>('input[type="text"]');
-    if (!dialog || !input) {
-      throw new Error('Gateway deployment directory input is missing');
-    }
-    expect(input.value).toBe('/custom/gateway');
-    input.value = '/new/gateway';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    await flushRender();
-    expect(dialog.querySelector('[role="status"]')?.textContent?.trim()).toBe(
-      i18n.global.t('service.deploy.gatewayDirectoryWarning')
-    );
-    const confirm = [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(
-      (button) => button.textContent?.trim() === i18n.global.t('common.confirm')
-    );
-    if (!confirm) {
-      throw new Error('Gateway deployment confirmation button is missing');
-    }
-    expect(confirm.disabled).toBe(false);
-    confirm.click();
-    await flushRender();
-    expect(serviceApi.deploy).toHaveBeenCalledWith('project-1', 'gateway-service', {
-      deployment_directory: '/new/gateway',
-      environment_target_revision: 2,
-      force_recreate: false,
-    });
-  });
+  );
 
   it('keeps an unconfigured gateway page open with the shared empty state', async () => {
     pinia = createPinia();

@@ -91,6 +91,10 @@ mcp:
 pipeline_run:
   execution_timeout: 1h
 
+deployment:
+  execution_timeout: 1h
+  cancel_timeout: 5s
+
 worker:
   id: default
   poll_interval: 1s

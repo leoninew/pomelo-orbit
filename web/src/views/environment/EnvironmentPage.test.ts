@@ -12,7 +12,7 @@ import EnvironmentPage from './EnvironmentPage.vue';
 
 const terminalLifecycle = vi.hoisted(() => ({ dispose: vi.fn() }));
 
-vi.mock('./EnvironmentTerminalDrawer.vue', async () => {
+vi.mock('@/views/environment/components/EnvironmentTerminalDrawer.vue', async () => {
   const { defineComponent, h, onBeforeUnmount } = await import('vue');
   return {
     default: defineComponent({

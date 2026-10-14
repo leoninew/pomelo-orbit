@@ -202,11 +202,10 @@
           {{ t('route.fields.name') }}
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="form.name"
           type="text"
           maxlength="32"
-          class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
           :placeholder="t('route.hints.name')"
           :aria-invalid="errors.name ? 'true' : undefined"
@@ -220,10 +219,9 @@
             {{ t('route.fields.domain') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.domain"
             type="text"
-            class="app-input"
             :class="errors.domain ? 'app-input-error' : ''"
             placeholder="example.com"
             :aria-invalid="errors.domain ? 'true' : undefined"
@@ -233,10 +231,9 @@
         </div>
         <div v-if="form.protocol === 'http'" class="space-y-1.5">
           <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
-          <input
+          <AppInput
             v-model="form.path_prefix"
             type="text"
-            class="app-input"
             :placeholder="t('route.hints.pathPrefix')"
           />
         </div>
@@ -309,10 +306,9 @@
           {{ t('route.fields.targetUrl') }}
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="form.target_url"
           type="text"
-          class="app-input"
           :class="errors.target_url ? 'app-input-error' : ''"
           :placeholder="t('route.hints.targetUrl')"
           :aria-invalid="errors.target_url ? 'true' : undefined"
@@ -355,12 +351,11 @@
           {{ t('route.fields.name') }}
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="edit-route-name"
           v-model="editForm.name"
           type="text"
           maxlength="32"
-          class="app-input"
           :class="editErrors.name ? 'app-input-error' : ''"
           :placeholder="t('route.hints.name')"
           :aria-invalid="editErrors.name ? 'true' : undefined"
@@ -382,11 +377,10 @@
             {{ t('route.fields.domain') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="edit-route-domain"
             v-model="editForm.domain"
             type="text"
-            class="app-input"
             :class="editErrors.domain ? 'app-input-error' : ''"
             placeholder="example.com"
             :aria-invalid="editErrors.domain ? 'true' : undefined"
@@ -406,11 +400,10 @@
           <label for="edit-route-path-prefix" class="app-field-label block">
             {{ t('route.fields.pathPrefix') }}
           </label>
-          <input
+          <AppInput
             id="edit-route-path-prefix"
             v-model="editForm.path_prefix"
             type="text"
-            class="app-input"
             :placeholder="t('route.hints.pathPrefix')"
           />
         </div>
@@ -483,11 +476,10 @@
           {{ t('route.fields.targetUrl') }}
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="edit-route-target-url"
           v-model="editForm.target_url"
           type="text"
-          class="app-input"
           :class="editErrors.target_url ? 'app-input-error' : ''"
           :placeholder="t('route.hints.targetUrl')"
           :aria-invalid="editErrors.target_url ? 'true' : undefined"
@@ -523,6 +515,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { ExternalLink, Network, Plus, RefreshCw } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -531,18 +524,18 @@
   import { projectInitializationApi } from '@/api/project/initialization';
   import { routeApi } from '@/api/route/route';
   import { traefikRouteApi } from '@/api/route/traefik';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
-  import RouteSyncDialog from '@/components/RouteSyncDialog.vue';
-  import SearchControl from '@/components/SearchControl.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import RouteManagedTargetSelect from '@/components/route/RouteManagedTargetSelect.vue';
+  import RouteSyncDialog from '@/components/route/RouteSyncDialog.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import type { RouteResp, RouteSyncResultResp } from '@/gen/proto/orbit/v1/route/route';
@@ -770,7 +763,7 @@
         const res = await routeApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: routeSearchText.value || undefined,
+          search: routeSearchText.value.trim() || undefined,
         });
         if (projectStore.activeProjectId === projectId) {
           routes.value = res.items;

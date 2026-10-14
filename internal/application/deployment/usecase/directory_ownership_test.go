@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -179,7 +180,7 @@ func TestDeploymentRejectsOccupiedMountBeforePreparation(t *testing.T) {
 	}
 	runtime.psOutput = "container-one"
 	runtime.inspectOutput = directoryMountFixture(t, true, "bind", "/host/b/data")
-	if err := service.renderAndDeployWithOptions(context.Background(), deploymentTestTarget(1), plan, "deployment-1", false); err == nil || !strings.Contains(err.Error(), "running service a") {
+	if err := service.renderAndDeployWithOptions(context.Background(), deploymentTestTarget(1), plan, "deployment-1", deploymentdto.DeployOptionsJSON{PullPolicy: "missing"}); err == nil || !strings.Contains(err.Error(), "running service a") {
 		t.Fatalf("expected occupied data directory conflict, got %v", err)
 	}
 	if len(runtime.staged) != 0 || runtime.ran || service.executionStore.(*directoryOwnershipStore).service.RuntimeDirectory != "/old/b" {

@@ -112,11 +112,10 @@
             {{ t('project.name') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="project-name"
             v-model="form.name"
             type="text"
-            class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
             :aria-invalid="errors.name ? 'true' : undefined"
             @input="errors.name = ''"
@@ -128,11 +127,10 @@
             {{ t('project.code') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="project-code"
             v-model="form.code"
             type="text"
-            class="app-input"
             :class="errors.code ? 'app-input-error' : ''"
             :placeholder="t('project.codeHint')"
             :readonly="Boolean(editingProject)"
@@ -252,12 +250,11 @@
           <label class="app-field-label block" for="handover-decryption-key">
             {{ t('project.handoverDecryptionKey') }}
           </label>
-          <input
+          <AppInput
             id="handover-decryption-key"
             v-model="handoverDecryptionKey"
             type="password"
             autocomplete="off"
-            class="app-input"
             :placeholder="t('project.handoverDecryptionKeyHint')"
             :disabled="operating || !handoverOverrideEnvironment"
           />
@@ -322,11 +319,10 @@
               {{ t('project.name') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               id="handover-project-name"
               v-model="handoverForm.name"
               type="text"
-              class="app-input"
               :class="handoverErrors.name ? 'app-input-error' : ''"
               :disabled="operating"
               :aria-invalid="handoverErrors.name ? 'true' : undefined"
@@ -341,11 +337,10 @@
               {{ t('project.code') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               id="handover-project-code"
               v-model="handoverForm.code"
               type="text"
-              class="app-input"
               :class="handoverErrors.code ? 'app-input-error' : ''"
               :placeholder="t('project.codeHint')"
               :disabled="operating"
@@ -411,6 +406,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { FileUp, Plus, Upload, X } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
@@ -418,16 +414,16 @@
   import { SwitchRoot, SwitchThumb, ToolbarRoot } from 'reka-ui';
   import { projectApi } from '@/api/project/project';
   import type { ProjectResp } from '@/gen/proto/orbit/v1/project/project';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ComboboxSelect from '@/components/ComboboxSelect.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ComboboxSelect from '@/components/ui/ComboboxSelect.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';

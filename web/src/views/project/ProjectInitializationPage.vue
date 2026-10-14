@@ -240,11 +240,10 @@
                     {{ t('gateway.fields.image') }}
                     <span class="text-destructive">*</span>
                   </label>
-                  <input
+                  <AppInput
                     id="initialization-gateway-image"
-                    :value="gatewayForm.initial_component_image"
+                    :model-value="gatewayForm.initial_component_image"
                     type="text"
-                    class="app-input"
                     :class="gatewayErrors.initial_component_image ? 'app-input-error' : ''"
                     :aria-invalid="gatewayErrors.initial_component_image ? 'true' : undefined"
                     @input="
@@ -267,11 +266,10 @@
                     {{ t('gateway.fields.restApiUrl') }}
                     <span class="text-destructive">*</span>
                   </label>
-                  <input
+                  <AppInput
                     id="initialization-gateway-rest-api-url"
-                    :value="gatewayForm.rest_api_url"
+                    :model-value="gatewayForm.rest_api_url"
                     type="url"
-                    class="app-input"
                     :class="gatewayErrors.rest_api_url ? 'app-input-error' : ''"
                     :aria-invalid="gatewayErrors.rest_api_url ? 'true' : undefined"
                     @input="
@@ -290,11 +288,10 @@
                     {{ t('gateway.fields.restApiHostUrl') }}
                     <span class="text-destructive">*</span>
                   </label>
-                  <input
+                  <AppInput
                     id="initialization-gateway-rest-api-host-url"
-                    :value="gatewayForm.rest_api_host_url"
+                    :model-value="gatewayForm.rest_api_host_url"
                     type="url"
-                    class="app-input"
                     :class="gatewayErrors.rest_api_host_url ? 'app-input-error' : ''"
                     :aria-invalid="gatewayErrors.rest_api_host_url ? 'true' : undefined"
                     @input="
@@ -313,13 +310,12 @@
                     {{ t('gateway.fields.restReadyTimeout') }}
                     <span class="text-destructive">*</span>
                   </label>
-                  <input
+                  <AppInput
                     id="initialization-gateway-timeout"
-                    :value="gatewayForm.rest_ready_timeout_seconds"
+                    :model-value="gatewayForm.rest_ready_timeout_seconds"
                     type="number"
                     min="1"
                     max="300"
-                    class="app-input"
                     :class="gatewayErrors.rest_ready_timeout_seconds ? 'app-input-error' : ''"
                     :aria-invalid="gatewayErrors.rest_ready_timeout_seconds ? 'true' : undefined"
                     @input="
@@ -342,11 +338,10 @@
                     {{ t('gateway.fields.internalDomain') }}
                     <span class="text-destructive">*</span>
                   </label>
-                  <input
+                  <AppInput
                     id="initialization-gateway-internal-domain"
-                    :value="gatewayForm.internal_domain"
+                    :model-value="gatewayForm.internal_domain"
                     type="text"
-                    class="app-input"
                     :class="gatewayErrors.internal_domain ? 'app-input-error' : ''"
                     :aria-invalid="gatewayErrors.internal_domain ? 'true' : undefined"
                     @input="
@@ -364,11 +359,10 @@
                   <label class="app-field-label block" for="initialization-gateway-external-domain">
                     {{ t('gateway.fields.externalDomain') }}
                   </label>
-                  <input
+                  <AppInput
                     id="initialization-gateway-external-domain"
-                    :value="gatewayForm.external_domain"
+                    :model-value="gatewayForm.external_domain"
                     type="text"
-                    class="app-input"
                     :class="gatewayErrors.external_domain ? 'app-input-error' : ''"
                     :placeholder="t('gateway.placeholders.externalDomain')"
                     :aria-invalid="gatewayErrors.external_domain ? 'true' : undefined"
@@ -451,11 +445,10 @@
                     {{ t('gateway.fields.acmeEmail') }}
                     <span class="text-destructive">*</span>
                   </label>
-                  <input
+                  <AppInput
                     id="initialization-gateway-acme-email"
-                    :value="gatewayForm.acme_email"
+                    :model-value="gatewayForm.acme_email"
                     type="email"
-                    class="app-input"
                     :class="gatewayErrors.acme_email ? 'app-input-error' : ''"
                     :aria-invalid="gatewayErrors.acme_email ? 'true' : undefined"
                     @input="
@@ -474,11 +467,10 @@
                     {{ t('gateway.fields.dnsApiToken') }}
                     <span class="text-destructive">*</span>
                   </label>
-                  <input
+                  <AppInput
                     id="initialization-gateway-dns-token"
-                    :value="gatewayForm.dns_api_token"
+                    :model-value="gatewayForm.dns_api_token"
                     type="password"
-                    class="app-input"
                     :class="gatewayErrors.dns_api_token ? 'app-input-error' : ''"
                     :aria-invalid="gatewayErrors.dns_api_token ? 'true' : undefined"
                     @input="
@@ -554,6 +546,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import {
     ArrowRight,
     Check,
@@ -574,10 +567,10 @@
     StepperTitle,
     StepperTrigger,
   } from 'reka-ui';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import SshInitializationCommandDialog from '@/components/SshInitializationCommandDialog.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import SshInitializationCommandDialog from '@/components/project/SshInitializationCommandDialog.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import {
@@ -590,7 +583,7 @@
   import { formatTime } from '@/utils/time';
   import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
   import { buildWindowsSshInitializationCommand } from '@/utils/windowsSshCommand';
-  import EnvironmentTargetFields from '@/views/environment/EnvironmentTargetFields.vue';
+  import EnvironmentTargetFields from '@/components/environment/EnvironmentTargetFields.vue';
   import {
     assignEnvironmentFormErrors,
     emptyEnvironmentForm,
@@ -600,7 +593,7 @@
     hydrateEnvironmentForm,
     initializationEnvironmentRequestFromForm,
     validateEnvironmentForm,
-  } from '@/views/environment/environmentForm';
+  } from '@/components/environment/environmentForm';
   import {
     emptyGatewayConfigForm,
     gatewayConfigFormFromDefaults,

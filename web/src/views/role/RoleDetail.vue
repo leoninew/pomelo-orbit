@@ -68,11 +68,10 @@
             {{ t('roleManagement.code') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="role-code"
             v-model="form.code"
             type="text"
-            class="app-input"
             :class="formErrors.code ? 'app-input-error' : ''"
             maxlength="50"
             pattern="[A-Za-z0-9_-]+"
@@ -90,11 +89,10 @@
             {{ t('common.name') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="role-name"
             v-model="form.name"
             type="text"
-            class="app-input"
             :class="formErrors.name ? 'app-input-error' : ''"
             maxlength="100"
             required
@@ -110,10 +108,10 @@
           <label class="app-field-label block" for="role-description">
             {{ t('common.description') }}
           </label>
-          <textarea
+          <AppTextarea
             id="role-description"
             v-model="form.description"
-            class="app-input min-h-24"
+            class="min-h-24"
             maxlength="500"
             :disabled="operating"
           />
@@ -195,21 +193,23 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { ArrowLeft, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { roleApi } from '@/api/role/role';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
   import { useAuthStore } from '@/stores/auth';
   import { PERMISSIONS } from '@/constants/permissions';
   import type { PermissionResp, RoleResp } from '@/gen/proto/orbit/v1/role/role';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
   import RolePermissionsCard from './components/RolePermissionsCard.vue';
 
   const props = defineProps<{ id: string }>();

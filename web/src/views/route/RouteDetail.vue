@@ -160,11 +160,10 @@
             {{ t('route.fields.name') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.name"
             type="text"
             maxlength="32"
-            class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
             :placeholder="t('route.hints.name')"
             :aria-invalid="errors.name ? 'true' : undefined"
@@ -177,10 +176,9 @@
             {{ t('route.fields.domain') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.domain"
             type="text"
-            class="app-input"
             :class="errors.domain ? 'app-input-error' : ''"
             placeholder="example.com"
             :aria-invalid="errors.domain ? 'true' : undefined"
@@ -190,10 +188,9 @@
         </div>
         <div v-if="form.protocol === 'http'" class="space-y-1.5">
           <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
-          <input
+          <AppInput
             v-model="form.path_prefix"
             type="text"
-            class="app-input"
             :placeholder="t('route.hints.pathPrefix')"
           />
         </div>
@@ -236,10 +233,9 @@
             {{ t('route.fields.targetUrl') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.target_url"
             type="text"
-            class="app-input"
             :class="errors.target_url ? 'app-input-error' : ''"
             :placeholder="t('route.hints.targetUrl')"
             :aria-invalid="errors.target_url ? 'true' : undefined"
@@ -340,6 +336,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import {
     ArrowLeft,
     ExternalLink,
@@ -360,25 +357,25 @@
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
   import { routeApi } from '@/api/route/route';
   import { traefikRouteApi } from '@/api/route/traefik';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import RuntimeContainerLogsDrawer from '@/components/service/RuntimeContainerLogsDrawer.vue';
   import { provideLogStreamCache } from '@/composables/useLogStream';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import RouteManagedTargetSelect from '@/components/RouteManagedTargetSelect.vue';
-  import RouteSyncDialog from '@/components/RouteSyncDialog.vue';
-  import RouteCertificateDialog from '@/components/RouteCertificateDialog.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import RouteManagedTargetSelect from '@/components/route/RouteManagedTargetSelect.vue';
+  import RouteSyncDialog from '@/components/route/RouteSyncDialog.vue';
+  import RouteCertificateDialog from '@/views/route/components/RouteCertificateDialog.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import { useRouteTargetServices } from '@/composables/useRouteTargetServices';
   import { useProjectStore } from '@/stores/project';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
   import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
-  import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
+  import type { RuntimeContainerLogTarget } from '@/components/service/runtimeContainerLogs';
   import { domainAfterCodeChange, isValidRouteCode } from './routeDomain';
 
   const currentRoute = useRoute();

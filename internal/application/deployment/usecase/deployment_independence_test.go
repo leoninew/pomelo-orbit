@@ -113,7 +113,7 @@ func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *ind
 	if err != nil {
 		t.Fatal(err)
 	}
-	options, err := json.Marshal(deploymentdto.DeployOptionsJSON{GatewayConfig: config})
+	options, err := json.Marshal(deploymentdto.DeployOptionsJSON{GatewayConfig: config, PullPolicy: "missing"})
 	if err != nil {
 		t.Fatal(err)
 	}

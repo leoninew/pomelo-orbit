@@ -74,27 +74,27 @@
               </td>
               <td class="max-w-0">
                 <div v-if="drafts[item.key]" class="space-y-2">
-                  <RawValueSelect
+                  <SelectControl
                     v-if="item.type === 'boolean'"
                     v-model="drafts[item.key]!.text"
-                    :values="booleanValues"
+                    :options="booleanValues"
                     :disabled="operating"
                     :aria-label="item.key"
                     width-class="w-28"
                   />
-                  <textarea
+                  <AppTextarea
                     v-else-if="item.type === 'string_list'"
                     v-model="drafts[item.key]!.text"
-                    class="app-input min-h-24 w-full"
+                    class="min-h-24"
                     :aria-label="item.key"
                     :disabled="operating"
                   />
-                  <input
+                  <AppInput
                     v-else
-                    :value="drafts[item.key]!.text"
+                    :model-value="drafts[item.key]!.text"
                     :type="item.type === 'integer' ? 'number' : item.secret ? 'password' : 'text'"
                     step="1"
-                    class="app-input h-9 max-w-full"
+                    class="h-9 max-w-full"
                     :class="{ 'app-input-error': fieldErrors[item.key] }"
                     :aria-label="item.key"
                     :aria-invalid="!!fieldErrors[item.key]"
@@ -175,18 +175,20 @@
 </template>
 
 <script setup lang="ts">
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
+  import AppInput from '@/components/ui/AppInput.vue';
   import { computed, onMounted, ref } from 'vue';
   import { ToolbarRoot } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
   import { settingApi } from '@/api/settings/settings';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import SearchControl from '@/components/SearchControl.vue';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
-  import SensitiveValue from '@/components/SensitiveValue.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
+  import SensitiveValue from '@/components/ui/SensitiveValue.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { PERMISSIONS } from '@/constants/permissions';

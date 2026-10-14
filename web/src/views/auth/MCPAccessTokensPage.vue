@@ -55,12 +55,11 @@
             {{ t('mcpAccessTokens.name') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="mcp-token-name"
             v-model="form.name"
             type="text"
             maxlength="100"
-            class="app-input"
             :class="formError ? 'app-input-error' : ''"
             :aria-invalid="formError ? 'true' : undefined"
             :placeholder="t('mcpAccessTokens.namePlaceholder')"
@@ -76,6 +75,7 @@
             id="mcp-token-expiry"
             :model-value="form.expires_in_days"
             :options="expiryOptions"
+            :reset-value="0"
             @update:model-value="form.expires_in_days = Number($event)"
           />
         </div>
@@ -99,11 +99,11 @@
       <div class="space-y-3">
         <p class="text-sm text-amber-800">{{ t('mcpAccessTokens.shownOnce') }}</p>
         <div class="flex gap-2">
-          <input
-            :value="createdToken"
+          <AppInput
+            :model-value="createdToken"
             readonly
             tabindex="-1"
-            class="app-input min-w-0 font-mono text-xs"
+            class="min-w-0 font-mono text-xs"
           />
           <button
             type="button"
@@ -144,16 +144,17 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { Copy, Plus, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { authApi } from '@/api/auth/auth';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import SelectControl, { type SelectOption } from '@/components/SelectControl.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import SelectControl, { type SelectOption } from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { MCPAccessTokenResp } from '@/gen/proto/orbit/v1/auth/auth';

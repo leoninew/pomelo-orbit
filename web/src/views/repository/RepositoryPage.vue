@@ -89,12 +89,11 @@
           名称
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="create-repository-name"
           v-model="form.name"
           type="text"
           placeholder="例如: my-backend"
-          class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
           :aria-invalid="errors.name ? 'true' : undefined"
           :aria-describedby="errors.name ? 'create-repository-name-error' : undefined"
@@ -115,12 +114,11 @@
           仓库编码
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="create-repository-code"
           v-model="form.code"
           type="text"
           placeholder="例如: my-backend（固化工作目录，创建后不可修改）"
-          class="app-input"
           :class="errors.code ? 'app-input-error' : ''"
           :aria-invalid="errors.code ? 'true' : undefined"
           :aria-describedby="errors.code ? 'create-repository-code-error' : undefined"
@@ -141,12 +139,11 @@
           仓库地址
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="create-repository-url"
           v-model="form.repository_url"
           type="text"
           placeholder="git@github.com:user/repo.git"
-          class="app-input"
           :class="errors.repository_url ? 'app-input-error' : ''"
           :aria-invalid="errors.repository_url ? 'true' : undefined"
           :aria-describedby="errors.repository_url ? 'create-repository-url-error' : undefined"
@@ -167,12 +164,11 @@
           本地目录
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="create-repository-url"
           v-model="form.repository_url"
           type="text"
           placeholder="例如: D:/workspace/my-backend"
-          class="app-input"
           :class="errors.repository_url ? 'app-input-error' : ''"
           :aria-invalid="errors.repository_url ? 'true' : undefined"
           :aria-describedby="errors.repository_url ? 'create-repository-url-error' : undefined"
@@ -200,7 +196,7 @@
 
       <div class="space-y-1.5">
         <label class="app-field-label block">默认分支</label>
-        <input v-model="form.default_branch" type="text" placeholder="develop" class="app-input" />
+        <AppInput v-model="form.default_branch" type="text" placeholder="develop" />
       </div>
 
       <div v-if="form.repository_type === 'remote_git'" class="space-y-1.5">
@@ -229,11 +225,10 @@
           名称
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="edit-repository-name"
           v-model="editForm.name"
           type="text"
-          class="app-input"
           :class="editErrors.name ? 'app-input-error' : ''"
           :aria-invalid="editErrors.name ? 'true' : undefined"
           :aria-describedby="editErrors.name ? 'edit-repository-name-error' : undefined"
@@ -251,7 +246,7 @@
 
       <div class="space-y-1.5">
         <label class="app-field-label block">仓库编码</label>
-        <input :value="editingRepository?.code" type="text" disabled class="app-input" />
+        <AppInput :model-value="editingRepository?.code" type="text" disabled />
       </div>
 
       <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
@@ -259,12 +254,11 @@
           仓库地址
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="edit-repository-url"
           v-model="editForm.repository_url"
           type="text"
           placeholder="git@github.com:user/repo.git"
-          class="app-input"
           :class="editErrors.repository_url ? 'app-input-error' : ''"
           :aria-invalid="editErrors.repository_url ? 'true' : undefined"
           :aria-describedby="editErrors.repository_url ? 'edit-repository-url-error' : undefined"
@@ -285,12 +279,11 @@
           本地目录
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           id="edit-repository-url"
           v-model="editForm.repository_url"
           type="text"
           placeholder="例如: D:/workspace/my-backend"
-          class="app-input"
           :class="editErrors.repository_url ? 'app-input-error' : ''"
           :aria-invalid="editErrors.repository_url ? 'true' : undefined"
           :aria-describedby="editErrors.repository_url ? 'edit-repository-url-error' : undefined"
@@ -318,12 +311,11 @@
 
       <div class="space-y-1.5">
         <label for="edit-repository-default-branch" class="app-field-label block">默认分支</label>
-        <input
+        <AppInput
           id="edit-repository-default-branch"
           v-model="editForm.default_branch"
           type="text"
           placeholder="master"
-          class="app-input"
         />
       </div>
 
@@ -378,20 +370,21 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { Plus } from '@lucide/vue';
   import { computed, reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { repositoryApi } from '@/api/repository/repository';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import RepositoryCredentialSelect from '@/components/RepositoryCredentialSelect.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import RepositoryCredentialSelect from '@/components/repository/RepositoryCredentialSelect.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -589,7 +582,7 @@
         const res = await repositoryApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: searchText.value || undefined,
+          search: searchText.value.trim() || undefined,
         });
         if (projectStore.activeProjectId !== projectId) {
           return;

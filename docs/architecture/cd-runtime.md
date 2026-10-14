@@ -40,6 +40,8 @@ Bearer 认证的短请求签发一次性、短时效票据；WebSocket 通过子
 
 ## Service 操作控制
 
+Deployment 的 `options_json.pull_policy` 保存创建时确定的镜像拉取策略。部署请求可选 `missing`（默认）、`always` 或 `never`，通过 `docker compose up --pull` 对本次操作的全部组件生效；重启仍按组件策略汇总，并保存汇总值。命令摘要和 Worker 只读取已保存策略，执行阶段不重新从组件计算或为缺失快照补默认值。组件 `restart` 独立写入 Compose，不受此选项影响。
+
 部署、停止和重启共享 Service 当前操作指针 `current_deployment_id`。受理通过现有权限、目录和目标校验后，在短事务内创建 Deployment、更新指针并入队；HTTP 沿用请求 UoW，MCP 使用同一事务入口。取消旧记录和 runtime I/O 均位于请求事务外。后置顺序由数据库对 Service 指针的更新确定，不按 Worker 领取顺序或任务 ID 推断。
 
 Worker 只启动当前 waiting 任务。执行 Context 在每秒以内轮询任务取消和当前指针变化；准备 workspace、绑定目录、发出 Compose 及 readiness 前再次检查。新任务对同 Service 的旧 waiting/running 记录尽力标记 canceled，SQL 按当前归属限定查询和每次取消，迟到的取消不会影响更新的任务。终态和缺失旧记录无需取消，异常只 warning。

@@ -1,12 +1,25 @@
 <template>
   <div class="space-y-6">
-    <ToolbarRoot class="app-toolbar-simple" :aria-label="t('service.toolbar')">
-      <div class="flex min-w-0 flex-wrap items-center gap-3">
+    <ToolbarRoot
+      class="app-toolbar-scroll flex items-center gap-6"
+      :aria-label="t('service.toolbar')"
+    >
+      <div class="app-toolbar-row shrink-0">
+        <label for="service-status-filter" class="sr-only">{{ t('service.filterStatus') }}</label>
+        <SelectControl
+          id="service-status-filter"
+          :model-value="query.status"
+          :options="statusSelectOptions"
+          :disabled="status === 'loading'"
+          :placeholder="t('service.filterStatus')"
+          width-class="w-40 shrink-0"
+          @update:model-value="handleStatusChange"
+        />
         <SearchControl
           v-model="query.search"
           :placeholder="t('service.searchPlaceholder')"
           :loading="status === 'loading'"
-          class="shrink-0"
+          class="w-96 shrink-0"
           @search="handleSearch"
         />
       </div>
@@ -240,6 +253,7 @@
           :error="directoryState.error"
           @update:model-value="directoryState.error = ''"
         />
+        <DeploymentPullPolicyField v-model="deployForm.pull_policy" />
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
@@ -294,12 +308,11 @@
             {{ t('service.fields.code') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="create-service-code"
             v-model="createForm.code"
             type="text"
             maxlength="63"
-            class="app-input"
             :class="createErrors.code ? 'app-input-error' : ''"
             :aria-invalid="createErrors.code ? 'true' : undefined"
             :aria-describedby="createErrors.code ? 'create-service-code-error' : undefined"
@@ -376,6 +389,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { LayoutGrid, List, Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -384,19 +398,21 @@
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import { serviceApi } from '@/api/service/service';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppTooltip from '@/components/AppTooltip.vue';
-  import DeploymentDirectoryField from '@/components/DeploymentDirectoryField.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppTooltip from '@/components/ui/AppTooltip.vue';
+  import DeploymentDirectoryField from '@/components/deployment/DeploymentDirectoryField.vue';
+  import DeploymentPullPolicyField from '@/components/deployment/DeploymentPullPolicyField.vue';
   import { useDeploymentDirectory } from '@/composables/useDeploymentDirectory';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ui/ComboboxSelect.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
+  import SelectControl, { type SelectOptionValue } from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
@@ -419,8 +435,14 @@
   const totalPages = computed(() => Math.ceil(pagination.total / pagination.pageSize) || 1);
 
   const query = reactive({
+    status: '',
     search: '',
   });
+
+  const statusSelectOptions = ['running', 'stopped', 'faulted'].map((value) => ({
+    value,
+    label: value,
+  }));
 
   const selectedService = ref<ServiceResp | null>(null);
   const applications = ref<ApplicationResp[]>([]);
@@ -432,6 +454,7 @@
   const deployForm = reactive({
     version_id: '',
     force_recreate: false,
+    pull_policy: 'missing',
     join_traefik_network: true,
   });
   const deployVersionError = ref('');
@@ -483,7 +506,8 @@
         const resp = await serviceApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: query.search || undefined,
+          status: query.status || undefined,
+          search: query.search.trim() || undefined,
         });
         if (projectStore.activeProjectId === projectId) {
           services.value = resp.items ?? [];
@@ -654,6 +678,7 @@
       Object.assign(deployForm, {
         version_id: service.version_id,
         force_recreate: false,
+        pull_policy: 'missing',
         join_traefik_network: true,
       });
       deployVersionError.value = '';
@@ -693,6 +718,7 @@
           version_id: deployForm.version_id,
           ...deploymentDirectory.payload(),
           force_recreate: deployForm.force_recreate,
+          pull_policy: deployForm.pull_policy,
           join_traefik_network: deployForm.join_traefik_network,
         });
         for (const warning of result.warnings) {
@@ -751,6 +777,11 @@
     void fetchServices();
   }
 
+  function handleStatusChange(value: SelectOptionValue) {
+    query.status = String(value);
+    handleSearch();
+  }
+
   function goPage(page: number) {
     pagination.current = page;
     void fetchServices();
@@ -765,6 +796,7 @@
   watch(
     () => projectStore.activeProjectId,
     () => {
+      query.status = '';
       query.search = '';
       pagination.current = 1;
       void fetchServices();

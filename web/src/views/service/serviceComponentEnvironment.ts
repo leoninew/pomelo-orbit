@@ -1,4 +1,4 @@
-import type { EnvironmentVariableListRow } from '@/components/environmentVariableList';
+import type { EnvironmentVariableListRow } from '@/components/environment/environmentVariableList';
 import type { ServiceComponentEnvOverlay } from '@/gen/proto/orbit/v1/service/service';
 
 export interface ServiceComponentEnvironmentRow {

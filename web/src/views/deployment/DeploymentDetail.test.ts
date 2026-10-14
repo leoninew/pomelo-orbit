@@ -16,7 +16,7 @@ vi.mock('@/api/log/log', async (original) => ({
   ...(await original<typeof import('@/api/log/log')>()),
   readLogStream,
 }));
-vi.mock('@/components/LogView.vue', async () => {
+vi.mock('@/components/log/LogView.vue', async () => {
   const { defineComponent, h } = await import('vue');
   return {
     default: defineComponent({
@@ -25,7 +25,7 @@ vi.mock('@/components/LogView.vue', async () => {
     }),
   };
 });
-vi.mock('@/components/LogDrawer.vue', async () => {
+vi.mock('@/components/log/LogDrawer.vue', async () => {
   const { defineComponent, h } = await import('vue');
   return {
     default: defineComponent({
@@ -71,6 +71,7 @@ it('keeps operation logs mounted while the container drawer streams, closes and 
     operation_type: 'deploy',
     trigger_type: 'manual',
     command_text: 'docker compose up -d',
+    options_json: JSON.stringify({ pull_policy: 'never' }),
     status: 'running',
     started_at: '2026-09-30T08:00:00Z',
     created_at: '2026-09-30T08:00:00Z',
@@ -89,6 +90,11 @@ it('keeps operation logs mounted while the container drawer streams, closes and 
   app = createApp(RouterView);
   app.use(pinia).use(router).use(i18n).mount(host);
   await vi.waitFor(() => expect(readLogStream).toHaveBeenCalledTimes(1));
+
+  const policyLabel = [...host.querySelectorAll('dt')].find(
+    (item) => item.textContent?.trim() === i18n.global.t('deployment.fields.pullPolicy')
+  );
+  expect(policyLabel?.nextElementSibling?.textContent?.trim()).toBe('never');
 
   const operationPath = '/api/deployment/deployment-1/log/stream';
   const containerPath = '/api/deployment/deployment-1/container-log/stream';

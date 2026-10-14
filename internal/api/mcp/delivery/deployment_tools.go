@@ -10,12 +10,13 @@ import (
 )
 
 func (c *core) registerDeploymentTools(server *mcp.Server) {
-	addTool(server, "orbit_deploy", "Create an Orbit deployment with a confirmed full deployment directory and current Environment target revision. Optionally select a Version; Gateway uses its saved ACME profile. Directory changes do not migrate existing data.", func(ctx context.Context, input struct {
+	addTool(server, "orbit_deploy", "Create an Orbit deployment with a confirmed full deployment directory and current Environment target revision. Optionally select a Version and a pull_policy (missing by default, always, or never); Gateway uses its saved ACME profile. Directory changes do not migrate existing data.", func(ctx context.Context, input struct {
 		ServiceId                 string  `json:"service_id" jsonschema:"required"`
 		DeploymentDirectory       string  `json:"deployment_directory" jsonschema:"required"`
 		EnvironmentTargetRevision int64   `json:"environment_target_revision" jsonschema:"required"`
 		VersionId                 *string `json:"version_id,omitempty"`
 		ForceRecreate             bool    `json:"force_recreate,omitempty"`
+		PullPolicy                *string `json:"pull_policy,omitempty"`
 	}) (map[string]any, error) {
 		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
 			return nil, err
@@ -24,7 +25,7 @@ func (c *core) registerDeploymentTools(server *mcp.Server) {
 		if err != nil {
 			return nil, err
 		}
-		result, err := c.deps.Deployment.DeployService(ctx, c.deps.ActorUserId, projectId, input.ServiceId, deploymentdto.DeployServiceInput{VersionId: input.VersionId, DeploymentDirectory: input.DeploymentDirectory, EnvironmentTargetRevision: input.EnvironmentTargetRevision, ForceRecreate: input.ForceRecreate})
+		result, err := c.deps.Deployment.DeployService(ctx, c.deps.ActorUserId, projectId, input.ServiceId, deploymentdto.DeployServiceInput{VersionId: input.VersionId, DeploymentDirectory: input.DeploymentDirectory, EnvironmentTargetRevision: input.EnvironmentTargetRevision, ForceRecreate: input.ForceRecreate, PullPolicy: input.PullPolicy})
 		if err != nil {
 			return nil, err
 		}

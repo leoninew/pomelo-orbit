@@ -65,13 +65,13 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { authApi } from '@/api/auth/auth';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { LoginHistoryResp } from '@/gen/proto/orbit/v1/auth/auth';
@@ -91,7 +91,7 @@
         const res = await authApi.listLoginHistory({
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: searchText.value || undefined,
+          search: searchText.value.trim() || undefined,
         });
         history.value = res.items;
         pagination.total = res.total;

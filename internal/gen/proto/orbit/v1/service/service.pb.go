@@ -1797,6 +1797,7 @@ type ServiceDeployReq struct {
 	VersionId                 *string                `protobuf:"bytes,3,opt,name=version_id,json=versionId,proto3,oneof" json:"version_id,omitempty"`
 	DeploymentDirectory       string                 `protobuf:"bytes,4,opt,name=deployment_directory,json=deploymentDirectory,proto3" json:"deployment_directory,omitempty"`
 	EnvironmentTargetRevision int64                  `protobuf:"varint,5,opt,name=environment_target_revision,json=environmentTargetRevision,proto3" json:"environment_target_revision,omitempty"`
+	PullPolicy                *string                `protobuf:"bytes,6,opt,name=pull_policy,json=pullPolicy,proto3,oneof" json:"pull_policy,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
 }
@@ -1864,6 +1865,13 @@ func (x *ServiceDeployReq) GetEnvironmentTargetRevision() int64 {
 		return x.EnvironmentTargetRevision
 	}
 	return 0
+}
+
+func (x *ServiceDeployReq) GetPullPolicy() string {
+	if x != nil && x.PullPolicy != nil {
+		return *x.PullPolicy
+	}
+	return ""
 }
 
 type ServiceDeployResp struct {
@@ -2219,16 +2227,19 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x14join_traefik_network\x18\x01 \x01(\bH\x00R\x12joinTraefikNetwork\x88\x01\x01B\x17\n" +
 	"\x15_join_traefik_network\"7\n" +
 	"\x12ServicePreviewResp\x12!\n" +
-	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\xaf\x02\n" +
+	"\fcompose_yaml\x18\x01 \x01(\tR\vcomposeYaml\"\xe5\x02\n" +
 	"\x10ServiceDeployReq\x12%\n" +
 	"\x0eforce_recreate\x18\x01 \x01(\bR\rforceRecreate\x125\n" +
 	"\x14join_traefik_network\x18\x02 \x01(\bH\x00R\x12joinTraefikNetwork\x88\x01\x01\x12\"\n" +
 	"\n" +
 	"version_id\x18\x03 \x01(\tH\x01R\tversionId\x88\x01\x01\x121\n" +
 	"\x14deployment_directory\x18\x04 \x01(\tR\x13deploymentDirectory\x12>\n" +
-	"\x1benvironment_target_revision\x18\x05 \x01(\x03R\x19environmentTargetRevisionB\x17\n" +
+	"\x1benvironment_target_revision\x18\x05 \x01(\x03R\x19environmentTargetRevision\x12$\n" +
+	"\vpull_policy\x18\x06 \x01(\tH\x02R\n" +
+	"pullPolicy\x88\x01\x01B\x17\n" +
 	"\x15_join_traefik_networkB\r\n" +
-	"\v_version_id\"T\n" +
+	"\v_version_idB\x0e\n" +
+	"\f_pull_policy\"T\n" +
 	"\x11ServiceDeployResp\x12#\n" +
 	"\rdeployment_id\x18\x01 \x01(\tR\fdeploymentId\x12\x1a\n" +
 	"\bwarnings\x18\x02 \x03(\tR\bwarnings\"7\n" +

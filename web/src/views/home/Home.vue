@@ -171,11 +171,11 @@
   import { deploymentApi } from '@/api/deployment/deployment';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import { repositoryApi } from '@/api/repository/repository';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';

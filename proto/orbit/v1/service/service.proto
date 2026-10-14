@@ -204,6 +204,7 @@ message ServiceDeployReq {
   optional string version_id = 3;
   string deployment_directory = 4;
   int64 environment_target_revision = 5;
+  optional string pull_policy = 6;
 }
 
 message ServiceDeployResp {

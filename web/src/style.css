@@ -168,6 +168,16 @@
     @apply w-72 max-w-full shrink-0;
   }
 
+  :is(.app-toolbar-simple, .app-toolbar-scroll, [role='toolbar']),
+  :is(.app-toolbar-simple, .app-toolbar-scroll, [role='toolbar'])
+    :is(button, input, select, label, a, [role='combobox']) {
+    @apply text-sm font-normal;
+  }
+
+  :is(.app-toolbar-simple, .app-toolbar-scroll, [role='toolbar']) input::placeholder {
+    font: inherit;
+  }
+
   .app-field-label {
     @apply text-sm text-foreground;
   }
@@ -185,23 +195,39 @@
   }
 
   .app-input {
-    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus-within:border-ring data-[disabled]:cursor-not-allowed data-[disabled]:bg-muted/30 data-[disabled]:text-muted-foreground;
+  }
+
+  .app-input-control {
+    @apply relative flex min-w-0 items-center gap-2;
+  }
+
+  .app-input-element {
+    @apply h-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed;
+  }
+
+  .app-textarea-control {
+    @apply relative flex min-w-0 gap-2 overflow-hidden;
+  }
+
+  .app-textarea-element {
+    @apply h-full w-full min-w-0 resize-none self-stretch bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed;
+  }
+
+  .app-clear-button {
+    @apply inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-input-error {
-    @apply border-destructive focus:border-destructive;
-  }
-
-  .app-input-search {
-    @apply h-10 w-full rounded-md border border-input bg-background pl-10 pr-9 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+    @apply border-destructive focus:border-destructive focus-within:border-destructive;
   }
 
   .app-search-control {
-    @apply flex h-10 w-full max-w-sm items-center overflow-hidden rounded-md border border-input bg-background transition-colors focus-within:border-ring;
+    @apply max-w-sm gap-0 overflow-hidden px-0;
   }
 
-  .app-search-input {
-    @apply h-full w-full bg-transparent pl-10 pr-9 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:text-muted-foreground;
+  .app-search-control .app-clear-button {
+    @apply mx-2;
   }
 
   .app-search-button {
@@ -209,7 +235,7 @@
   }
 
   .app-textarea {
-    @apply min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring disabled:cursor-not-allowed disabled:bg-muted/30 disabled:text-muted-foreground;
+    @apply min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-within:border-ring data-[disabled]:cursor-not-allowed data-[disabled]:bg-muted/30 data-[disabled]:text-muted-foreground;
   }
 
   .app-button {
@@ -264,6 +290,10 @@
     @apply flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-60;
   }
 
+  .app-select-trigger[data-placeholder] {
+    @apply text-muted-foreground;
+  }
+
   .app-switch-root {
     @apply relative h-6 w-11 cursor-pointer rounded-full bg-input outline-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring data-[state=checked]:bg-primary disabled:cursor-not-allowed disabled:opacity-60;
   }
@@ -277,7 +307,7 @@
   }
 
   .app-popover-content {
-    @apply z-[60] max-h-64 rounded-lg border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg outline-none;
+    @apply z-[60] max-h-64 rounded-lg border border-border bg-popover p-1 text-sm font-normal text-popover-foreground shadow-lg outline-none;
   }
 
   .app-option-item {

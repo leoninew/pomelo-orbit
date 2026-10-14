@@ -74,10 +74,10 @@
   import { Plus } from '@lucide/vue';
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import type { VersionComponentResp } from '@/gen/proto/orbit/v1/application/version';
 
   const props = withDefaults(

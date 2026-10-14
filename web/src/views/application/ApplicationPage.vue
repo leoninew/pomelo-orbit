@@ -131,10 +131,9 @@
           {{ t('common.name') }}
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="editForm.name"
           type="text"
-          class="app-input"
           :class="editErrors.name ? 'app-input-error' : ''"
           :aria-invalid="editErrors.name ? 'true' : undefined"
           @input="editErrors.name = ''"
@@ -143,7 +142,7 @@
       </div>
       <div>
         <label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>
-        <input v-model="editForm.code" type="text" disabled class="app-input" />
+        <AppInput v-model="editForm.code" type="text" disabled />
       </div>
       <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
         {{ editSubmitError }}
@@ -187,21 +186,22 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
-  import AppBadge from '@/components/AppBadge.vue';
-  import ApplicationFormFields from '@/components/ApplicationFormFields.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import ApplicationFormFields from '@/views/application/components/ApplicationFormFields.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -251,7 +251,7 @@
         const res = await applicationApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: searchText.value || undefined,
+          search: searchText.value.trim() || undefined,
         });
         if (projectStore.activeProjectId !== projectId) {
           return;

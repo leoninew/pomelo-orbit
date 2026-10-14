@@ -142,11 +142,11 @@
   import { useI18n } from 'vue-i18n';
   import { projectInitializationApi } from '@/api/project/initialization';
   import { traefikRouteApi } from '@/api/route/traefik';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import type { TraefikRouterResp } from '@/gen/proto/orbit/v1/route/traefik';
   import { useProjectStore } from '@/stores/project';

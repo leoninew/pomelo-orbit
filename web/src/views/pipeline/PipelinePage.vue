@@ -11,7 +11,8 @@
         <SelectControl
           :model-value="kind"
           :options="pipelineKindOptions"
-          width-class="w-36"
+          placeholder="筛选流水线类型"
+          width-class="w-40"
           @update:model-value="updatePipelineKind"
         />
         <button class="app-button-primary h-10 px-4" @click="openCreateDialog">
@@ -120,16 +121,12 @@
           名称
           <span class="text-destructive">*</span>
         </label>
-        <input
-          v-model="createForm.name"
-          class="app-input"
-          :class="createError ? 'app-input-error' : ''"
-        />
+        <AppInput v-model="createForm.name" :class="createError ? 'app-input-error' : ''" />
         <p v-if="createError" class="app-field-error" role="alert">{{ createError }}</p>
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">说明</label>
-        <input v-model="createForm.description" class="app-input" />
+        <AppInput v-model="createForm.description" />
       </div>
     </form>
     <template #footer>
@@ -144,9 +141,8 @@
           名称
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="editForm.name"
-          class="app-input"
           :class="editError ? 'app-input-error' : ''"
           :aria-invalid="editError ? 'true' : undefined"
           @input="editError = ''"
@@ -155,7 +151,7 @@
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">说明</label>
-        <input v-model="editForm.description" class="app-input" />
+        <AppInput v-model="editForm.description" />
       </div>
       <div
         v-if="
@@ -190,9 +186,8 @@
           名称
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="instantiateForm.name"
-          class="app-input"
           :class="instantiateErrors.name ? 'app-input-error' : ''"
           :aria-invalid="instantiateErrors.name ? 'true' : undefined"
           @input="instantiateErrors.name = ''"
@@ -203,7 +198,7 @@
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">说明</label>
-        <input v-model="instantiateForm.description" class="app-input" />
+        <AppInput v-model="instantiateForm.description" />
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">
@@ -242,9 +237,9 @@
               来源版本策略
               <span class="text-destructive">*</span>
             </label>
-            <RawValueSelect
+            <SelectControl
               :model-value="instantiateForm.versionForkStrategy"
-              :values="['latest', 'fixed']"
+              :options="['latest', 'fixed']"
               :invalid="Boolean(instantiateErrors.versionForkStrategy)"
               @update:model-value="changeVersionForkStrategy"
             />
@@ -325,24 +320,24 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { Plus } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
   import { pipelineApi } from '@/api/pipeline/pipeline';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
-  import RepositorySelect from '@/components/RepositorySelect.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import RawValueSelect, { type RawValue } from '@/components/RawValueSelect.vue';
-  import SearchControl from '@/components/SearchControl.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ui/ComboboxSelect.vue';
+  import RepositorySelect from '@/components/repository/RepositorySelect.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SelectControl, { type SelectOptionValue } from '@/components/ui/SelectControl.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
@@ -364,9 +359,8 @@
   const sourceVersionLoading = ref(false);
   const sourceVersionError = ref('');
   const search = ref('');
-  const kind = ref<'all' | 'template' | 'application'>('all');
+  const kind = ref<'' | 'template' | 'application'>('');
   const pipelineKindOptions = [
-    { value: 'all', label: '全部类型' },
     { value: 'template', label: '模板' },
     { value: 'application', label: '应用流水线' },
   ];
@@ -472,7 +466,7 @@
     try {
       await execute(async () => {
         const response = await pipelineApi.list(projectId, {
-          kind: kind.value === 'all' ? undefined : kind.value,
+          kind: kind.value || undefined,
           search: search.value.trim() || undefined,
           page: pagination.current,
           per_page: pagination.pageSize,
@@ -506,7 +500,7 @@
   }
 
   function updatePipelineKind(value: string | number) {
-    if (value !== 'all' && value !== 'template' && value !== 'application') {
+    if (value !== '' && value !== 'template' && value !== 'application') {
       return;
     }
     kind.value = value;
@@ -697,7 +691,7 @@
     }
   }
 
-  async function changeVersionForkStrategy(value: RawValue) {
+  async function changeVersionForkStrategy(value: SelectOptionValue) {
     instantiateForm.versionForkStrategy = String(value);
     instantiateErrors.versionForkStrategy = '';
     instantiateErrors.fixedVersionId = '';

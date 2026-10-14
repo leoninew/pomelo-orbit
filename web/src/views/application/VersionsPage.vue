@@ -40,9 +40,9 @@
   import { useRoute, useRouter } from 'vue-router';
   import { ToolbarRoot } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ui/ComboboxSelect.vue';
   import { useToast } from '@/composables/useToast';
   import { applicationVersionsApplicationIdKey } from '@/constants/application';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';

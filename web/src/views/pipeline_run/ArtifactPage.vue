@@ -97,14 +97,14 @@
   import { computed, reactive, ref, watch } from 'vue';
   import { ToolbarRoot } from 'reka-ui';
   import { artifactApi } from '@/api/pipeline_run/artifact';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import RepositorySelect from '@/components/RepositorySelect.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import RepositorySelect from '@/components/repository/RepositorySelect.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -144,7 +144,7 @@
         const resp = await artifactApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: query.search || undefined,
+          search: query.search.trim() || undefined,
           repository_id: query.repository_id || undefined,
         });
         if (projectStore.activeProjectId === projectId) {

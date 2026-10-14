@@ -135,11 +135,10 @@
             {{ t('project.name') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="project-name"
             v-model="form.name"
             type="text"
-            class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
             maxlength="100"
             required
@@ -154,11 +153,10 @@
             {{ t('project.code') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="project-code"
             v-model="form.code"
             type="text"
-            class="app-input"
             readonly
             :disabled="operating"
             aria-readonly="true"
@@ -210,22 +208,23 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { ArrowLeft, Download, Server, Upload, UserPlus } from '@lucide/vue';
   import { onMounted, reactive, ref, computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { projectApi } from '@/api/project/project';
   import { userApi } from '@/api/user/user';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import ComboboxSelect from '@/components/ComboboxSelect.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import ComboboxSelect from '@/components/ui/ComboboxSelect.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';

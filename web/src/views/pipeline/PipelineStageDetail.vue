@@ -117,9 +117,8 @@
             名称
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="basicForm.name"
-            class="app-input"
             :class="basicErrors.name && 'app-input-error'"
             :aria-invalid="basicErrors.name ? 'true' : undefined"
             @input="basicErrors.name = ''"
@@ -131,9 +130,8 @@
             执行镜像
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="basicForm.image"
-            class="app-input"
             :class="basicErrors.image && 'app-input-error'"
             :aria-invalid="basicErrors.image ? 'true' : undefined"
             @input="basicErrors.image = ''"
@@ -144,7 +142,7 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label">说明</label>
-          <textarea v-model="basicForm.description" rows="3" class="app-textarea" />
+          <AppTextarea v-model="basicForm.description" rows="3" />
         </div>
       </form>
       <template #footer>
@@ -184,9 +182,8 @@
               名称
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="artifactForm.name"
-              class="app-input"
               :class="artifactErrors.name && 'app-input-error'"
               :aria-invalid="artifactErrors.name ? 'true' : undefined"
               @input="artifactErrors.name = ''"
@@ -200,9 +197,9 @@
               收集器
               <span class="text-destructive">*</span>
             </label>
-            <RawValueSelect
+            <SelectControl
               :model-value="artifactForm.collector"
-              :values="artifactCollectors"
+              :options="artifactCollectors"
               :invalid="Boolean(artifactErrors.collector)"
               @update:model-value="changeArtifactCollector"
             />
@@ -217,9 +214,8 @@
               命令
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="artifactForm.command"
-              class="app-input"
               :class="artifactErrors.command && 'app-input-error'"
               :aria-invalid="artifactErrors.command ? 'true' : undefined"
               @input="artifactErrors.command = ''"
@@ -233,9 +229,9 @@
               输出格式
               <span class="text-destructive">*</span>
             </label>
-            <RawValueSelect
+            <SelectControl
               :model-value="artifactForm.format"
-              :values="artifactFormats"
+              :options="artifactFormats"
               :invalid="Boolean(artifactErrors.format)"
               @update:model-value="changeArtifactFormat"
             />
@@ -249,9 +245,8 @@
             引用
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="artifactForm.reference"
-            class="app-input"
             :class="artifactErrors.reference && 'app-input-error'"
             :aria-invalid="artifactErrors.reference ? 'true' : undefined"
             @input="artifactErrors.reference = ''"
@@ -283,21 +278,23 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { ArrowLeft, Copy, Plus, Trash2 } from '@lucide/vue';
   import { onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppDrawer from '@/components/AppDrawer.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
-  import RawValueSelect, { type RawValue } from '@/components/RawValueSelect.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppDrawer from '@/components/ui/AppDrawer.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import MonacoEditor from '@/components/ui/MonacoEditor.vue';
+  import SelectControl, { type SelectOptionValue } from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {
@@ -462,7 +459,7 @@
     clearArtifactErrors();
   }
 
-  function changeArtifactCollector(value: RawValue) {
+  function changeArtifactCollector(value: SelectOptionValue) {
     artifactForm.collector = String(value);
     artifactForm.reference = '';
     artifactForm.command = '';
@@ -470,7 +467,7 @@
     clearArtifactErrors();
   }
 
-  function changeArtifactFormat(value: RawValue) {
+  function changeArtifactFormat(value: SelectOptionValue) {
     artifactForm.format = String(value);
     artifactErrors.format = '';
   }

@@ -38,7 +38,7 @@ vi.mock('@/api/project/environment', () => ({ projectEnvironmentApi: { get: vi.f
 vi.mock('@/router/projectReadiness', () => ({
   ensureProjectExecutionReady: vi.fn().mockResolvedValue(true),
 }));
-vi.mock('@/components/RuntimeContainerLogsDrawer.vue', () => ({
+vi.mock('@/components/service/RuntimeContainerLogsDrawer.vue', () => ({
   default: { template: '<div />' },
 }));
 
@@ -170,6 +170,7 @@ describe('Gateway detail editing', () => {
         deployment_directory: '/new/gateway',
         environment_target_revision: 2,
         force_recreate: false,
+        pull_policy: 'missing',
       });
       for (let index = 0; index < 2; index++) {
         const stopButton = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
@@ -361,7 +362,9 @@ describe('Gateway detail editing', () => {
 
     expect(gatewayApi.update).not.toHaveBeenCalled();
     expect(hostInput.getAttribute('aria-invalid')).toBe('true');
-    expect(hostInput.classList.contains('app-input-error')).toBe(true);
+    expect(hostInput.closest('.app-input-control')?.classList.contains('app-input-error')).toBe(
+      true
+    );
     expect(document.querySelector('#gateway-edit-rest-api-host-url-error')?.textContent).toContain(
       i18n.global.t('gateway.validation.restApiHostUrlInvalid')
     );

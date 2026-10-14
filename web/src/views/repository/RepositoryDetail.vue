@@ -119,11 +119,10 @@
             名称
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="edit-repository-name"
             v-model="editForm.name"
             type="text"
-            class="app-input"
             :class="editErrors.name ? 'app-input-error' : ''"
             :aria-invalid="editErrors.name ? 'true' : undefined"
             :aria-describedby="editErrors.name ? 'edit-repository-name-error' : undefined"
@@ -140,18 +139,17 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">编码</label>
-          <input :value="repository?.code" type="text" disabled class="app-input" />
+          <AppInput :model-value="repository?.code" type="text" disabled />
         </div>
         <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
           <label for="edit-repository-url" class="app-field-label block">
             仓库地址
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="edit-repository-url"
             v-model="editForm.repository_url"
             type="text"
-            class="app-input"
             :class="editErrors.repository_url ? 'app-input-error' : ''"
             :aria-invalid="editErrors.repository_url ? 'true' : undefined"
             :aria-describedby="editErrors.repository_url ? 'edit-repository-url-error' : undefined"
@@ -171,11 +169,10 @@
             本地目录
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="edit-repository-url"
             v-model="editForm.repository_url"
             type="text"
-            class="app-input"
             :class="editErrors.repository_url ? 'app-input-error' : ''"
             :aria-invalid="editErrors.repository_url ? 'true' : undefined"
             :aria-describedby="editErrors.repository_url ? 'edit-repository-url-error' : undefined"
@@ -201,12 +198,7 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">默认分支</label>
-          <input
-            v-model="editForm.default_branch"
-            type="text"
-            placeholder="master"
-            class="app-input"
-          />
+          <AppInput v-model="editForm.default_branch" type="text" placeholder="master" />
         </div>
         <div v-if="editForm.repository_type === 'remote_git'" class="space-y-1.5">
           <label class="app-field-label block">Git 凭据</label>
@@ -262,11 +254,10 @@
             变量名
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="variableForm.name"
             type="text"
             placeholder="例如: DEPLOY_ENV"
-            class="app-input"
             :class="variableErrors.name ? 'app-input-error' : ''"
             :aria-invalid="variableErrors.name ? 'true' : undefined"
             @input="variableErrors.name = ''"
@@ -277,15 +268,14 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">变量值</label>
-          <input
+          <AppInput
             v-model="variableForm.value"
             :type="variableForm.secret ? 'password' : 'text'"
-            class="app-input"
           />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">说明</label>
-          <input v-model="variableForm.description" type="text" class="app-input" />
+          <AppInput v-model="variableForm.description" type="text" />
         </div>
         <label class="flex items-center gap-2 text-sm text-foreground">
           <input v-model="variableForm.secret" type="checkbox" class="app-checkbox" />
@@ -311,19 +301,18 @@
             变量名
             <span class="text-destructive">*</span>
           </label>
-          <input :value="editingVariableName" type="text" disabled class="app-input" />
+          <AppInput :model-value="editingVariableName" type="text" disabled />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">变量值</label>
-          <input
+          <AppInput
             v-model="variableForm.value"
             :type="variableForm.secret ? 'password' : 'text'"
-            class="app-input"
           />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">说明</label>
-          <input v-model="variableForm.description" type="text" class="app-input" />
+          <AppInput v-model="variableForm.description" type="text" />
         </div>
         <label class="flex items-center gap-2 text-sm text-foreground">
           <input v-model="variableForm.secret" type="checkbox" class="app-checkbox" />
@@ -345,17 +334,18 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { ArrowLeft, History, Pencil, Plus, Trash2 } from '@lucide/vue';
   import { computed, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { repositoryApi } from '@/api/repository/repository';
-  import AppDialog from '@/components/AppDialog.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import RepositoryCredentialSelect from '@/components/RepositoryCredentialSelect.vue';
-  import SelectControl from '@/components/SelectControl.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import RepositoryCredentialSelect from '@/components/repository/RepositoryCredentialSelect.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -372,7 +362,7 @@
     type RepositoryFormFields,
     validateRepositoryForm,
   } from '@/views/repository/repositoryForm';
-  import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
+  import VariableDeclarationsTable from '@/components/pipeline/VariableDeclarationsTable.vue';
 
   const route = useRoute();
   const router = useRouter();

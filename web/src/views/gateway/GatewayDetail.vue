@@ -187,11 +187,10 @@
             {{ t('gateway.fields.name') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="gateway-edit-name"
             v-model="basicInfoForm.name"
             type="text"
-            class="app-input"
             :class="basicInfoErrors.name ? 'app-input-error' : ''"
             :aria-invalid="basicInfoErrors.name ? 'true' : undefined"
             @input="delete basicInfoErrors.name"
@@ -204,11 +203,10 @@
           <label class="app-field-label block" for="gateway-edit-code">
             {{ t('gateway.fields.code') }}
           </label>
-          <input
+          <AppInput
             id="gateway-edit-code"
-            :value="gateway?.code || ''"
+            :model-value="gateway?.code || ''"
             type="text"
-            class="app-input"
             readonly
           />
         </div>
@@ -217,11 +215,10 @@
             {{ t('gateway.fields.internalDomain') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="gateway-edit-internal-domain"
             v-model="basicInfoForm.internal_domain"
             type="text"
-            class="app-input"
             :class="basicInfoErrors.internal_domain ? 'app-input-error' : ''"
             :aria-invalid="basicInfoErrors.internal_domain ? 'true' : undefined"
             @input="delete basicInfoErrors.internal_domain"
@@ -234,11 +231,10 @@
           <label class="app-field-label block" for="gateway-edit-external-domain">
             {{ t('gateway.fields.externalDomain') }}
           </label>
-          <input
+          <AppInput
             id="gateway-edit-external-domain"
             v-model="basicInfoForm.external_domain"
             type="text"
-            class="app-input"
             :class="basicInfoErrors.external_domain ? 'app-input-error' : ''"
             :placeholder="t('gateway.placeholders.externalDomain')"
             :aria-invalid="basicInfoErrors.external_domain ? 'true' : undefined"
@@ -272,11 +268,10 @@
             {{ t('gateway.fields.restApiUrl') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="gateway-edit-rest-api-url"
             v-model="apiForm.rest_api_url"
             type="url"
-            class="app-input"
             :class="apiErrors.rest_api_url ? 'app-input-error' : ''"
             :aria-invalid="apiErrors.rest_api_url ? 'true' : undefined"
             :aria-describedby="
@@ -298,11 +293,10 @@
             {{ t('gateway.fields.restApiHostUrl') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="gateway-edit-rest-api-host-url"
             v-model="apiForm.rest_api_host_url"
             type="url"
-            class="app-input"
             :class="apiErrors.rest_api_host_url ? 'app-input-error' : ''"
             :aria-invalid="apiErrors.rest_api_host_url ? 'true' : undefined"
             :aria-describedby="
@@ -324,13 +318,12 @@
             {{ t('gateway.fields.restReadyTimeout') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="gateway-edit-rest-ready-timeout"
             v-model="apiForm.rest_ready_timeout_seconds"
             type="number"
             min="1"
             max="300"
-            class="app-input"
             :class="apiErrors.rest_ready_timeout_seconds ? 'app-input-error' : ''"
             :aria-invalid="apiErrors.rest_ready_timeout_seconds ? 'true' : undefined"
             :aria-describedby="
@@ -443,11 +436,10 @@
             {{ t('gateway.fields.acmeEmail') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="gateway-edit-acme-email"
             v-model="certificateForm.acme_email"
             type="email"
-            class="app-input"
             :class="certificateErrors.acme_email ? 'app-input-error' : ''"
             :aria-invalid="certificateErrors.acme_email ? 'true' : undefined"
             @input="delete certificateErrors.acme_email"
@@ -462,11 +454,11 @@
             <span class="text-destructive">*</span>
           </label>
           <div class="relative">
-            <input
+            <AppInput
               id="gateway-edit-dns-api-token"
               v-model="certificateForm.dns_api_token"
               :type="isCertificateTokenVisible ? 'text' : 'password'"
-              class="app-input pr-10"
+              class="pr-10"
               :class="certificateErrors.dns_api_token ? 'app-input-error' : ''"
               :aria-invalid="certificateErrors.dns_api_token ? 'true' : undefined"
               @input="delete certificateErrors.dns_api_token"
@@ -516,7 +508,7 @@
           :gateway="true"
           @update:model-value="directoryState.error = ''"
         />
-
+        <DeploymentPullPolicyField v-model="deployForm.pull_policy" />
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('gateway.deploy.forceRecreate') }}</span>
@@ -569,6 +561,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { ExternalLink, Eye, EyeOff, Layers, Rocket, ScrollText, Square } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -578,24 +571,25 @@
 
   import { serviceApi } from '@/api/service/service';
   import { gatewayApi } from '@/api/gateway/gateway';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import DeploymentDirectoryField from '@/components/DeploymentDirectoryField.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import DeploymentDirectoryField from '@/components/deployment/DeploymentDirectoryField.vue';
+  import DeploymentPullPolicyField from '@/components/deployment/DeploymentPullPolicyField.vue';
   import { useDeploymentDirectory } from '@/composables/useDeploymentDirectory';
-  import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
+  import RuntimeContainerLogsDrawer from '@/components/service/RuntimeContainerLogsDrawer.vue';
   import { provideLogStreamCache } from '@/composables/useLogStream';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import SelectControl from '@/components/SelectControl.vue';
-  import SensitiveValue from '@/components/SensitiveValue.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
+  import SensitiveValue from '@/components/ui/SensitiveValue.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
   import type { GatewayResp } from '@/gen/proto/orbit/v1/gateway/gateway';
-  import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
+  import type { RuntimeContainerLogTarget } from '@/components/service/runtimeContainerLogs';
   import { formatTime } from '@/utils/time';
   import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
   import {
@@ -667,6 +661,7 @@
   const deploySubmitError = ref('');
   const deployForm = reactive({
     force_recreate: false,
+    pull_policy: 'missing',
   });
   const runtimeLogTarget = ref<RuntimeContainerLogTarget>();
   const isGatewayLogsDrawerOpen = computed({
@@ -956,6 +951,7 @@
     }
     deploySubmitError.value = '';
     deployForm.force_recreate = false;
+    deployForm.pull_policy = 'missing';
     if (!current.service_id) {
       toast.error(t('gateway.toast.noService'));
       return;
@@ -992,6 +988,7 @@
         const result = await serviceApi.deploy(projectId, current.service_id, {
           ...deploymentDirectory.payload(),
           force_recreate: deployForm.force_recreate,
+          pull_policy: deployForm.pull_policy,
         });
         for (const warning of result.warnings) {
           toast.error(warning);

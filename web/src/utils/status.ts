@@ -4,7 +4,7 @@
  * 只负责状态值到视觉样式的映射，不包含文本翻译
  */
 
-export type BadgeTone = 'default' | 'primary' | 'success' | 'error' | 'warning' | 'info';
+import type { BadgeTone } from '@/components/ui/AppBadge.vue';
 
 /**
  * Application kind -> Badge 色调

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
@@ -54,7 +55,7 @@ func TestGatewayDeploymentOverwritesStaticConfigAndRecreatesContainer(t *testing
 				plan.Gateway = nil
 				plan.JoinTraefikNetwork = new(bool)
 			}
-			if err := service.renderAndDeployWithOptions(context.Background(), environmentport.Target{}, plan, "deployment-1", false); err != nil {
+			if err := service.renderAndDeployWithOptions(context.Background(), environmentport.Target{}, plan, "deployment-1", deploymentdto.DeployOptionsJSON{PullPolicy: "missing"}); err != nil {
 				t.Fatal(err)
 			}
 			if strings.Contains(workspace.command, "--force-recreate") != gateway {

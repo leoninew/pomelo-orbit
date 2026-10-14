@@ -162,7 +162,7 @@
           />
         </template>
 
-        <ViewModeTabs v-if="snapshot?.stages_snapshot.length" v-model="stagesView" />
+        <StageViewTabs v-if="snapshot?.stages_snapshot.length" v-model="stagesView" />
         <AppLoadingState v-if="run.snapshot_id && !snapshot" size="compact" />
         <AppEmptyState v-else-if="!snapshot || filteredStages.length === 0" size="compact" />
 
@@ -367,17 +367,17 @@
   import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import SearchControl from '@/components/SearchControl.vue';
-  import LogDrawer from '@/components/LogDrawer.vue';
-  import ViewModeTabs from '@/components/ViewModeTabs.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
+  import LogDrawer from '@/components/log/LogDrawer.vue';
+  import StageViewTabs from '@/components/pipeline/StageViewTabs.vue';
   import { provideLogStreamCache, useLogStream } from '@/composables/useLogStream';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -391,8 +391,8 @@
   import { useProjectStore } from '@/stores/project';
   import { isComplete, statusTone } from '@/utils/status';
   import { delayAsync, formatDuration, formatTime } from '@/utils/time';
-  import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
-  import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
+  import StageDAGView from '@/components/pipeline/StageDAGView.vue';
+  import VariableDeclarationsTable from '@/components/pipeline/VariableDeclarationsTable.vue';
 
   const route = useRoute();
   const router = useRouter();

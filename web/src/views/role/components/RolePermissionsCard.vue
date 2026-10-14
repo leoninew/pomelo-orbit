@@ -18,8 +18,8 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
   import type { RoleResp } from '@/gen/proto/orbit/v1/role/role';
 
   defineProps<{

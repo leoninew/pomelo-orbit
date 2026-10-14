@@ -23,6 +23,7 @@ type DeployServiceInput struct {
 	DeploymentDirectory       string
 	EnvironmentTargetRevision int64
 	ForceRecreate             bool
+	PullPolicy                *string
 	JoinTraefikNetwork        *bool
 }
 
@@ -46,6 +47,7 @@ type ServiceTargetInput struct {
 // DeployOptionsJSON is persisted with a deployment and consumed by the worker.
 type DeployOptionsJSON struct {
 	ForceRecreate      bool                 `json:"force_recreate"`
+	PullPolicy         string               `json:"pull_policy,omitempty"`
 	RemoveVolumes      bool                 `json:"remove_volumes"`
 	JoinTraefikNetwork *bool                `json:"join_traefik_network"`
 	GatewayConfig      *model.GatewayConfig `json:"gateway_config,omitempty"`

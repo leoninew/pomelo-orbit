@@ -212,14 +212,14 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { projectEnvironmentApi } from '@/api/project/environment';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import SshInitializationCommandDialog from '@/components/SshInitializationCommandDialog.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import SshInitializationCommandDialog from '@/components/project/SshInitializationCommandDialog.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -228,8 +228,8 @@
   import { formatTime } from '@/utils/time';
   import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
   import { buildWindowsSshInitializationCommand } from '@/utils/windowsSshCommand';
-  import EnvironmentTargetFields from '@/views/environment/EnvironmentTargetFields.vue';
-  import EnvironmentTerminalDrawer from '@/views/environment/EnvironmentTerminalDrawer.vue';
+  import EnvironmentTargetFields from '@/components/environment/EnvironmentTargetFields.vue';
+  import EnvironmentTerminalDrawer from '@/views/environment/components/EnvironmentTerminalDrawer.vue';
   import {
     assignEnvironmentFormErrors as assignTargetFormErrors,
     emptyEnvironmentForm,
@@ -238,7 +238,7 @@
     environmentUpdateRequestFromForm,
     hydrateEnvironmentForm,
     validateEnvironmentForm,
-  } from '@/views/environment/environmentForm';
+  } from '@/components/environment/environmentForm';
 
   const { t } = useI18n();
   const route = useRoute();

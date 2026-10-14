@@ -52,9 +52,9 @@
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute } from 'vue-router';
-  import AppToaster from '@/components/AppToaster.vue';
-  import AppTopBar from '@/components/AppTopBar.vue';
-  import AppVerticalNav from '@/components/AppVerticalNav.vue';
+  import AppToaster from '@/components/ui/AppToaster.vue';
+  import AppTopBar from '@/components/layout/AppTopBar.vue';
+  import AppVerticalNav from '@/components/layout/AppVerticalNav.vue';
   import { useTheme } from '@/composables/useTheme';
   import {
     getNavigationScope,

@@ -67,9 +67,8 @@
                   {{ t('application.detail.fields.component') }}
                   <span class="text-destructive">*</span>
                 </label>
-                <input
+                <AppInput
                   v-model="form.name"
-                  class="app-input"
                   :class="basicErrors.name ? 'app-input-error' : ''"
                   type="text"
                   :aria-invalid="basicErrors.name ? 'true' : undefined"
@@ -84,9 +83,8 @@
                   {{ t('application.detail.fields.image') }}
                   <span class="text-destructive">*</span>
                 </label>
-                <input
+                <AppInput
                   v-model="form.image"
-                  class="app-input"
                   :class="basicErrors.image ? 'app-input-error' : ''"
                   type="text"
                   :aria-invalid="basicErrors.image ? 'true' : undefined"
@@ -101,7 +99,7 @@
                   {{ t('application.componentDetail.fields.pullPolicy') }}
                   <span class="text-destructive">*</span>
                 </label>
-                <RawValueSelect v-model="form.pull_policy" :values="pullPolicyValues" />
+                <SelectControl v-model="form.pull_policy" :options="pullPolicyValues" />
                 <p v-if="basicErrors.pullPolicy" class="app-field-error" role="alert">
                   {{ basicErrors.pullPolicy }}
                 </p>
@@ -111,10 +109,10 @@
                   {{ t('application.componentDetail.fields.restartPolicy') }}
                   <span class="text-destructive">*</span>
                 </label>
-                <RawValueSelect
+                <SelectControl
                   v-model="form.restart_policy"
                   :invalid="Boolean(basicErrors.restartPolicy)"
-                  :values="restartPolicyValues"
+                  :options="restartPolicyValues"
                   @update:model-value="basicErrors.restartPolicy = ''"
                 />
                 <p v-if="basicErrors.restartPolicy" class="app-field-error" role="alert">
@@ -125,13 +123,13 @@
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.componentDetail.fields.containerEntrypoint') }}
                 </label>
-                <textarea v-model="form.entrypoint" class="app-textarea" rows="3" />
+                <AppTextarea v-model="form.entrypoint" rows="3" />
               </div>
               <div class="sm:col-span-2">
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.componentDetail.fields.command') }}
                 </label>
-                <textarea v-model="form.command" class="app-textarea" rows="3" />
+                <AppTextarea v-model="form.command" rows="3" />
               </div>
             </div>
 
@@ -705,9 +703,8 @@
             {{ t('application.detail.fields.component') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.name"
-            class="app-input"
             :class="basicErrors.name ? 'app-input-error' : ''"
             type="text"
             :aria-invalid="basicErrors.name ? 'true' : undefined"
@@ -722,9 +719,8 @@
             {{ t('application.detail.fields.image') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.image"
-            class="app-input"
             :class="basicErrors.image ? 'app-input-error' : ''"
             type="text"
             :aria-invalid="basicErrors.image ? 'true' : undefined"
@@ -739,7 +735,7 @@
             {{ t('application.componentDetail.fields.pullPolicy') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect v-model="form.pull_policy" :values="pullPolicyValues" />
+          <SelectControl v-model="form.pull_policy" :options="pullPolicyValues" />
           <p v-if="basicErrors.pullPolicy" class="app-field-error" role="alert">
             {{ basicErrors.pullPolicy }}
           </p>
@@ -749,10 +745,10 @@
             {{ t('application.componentDetail.fields.restartPolicy') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect
+          <SelectControl
             v-model="form.restart_policy"
             :invalid="Boolean(basicErrors.restartPolicy)"
-            :values="restartPolicyValues"
+            :options="restartPolicyValues"
             @update:model-value="basicErrors.restartPolicy = ''"
           />
           <p v-if="basicErrors.restartPolicy" class="app-field-error" role="alert">
@@ -763,13 +759,13 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.containerEntrypoint') }}
           </label>
-          <textarea v-model="form.entrypoint" class="app-textarea" rows="3" />
+          <AppTextarea v-model="form.entrypoint" rows="3" />
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.command') }}
           </label>
-          <textarea v-model="form.command" class="app-textarea" rows="3" />
+          <AppTextarea v-model="form.command" rows="3" />
         </div>
       </div>
       <p v-if="formError" class="app-field-error">{{ formError }}</p>
@@ -821,12 +817,12 @@
             {{ t('application.componentDetail.fields.testMode') }}
             <span v-if="!form.healthcheck_disabled" class="text-destructive">*</span>
           </label>
-          <RawValueSelect
+          <SelectControl
             v-model="form.healthcheck_test_mode"
             :disabled="form.healthcheck_disabled"
             :invalid="Boolean(healthcheckErrors.test_mode)"
             :placeholder="t('application.componentDetail.fields.testMode')"
-            :values="healthcheckTestModes"
+            :options="healthcheckTestModes"
             @update:model-value="healthcheckErrors.test_mode = ''"
           />
           <p v-if="healthcheckErrors.test_mode" class="app-field-error" role="alert">
@@ -837,9 +833,8 @@
           <label class="app-field-label mb-1 block">
             {{ t('application.componentDetail.fields.interval') }}
           </label>
-          <input
+          <AppInput
             v-model="form.healthcheck_interval"
-            class="app-input"
             :disabled="form.healthcheck_disabled"
             type="text"
           />
@@ -848,9 +843,8 @@
           <label class="app-field-label mb-1 block">
             {{ t('application.componentDetail.fields.timeout') }}
           </label>
-          <input
+          <AppInput
             v-model="form.healthcheck_timeout"
-            class="app-input"
             :disabled="form.healthcheck_disabled"
             type="text"
           />
@@ -859,9 +853,8 @@
           <label class="app-field-label mb-1 block">
             {{ t('application.componentDetail.fields.retries') }}
           </label>
-          <input
+          <AppInput
             v-model="form.healthcheck_retries"
-            class="app-input"
             :disabled="form.healthcheck_disabled"
             inputmode="numeric"
             type="text"
@@ -877,9 +870,8 @@
           <label class="app-field-label mb-1 block">
             {{ t('application.componentDetail.fields.startPeriod') }}
           </label>
-          <input
+          <AppInput
             v-model="form.healthcheck_start_period"
-            class="app-input"
             :disabled="form.healthcheck_disabled"
             type="text"
           />
@@ -888,9 +880,8 @@
           <label class="app-field-label mb-1 block">
             {{ t('application.componentDetail.fields.startInterval') }}
           </label>
-          <input
+          <AppInput
             v-model="form.healthcheck_start_interval"
-            class="app-input"
             :disabled="form.healthcheck_disabled"
             type="text"
           />
@@ -901,9 +892,8 @@
           {{ t('application.componentDetail.fields.test') }}
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="form.healthcheck_test"
-          class="app-input"
           :class="healthcheckErrors.test ? 'app-input-error' : ''"
           type="text"
           :aria-invalid="healthcheckErrors.test ? 'true' : undefined"
@@ -935,25 +925,25 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.limitCpus') }}
           </label>
-          <input v-model="resourcesForm.limit_cpus" class="app-input" type="text" />
+          <AppInput v-model="resourcesForm.limit_cpus" type="text" />
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.limitMemory') }}
           </label>
-          <input v-model="resourcesForm.limit_memory" class="app-input" type="text" />
+          <AppInput v-model="resourcesForm.limit_memory" type="text" />
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.reservationCpus') }}
           </label>
-          <input v-model="resourcesForm.reservation_cpus" class="app-input" type="text" />
+          <AppInput v-model="resourcesForm.reservation_cpus" type="text" />
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.reservationMemory') }}
           </label>
-          <input v-model="resourcesForm.reservation_memory" class="app-input" type="text" />
+          <AppInput v-model="resourcesForm.reservation_memory" type="text" />
         </div>
       </div>
       <p v-if="resourcesFormError" class="app-field-error mt-4">
@@ -983,10 +973,10 @@
               {{ t('application.componentDetail.fields.protocol') }}
               <span class="text-destructive">*</span>
             </label>
-            <RawValueSelect
+            <SelectControl
               v-model="portForm.protocol"
               :invalid="Boolean(recordErrors.protocol)"
-              :values="endpointProtocolValues"
+              :options="endpointProtocolValues"
               @update:model-value="normalizePortMode"
             />
             <p v-if="recordErrors.protocol" class="app-field-error" role="alert">
@@ -998,10 +988,10 @@
               {{ t('application.componentDetail.fields.endpointMode') }}
               <span class="text-destructive">*</span>
             </label>
-            <RawValueSelect
+            <SelectControl
               v-model="portForm.mode"
               :invalid="Boolean(recordErrors.endpoint_mode)"
-              :values="endpointModeValues(portForm.protocol)"
+              :options="endpointModeValues(portForm.protocol)"
               @update:model-value="normalizePortMode"
             />
             <p v-if="recordErrors.endpoint_mode" class="app-field-error" role="alert">
@@ -1013,9 +1003,8 @@
               {{ t('application.componentDetail.fields.hostPort') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="portForm.host_port"
-              class="app-input"
               :class="recordErrors.host_port ? 'app-input-error' : ''"
               :placeholder="t('application.componentDetail.fields.hostPort')"
               inputmode="numeric"
@@ -1032,9 +1021,8 @@
               {{ t('application.componentDetail.fields.containerPort') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="portForm.container_port"
-              class="app-input"
               :class="recordErrors.container_port ? 'app-input-error' : ''"
               :placeholder="t('application.componentDetail.fields.containerPort')"
               inputmode="numeric"
@@ -1052,19 +1040,19 @@
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.bindAddress') }}
             </label>
-            <input v-model="portForm.bind_address" class="app-input" type="text" />
+            <AppInput v-model="portForm.bind_address" type="text" />
           </div>
           <div v-if="portUsesGateway">
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.entrypoint') }}
             </label>
-            <input v-model="portForm.entrypoint" class="app-input" type="text" />
+            <AppInput v-model="portForm.entrypoint" type="text" />
           </div>
           <div v-if="portUsesGateway" class="sm:col-span-2">
             <label class="app-field-label mb-1.5 block">
               {{ t('application.componentDetail.fields.pathPrefix') }}
             </label>
-            <input v-model="portForm.path_prefix" class="app-input" type="text" />
+            <AppInput v-model="portForm.path_prefix" type="text" />
           </div>
         </div>
       </template>
@@ -1076,11 +1064,11 @@
               {{ t('application.componentDetail.fields.dependency') }}
               <span class="text-destructive">*</span>
             </label>
-            <RawValueSelect
+            <SelectControl
               v-model="dependencyForm.name"
               :invalid="Boolean(recordErrors.name)"
               :placeholder="t('application.componentDetail.fields.dependency')"
-              :values="dependencyNames"
+              :options="dependencyNames"
               @update:model-value="recordErrors.name = ''"
             />
             <p v-if="recordErrors.name" class="app-field-error" role="alert">
@@ -1092,11 +1080,11 @@
               {{ t('application.componentDetail.fields.condition') }}
               <span class="text-destructive">*</span>
             </label>
-            <RawValueSelect
+            <SelectControl
               v-model="dependencyForm.condition"
               :invalid="Boolean(recordErrors.condition)"
               :placeholder="t('application.componentDetail.fields.condition')"
-              :values="dependencyConditions"
+              :options="dependencyConditions"
               @update:model-value="recordErrors.condition = ''"
             />
             <p v-if="recordErrors.condition" class="app-field-error" role="alert">
@@ -1113,9 +1101,8 @@
               {{ t('application.componentDetail.fields.target') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="tmpfsForm.target"
-              class="app-input"
               :class="recordErrors.target ? 'app-input-error' : ''"
               type="text"
               :aria-invalid="recordErrors.target ? 'true' : undefined"
@@ -1130,9 +1117,8 @@
               {{ t('application.componentDetail.fields.sizeBytes') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="tmpfsForm.size_bytes"
-              class="app-input"
               :class="recordErrors.size_bytes ? 'app-input-error' : ''"
               inputmode="numeric"
               type="text"
@@ -1148,9 +1134,8 @@
               {{ t('application.componentDetail.fields.mode') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="tmpfsForm.mode"
-              class="app-input"
               :class="recordErrors.mode ? 'app-input-error' : ''"
               type="text"
               :aria-invalid="recordErrors.mode ? 'true' : undefined"
@@ -1170,11 +1155,11 @@
               {{ t('application.componentDetail.fields.name') }}
               <span class="text-destructive">*</span>
             </label>
-            <RawValueSelect
+            <SelectControl
               v-model="ulimitForm.name"
               :invalid="Boolean(recordErrors.name)"
               :placeholder="t('application.componentDetail.fields.name')"
-              :values="ulimitNames"
+              :options="ulimitNames"
               @update:model-value="recordErrors.name = ''"
             />
             <p v-if="recordErrors.name" class="app-field-error" role="alert">
@@ -1186,9 +1171,8 @@
               {{ t('application.componentDetail.fields.soft') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="ulimitForm.soft"
-              class="app-input"
               :class="recordErrors.soft ? 'app-input-error' : ''"
               inputmode="numeric"
               type="text"
@@ -1204,9 +1188,8 @@
               {{ t('application.componentDetail.fields.hard') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="ulimitForm.hard"
-              class="app-input"
               :class="recordErrors.hard ? 'app-input-error' : ''"
               inputmode="numeric"
               type="text"
@@ -1227,9 +1210,8 @@
               {{ t('application.componentDetail.fields.driver') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="deviceForm.driver"
-              class="app-input"
               :class="recordErrors.driver ? 'app-input-error' : ''"
               type="text"
               :aria-invalid="recordErrors.driver ? 'true' : undefined"
@@ -1244,9 +1226,8 @@
               {{ t('application.componentDetail.fields.count') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="deviceForm.count"
-              class="app-input"
               :class="recordErrors.count ? 'app-input-error' : ''"
               type="text"
               :aria-invalid="recordErrors.count ? 'true' : undefined"
@@ -1261,9 +1242,8 @@
               {{ t('application.componentDetail.fields.capabilities') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="deviceForm.capabilities"
-              class="app-input"
               :class="recordErrors.capabilities ? 'app-input-error' : ''"
               type="text"
               :aria-invalid="recordErrors.capabilities ? 'true' : undefined"
@@ -1301,11 +1281,11 @@
             {{ t('application.componentDetail.fields.sourceType') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect
+          <SelectControl
             :model-value="mountForm.source_type"
             :invalid="Boolean(mountErrors.source_type)"
             :placeholder="t('application.detail.placeholders.mountSourceType')"
-            :values="mountSourceTypes"
+            :options="mountSourceTypes"
             @update:model-value="updateMountFormSourceType"
           />
           <p v-if="mountErrors.source_type" class="app-field-error" role="alert">
@@ -1317,9 +1297,8 @@
             {{ t('application.componentDetail.fields.source') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="mountForm.source"
-            class="app-input"
             :class="mountErrors.source ? 'app-input-error' : ''"
             type="text"
             :aria-invalid="mountErrors.source ? 'true' : undefined"
@@ -1334,9 +1313,8 @@
             {{ t('application.componentDetail.fields.target') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="mountForm.target"
-            class="app-input"
             :class="mountErrors.target ? 'app-input-error' : ''"
             type="text"
             :aria-invalid="mountErrors.target ? 'true' : undefined"
@@ -1396,9 +1374,8 @@
               {{ t('application.componentDetail.fields.fileMode') }}
               <span class="text-destructive">*</span>
             </label>
-            <input
+            <AppInput
               v-model="mountContentForm.mode"
-              class="app-input"
               :class="mountContentErrors.mode ? 'app-input-error' : ''"
               inputmode="numeric"
               placeholder="0600"
@@ -1462,23 +1439,25 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { ArrowLeft, Plus, Save, Trash2, X } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppDrawer from '@/components/AppDrawer.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import EnvironmentVariableListEditor from '@/components/EnvironmentVariableListEditor.vue';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
-  import ComponentIdentityFields from '@/components/ComponentIdentityFields.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppDrawer from '@/components/ui/AppDrawer.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import EnvironmentVariableListEditor from '@/components/environment/EnvironmentVariableListEditor.vue';
+  import MonacoEditor from '@/components/ui/MonacoEditor.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
+  import ComponentIdentityFields from '@/components/application/ComponentIdentityFields.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -1515,7 +1494,7 @@
     environmentVariableRowsFromEntries,
     type EnvironmentVariableEntry,
     type EnvironmentVariableListRow,
-  } from '@/components/environmentVariableList';
+  } from '@/components/environment/environmentVariableList';
 
   type ComponentTab = 'runtime' | 'connectivity' | 'mounts' | 'advanced';
   type ComponentSaveGroup = 'basic' | 'identity' | 'runtime';

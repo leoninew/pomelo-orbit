@@ -117,11 +117,10 @@
             {{ t('userManagement.username') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="username"
             v-model="form.username"
             type="text"
-            class="app-input"
             :class="formErrors.username ? 'app-input-error' : ''"
             maxlength="50"
             required
@@ -137,11 +136,10 @@
             {{ t('userManagement.email') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="email"
             v-model="form.email"
             type="email"
-            class="app-input"
             :class="formErrors.email ? 'app-input-error' : ''"
             maxlength="36"
             required
@@ -163,11 +161,10 @@
             {{ t('userManagement.password') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="password"
             v-model="form.password"
             type="password"
-            class="app-input"
             :class="formErrors.password ? 'app-input-error' : ''"
             minlength="6"
             maxlength="36"
@@ -200,11 +197,10 @@
             {{ t('userManagement.username') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="edit-username"
             v-model="editForm.username"
             type="text"
-            class="app-input"
             :class="editFormErrors.username ? 'app-input-error' : ''"
             maxlength="50"
             required
@@ -220,11 +216,10 @@
             {{ t('userManagement.email') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="edit-email"
             v-model="editForm.email"
             type="email"
-            class="app-input"
             :class="editFormErrors.email ? 'app-input-error' : ''"
             maxlength="255"
             required
@@ -246,9 +241,9 @@
             {{ t('common.status') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect
+          <SelectControl
             v-model="editForm.status"
-            :values="userStatusValues"
+            :options="userStatusValues"
             :invalid="Boolean(editFormErrors.status)"
             @update:model-value="editFormErrors.status = ''"
           />
@@ -260,11 +255,10 @@
           <label class="app-field-label block" for="edit-password">
             {{ t('userManagement.password') }}
           </label>
-          <input
+          <AppInput
             id="edit-password"
             v-model="editForm.password"
             type="password"
-            class="app-input"
             :class="editFormErrors.password ? 'app-input-error' : ''"
             minlength="6"
             maxlength="255"
@@ -309,21 +303,22 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { Plus } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { userApi } from '@/api/user/user';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
@@ -425,7 +420,7 @@
         const res = await userApi.list({
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: searchText.value || undefined,
+          search: searchText.value.trim() || undefined,
         });
         users.value = res.items;
         pagination.total = res.total;

@@ -12,6 +12,8 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 - 优先使用 Reka UI、共享组件和共享样式类，不复刻旧实现。
 - 页面层避免直接使用 Reka primitives 组合业务外壳；优先使用项目内共享组件。
 - 字段差异是业务差异，不为统一风格强行补齐或删除字段。
+- 通用 UI 位于 `components/ui/`，布局外壳位于 `components/layout/`，共享业务组件按领域分目录。组件提炼重复的样式与交互，不为 HTML 标签建立一套替代组件。
+- 单页业务片段放在 `views/<领域>/components/`；跨页面使用的领域交互放在共享业务目录。先检查引用位置和职责，再决定提炼粒度；引用次数不能替代对组件交互、依赖和间接使用的判断。只转发参数、事件而不承担规则或交互的组件不增加一层包装。
 
 ## 相关文档
 
@@ -32,12 +34,16 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 - 简单搜索加右侧操作使用 `app-toolbar-simple`。
 - 多筛选、多操作且可能横向拥挤的工具条使用 `app-toolbar-scroll` + `app-toolbar-row`。
 - 工具条筛选下拉使用 `app-toolbar-select`。
-- 搜索框使用 `SearchControl`；可搜索下拉使用 `ComboboxSelect`。
+- 搜索框使用 `SearchControl`，内部组合 `AppInput` 的字段样式、清空和焦点行为，增加搜索操作；可搜索下拉使用 `ComboboxSelect`。
+- 工具条统一使用 `text-sm`、`font-normal` 和 `text-sm` 默认行高。共享样式覆盖 `app-toolbar-simple`、`app-toolbar-scroll` 与 Reka UI 的 `role="toolbar"`，按钮、链接、搜索输入、占位符和下拉触发控件沿用同一字体规则；下拉浮层使用相同字号、字重和行高，页面不单独设置控件字号或字重。
 - 带下拉筛选的列表页，筛选值变更后应重置到第一页并立即查询。
+- 筛选 `options` 只包含真实可选值，不插入 `all`、“全部”或空白选项。未选择时显示灰色占位符，清空后省略对应请求参数，由后端处理未筛选逻辑。
 
 ## 表单控件
 
-- 文本输入使用 `app-input`，多行文本使用 `app-textarea`。
+- 文本输入统一使用 `AppInput`，多行文本使用 `AppTextarea`；组件内置边框、字体、焦点与禁用样式，业务页面只传布局差异和字段属性，不直接使用原生文本输入控件。
+- 可编辑输入框、下拉和可搜索选择控件在有值时显示框内清空按钮，统一复用 `AppClearButton`；清空同步更新绑定值，并保留字段校验和焦点行为。
+- 必须保持有效值的下拉通过 `SelectControl.resetValue` 明确配置重置目标，例如分页大小和部署拉取策略；筛选控件不配置重置值，清空后回到未选择状态。
 - 普通下拉使用 `SelectControl`，可搜索选择使用 `ComboboxSelect`。
 - `ComboboxSelect` 只处理选项显示、搜索输入、翻页入口与选中事件；远端资源查询和结果映射放在 `RepositorySelect`、`RepositoryCredentialSelect` 等业务组件中。
 - 字段块使用 `space-y-1.5`，label 使用 `app-field-label block`。
@@ -90,6 +96,6 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 ## 日志控件
 
 - CI 阶段、CD 操作与容器、Service、Gateway、Route 统一使用 LogView；抽屉使用 LogDrawer/AppDrawer，宽度 `w-[min(960px,100vw)]`，正文无额外外边距，阅读区域自行滚动。
-- 使用共享 Monaco 主题、12px 等宽字体和行号。查找、跟随图标使用 LogActions，放在抽屉标题栏或 CD 日志卡片标题栏，沿用 app-icon-button 和 title 提示；正文不另设状态/工具行，不显示“读取完成”，没有复制、导出、重复刷新 footer。
+- `components/log/` 放置共享日志功能组件，承接日志流状态与增量更新；通用编辑器位于 `components/ui/MonacoEditor.vue`。使用共享 Monaco 主题、12px 等宽字体和行号。查找、跟随图标使用 LogActions，放在抽屉标题栏或 CD 日志卡片标题栏，沿用 app-icon-button 和 title 提示；正文不另设状态/工具行，不显示“读取完成”，没有复制、导出、重复刷新 footer。
 - 读取异常通过项目共享 Toast 提示，连续重连失败只提示一次；已有内容保留，日志控件不显示异常文案或异常图标。截断/缺口使用独立历史提示图标。查找框悬浮于日志内容，不增加顶部占位。跟随按钮可切换：跟随时为向下贴底图标，停止跟随时为暂停图标。上滚停止跟随，回到底部或点击跟随后恢复；接收过程持续。
 - CD 详情操作日志使用 DetailInfoCard 内嵌 LogView，卡片右上角的 ScrollText 日志按钮打开容器日志的 LogDrawer。打开容器抽屉不隐藏或卸载卡片中的操作日志；两类日志各自保有状态与订阅。容器日志在抽屉打开时流式读取，部署进行中也可订阅，关闭后保留页面内缓存；stop 操作不显示容器日志按钮。

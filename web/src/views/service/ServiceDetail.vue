@@ -109,7 +109,8 @@
         </dl>
       </DetailInfoCard>
       <ServiceComponentsCard :service="service" :loading="loading" @view-logs="openLogsDrawer" />
-      <ServiceEnvironmentCard
+      <EnvironmentVariableListEditor
+        :title="t('environment.title')"
         :rows="environmentRows"
         :saved-rows="savedEnvironmentRows"
         :disabled="operating"
@@ -131,13 +132,13 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('service.fields.application') }}
           </label>
-          <input :value="service.application_name" type="text" class="app-input" disabled />
+          <AppInput :model-value="service.application_name" type="text" disabled />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label mb-1.5 block">
             {{ t('service.fields.code') }}
           </label>
-          <input :value="service.code" type="text" class="app-input" disabled />
+          <AppInput :model-value="service.code" type="text" disabled />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label mb-1.5 block">
@@ -200,6 +201,7 @@
           :error="directoryState.error"
           @update:model-value="directoryState.error = ''"
         />
+        <DeploymentPullPolicyField v-model="deployForm.pull_policy" />
         <label class="flex items-center gap-2">
           <input v-model="deployForm.force_recreate" type="checkbox" class="app-checkbox" />
           <span class="text-sm text-foreground">{{ t('service.deploy.forceRecreate') }}</span>
@@ -320,6 +322,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { ArrowLeft, FileCode2, Rocket, Square, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -327,25 +330,26 @@
   import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { applicationApi } from '@/api/application/application';
   import { serviceApi } from '@/api/service/service';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppTooltip from '@/components/AppTooltip.vue';
-  import DeploymentDirectoryField from '@/components/DeploymentDirectoryField.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppTooltip from '@/components/ui/AppTooltip.vue';
+  import DeploymentDirectoryField from '@/components/deployment/DeploymentDirectoryField.vue';
+  import DeploymentPullPolicyField from '@/components/deployment/DeploymentPullPolicyField.vue';
   import { useDeploymentDirectory } from '@/composables/useDeploymentDirectory';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDrawer from '@/components/AppDrawer.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import RuntimeContainerLogsDrawer from '@/components/RuntimeContainerLogsDrawer.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDrawer from '@/components/ui/AppDrawer.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import RuntimeContainerLogsDrawer from '@/components/service/RuntimeContainerLogsDrawer.vue';
   import { provideLogStreamCache } from '@/composables/useLogStream';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
+  import MonacoEditor from '@/components/ui/MonacoEditor.vue';
   import {
     cloneEnvironmentVariableRows,
     environmentVariableRowsFromEntries,
     type EnvironmentVariableEntry,
     type EnvironmentVariableListRow,
-  } from '@/components/environmentVariableList';
+  } from '@/components/environment/environmentVariableList';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
@@ -353,11 +357,11 @@
   import { useProjectStore } from '@/stores/project';
   import { appStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
-  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import type { RuntimeContainerLogTarget } from '@/components/runtimeContainerLogs';
+  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ui/ComboboxSelect.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import type { RuntimeContainerLogTarget } from '@/components/service/runtimeContainerLogs';
   import ServiceComponentsCard from './components/ServiceComponentsCard.vue';
-  import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
+  import EnvironmentVariableListEditor from '@/components/environment/EnvironmentVariableListEditor.vue';
 
   const route = useRoute();
   const router = useRouter();
@@ -385,6 +389,7 @@
   const deployForm = reactive({
     version_id: '',
     force_recreate: false,
+    pull_policy: 'missing',
     join_traefik_network: true,
   });
   const deployVersionError = ref('');
@@ -607,6 +612,7 @@
       Object.assign(deployForm, {
         version_id: current.version_id,
         force_recreate: false,
+        pull_policy: 'missing',
         join_traefik_network: true,
       });
       deployVersionError.value = '';
@@ -660,6 +666,7 @@
           version_id: deployForm.version_id,
           ...deploymentDirectory.payload(),
           force_recreate: deployForm.force_recreate,
+          pull_policy: deployForm.pull_policy,
           join_traefik_network: deployForm.join_traefik_network,
         });
         for (const warning of result.warnings) {

@@ -49,6 +49,9 @@ func (s Service) executeUp(ctx context.Context, projectId string, app model.Appl
 		return fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
 	}
 	opts.ForceRecreate = opts.ForceRecreate || forceRecreate
+	if err := validateDeploymentPullPolicy(opts.PullPolicy); err != nil {
+		return fmt.Errorf("deployment %s has invalid options: %w", deployment.Id, err)
+	}
 	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
 		return err
@@ -89,7 +92,7 @@ func (s Service) executeUp(ctx context.Context, projectId string, app model.Appl
 	if err := verifyDeploymentPlanHash(deployment, plan); err != nil {
 		return err
 	}
-	if err := s.renderAndDeployWithOptions(ctx, target, plan, deployment.Id, opts.ForceRecreate); err != nil {
+	if err := s.renderAndDeployWithOptions(ctx, target, plan, deployment.Id, opts); err != nil {
 		return err
 	}
 	if err := s.ensureDeploymentCurrent(ctx, projectId, deployment.Id); err != nil {
@@ -225,7 +228,7 @@ func (s Service) resolveServiceFromDeployment(ctx context.Context, projectId, ap
 	return svc, nil
 }
 
-func (s Service) renderAndDeployWithOptions(ctx context.Context, target environmentport.Target, plan model.EffectiveServicePlan, deploymentId string, forceRecreate bool) error {
+func (s Service) renderAndDeployWithOptions(ctx context.Context, target environmentport.Target, plan model.EffectiveServicePlan, deploymentId string, opts deploymentdto.DeployOptionsJSON) error {
 	setDeploymentStage(ctx, "resolve_workspace")
 	version, svc := plan.Version, plan.Service
 	if s.runtime == nil {
@@ -290,7 +293,7 @@ func (s Service) renderAndDeployWithOptions(ctx context.Context, target environm
 	}
 	projectName := composeProjectName(svc.Code)
 	// Recreate Gateway containers so replaced static config bind mounts are reloaded.
-	command := deployComposeCommand(projectName, deploymentPullPolicy(plan), forceRecreate || isGatewayCarrier(plan))
+	command := deployComposeCommand(projectName, opts.PullPolicy, opts.ForceRecreate || isGatewayCarrier(plan))
 	if _, err := fmt.Fprintln(logWriter, "Starting services"); err != nil {
 		return err
 	}

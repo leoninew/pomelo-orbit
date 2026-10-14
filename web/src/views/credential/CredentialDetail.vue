@@ -72,10 +72,9 @@
             名称
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.name"
             type="text"
-            class="app-input"
             :class="errors.name ? 'app-input-error' : ''"
             :aria-invalid="errors.name ? 'true' : undefined"
             @input="errors.name = ''"
@@ -84,16 +83,15 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">凭据类型</label>
-          <input :value="credential?.type ?? ''" type="text" disabled class="app-input" />
+          <AppInput :model-value="credential?.type ?? ''" type="text" disabled />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">
             凭据内容
             <span class="text-destructive">*</span>
           </label>
-          <textarea
+          <AppTextarea
             v-model="form.data"
-            class="app-textarea"
             :class="errors.data ? 'app-input-error' : ''"
             rows="8"
             :placeholder="credential ? getDataPlaceholder(credential.type) : ''"
@@ -137,16 +135,18 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { ArrowLeft, Download, Trash2 } from '@lucide/vue';
   import { reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import SensitiveValue from '@/components/SensitiveValue.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import SensitiveValue from '@/components/ui/SensitiveValue.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { CredentialDetailResp } from '@/gen/proto/orbit/v1/credential/credential';

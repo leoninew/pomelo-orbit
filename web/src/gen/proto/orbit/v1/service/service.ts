@@ -216,6 +216,7 @@ export interface ServiceDeployReq {
   version_id?: string | undefined;
   deployment_directory: string;
   environment_target_revision: number;
+  pull_policy?: string | undefined;
 }
 
 export interface ServiceDeployResp {

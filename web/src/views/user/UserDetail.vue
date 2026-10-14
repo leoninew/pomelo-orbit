@@ -101,11 +101,10 @@
             {{ t('userManagement.username') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="username"
             v-model="form.username"
             type="text"
-            class="app-input"
             :class="formErrors.username ? 'app-input-error' : ''"
             maxlength="50"
             required
@@ -122,11 +121,10 @@
             {{ t('userManagement.email') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="email"
             v-model="form.email"
             type="email"
-            class="app-input"
             :class="formErrors.email ? 'app-input-error' : ''"
             maxlength="36"
             required
@@ -149,9 +147,9 @@
             {{ t('common.status') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect
+          <SelectControl
             v-model="form.status"
-            :values="userStatusValues"
+            :options="userStatusValues"
             :disabled="operating"
             :invalid="Boolean(formErrors.status)"
             @update:model-value="formErrors.status = ''"
@@ -164,11 +162,10 @@
           <label class="app-field-label block" for="password">
             {{ t('userManagement.password') }}
           </label>
-          <input
+          <AppInput
             id="password"
             v-model="form.password"
             type="password"
-            class="app-input"
             :class="formErrors.password ? 'app-input-error' : ''"
             minlength="6"
             maxlength="255"
@@ -279,17 +276,18 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { ArrowLeft, Ban, CheckCircle, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { roleApi } from '@/api/role/role';
   import { userApi } from '@/api/user/user';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
@@ -297,7 +295,7 @@
   import { PERMISSIONS } from '@/constants/permissions';
   import type { RoleResp } from '@/gen/proto/orbit/v1/role/role';
   import type { UserResp } from '@/gen/proto/orbit/v1/user/user';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
   import UserRolesCard from './components/UserRolesCard.vue';
 
   const props = defineProps<{ id: string }>();

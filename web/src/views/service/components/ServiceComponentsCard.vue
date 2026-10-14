@@ -83,11 +83,11 @@
 <script setup lang="ts">
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { publishedServiceComponentEndpoints } from './serviceComponentPorts';
 

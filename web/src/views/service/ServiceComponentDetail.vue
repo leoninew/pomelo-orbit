@@ -44,16 +44,15 @@
                   <AppTruncatedText :text="displayValue(field.state.base)" />
                 </td>
                 <td class="max-w-0">
-                  <RawValueSelect
+                  <SelectControl
                     v-if="editingRuntimeKey === field.key && field.kind === 'select'"
                     v-model="editingRuntimeValue"
-                    :values="field.values"
+                    :options="field.values"
                     width-class="h-9 w-full"
                   />
-                  <textarea
+                  <AppTextarea
                     v-else-if="editingRuntimeKey === field.key"
                     v-model="editingRuntimeValue"
-                    class="app-textarea"
                     :class="runtimeIdentityError(field) ? 'app-input-error' : ''"
                     :aria-invalid="runtimeIdentityError(field) ? 'true' : undefined"
                     :aria-describedby="
@@ -110,7 +109,8 @@
         </div>
       </DetailInfoCard>
 
-      <ServiceEnvironmentCard
+      <EnvironmentVariableListEditor
+        :title="t('environment.title')"
         class="order-2"
         :rows="environmentEditorRows"
         :saved-rows="savedEnvironmentEditorRows"
@@ -165,7 +165,7 @@
                 </td>
                 <td class="max-w-0">
                   <div v-if="editingResourceKey === field.key">
-                    <input v-model="editingResourceValue" class="app-input h-9" />
+                    <AppInput v-model="editingResourceValue" class="h-9" />
                   </div>
                   <AppTruncatedText
                     v-else
@@ -385,9 +385,9 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.sourceType') }}
           </label>
-          <input
-            :value="editingMount?.source_type ?? ''"
-            class="app-input bg-muted"
+          <AppInput
+            :model-value="editingMount?.source_type ?? ''"
+            class="bg-muted"
             :aria-label="t('application.componentDetail.fields.sourceType')"
             readonly
           />
@@ -397,9 +397,8 @@
             {{ t('application.componentDetail.fields.source') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="editingMountSource"
-            class="app-input"
             :class="mountSourceError ? 'app-input-error' : ''"
             type="text"
             :aria-invalid="mountSourceError ? 'true' : undefined"
@@ -419,9 +418,9 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.target') }}
           </label>
-          <input
-            :value="editingMount?.target ?? ''"
-            class="app-input bg-muted"
+          <AppInput
+            :model-value="editingMount?.target ?? ''"
+            class="bg-muted"
             :aria-label="t('application.componentDetail.fields.target')"
             readonly
           />
@@ -469,9 +468,9 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.protocol') }}
           </label>
-          <input
-            :value="editingEndpointRow.protocol"
-            class="app-input bg-muted"
+          <AppInput
+            :model-value="editingEndpointRow.protocol"
+            class="bg-muted"
             :aria-label="t('application.componentDetail.fields.protocol')"
             readonly
           />
@@ -480,9 +479,9 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.containerPort') }}
           </label>
-          <input
-            :value="editingEndpointRow.container_port"
-            class="app-input bg-muted"
+          <AppInput
+            :model-value="editingEndpointRow.container_port"
+            class="bg-muted"
             :aria-label="t('application.componentDetail.fields.containerPort')"
             readonly
           />
@@ -492,10 +491,10 @@
             {{ t('application.componentDetail.fields.endpointMode') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect
+          <SelectControl
             v-model="editingEndpoint.mode"
             :invalid="Boolean(endpointDialogErrors.mode)"
-            :values="endpointModeValues(editingEndpointRow.protocol)"
+            :options="endpointModeValues(editingEndpointRow.protocol)"
             @update:model-value="normalizeEditingEndpoint"
           />
           <p v-if="endpointDialogErrors.mode" class="app-field-error" role="alert">
@@ -507,9 +506,8 @@
             {{ t('application.componentDetail.fields.listenPort') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="editingEndpoint.listen_port"
-            class="app-input"
             :class="endpointDialogErrors.listen_port ? 'app-input-error' : ''"
             inputmode="numeric"
             type="text"
@@ -524,19 +522,19 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.bindAddress') }}
           </label>
-          <input v-model="editingEndpoint.bind_address" class="app-input" type="text" />
+          <AppInput v-model="editingEndpoint.bind_address" type="text" />
         </div>
         <div v-if="editingEndpointUsesGateway">
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.entrypoint') }}
           </label>
-          <input v-model="editingEndpoint.entrypoint" class="app-input" type="text" />
+          <AppInput v-model="editingEndpoint.entrypoint" type="text" />
         </div>
         <div v-if="editingEndpointUsesGateway" class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.pathPrefix') }}
           </label>
-          <input v-model="editingEndpoint.path_prefix" class="app-input" type="text" />
+          <AppInput v-model="editingEndpoint.path_prefix" type="text" />
         </div>
       </div>
       <template #footer>
@@ -552,6 +550,8 @@
 </template>
 
 <script setup lang="ts">
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
+  import AppInput from '@/components/ui/AppInput.vue';
   import { parseGroupAdd, validComponentUser } from '@/utils/componentIdentity';
   import { serviceIdentityDraft, serviceIdentityPayload } from './serviceComponentIdentity';
   import { ArrowLeft, Save } from '@lucide/vue';
@@ -559,16 +559,16 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { serviceApi } from '@/api/service/service';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
-  import type { EnvironmentVariableListRow } from '@/components/environmentVariableList';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
+  import type { EnvironmentVariableListRow } from '@/components/environment/environmentVariableList';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type {
@@ -577,7 +577,7 @@
     ServiceResp,
   } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
-  import ServiceEnvironmentCard from './components/ServiceEnvironmentCard.vue';
+  import EnvironmentVariableListEditor from '@/components/environment/EnvironmentVariableListEditor.vue';
   import {
     componentEnvironmentListRows,
     componentEnvironmentOverlays,

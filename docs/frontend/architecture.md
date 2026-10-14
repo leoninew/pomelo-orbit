@@ -33,13 +33,20 @@ web/
 │   │   ├── ci/          # CI 模块 API
 │   │   └── cd/          # CD 模块 API
 │   ├── components/       # 共享组件
-│   │   ├── AppDialog.vue
-│   │   ├── AppDrawer.vue
-│   │   ├── AppToaster.vue
-│   │   ├── ComboboxSelect.vue
-│   │   ├── SearchControl.vue
-│   │   ├── SelectControl.vue
-│   │   └── MonacoEditor.vue
+│   │   ├── ui/           # 通用样式与交互，不依赖领域状态
+│   │   │   ├── AppDialog.vue
+│   │   │   ├── AppInput.vue
+│   │   │   └── ComboboxSelect.vue
+│   │   ├── layout/       # 应用顶栏与导航
+│   │   ├── application/  # 组件身份规则
+│   │   ├── deployment/   # 部署目录与拉取策略
+│   │   ├── environment/  # 环境目标字段、表单规则与变量编辑
+│   │   ├── log/          # 日志订阅状态、查找与跟随
+│   │   ├── pipeline/     # 阶段视图、DAG 与变量声明
+│   │   ├── project/      # 项目初始化交互
+│   │   ├── repository/   # 仓库与凭证查询、回显
+│   │   ├── route/        # 路由目标与同步
+│   │   └── service/      # 容器日志资源与订阅
 │   ├── composables/      # 组合式函数
 │   │   └── useToast.ts
 │   ├── router/           # 路由配置
@@ -51,8 +58,10 @@ web/
 │   │   ├── request.ts   # Axios 封装
 │   │   └── time.ts      # 时间处理工具
 │   ├── views/            # 页面组件
-│   │   ├── ci/          # CI 模块页面
-│   │   └── cd/          # CD 模块页面
+│   │   ├── application/ # 应用页面
+│   │   │   └── components/ # 应用创建表单与版本组件卡片
+│   │   ├── pipeline/    # 流水线页面
+│   │   └── route/       # 路由页面与页面内证书弹窗
 │   ├── App.vue
 │   ├── main.ts
 │   └── style.css        # 全局样式和 CSS 变量
@@ -73,12 +82,16 @@ web/
 - 使用共享组件构建 UI
 
 **组件 (Components)**
-- 位于 `src/components/`
-- `ComboboxSelect` 等通用组件封装 Reka UI 原语，提供项目级别的默认样式和行为，不查询业务资源
-- `RepositorySelect`、`RepositoryCredentialSelect` 等业务组件复用通用控件，负责各自的数据查询、结果映射和选中项回显
+- `src/components/ui/` 提炼可复用的展示与交互模式，不依赖业务 API、业务 store、领域类型或业务组件。`ComboboxSelect` 负责搜索、选中、清空和键盘交互；`AppInput` / `AppTextarea` 负责字段样式、框内清空、输入事件和焦点恢复；`SearchControl` 组合 `AppInput` 的字段交互，增加搜索图标、搜索按钮与查询事件。
+- 组件粒度由重复的样式与交互决定，不逐个包装 HTML 标签。只有样式的普通按钮继续使用原生 `button` 与共享样式类；清空按钮因其统一的焦点、无障碍标签与交互行为使用 `AppClearButton`。
+- `src/components/layout/` 负责应用导航、认证与项目切换等外壳交互。
+- `src/components/<领域或功能>/` 放置跨页面复用的业务组件。`repository/RepositorySelect`、`RepositoryCredentialSelect` 查询业务资源并映射、回显选项；`deployment/DeploymentDirectoryField` 判断部署目录变更并展示对应警告；`pipeline/` 处理阶段和变量声明；`environment/` 共享环境目标表单及其规则。业务组件依赖通用 UI，通用 UI 不反向依赖业务组件。
+- 组件即使不直接调用 API，只要依赖领域状态也属于业务功能。例如 `log/LogView`、`LogDrawer`、`LogActions` 使用日志流的状态、增量内容、历史缺口和跟随行为，放在共享日志功能目录；它们使用的 `MonacoEditor` 仍属于通用 UI。
+- 仅单页使用的业务组件保留在对应 `views/<领域>/components/`，组件测试与辅助文件就近放置。不建立旧路径转发或组件别名。
+- 审视提炼粒度时，先统计非测试代码中的直接引用文件数，再检查实际职责、间接使用和依赖方向。引用一次的 `AppToaster` 是全局反馈入口，`AppBreadcrumb` 通过 `DetailPageHeader` 服务多个页面，仍有独立职责；只转发参数和事件的包装层应移除，无使用场景的组件不预留为组件库。
 
 **Reka UI 原语**
-- 通过 auto-import 自动导入
+- 通过显式 import 导入
 - 提供无样式的可访问组件基础
 - 页面层避免直接使用，优先使用共享组件
 
@@ -215,21 +228,9 @@ const routes = [
 }
 ```
 
-### 2. 组件自动导入
-```typescript
-// vite.config.ts
-import Components from 'unplugin-vue-components/vite';
-import RekaResolver from 'reka-ui/resolver';
+### 2. 组件依赖
 
-export default defineConfig({
-  plugins: [
-    Components({
-      dts: true,
-      resolvers: [RekaResolver()],
-    }),
-  ],
-});
-```
+共享组件使用显式 import，按职责目录导入所需组件，不通过统一入口或旧路径转发隐藏依赖。
 
 ### 3. 图标按需加载
 ```vue
@@ -345,16 +346,20 @@ const relativeTime = formatRelativeTime(utcTime);
 
 ### 单元测试
 ```typescript
-// components/SearchControl.test.ts
-import { mount } from '@vue/test-utils';
+// components/ui/SearchControl.test.ts
+import { createApp, h } from 'vue';
+import { expect, it, vi } from 'vitest';
+import i18n from '@/i18n';
 import SearchControl from './SearchControl.vue';
 
-describe('SearchControl', () => {
-  it('emits search event when button clicked', async () => {
-    const wrapper = mount(SearchControl);
-    await wrapper.find('button').trigger('click');
-    expect(wrapper.emitted('search')).toBeTruthy();
-  });
+it('emits search when clicked', () => {
+  const onSearch = vi.fn();
+  const root = document.createElement('div');
+  const app = createApp({ render: () => h(SearchControl, { modelValue: '', onSearch }) });
+  app.use(i18n).mount(root);
+  root.querySelector<HTMLButtonElement>('.app-search-button')?.click();
+  expect(onSearch).toHaveBeenCalledOnce();
+  app.unmount();
 });
 ```
 

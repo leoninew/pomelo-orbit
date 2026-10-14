@@ -338,10 +338,9 @@
           {{ t('common.name') }}
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="editForm.name"
           type="text"
-          class="app-input"
           :class="editErrors.name ? 'app-input-error' : ''"
           :aria-invalid="editErrors.name ? 'true' : undefined"
           @input="editErrors.name = ''"
@@ -350,7 +349,7 @@
       </div>
       <div>
         <label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>
-        <input v-model="editForm.code" type="text" disabled class="app-input" />
+        <AppInput v-model="editForm.code" type="text" disabled />
       </div>
       <p v-if="editSubmitError" class="app-field-error mt-3" role="alert">
         {{ editSubmitError }}
@@ -434,9 +433,8 @@
             {{ t('application.detail.fields.component') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="componentForm.name"
-            class="app-input"
             :class="componentErrors.name ? 'app-input-error' : ''"
             type="text"
             :aria-invalid="componentErrors.name ? 'true' : undefined"
@@ -451,9 +449,8 @@
             {{ t('application.detail.fields.image') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="componentForm.image"
-            class="app-input"
             :class="componentErrors.image ? 'app-input-error' : ''"
             type="text"
             :aria-invalid="componentErrors.image ? 'true' : undefined"
@@ -467,10 +464,10 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.pullPolicy') }}
           </label>
-          <RawValueSelect
+          <SelectControl
             v-model="componentForm.pull_policy"
             :placeholder="t('common.notSet')"
-            :values="componentPullPolicyValues"
+            :options="componentPullPolicyValues"
           />
         </div>
         <div>
@@ -478,10 +475,10 @@
             {{ t('application.componentDetail.fields.restartPolicy') }}
             <span class="text-destructive">*</span>
           </label>
-          <RawValueSelect
+          <SelectControl
             v-model="componentForm.restart_policy"
             :invalid="Boolean(componentErrors.restartPolicy)"
-            :values="componentRestartPolicyValues"
+            :options="componentRestartPolicyValues"
             @update:model-value="componentErrors.restartPolicy = ''"
           />
           <p v-if="componentErrors.restartPolicy" class="app-field-error" role="alert">
@@ -492,7 +489,7 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.command') }}
           </label>
-          <textarea v-model="componentForm.command" class="app-textarea" rows="3" />
+          <AppTextarea v-model="componentForm.command" rows="3" />
         </div>
       </div>
       <p v-if="componentEditError" class="app-field-error mt-3" role="alert">
@@ -547,10 +544,9 @@
             {{ t('application.detail.fields.versionLabel') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="versionForm.label"
             type="text"
-            class="app-input"
             :class="versionFormErrors.label ? 'app-input-error' : ''"
             :placeholder="t('application.detail.placeholders.versionLabel')"
             :aria-invalid="versionFormErrors.label ? 'true' : undefined"
@@ -564,10 +560,9 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.detail.fields.note') }}
           </label>
-          <input
+          <AppInput
             v-model="versionForm.note"
             type="text"
-            class="app-input"
             :placeholder="t('application.detail.placeholders.note')"
           />
         </div>
@@ -596,10 +591,9 @@
           {{ t('application.detail.fields.versionLabel') }}
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="forkLabel"
           type="text"
-          class="app-input"
           :class="forkLabelError ? 'app-input-error' : ''"
           :placeholder="t('application.detail.placeholders.versionLabel')"
           :aria-invalid="forkLabelError ? 'true' : undefined"
@@ -654,24 +648,26 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { ArrowLeft, ChevronDown, Plus, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { applicationApi } from '@/api/application/application';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppDrawer from '@/components/AppDrawer.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import MonacoEditor from '@/components/MonacoEditor.vue';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppDrawer from '@/components/ui/AppDrawer.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import MonacoEditor from '@/components/ui/MonacoEditor.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
@@ -679,7 +675,7 @@
   import { useProjectStore } from '@/stores/project';
   import { applicationKindTone, versionStatusTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
   import {
     componentBasicRequestFromForm,
     componentFormFromResponse,

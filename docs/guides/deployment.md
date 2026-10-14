@@ -62,6 +62,12 @@ Service deploy/restart 不读取自定义 Route 的业务配置、发布记录�
 
 TCP entrypoint/host port 是 Gateway Version Component endpoint。需要新的 TCP 端口时，在 Version 中声明、部署该 Version，再创建 TCP Route。
 
+## 镜像拉取策略
+
+服务列表、服务详情和网关的部署弹窗提供本次操作的镜像拉取策略：`missing`（默认）、`always` 或 `never`。HTTP `POST /api/service/:service_id/deploy` 和 MCP `orbit_deploy` 的可选 `pull_policy` 参数遵循同样的默认值。该选项应用于本次 Compose 命令的所有组件，优先于组件的 `pull_policy`；不会修改 Version 或 Service 的组件配置，也不影响 `restart` 重启策略。
+
+受理部署时将实际策略保存到 Deployment 的 `options_json.pull_policy`，命令摘要和 Worker 执行都使用此快照，部署详情显示保存值。重启操作沿用组件策略的既有汇总规则，并将结果保存到同一字段。历史记录不补写该值；升级前应完成或取消排队中的 deploy/restart，升级后重新提交。
+
 ## 确认部署目录
 
 普通服务部署弹窗同时选择版本并确认完整目录；默认根据当前 Environment 拼出 `<workspace_root>/deployment/<service-code>`。输入可覆盖为平台绝对路径或 `~` / `~/...`，也可位于工作区之外，不再追加服务编码。Gateway 使用 `kind=gateway`，只从网关入口部署；网关弹窗使用同样的路径控件，版本仍按保存的 ACME profile 选择。

@@ -86,6 +86,13 @@ func (s Service) deployService(ctx context.Context, userId string, projectId str
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
+	pullPolicy := "missing"
+	if input.PullPolicy != nil {
+		pullPolicy = *input.PullPolicy
+	}
+	if err := validateDeploymentPullPolicy(pullPolicy); err != nil {
+		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
+	}
 	target, err := s.resolveProjectTarget(ctx, projectId)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, err
@@ -166,6 +173,7 @@ func (s Service) deployService(ctx context.Context, userId string, projectId str
 	forceRecreate := input.ForceRecreate || isGatewayCarrier(plan)
 	opts := deploymentdto.DeployOptionsJSON{
 		ForceRecreate:      forceRecreate,
+		PullPolicy:         pullPolicy,
 		JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
 	}
 	applyDeploymentTargetSnapshot(&deployment, target, gateway)
@@ -177,7 +185,7 @@ func (s Service) deployService(ctx context.Context, userId string, projectId str
 	}
 	deployment.ServiceId = &service.Id
 	deployment.EffectivePlanHash = &planHash
-	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), forceRecreate).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), opts.PullPolicy, forceRecreate).String()
 	if err := s.createCurrentDeployment(ctx, projectId, deployment); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
@@ -284,6 +292,7 @@ func (s Service) restartApplication(ctx context.Context, userId string, projectI
 	deployment.VersionId = &version.Id
 	restartOptions := deploymentdto.DeployOptionsJSON{
 		ForceRecreate:      isGatewayCarrier(plan),
+		PullPolicy:         deploymentPullPolicy(plan),
 		JoinTraefikNetwork: deploymentJoinTraefikNetwork(plan), GatewayConfig: cloneGatewayConfig(gateway),
 	}
 	applyDeploymentTargetSnapshot(&deployment, target, gateway)
@@ -291,7 +300,7 @@ func (s Service) restartApplication(ctx context.Context, userId string, projectI
 		return "", err
 	}
 	deployment.EffectivePlanHash = &planHash
-	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), deploymentPullPolicy(plan), restartOptions.ForceRecreate).String()
+	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), restartOptions.PullPolicy, restartOptions.ForceRecreate).String()
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}

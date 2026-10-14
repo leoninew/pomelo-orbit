@@ -83,11 +83,10 @@
           名称
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="form.name"
           type="text"
           placeholder="输入凭据名称"
-          class="app-input"
           :class="errors.name ? 'app-input-error' : ''"
           :aria-invalid="errors.name ? 'true' : undefined"
           @input="errors.name = ''"
@@ -99,9 +98,9 @@
           凭据类型
           <span class="text-destructive">*</span>
         </label>
-        <RawValueSelect
+        <SelectControl
           v-model="form.type"
-          :values="credentialTypeValues"
+          :options="credentialTypeValues"
           :disabled="isEditing"
           placeholder="选择凭据类型"
         />
@@ -111,11 +110,10 @@
           凭据内容
           <span class="text-destructive">*</span>
         </label>
-        <textarea
+        <AppTextarea
           v-model="form.data"
           rows="8"
           :placeholder="getDataPlaceholder(form.type)"
-          class="app-textarea"
           :class="errors.data ? 'app-input-error' : ''"
           :aria-invalid="errors.data ? 'true' : undefined"
           @input="errors.data = ''"
@@ -165,11 +163,10 @@
           名称
           <span class="text-destructive">*</span>
         </label>
-        <input
+        <AppInput
           v-model="importForm.name"
           type="text"
           placeholder="输入凭据名称"
-          class="app-input"
           :class="importErrors.name ? 'app-input-error' : ''"
           :aria-invalid="importErrors.name ? 'true' : undefined"
           @input="importErrors.name = ''"
@@ -181,9 +178,9 @@
           凭据类型
           <span class="text-destructive">*</span>
         </label>
-        <RawValueSelect
+        <SelectControl
           v-model="importForm.type"
-          :values="credentialTypeValues"
+          :options="credentialTypeValues"
           placeholder="选择凭据类型"
         />
       </div>
@@ -192,10 +189,9 @@
           凭据内容
           <span class="text-destructive">*</span>
         </label>
-        <textarea
+        <AppTextarea
           v-model="importForm.data"
           rows="8"
-          class="app-textarea"
           :class="importErrors.data ? 'app-input-error' : ''"
           :aria-invalid="importErrors.data ? 'true' : undefined"
           @input="importErrors.data = ''"
@@ -219,19 +215,21 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { Plus, Upload } from '@lucide/vue';
   import { computed, nextTick, reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
-  import RawValueSelect from '@/components/RawValueSelect.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useProjectStore } from '@/stores/project';
@@ -301,7 +299,7 @@
         const res = await credentialApi.list(projectId, {
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: searchText.value || undefined,
+          search: searchText.value.trim() || undefined,
         });
         if (projectStore.activeProjectId !== projectId) {
           return;

@@ -118,9 +118,9 @@
 
         <form class="shrink-0 border-t border-border p-4 sm:p-5" @submit.prevent="send">
           <div class="flex items-center gap-3">
-            <textarea
+            <AppTextarea
               v-model="draft"
-              class="min-h-11 flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+              class="min-h-11 flex-1 resize-none disabled:opacity-60"
               :placeholder="t('deploymentDialogue.placeholder')"
               :aria-label="t('deploymentDialogue.placeholder')"
               :disabled="pending || historyLoading"
@@ -174,24 +174,25 @@
 </template>
 
 <script setup lang="ts">
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { storeToRefs } from 'pinia';
   import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { PanelLeft, PanelLeftClose, Send, Trash2 } from '@lucide/vue';
   import { ToolbarRoot } from 'reka-ui';
   import { dialogueApi } from '@/api/dialogue/dialogue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppDrawer from '@/components/AppDrawer.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import MarkdownContent from '@/components/MarkdownContent.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppDrawer from '@/components/ui/AppDrawer.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import MarkdownContent from '@/components/ui/MarkdownContent.vue';
   import { useToast } from '@/composables/useToast';
   import type {
     DeploymentDialogueConversation,
     DeploymentDialogueStreamEvent,
     DeploymentDialogueToolCall,
   } from '@/gen/proto/orbit/v1/dialogue/dialogue';
-  import DeploymentDialogueHistory from '@/views/deployment/DeploymentDialogueHistory.vue';
+  import DeploymentDialogueHistory from '@/views/deployment/components/DeploymentDialogueHistory.vue';
   import { newDeploymentDialogueConversationId } from '@/views/deployment/deploymentDialogueConversationId';
   import {
     type DeploymentDialogueConversationMessage,

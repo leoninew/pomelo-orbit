@@ -115,6 +115,10 @@
               {{ deployment.command_text || '未记录' }}
             </dd>
           </div>
+          <div v-if="deploymentPullPolicy" class="flex gap-2">
+            <dt>{{ t('deployment.fields.pullPolicy') }}</dt>
+            <dd>{{ deploymentPullPolicy }}</dd>
+          </div>
         </dl>
       </DetailInfoCard>
 
@@ -202,15 +206,15 @@
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { deploymentApi } from '@/api/deployment/deployment';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import LogView from '@/components/LogView.vue';
-  import LogActions from '@/components/LogActions.vue';
-  import LogDrawer from '@/components/LogDrawer.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import LogView from '@/components/log/LogView.vue';
+  import LogActions from '@/components/log/LogActions.vue';
+  import LogDrawer from '@/components/log/LogDrawer.vue';
   import { provideLogStreamCache, useLogStream } from '@/composables/useLogStream';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
@@ -230,6 +234,17 @@
   const { loading: isDeleting, execute: executeDelete } = useStatusAsync();
 
   const deployment = ref<DeploymentResp>();
+  const deploymentPullPolicy = computed(() => {
+    if (!deployment.value?.options_json) {
+      return undefined;
+    }
+    try {
+      const options = JSON.parse(deployment.value.options_json) as { pull_policy?: string } | null;
+      return typeof options?.pull_policy === 'string' ? options.pull_policy : undefined;
+    } catch {
+      return undefined;
+    }
+  });
   const isContainerLogDrawerOpen = ref(false);
   const operationLogView = ref<InstanceType<typeof LogView>>();
   const deploymentServiceLabel = computed(

@@ -26,24 +26,14 @@ Doc role: living guide。与代码冲突时以代码为准。
 }
 ```
 
-### Auto-Import Configuration
+### Component Imports
+
+Components use explicit imports. Pages use shared interaction components from `@/components/ui/`; resource queries, domain rules and feature state belong in `@/components/<domain-or-feature>/`. For example, `@/components/log/` depends on log streaming state, while its editor belongs in `ui/`. Business fragments used by a single page stay in `views/<domain>/components/`. Reka primitives are composed inside shared UI components.
 
 ```typescript
-// wxt.config.ts or vite.config.ts
-import Components from 'unplugin-vue-components/vite';
-import RekaResolver from 'reka-ui/resolver';
-
-export default defineConfig({
-  plugins: [
-    Components({
-      dts: true,
-      resolvers: [RekaResolver()],
-    }),
-  ],
-});
+import SelectControl from '@/components/ui/SelectControl.vue';
+import RepositorySelect from '@/components/repository/RepositorySelect.vue';
 ```
-
-**Result**: No manual imports needed, components auto-imported on usage.
 
 ---
 
@@ -68,22 +58,22 @@ Define semantic tokens for consistent theming:
   --color-bg: theme(colors.slate.200 / 70%);
   --color-surface: theme(colors.white);
   --color-surface-raised: theme(colors.white);
-  
+
   /* Borders */
   --color-border: theme(colors.slate.200);
   --color-border-subtle: theme(colors.slate.100);
-  
+
   /* Text */
   --color-text: theme(colors.slate.700);
   --color-text-muted: theme(colors.slate.400);
   --color-text-faint: theme(colors.slate.300);
-  
+
   /* Interactive States */
   --color-hover: theme(colors.slate.100);
   --color-active: theme(colors.blue.50);
   --color-active-hover: theme(colors.blue.100);
   --color-input-bg: theme(colors.slate.50);
-  
+
   /* Effects */
   --color-shadow: theme(colors.slate.900 / 8%);
 }
@@ -121,9 +111,9 @@ Reka UI uses data attributes for component states. Use Tailwind's arbitrary vari
 
 ```vue
 <ToolbarToggleItem
-  class="px-3 py-1.5 
+  class="px-3 py-1.5
          hover:bg-(--color-hover)
-         data-[state=on]:bg-blue-500 
+         data-[state=on]:bg-blue-500
          data-[state=on]:text-white"
 >
   Toggle
@@ -151,7 +141,7 @@ Reka UI uses data attributes for component states. Use Tailwind's arbitrary vari
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 bg-black/50 z-50" />
       <DialogContent
-        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+        class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
                bg-(--color-surface) rounded-lg p-6 shadow-xl z-51 min-w-[400px]"
       >
         <DialogTitle class="text-lg font-semibold mb-4 text-(--color-text)">
@@ -160,9 +150,9 @@ Reka UI uses data attributes for component states. Use Tailwind's arbitrary vari
         <DialogDescription class="sr-only">
           Description for accessibility
         </DialogDescription>
-        
+
         <!-- Content -->
-        
+
         <div class="flex justify-end gap-2 mt-4">
           <DialogClose as-child>
             <button class="px-4 py-2 rounded bg-(--color-hover)">
@@ -235,7 +225,7 @@ defineExpose({ open, close });
       <ComboboxContent
         position="popper"
         :side-offset="4"
-        class="z-50 w-[var(--reka-combobox-trigger-width)] max-h-64 
+        class="z-50 w-[var(--reka-combobox-trigger-width)] max-h-64
                overflow-y-auto rounded-lg border bg-(--color-surface) shadow-lg"
       >
         <ComboboxViewport class="p-1">
@@ -269,7 +259,7 @@ const { contains } = useFilter({ sensitivity: 'base' });
 
 const filteredItems = computed(() => {
   if (!searchTerm.value) return items.value;
-  return items.value.filter(item => 
+  return items.value.filter(item =>
     contains(item.label, searchTerm.value)
   );
 });
@@ -365,7 +355,7 @@ const handleKeydown = (e: KeyboardEvent) => {
       <ToolbarToggleItem
         value="grid"
         class="px-3 py-1.5 hover:bg-(--color-hover)
-               data-[state=on]:bg-(--color-surface-raised) 
+               data-[state=on]:bg-(--color-surface-raised)
                data-[state=on]:text-(--color-text)"
       >
         Grid
@@ -373,7 +363,7 @@ const handleKeydown = (e: KeyboardEvent) => {
       <ToolbarToggleItem
         value="list"
         class="px-3 py-1.5 hover:bg-(--color-hover)
-               data-[state=on]:bg-(--color-surface-raised) 
+               data-[state=on]:bg-(--color-surface-raised)
                data-[state=on]:text-(--color-text)"
       >
         List
@@ -436,12 +426,12 @@ const handleKeydown = (e: KeyboardEvent) => {
         <button v-if="hasChildren" @click.stop="handleToggle">
           <Icon :icon="isExpanded ? 'chevron-down' : 'chevron-right'" />
         </button>
-        
+
         <button v-if="selectable" @click.stop="handleSelect">
           <Icon v-if="isSelected" icon="check" />
           <Icon v-else-if="isIndeterminate" icon="minus" />
         </button>
-        
+
         <span>{{ tree.title }}</span>
       </div>
     </TreeItem>
@@ -578,7 +568,7 @@ For Combobox and Autocomplete, prevent component from handling text editing keys
 ```typescript
 const handleKeydown = (e: KeyboardEvent) => {
   const textEditKeys = ['Home', 'End', 'ArrowLeft', 'ArrowRight'];
-  
+
   // Stop propagation for text selection and cursor movement
   if (e.shiftKey || textEditKeys.includes(e.key)) {
     e.stopPropagation();

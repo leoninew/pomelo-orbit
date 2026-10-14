@@ -58,7 +58,7 @@
         </dl>
       </DetailInfoCard>
       <DetailInfoCard title="阶段快照">
-        <ViewModeTabs v-if="snapshot.stages_snapshot.length > 0" v-model="stagesView" />
+        <StageViewTabs v-if="snapshot.stages_snapshot.length > 0" v-model="stagesView" />
         <AppEmptyState v-if="snapshot.stages_snapshot.length === 0" size="compact" />
         <div v-else-if="stagesView === 'list'" class="overflow-x-auto">
           <table class="app-data-table min-w-[760px]">
@@ -106,20 +106,20 @@
   import { computed, onMounted, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { pipelineApi } from '@/api/pipeline/pipeline';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ViewModeTabs from '@/components/ViewModeTabs.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import StageViewTabs from '@/components/pipeline/StageViewTabs.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineSnapshotResp } from '@/gen/proto/orbit/v1/pipeline/snapshot';
   import { useProjectStore } from '@/stores/project';
   import { formatTime } from '@/utils/time';
-  import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
-  import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
+  import StageDAGView from '@/components/pipeline/StageDAGView.vue';
+  import VariableDeclarationsTable from '@/components/pipeline/VariableDeclarationsTable.vue';
 
   const route = useRoute();
   const router = useRouter();

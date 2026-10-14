@@ -12,12 +12,11 @@
         <form class="space-y-4" @submit.prevent="handleLogin">
           <div class="space-y-1.5">
             <label for="email" class="app-field-label block">{{ t('login.email') }}</label>
-            <input
+            <AppInput
               id="email"
               v-model="form.email"
               type="email"
               autocomplete="username"
-              class="app-input"
               :class="errors.email ? 'app-input-error' : ''"
               :placeholder="t('login.emailPlaceholder')"
               :disabled="sessionExpired"
@@ -38,12 +37,12 @@
           <div class="space-y-1.5">
             <label for="password" class="app-field-label block">{{ t('login.password') }}</label>
             <div class="relative">
-              <input
+              <AppInput
                 id="password"
                 v-model="form.password"
                 :type="showPassword ? 'text' : 'password'"
                 autocomplete="current-password"
-                class="app-input pr-10"
+                class="pr-10"
                 maxlength="36"
                 :class="errors.password ? 'app-input-error' : ''"
                 :placeholder="t('login.passwordPlaceholder')"
@@ -139,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { Eye, EyeOff } from '@lucide/vue';
   import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';

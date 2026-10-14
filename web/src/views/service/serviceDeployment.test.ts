@@ -23,7 +23,7 @@ vi.mock('@/api/project/environment', () => ({ projectEnvironmentApi: { get: vi.f
 vi.mock('@/router/projectReadiness', () => ({
   ensureProjectExecutionReady: vi.fn().mockResolvedValue(true),
 }));
-vi.mock('@/components/MonacoEditor.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('@/components/ui/MonacoEditor.vue', () => ({ default: { template: '<div />' } }));
 
 const service: ServiceResp = {
   id: 'service-1',
@@ -141,6 +141,101 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+describe('service list filters', () => {
+  it('filters status alongside search and resets pagination and project filters', async () => {
+    const root = await mountService('list', 'standard');
+    vi.mocked(serviceApi.list).mockResolvedValue({
+      items: [service],
+      total: 21,
+      page: 1,
+      per_page: 10,
+      pages: 3,
+    });
+    const trigger = root.querySelector<HTMLButtonElement>('#service-status-filter');
+    const search = root.querySelector<HTMLInputElement>(
+      `input[placeholder="${i18n.global.t('service.searchPlaceholder')}"]`
+    );
+    if (!trigger || !search) {
+      throw new Error('Service status filter or search is missing');
+    }
+    expect(trigger.textContent?.trim()).toBe(i18n.global.t('service.filterStatus'));
+    expect(trigger.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    search.value = '  api  ';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushRender();
+    actionButton(root, i18n.global.t('common.search')).click();
+    await flushRender();
+    root
+      .querySelector<HTMLButtonElement>(`button[aria-label="${i18n.global.t('common.nextPage')}"]`)
+      ?.click();
+    await flushRender();
+    expect(serviceApi.list).toHaveBeenLastCalledWith('project-1', {
+      page: 2,
+      per_page: 10,
+      search: 'api',
+      status: undefined,
+    });
+
+    const selectStatus = async (label: string) => {
+      trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await flushRender();
+      expect(
+        [...document.querySelectorAll('[role="option"]')].map((item) => item.textContent?.trim())
+      ).toEqual(['running', 'stopped', 'faulted']);
+      const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
+        (item) => item.textContent?.trim() === label
+      );
+      if (!option) {
+        throw new Error(`Service status option is missing: ${label}`);
+      }
+      option.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await flushRender();
+    };
+
+    await selectStatus('running');
+    expect(serviceApi.list).toHaveBeenLastCalledWith('project-1', {
+      page: 1,
+      per_page: 10,
+      search: 'api',
+      status: 'running',
+    });
+    root
+      .querySelector<HTMLButtonElement>(
+        `button[aria-label="${i18n.global.t('common.clearSelection')}"]`
+      )
+      ?.click();
+    await flushRender();
+    expect(trigger.textContent?.trim()).toBe(i18n.global.t('service.filterStatus'));
+    expect(serviceApi.list).toHaveBeenLastCalledWith('project-1', {
+      page: 1,
+      per_page: 10,
+      search: 'api',
+      status: undefined,
+    });
+    search.value = '   ';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await flushRender();
+    actionButton(root, i18n.global.t('common.search')).click();
+    await flushRender();
+    expect(serviceApi.list).toHaveBeenLastCalledWith('project-1', {
+      page: 1,
+      per_page: 10,
+      search: undefined,
+      status: undefined,
+    });
+    await selectStatus('faulted');
+    useProjectStore().setActiveProject('project-2');
+    await flushRender();
+    expect(serviceApi.list).toHaveBeenLastCalledWith('project-2', {
+      page: 1,
+      per_page: 10,
+      search: undefined,
+      status: undefined,
+    });
+    expect(trigger.textContent?.trim()).toBe(i18n.global.t('service.filterStatus'));
+  });
+});
+
 describe('service deployment entry', () => {
   it.each(['stopped', 'running', 'faulted'])(
     'allows lifecycle commands with an active operation and stored status %s',
@@ -239,6 +334,7 @@ describe('service deployment entry', () => {
         deployment_directory: '/new/api',
         environment_target_revision: 2,
         force_recreate: false,
+        pull_policy: 'missing',
         join_traefik_network: true,
       });
       expect(serviceApi.updateBasic).not.toHaveBeenCalled();
@@ -248,4 +344,51 @@ describe('service deployment entry', () => {
       expect(document.querySelector('[role="dialog"]')).not.toBeNull();
     }
   );
+
+  it.each([
+    ['list', 'always'],
+    ['detail', 'never'],
+  ] as const)('submits the selected pull policy from %s', async (view, policy) => {
+    const root = await mountService(view, 'standard');
+    deployButton(root).click();
+    await flushRender();
+    const dialog = document.querySelector('[role="dialog"]');
+    if (!dialog) {
+      throw new Error('Service deployment dialog is missing');
+    }
+    const label = [...dialog.querySelectorAll('label')].find(
+      (item) => item.textContent?.trim() === i18n.global.t('deployment.fields.pullPolicy')
+    );
+    const trigger = label ? document.getElementById(label.htmlFor) : null;
+    if (!trigger) {
+      throw new Error('Deployment pull policy field is missing');
+    }
+    expect(trigger.textContent?.trim()).toBe('missing');
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await flushRender();
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
+      (item) => item.textContent?.trim() === policy
+    );
+    if (!option) {
+      throw new Error(`Pull policy option is missing: ${policy}`);
+    }
+    option.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await flushRender();
+    expect(trigger.textContent?.trim()).toBe(policy);
+    deployButton(dialog).click();
+    await flushRender();
+    expect(serviceApi.deploy).toHaveBeenCalledWith(
+      'project-1',
+      'service-1',
+      expect.objectContaining({ pull_policy: policy })
+    );
+    deployButton(root).click();
+    await flushRender();
+    const reopenedLabel = [
+      ...document.querySelectorAll<HTMLLabelElement>('[role="dialog"] label'),
+    ].find((item) => item.textContent?.trim() === i18n.global.t('deployment.fields.pullPolicy'));
+    expect(
+      reopenedLabel && document.getElementById(reopenedLabel.htmlFor)?.textContent?.trim()
+    ).toBe('missing');
+  });
 });

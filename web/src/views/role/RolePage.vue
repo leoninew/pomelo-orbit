@@ -93,11 +93,10 @@
             {{ t('roleManagement.code') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="role-code"
             v-model="form.code"
             type="text"
-            class="app-input"
             :class="formErrors.code ? 'app-input-error' : ''"
             maxlength="50"
             pattern="[A-Za-z0-9_-]+"
@@ -114,11 +113,10 @@
             {{ t('common.name') }}
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="role-name"
             v-model="form.name"
             type="text"
-            class="app-input"
             :class="formErrors.name ? 'app-input-error' : ''"
             maxlength="100"
             required
@@ -133,10 +131,10 @@
           <label class="app-field-label block" for="role-description">
             {{ t('common.description') }}
           </label>
-          <textarea
+          <AppTextarea
             id="role-description"
             v-model="form.description"
-            class="app-input min-h-24"
+            class="min-h-24"
             maxlength="500"
           />
         </div>
@@ -171,19 +169,21 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { Plus } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { roleApi } from '@/api/role/role';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { useAuthStore } from '@/stores/auth';
@@ -246,7 +246,7 @@
         const res = await roleApi.list({
           page: pagination.current,
           per_page: pagination.pageSize,
-          search: searchText.value || undefined,
+          search: searchText.value.trim() || undefined,
         });
         roles.value = res.items;
         pagination.total = res.total;

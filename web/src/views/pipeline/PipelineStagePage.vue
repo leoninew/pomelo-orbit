@@ -79,9 +79,8 @@
             名称
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.name"
-            class="app-input"
             :class="errors.name && 'app-input-error'"
             :aria-invalid="errors.name ? 'true' : undefined"
             @input="errors.name = ''"
@@ -93,9 +92,8 @@
             执行镜像
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="form.image"
-            class="app-input"
             :class="errors.image && 'app-input-error'"
             :aria-invalid="errors.image ? 'true' : undefined"
             @input="errors.image = ''"
@@ -104,7 +102,7 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label">说明</label>
-          <textarea v-model="form.description" rows="3" class="app-textarea" />
+          <AppTextarea v-model="form.description" rows="3" />
         </div>
         <p v-if="formError" class="app-field-error">{{ formError }}</p>
       </form>
@@ -130,19 +128,21 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
+  import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { Plus } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { pipelineStageApi } from '@/api/pipeline/pipeline_stage';
-  import AppBadge from '@/components/AppBadge.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTableTime from '@/components/AppTableTime.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ListPagination from '@/components/ListPagination.vue';
-  import SearchControl from '@/components/SearchControl.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import ListPagination from '@/components/ui/ListPagination.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { PipelineStageResp } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';

@@ -1,6 +1,7 @@
 package deploymentsvc
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -24,6 +25,15 @@ func (c composeCommand) argv() []string {
 // globally unique service code, which is also the service workspace directory.
 func composeProjectName(serviceCode string) string {
 	return serviceCode
+}
+
+func validateDeploymentPullPolicy(policy string) error {
+	switch policy {
+	case "always", "missing", "never":
+		return nil
+	default:
+		return fmt.Errorf("deployment pull_policy must be always, missing or never")
+	}
 }
 
 func deployComposeCommand(projectName string, imagePullPolicy string, forceRecreate bool) composeCommand {

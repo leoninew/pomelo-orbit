@@ -20,8 +20,8 @@ vi.mock('@/api/application/application', () => ({
   },
 }));
 
-vi.mock('@/components/MonacoEditor.vue', () => ({ default: { render: () => null } }));
-vi.mock('@/components/AppDialog.vue', async () => {
+vi.mock('@/components/ui/MonacoEditor.vue', () => ({ default: { render: () => null } }));
+vi.mock('@/components/ui/AppDialog.vue', async () => {
   const { defineComponent, h } = await import('vue');
   return {
     default: defineComponent({

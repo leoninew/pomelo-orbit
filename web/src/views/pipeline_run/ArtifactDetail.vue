@@ -175,10 +175,10 @@
   import { computed, onMounted, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { artifactApi } from '@/api/pipeline_run/artifact';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ArtifactResp } from '@/gen/proto/orbit/v1/pipeline_run/artifact';

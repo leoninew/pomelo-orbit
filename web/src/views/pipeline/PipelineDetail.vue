@@ -126,7 +126,7 @@
             引入阶段
           </button>
         </template>
-        <ViewModeTabs v-if="pipeline.stage_nodes.length > 0" v-model="stagesView" />
+        <StageViewTabs v-if="pipeline.stage_nodes.length > 0" v-model="stagesView" />
         <AppEmptyState v-if="pipeline.stage_nodes.length === 0" size="compact" />
         <div v-else-if="stagesView === 'list'" class="overflow-x-auto">
           <table class="app-data-table min-w-[920px]">
@@ -223,9 +223,8 @@
             名称
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="infoForm.name"
-            class="app-input"
             :class="infoErrors.name ? 'app-input-error' : ''"
             :aria-invalid="infoErrors.name ? 'true' : undefined"
             @input="infoErrors.name = ''"
@@ -236,7 +235,7 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">说明</label>
-          <input v-model="infoForm.description" class="app-input" />
+          <AppInput v-model="infoForm.description" />
         </div>
         <div v-if="!isTemplate" class="space-y-1.5">
           <label class="app-field-label block">应用</label>
@@ -281,18 +280,18 @@
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label">排序</label>
-          <input v-model.number="stageForm.sort_order" type="number" min="0" class="app-input" />
+          <AppInput v-model.number="stageForm.sort_order" type="number" min="0" />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label">
             名称
             <span class="text-destructive">*</span>
           </label>
-          <input v-model="stageForm.name" class="app-input" />
+          <AppInput v-model="stageForm.name" />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label">说明</label>
-          <input v-model="stageForm.description" class="app-input" />
+          <AppInput v-model="stageForm.description" />
         </div>
         <fieldset class="space-y-2">
           <legend class="app-field-label">依赖阶段</legend>
@@ -368,10 +367,9 @@
             分支或标签
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             id="pipeline-run-repository-ref"
             v-model="runForm.repositoryRef"
-            class="app-input"
             :class="runFieldError ? 'app-input-error' : ''"
             :aria-describedby="runFieldError ? 'pipeline-run-repository-ref-error' : undefined"
             :aria-invalid="Boolean(runFieldError)"
@@ -409,9 +407,8 @@
             变量名
             <span class="text-destructive">*</span>
           </label>
-          <input
+          <AppInput
             v-model="variableForm.name"
-            class="app-input"
             :disabled="Boolean(editingVariableName || overridingVariableName)"
             :class="variableError ? 'app-input-error' : ''"
           />
@@ -423,14 +420,13 @@
         </label>
         <div class="space-y-1.5">
           <label class="app-field-label">说明</label>
-          <input v-model="variableForm.description" class="app-input" />
+          <AppInput v-model="variableForm.description" />
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label">当前值</label>
-          <input
+          <AppInput
             v-model="variableForm.value"
             :type="variableForm.secret ? 'password' : 'text'"
-            class="app-input"
           />
         </div>
       </form>
@@ -455,6 +451,7 @@
 </template>
 
 <script setup lang="ts">
+  import AppInput from '@/components/ui/AppInput.vue';
   import { ArrowLeft, CopyPlus, Play, Plus, RefreshCw, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
@@ -465,16 +462,16 @@
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import { repositoryApi } from '@/api/repository/repository';
   import { useProjectStore } from '@/stores/project';
-  import AppBadge from '@/components/AppBadge.vue';
-  import DetailInfoCard from '@/components/DetailInfoCard.vue';
-  import DetailPageHeader from '@/components/DetailPageHeader.vue';
-  import AppDialog from '@/components/AppDialog.vue';
-  import AppDialogActions from '@/components/AppDialogActions.vue';
-  import AppEmptyState from '@/components/AppEmptyState.vue';
-  import AppLoadingState from '@/components/AppLoadingState.vue';
-  import AppTruncatedText from '@/components/AppTruncatedText.vue';
-  import ViewModeTabs from '@/components/ViewModeTabs.vue';
-  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ComboboxSelect.vue';
+  import AppBadge from '@/components/ui/AppBadge.vue';
+  import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
+  import AppDialog from '@/components/ui/AppDialog.vue';
+  import AppDialogActions from '@/components/ui/AppDialogActions.vue';
+  import AppEmptyState from '@/components/ui/AppEmptyState.vue';
+  import AppLoadingState from '@/components/ui/AppLoadingState.vue';
+  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
+  import StageViewTabs from '@/components/pipeline/StageViewTabs.vue';
+  import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ui/ComboboxSelect.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import { formatTime } from '@/utils/time';
@@ -485,8 +482,8 @@
   } from '@/gen/proto/orbit/v1/pipeline/pipeline_stage';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { PipelineResp } from '@/gen/proto/orbit/v1/pipeline/pipeline';
-  import StageDAGView from '@/views/pipeline/components/StageDAGView.vue';
-  import VariableDeclarationsTable from '@/views/pipeline/components/VariableDeclarationsTable.vue';
+  import StageDAGView from '@/components/pipeline/StageDAGView.vue';
+  import VariableDeclarationsTable from '@/components/pipeline/VariableDeclarationsTable.vue';
   import {
     effectiveVariableValue,
     toVariableDeclarationRequest,

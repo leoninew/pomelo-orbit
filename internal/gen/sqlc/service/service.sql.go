@@ -1453,6 +1453,61 @@ func (q *Queries) UpdateServiceDeploymentResult(ctx context.Context, arg UpdateS
 	return result.RowsAffected()
 }
 
+const updateServiceObservedStatus = `-- name: UpdateServiceObservedStatus :execrows
+UPDATE service SET status = ?, updated_at = ?
+WHERE service.id = ? AND service.project_id = ?
+  AND service.code = ?
+  AND service.version_id = ?
+  AND service.deployment_directory = ?
+  AND service.directory_target_revision = ?
+  AND service.runtime_directory = ?
+  AND service.runtime_target_revision = ?
+  AND service.status = ?
+  AND COALESCE(service.current_deployment_id, '') = COALESCE(?, '')
+  AND EXISTS (SELECT 1 FROM environment e WHERE e.id = ? AND e.project_id = service.project_id AND e.target_revision = ?)
+  AND NOT EXISTS (SELECT 1 FROM deployment d WHERE d.id = service.current_deployment_id AND d.project_id = service.project_id AND d.service_id = service.id AND d.status IN ('waiting_to_run', 'running'))
+`
+
+type UpdateServiceObservedStatusParams struct {
+	Status                  string         `db:"status"`
+	UpdatedAt               time.Time      `db:"updated_at"`
+	Id                      string         `db:"id"`
+	ProjectId               string         `db:"project_id"`
+	Code                    string         `db:"code"`
+	VersionId               string         `db:"version_id"`
+	DeploymentDirectory     string         `db:"deployment_directory"`
+	DirectoryTargetRevision int64          `db:"directory_target_revision"`
+	RuntimeDirectory        string         `db:"runtime_directory"`
+	RuntimeTargetRevision   int64          `db:"runtime_target_revision"`
+	PreviousStatus          string         `db:"previous_status"`
+	CurrentDeploymentId     sql.NullString `db:"current_deployment_id"`
+	EnvironmentId           string         `db:"environment_id"`
+	TargetRevision          int64          `db:"target_revision"`
+}
+
+func (q *Queries) UpdateServiceObservedStatus(ctx context.Context, arg UpdateServiceObservedStatusParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateServiceObservedStatus,
+		arg.Status,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+		arg.Code,
+		arg.VersionId,
+		arg.DeploymentDirectory,
+		arg.DirectoryTargetRevision,
+		arg.RuntimeDirectory,
+		arg.RuntimeTargetRevision,
+		arg.PreviousStatus,
+		arg.CurrentDeploymentId,
+		arg.EnvironmentId,
+		arg.TargetRevision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateServiceStatus = `-- name: UpdateServiceStatus :exec
 UPDATE service
 SET status = ?, updated_at = ?

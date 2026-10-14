@@ -2006,6 +2006,238 @@ func (*ServiceRestartReq) Descriptor() ([]byte, []int) {
 	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{25}
 }
 
+type ServiceStatusCheckPreviewResp struct {
+	state         protoimpl.MessageState        `protogen:"open.v1"`
+	Token         string                        `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	ObservedAt    string                        `protobuf:"bytes,2,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	Items         []*ServiceStatusCheckItemResp `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceStatusCheckPreviewResp) Reset() {
+	*x = ServiceStatusCheckPreviewResp{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceStatusCheckPreviewResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceStatusCheckPreviewResp) ProtoMessage() {}
+
+func (x *ServiceStatusCheckPreviewResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceStatusCheckPreviewResp.ProtoReflect.Descriptor instead.
+func (*ServiceStatusCheckPreviewResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ServiceStatusCheckPreviewResp) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *ServiceStatusCheckPreviewResp) GetObservedAt() string {
+	if x != nil {
+		return x.ObservedAt
+	}
+	return ""
+}
+
+func (x *ServiceStatusCheckPreviewResp) GetItems() []*ServiceStatusCheckItemResp {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type ServiceStatusCheckItemResp struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ServiceId      string                 `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	ServiceCode    string                 `protobuf:"bytes,2,opt,name=service_code,json=serviceCode,proto3" json:"service_code,omitempty"`
+	RecordedStatus string                 `protobuf:"bytes,3,opt,name=recorded_status,json=recordedStatus,proto3" json:"recorded_status,omitempty"`
+	ObservedStatus string                 `protobuf:"bytes,4,opt,name=observed_status,json=observedStatus,proto3" json:"observed_status,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ServiceStatusCheckItemResp) Reset() {
+	*x = ServiceStatusCheckItemResp{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceStatusCheckItemResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceStatusCheckItemResp) ProtoMessage() {}
+
+func (x *ServiceStatusCheckItemResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceStatusCheckItemResp.ProtoReflect.Descriptor instead.
+func (*ServiceStatusCheckItemResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ServiceStatusCheckItemResp) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+func (x *ServiceStatusCheckItemResp) GetServiceCode() string {
+	if x != nil {
+		return x.ServiceCode
+	}
+	return ""
+}
+
+func (x *ServiceStatusCheckItemResp) GetRecordedStatus() string {
+	if x != nil {
+		return x.RecordedStatus
+	}
+	return ""
+}
+
+func (x *ServiceStatusCheckItemResp) GetObservedStatus() string {
+	if x != nil {
+		return x.ObservedStatus
+	}
+	return ""
+}
+
+type ServiceStatusCheckConfirmReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	ServiceId     string                 `protobuf:"bytes,2,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceStatusCheckConfirmReq) Reset() {
+	*x = ServiceStatusCheckConfirmReq{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceStatusCheckConfirmReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceStatusCheckConfirmReq) ProtoMessage() {}
+
+func (x *ServiceStatusCheckConfirmReq) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceStatusCheckConfirmReq.ProtoReflect.Descriptor instead.
+func (*ServiceStatusCheckConfirmReq) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *ServiceStatusCheckConfirmReq) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *ServiceStatusCheckConfirmReq) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+type ServiceStatusCheckConfirmResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ServiceId     string                 `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ServiceStatusCheckConfirmResp) Reset() {
+	*x = ServiceStatusCheckConfirmResp{}
+	mi := &file_orbit_v1_service_service_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceStatusCheckConfirmResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceStatusCheckConfirmResp) ProtoMessage() {}
+
+func (x *ServiceStatusCheckConfirmResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_service_service_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceStatusCheckConfirmResp.ProtoReflect.Descriptor instead.
+func (*ServiceStatusCheckConfirmResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_service_service_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ServiceStatusCheckConfirmResp) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+func (x *ServiceStatusCheckConfirmResp) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 var File_orbit_v1_service_service_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_service_service_proto_rawDesc = "" +
@@ -2245,7 +2477,26 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\bwarnings\x18\x02 \x03(\tR\bwarnings\"7\n" +
 	"\x0eServiceStopReq\x12%\n" +
 	"\x0eremove_volumes\x18\x01 \x01(\bR\rremoveVolumes\"\x13\n" +
-	"\x11ServiceRestartReqB\xcc\x01\n" +
+	"\x11ServiceRestartReq\"\x9a\x01\n" +
+	"\x1dServiceStatusCheckPreviewResp\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1f\n" +
+	"\vobserved_at\x18\x02 \x01(\tR\n" +
+	"observedAt\x12B\n" +
+	"\x05items\x18\x03 \x03(\v2,.orbit.v1.service.ServiceStatusCheckItemRespR\x05items\"\xb0\x01\n" +
+	"\x1aServiceStatusCheckItemResp\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x01 \x01(\tR\tserviceId\x12!\n" +
+	"\fservice_code\x18\x02 \x01(\tR\vserviceCode\x12'\n" +
+	"\x0frecorded_status\x18\x03 \x01(\tR\x0erecordedStatus\x12'\n" +
+	"\x0fobserved_status\x18\x04 \x01(\tR\x0eobservedStatus\"S\n" +
+	"\x1cServiceStatusCheckConfirmReq\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x02 \x01(\tR\tserviceId\"V\n" +
+	"\x1dServiceStatusCheckConfirmResp\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x01 \x01(\tR\tserviceId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06statusB\xcc\x01\n" +
 	"\x14com.orbit.v1.serviceB\fServiceProtoP\x01ZDgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service\xa2\x02\x03OVS\xaa\x02\x10Orbit.V1.Service\xca\x02\x10Orbit\\V1\\Service\xe2\x02\x1cOrbit\\V1\\Service\\GPBMetadata\xea\x02\x12Orbit::V1::Serviceb\x06proto3"
 
 var (
@@ -2260,7 +2511,7 @@ func file_orbit_v1_service_service_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_service_service_proto_rawDescData
 }
 
-var file_orbit_v1_service_service_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_orbit_v1_service_service_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_orbit_v1_service_service_proto_goTypes = []any{
 	(*ServiceResp)(nil),                       // 0: orbit.v1.service.ServiceResp
 	(*ServiceListResp)(nil),                   // 1: orbit.v1.service.ServiceListResp
@@ -2288,6 +2539,10 @@ var file_orbit_v1_service_service_proto_goTypes = []any{
 	(*ServiceDeployResp)(nil),                 // 23: orbit.v1.service.ServiceDeployResp
 	(*ServiceStopReq)(nil),                    // 24: orbit.v1.service.ServiceStopReq
 	(*ServiceRestartReq)(nil),                 // 25: orbit.v1.service.ServiceRestartReq
+	(*ServiceStatusCheckPreviewResp)(nil),     // 26: orbit.v1.service.ServiceStatusCheckPreviewResp
+	(*ServiceStatusCheckItemResp)(nil),        // 27: orbit.v1.service.ServiceStatusCheckItemResp
+	(*ServiceStatusCheckConfirmReq)(nil),      // 28: orbit.v1.service.ServiceStatusCheckConfirmReq
+	(*ServiceStatusCheckConfirmResp)(nil),     // 29: orbit.v1.service.ServiceStatusCheckConfirmResp
 }
 var file_orbit_v1_service_service_proto_depIdxs = []int32{
 	7,  // 0: orbit.v1.service.ServiceResp.components:type_name -> orbit.v1.service.ServiceComponentResp
@@ -2312,11 +2567,12 @@ var file_orbit_v1_service_service_proto_depIdxs = []int32{
 	18, // 19: orbit.v1.service.ServiceComponentOverlayUpdateReq.resources:type_name -> orbit.v1.service.ServiceComponentResourceOverlay
 	19, // 20: orbit.v1.service.ServiceComponentOverlayUpdateReq.endpoints:type_name -> orbit.v1.service.ServiceComponentEndpointOverlay
 	15, // 21: orbit.v1.service.ServiceComponentOverlayUpdateReq.group_add:type_name -> orbit.v1.service.ServiceComponentGroupAdd
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	27, // 22: orbit.v1.service.ServiceStatusCheckPreviewResp.items:type_name -> orbit.v1.service.ServiceStatusCheckItemResp
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_service_service_proto_init() }
@@ -2341,7 +2597,7 @@ func file_orbit_v1_service_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_service_service_proto_rawDesc), len(file_orbit_v1_service_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   26,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

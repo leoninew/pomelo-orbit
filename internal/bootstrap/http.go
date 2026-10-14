@@ -239,6 +239,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			"/api/auth/login",
 			"/api/auth/logout",
 			"/api/service/:service_id/preview",
+			"/api/service/status-check/preview",
 			"/api/version/:version_id/preview",
 			"/api/pipeline-run/:run_id",
 		),

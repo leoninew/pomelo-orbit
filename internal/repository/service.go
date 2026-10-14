@@ -35,5 +35,6 @@ type ServiceStore interface {
 	UpdateServiceComponentOverlay(ctx context.Context, projectId string, component model.ServiceComponent) error
 	DeleteService(ctx context.Context, projectId string, id string) error
 	UpdateServiceStatus(ctx context.Context, projectId string, id string, status string) error
+	UpdateServiceObservedStatus(ctx context.Context, baseline model.Service, environmentId string, targetRevision int64, status string) (bool, error)
 	UpdateServiceAfterDeploy(ctx context.Context, projectId string, id string, status string, versionId string) error
 }

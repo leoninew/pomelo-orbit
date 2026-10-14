@@ -353,6 +353,20 @@ WHERE service.id = sqlc.arg(id) AND service.project_id = sqlc.arg(project_id)
 -- name: DirectoryServices :many
 SELECT service.* FROM service WHERE project_id = sqlc.arg(project_id);
 
+-- name: UpdateServiceObservedStatus :execrows
+UPDATE service SET status = sqlc.arg(status), updated_at = sqlc.arg(updated_at)
+WHERE service.id = sqlc.arg(id) AND service.project_id = sqlc.arg(project_id)
+  AND service.code = sqlc.arg(code)
+  AND service.version_id = sqlc.arg(version_id)
+  AND service.deployment_directory = sqlc.arg(deployment_directory)
+  AND service.directory_target_revision = sqlc.arg(directory_target_revision)
+  AND service.runtime_directory = sqlc.arg(runtime_directory)
+  AND service.runtime_target_revision = sqlc.arg(runtime_target_revision)
+  AND service.status = sqlc.arg(previous_status)
+  AND COALESCE(service.current_deployment_id, '') = COALESCE(sqlc.narg(current_deployment_id), '')
+  AND EXISTS (SELECT 1 FROM environment e WHERE e.id = sqlc.arg(environment_id) AND e.project_id = service.project_id AND e.target_revision = sqlc.arg(target_revision))
+  AND NOT EXISTS (SELECT 1 FROM deployment d WHERE d.id = service.current_deployment_id AND d.project_id = service.project_id AND d.service_id = service.id AND d.status IN ('waiting_to_run', 'running'));
+
 -- name: SetServiceCurrentDeployment :execrows
 UPDATE service SET current_deployment_id = CAST(sqlc.arg(deployment_id) AS CHAR(26)), updated_at = sqlc.arg(updated_at)
 WHERE service.id = sqlc.arg(id) AND service.project_id = sqlc.arg(project_id)

@@ -46,6 +46,7 @@ func NewCommandService(
 		dispatcher: dispatcher, commandStore: store, logger: logger,
 		targetResolver: targetResolver, runtime: runtime, logStore: logStore,
 		gatewayCoordinator: gatewayCoordinator, versionSelector: versionSelector, transactionRunner: transactionRunner,
+		statusChecks: newServiceStatusChecks(),
 	}
 }
 

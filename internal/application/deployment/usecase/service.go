@@ -41,6 +41,7 @@ type Service struct {
 	commandStore       deploymentport.CommandStore
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator
 	gatewayReadiness   deploymentport.GatewayReadinessChecker
+	statusChecks       *serviceStatusChecks
 }
 
 func New(
@@ -62,6 +63,7 @@ func New(
 		service: service, deployment: deployment,
 		logStore: logStore, targetResolver: targetResolver, runtime: runtime, store: store, executionStore: store,
 		gatewayCoordinator: gatewayCoordinator,
+		statusChecks:       newServiceStatusChecks(),
 	}
 }
 

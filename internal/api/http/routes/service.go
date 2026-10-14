@@ -13,6 +13,8 @@ func (r Router) registerService(engine *gin.Engine) {
 
 	engine.GET("/api/service", handler.ListServices)
 	engine.POST("/api/service", handler.CreateService)
+	engine.POST("/api/service/status-check/preview", deploymentHandler.PreviewServiceStatusCheck)
+	engine.POST("/api/service/status-check/confirm", deploymentHandler.ConfirmServiceStatusCheck)
 	engine.GET("/api/service/:service_id", handler.GetService)
 	engine.DELETE("/api/service/:service_id", handler.DeleteService)
 	engine.PUT("/api/service/:service_id/basic", handler.UpdateServiceBasic)

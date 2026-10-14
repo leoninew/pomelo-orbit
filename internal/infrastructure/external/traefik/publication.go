@@ -171,13 +171,25 @@ func readPublicationRecord(ctx context.Context, projectId string, gateway model.
 	}
 	var record routeport.Publication
 	if err := json.Unmarshal(data, &record); err != nil {
-		return nil, fmt.Errorf("decode Route %s publication record: %w", route.Name, err)
+		return nil, apperror.WrapWithCode(apperror.KindConflict, "route_sync_publication_record_invalid", "Route publication record is invalid.", fmt.Errorf("decode Route %s publication record: %w", route.Id, err))
+	}
+	// An ID without a business Route also comes from Project-wide discovery.
+	// A valid record owned by another Project is outside that scope; do not
+	// inspect its runtime files or include it as a deleted Route to withdraw.
+	if route.Name == "" && record.Route.Id == route.Id && record.Route.ProjectId != nil && *record.Route.ProjectId != projectId && validPublicationId(record.Route.Name) {
+		operation.Logger(ctx).InfoContext(ctx, "Route publication outside Project scope", "route_code", record.Route.Name, "publication_project_id", *record.Route.ProjectId)
+		return nil, nil
 	}
 	if record.Route.Id != route.Id || record.Route.ProjectId == nil || *record.Route.ProjectId != projectId || record.GatewayApplicationId != gateway.ApplicationId || !validPublicationId(record.Route.Name) {
-		return nil, errors.New("route publication ownership does not match the Gateway")
+		recordProjectId := ""
+		if record.Route.ProjectId != nil {
+			recordProjectId = *record.Route.ProjectId
+		}
+		cause := fmt.Errorf("publication ownership: Route=%q Project=%q Gateway=%q; expected Route=%q Project=%q Gateway=%q", record.Route.Id, recordProjectId, record.GatewayApplicationId, route.Id, projectId, gateway.ApplicationId)
+		return nil, apperror.WrapWithCode(apperror.KindConflict, "route_sync_publication_ownership_conflict", "Route publication record does not belong to the current Project or Gateway.", cause)
 	}
 	if record.Previous != nil && record.Previous.Route.Id != route.Id {
-		return nil, errors.New("previous Route publication ownership does not match")
+		return nil, apperror.WrapWithCode(apperror.KindConflict, "route_sync_publication_ownership_conflict", "Previous Route publication ownership does not match.", fmt.Errorf("previous publication Route=%q; expected Route=%q", record.Previous.Route.Id, route.Id))
 	}
 	return &record, nil
 }

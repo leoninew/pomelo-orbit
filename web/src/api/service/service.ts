@@ -11,10 +11,30 @@ import type {
   ServicePreviewResp,
   ServiceResp,
   ServiceCreateReq,
+  ServiceStatusCheckPreviewResp,
+  ServiceStatusCheckConfirmReq,
+  ServiceStatusCheckConfirmResp,
 } from '@/gen/proto/orbit/v1/service/service';
 import request from '@/utils/request';
 
 export const serviceApi = {
+  previewStatusCheck(projectId: string): Promise<ServiceStatusCheckPreviewResp> {
+    return request.post(
+      '/api/service/status-check/preview',
+      {},
+      { params: { project_id: projectId } }
+    );
+  },
+
+  confirmStatusCheck(
+    projectId: string,
+    payload: ServiceStatusCheckConfirmReq
+  ): Promise<ServiceStatusCheckConfirmResp> {
+    return request.post('/api/service/status-check/confirm', payload, {
+      params: { project_id: projectId },
+    });
+  },
+
   list(
     projectId: string,
     params?: {

@@ -230,3 +230,26 @@ export interface ServiceStopReq {
 
 export interface ServiceRestartReq {
 }
+
+export interface ServiceStatusCheckPreviewResp {
+  token: string;
+  observed_at: string;
+  items: ServiceStatusCheckItemResp[];
+}
+
+export interface ServiceStatusCheckItemResp {
+  service_id: string;
+  service_code: string;
+  recorded_status: string;
+  observed_status: string;
+}
+
+export interface ServiceStatusCheckConfirmReq {
+  token: string;
+  service_id: string;
+}
+
+export interface ServiceStatusCheckConfirmResp {
+  service_id: string;
+  status: string;
+}

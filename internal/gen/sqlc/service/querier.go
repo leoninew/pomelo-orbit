@@ -49,6 +49,7 @@ type Querier interface {
 	UpdateServiceConfiguration(ctx context.Context, arg UpdateServiceConfigurationParams) error
 	UpdateServiceDeploymentDirectory(ctx context.Context, arg UpdateServiceDeploymentDirectoryParams) error
 	UpdateServiceDeploymentResult(ctx context.Context, arg UpdateServiceDeploymentResultParams) (int64, error)
+	UpdateServiceObservedStatus(ctx context.Context, arg UpdateServiceObservedStatusParams) (int64, error)
 	UpdateServiceStatus(ctx context.Context, arg UpdateServiceStatusParams) error
 }
 

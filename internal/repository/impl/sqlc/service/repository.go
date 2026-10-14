@@ -469,3 +469,14 @@ func (r Repository) DirectoryServices(ctx context.Context, projectId string) ([]
 	}
 	return result, nil
 }
+
+func (r Repository) UpdateServiceObservedStatus(ctx context.Context, baseline model.Service, environmentId string, targetRevision int64, state string) (bool, error) {
+	rows, err := r.q(ctx).UpdateServiceObservedStatus(ctx, servicesqlc.UpdateServiceObservedStatusParams{
+		Id: baseline.Id, ProjectId: baseline.ProjectId, Code: baseline.Code, VersionId: baseline.VersionId,
+		DeploymentDirectory: baseline.DeploymentDirectory, DirectoryTargetRevision: baseline.DirectoryTargetRevision,
+		RuntimeDirectory: baseline.RuntimeDirectory, RuntimeTargetRevision: baseline.RuntimeTargetRevision,
+		PreviousStatus: baseline.Status, CurrentDeploymentId: dbmodel.NullString(baseline.CurrentDeploymentId),
+		EnvironmentId: environmentId, TargetRevision: targetRevision, Status: state, UpdatedAt: time.Now().UTC(),
+	})
+	return rows == 1, err
+}

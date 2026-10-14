@@ -47,6 +47,15 @@
             <List class="size-4" />
           </ToggleGroupItem>
         </ToggleGroupRoot>
+        <button
+          type="button"
+          class="app-button h-10 px-3"
+          :disabled="!projectStore.activeProjectId"
+          @click="isStatusCheckDialogOpen = true"
+        >
+          <RefreshCw class="size-4" />
+          {{ t('service.statusCheck.title') }}
+        </button>
         <button class="app-button-primary h-10 px-3" @click="openCreateDialog">
           <Plus class="size-4" />
           {{ t('service.actions.create') }}
@@ -227,6 +236,12 @@
       />
     </div>
 
+    <ServiceStatusCheckDialog
+      v-model:open="isStatusCheckDialogOpen"
+      :project-id="projectStore.activeProjectId || ''"
+      @finished="handleStatusCheckFinished"
+    />
+
     <AppDialog v-model:open="isDeployDialogOpen" :title="t('service.deploy.dialogTitle')">
       <div class="space-y-4">
         <div class="space-y-1.5">
@@ -390,7 +405,8 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { LayoutGrid, List, Plus } from '@lucide/vue';
+  import { LayoutGrid, List, Plus, RefreshCw } from '@lucide/vue';
+  import ServiceStatusCheckDialog from './components/ServiceStatusCheckDialog.vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
@@ -449,6 +465,7 @@
   const versions = ref<VersionResp[]>([]);
   const deployVersions = ref<VersionResp[]>([]);
   const isDeployDialogOpen = ref(false);
+  const isStatusCheckDialogOpen = ref(false);
   const deploymentDirectory = useDeploymentDirectory(() => projectStore.activeProjectId);
   const directoryState = deploymentDirectory.state;
   const deployForm = reactive({
@@ -493,6 +510,12 @@
       description: version.status,
     }))
   );
+
+  function handleStatusCheckFinished(projectId: string) {
+    if (projectStore.activeProjectId === projectId) {
+      void fetchServices();
+    }
+  }
 
   async function fetchServices() {
     const projectId = projectStore.activeProjectId;
@@ -796,6 +819,7 @@
   watch(
     () => projectStore.activeProjectId,
     () => {
+      isStatusCheckDialogOpen.value = false;
       query.status = '';
       query.search = '';
       pagination.current = 1;

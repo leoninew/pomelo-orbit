@@ -763,6 +763,28 @@ export default {
   service: {
     toolbar: 'Services toolbar',
     filterStatus: 'Filter service status',
+    statusCheck: {
+      title: 'Check status',
+      querying: 'Reading environment container states…',
+      empty: 'No managed services in this environment',
+      recordedStatus: 'Recorded status',
+      observedStatus: 'Container status',
+      result: 'Result',
+      apply: 'Update statuses',
+      recheck: 'Check again',
+      expired: 'The check has expired. Check again.',
+      changed:
+        'The service or environment changed, or a deployment is active. Check again after it finishes.',
+      unavailable: 'Unable to read container states',
+      failed: 'Status check failed',
+      results: {
+        pending: 'Pending',
+        processing: 'Updating',
+        completed: 'Updated',
+        failed: 'Failed',
+        unchanged: 'Matched',
+      },
+    },
     searchPlaceholder: 'Search app / service code',
     searchComponentsPlaceholder: 'Search component name/image/container',
     viewMode: 'Service view',
@@ -1124,6 +1146,10 @@ export default {
         'The Gateway container is not running. Start or deploy the Gateway before syncing Routes.',
       route_sync_publish_permission_denied: 'Target workspace permission denied',
       route_sync_preview_expired: 'Configuration changed; preview again',
+      route_sync_publication_ownership_conflict:
+        'The publication record belongs to a different Project or Gateway. Check the Gateway runtime directory.',
+      route_sync_publication_record_invalid:
+        'The Route publication record is invalid. Check the publication record.',
       route_sync_file_changed: 'Managed configuration file changed or is missing',
       route_sync_certificate_conflict: 'Certificate conflicts with another published route',
       route_sync_certificate_changed: 'Certificate files were modified',

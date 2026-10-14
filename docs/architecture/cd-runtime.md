@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-10 22:42:05
+最后修改时间: 2026-10-14 11:12:46
 
 Doc role: living architecture
 
@@ -50,6 +50,8 @@ Worker 只启动当前 waiting 任务。执行 Context 在每秒以内轮询任�
 
 Service 目录绑定、状态/版本回写以及 Deployment 启动/完成均使用当前指针和任务状态的 SQL 条件。Service 执行结果与 Deployment 完成在同一短事务提交，零行时回滚并退出；手动取消后的运行观测使用单独条件写入，被接替任务不观测回写。历史删除不清空指针，不恢复旧资格；`active_deployment` 只投影当前非终态任务。
 
+服务列表状态检查在 deployment usecase 复用目标 resolver 与 Runtime，在 HTTP 写事务外以 15 秒预算执行一次环境根目录的 `docker ps --all --format '{{json .}}'`，读取 Compose project/oneoff 标签与容器状态，不要求 Service 运行目录或 Compose 文件。使用标准 JSON 格式避免 Windows PowerShell 5 原生命令参数传递丢失模板内层引号；命令失败将 Runtime 返回的诊断输出（最多 8 KiB）连同原始错误保留在 HTTP 错误日志中。`/api/service/status-check/preview` 返回全量受管 Service 的记录/观测状态。服务端为操作者与 Project 保存最新观测快照，随机 token 关联目标 ID/修订及 Service 数据库基线，15 分钟过期，重启后需要重新检查；快照不包含 SSH 凭据。`/api/service/status-check/confirm` 每次确认一个 service_id，只从服务端快照取观测状态，不再调用 Docker。短请求事务内的条件 SQL 匹配 Service code、版本、目录及其修订、原状态、当前任务指针和目标 ID/修订，并拒绝当前 waiting_to_run/running 任务，零行返回冲突。Web 弹窗顺序更新变化项并逐行反馈，失败继续，关闭或 Project 切换后停止后续请求，整轮结束刷新对应列表；没有后台续跑。
+
 local/SSH 仅在既有文件准备范围使用短锁，锁等待和文件准备响应 Context，最终文件发布前再次检查取消；Compose 和镜像拉取不持有该锁。已经进入系统调用的写入或 Docker daemon 动作仍可能继续，外层不能强杀任意 Go goroutine，也不承诺物理操作绝对有序。机制只按 Service 协调，不扩展到 Environment、跨 Project 宿主、CI 或存活恢复。
 
 ## GatewayConfig 与部署
@@ -84,6 +86,8 @@ Web 按冻结顺序在前端循环，每次只确认一个 ID，提交其原预�
 加载匹配只查候选及撤下资源涉及的协议，HTTP/TCP 各为 router、service 两个 API；协议切换核对新协议与旧协议资源缺席。文件/证书和当前 target revision 一致的 confirmed 项只核验加载结果，已匹配则报告 `file_commit=unchanged`，不重复写入/重载/收尾；加载不符才重载并匹配。pending 恢复所得基线等于期望时复用其运行核验。合法复用的旧编码不再作为 absent 资源检查。Web saved 更新本地草稿与启停，synced 清理成功状态，finished 在整轮结束时统一刷新一次；详情仅重读 Route。
 
 Publication.TargetRevision 是该工作区记录写入时的目标来源，允许读取历史 revision。Environment 切换与 Probe 不迁移或改写发布记录/路由文件；用户在新目标显式预览并确认后重新发布，写入当前 revision。历史 revision 不使用无变化捷径。本次请求内目标变化、预览/确认间依赖变化仍使预览过期，Project/Gateway 归属及文件、证书检查保持有效。
+
+Project 全量预览发现没有当前业务 Route 的发布 ID 时，先读取记录归属；有效但属于其他 Project 的记录不在同步范围内，日志注明范围排除，不检查其 YAML/PEM，也不将其作为已删除 Route 撤销。当前业务 Route 的归属冲突仍拒绝；归属冲突和损坏记录分别以 HTTP 409、`route_sync_publication_ownership_conflict` / `route_sync_publication_record_invalid` 返回具体摘要，Web 显示对应原因。记录 ID、实际与预期 Project/Gateway 等诊断保留在错误日志。
 
 预览规则直接返回 `protocol`、`match`、`target`；HTTP/HTTPS 由入口配置决定，与上游 URL 的协议分开。同步清单的协议列展示入口协议及证书方式，规则列展示匹配条件和目标，预览、处理中及完成后沿用同一表格。
 

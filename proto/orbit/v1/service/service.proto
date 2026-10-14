@@ -217,3 +217,26 @@ message ServiceStopReq {
 }
 
 message ServiceRestartReq {}
+
+message ServiceStatusCheckPreviewResp {
+  string token = 1;
+  string observed_at = 2;
+  repeated ServiceStatusCheckItemResp items = 3;
+}
+
+message ServiceStatusCheckItemResp {
+  string service_id = 1;
+  string service_code = 2;
+  string recorded_status = 3;
+  string observed_status = 4;
+}
+
+message ServiceStatusCheckConfirmReq {
+  string token = 1;
+  string service_id = 2;
+}
+
+message ServiceStatusCheckConfirmResp {
+  string service_id = 1;
+  string status = 2;
+}

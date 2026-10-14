@@ -1,5 +1,4 @@
-// @vitest-environment happy-dom
-import { effectScope, nextTick, ref } from 'vue';
+import { effectScope } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import { projectEnvironmentApi } from '@/api/project/environment';
 import {
@@ -47,9 +46,8 @@ describe('deployment directory', () => {
   });
   it('submits an edited directory without blocking for an existing deployment', async () => {
     vi.mocked(projectEnvironmentApi.get).mockResolvedValue(environment);
-    const project = ref<string | null>('project-1');
     const scope = effectScope();
-    const form = scope.run(() => useDeploymentDirectory(() => project.value));
+    const form = scope.run(() => useDeploymentDirectory(() => 'project-1'));
     if (!form) {
       throw new Error('Deployment directory scope is inactive');
     }
@@ -61,34 +59,6 @@ describe('deployment directory', () => {
         deployment_directory: 'D:/new/api',
         environment_target_revision: 2,
       });
-      project.value = 'project-2';
-      await nextTick();
-      expect(form.state.ready).toBe(false);
-      expect(form.validate('invalid')).toBe(false);
-    } finally {
-      scope.stop();
-    }
-  });
-  it('discards an environment response after the current project changes', async () => {
-    let resolve!: (value: EnvironmentResp) => void;
-    vi.mocked(projectEnvironmentApi.get).mockReturnValue(
-      new Promise((done) => {
-        resolve = done;
-      })
-    );
-    const project = ref<string | null>('project-1');
-    const scope = effectScope();
-    const form = scope.run(() => useDeploymentDirectory(() => project.value));
-    if (!form) {
-      throw new Error('Deployment directory scope is inactive');
-    }
-    try {
-      const load = form.load('project-1', snapshot, 'api');
-      project.value = 'project-2';
-      await nextTick();
-      resolve(environment);
-      expect(await load).toBe(false);
-      expect(form.state.ready).toBe(false);
     } finally {
       scope.stop();
     }

@@ -1,31 +1,18 @@
-import type { InternalAxiosRequestConfig } from 'axios';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/stores/auth', () => ({
-  useAuthStore: () => ({ token: null }),
-}));
-
-vi.mock('@/utils/handle-unauthorized', () => ({
-  handleUnauthorized: vi.fn(),
+vi.mock('@/utils/request', () => ({
+  default: { get: vi.fn().mockResolvedValue({}), post: vi.fn().mockResolvedValue({}) },
 }));
 
 import { routeApi } from '@/api/route/route';
-import request, { DEFAULT_REQUEST_TIMEOUT } from '@/utils/request';
-
-const originalAdapter = request.defaults.adapter;
+import request from '@/utils/request';
 
 afterEach(() => {
-  request.defaults.adapter = originalAdapter;
+  vi.clearAllMocks();
 });
 
 describe('Route synchronization request deadlines', () => {
   it('uses server phase deadlines for sync while preserving ordinary request limits', async () => {
-    const requests: InternalAxiosRequestConfig[] = [];
-    request.defaults.adapter = async (config) => {
-      requests.push(config);
-      return { data: {}, status: 200, statusText: 'OK', headers: {}, config };
-    };
-
     await routeApi.previewSync('project-1', {
       scope: 'selected',
       route_ids: ['route-1'],
@@ -39,10 +26,25 @@ describe('Route synchronization request deadlines', () => {
     });
     await routeApi.get('project-1', 'route-1');
 
-    expect(requests.map(({ url, timeout }) => ({ url, timeout }))).toEqual([
-      { url: '/api/route/sync/preview', timeout: 0 },
-      { url: '/api/route/sync/confirm', timeout: 0 },
-      { url: '/api/route/route-1', timeout: DEFAULT_REQUEST_TIMEOUT },
-    ]);
+    expect(request.post).toHaveBeenNthCalledWith(
+      1,
+      '/api/route/sync/preview',
+      { scope: 'selected', route_ids: ['route-1'], changes: [] },
+      { params: { project_id: 'project-1' }, timeout: 0 }
+    );
+    expect(request.post).toHaveBeenNthCalledWith(
+      2,
+      '/api/route/sync/confirm',
+      {
+        route_ids: ['route-1'],
+        changes: [],
+        business_hash: 'business',
+        publication_hash: 'publication',
+      },
+      { params: { project_id: 'project-1' }, timeout: 0 }
+    );
+    expect(request.get).toHaveBeenCalledWith('/api/route/route-1', {
+      params: { project_id: 'project-1' },
+    });
   });
 });

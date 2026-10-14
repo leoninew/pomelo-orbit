@@ -1,4 +1,4 @@
-import { createMemoryHistory, createRouter } from 'vue-router';
+import type { Router } from 'vue-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { projectInitializationApi } from '@/api/project/initialization';
 import type { ProjectInitializationStatusResp } from '@/gen/proto/orbit/v1/project_initialization/project_initialization';
@@ -41,46 +41,36 @@ describe('project readiness routing', () => {
   });
 
   it('checks live status before every execution and redirects the correct project if unready', async () => {
-    const router = createRouter({
-      history: createMemoryHistory(),
-      routes: [
-        { path: '/pipeline', component: {} },
-        { path: '/gateway', component: {} },
-        { path: '/project/:id/initialization', name: 'ProjectInitialization', component: {} },
-      ],
-    });
-    await router.push('/pipeline');
-    await router.isReady();
+    const router = {
+      currentRoute: { value: { fullPath: '/pipeline' } },
+      push: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Router;
     vi.mocked(projectInitializationApi.getStatus)
       .mockResolvedValueOnce({ status: 'needs_probe' } as ProjectInitializationStatusResp)
       .mockResolvedValueOnce({ status: 'needs_gateway' } as ProjectInitializationStatusResp);
 
     expect(await ensureProjectExecutionReady('project-a', router, 'ci')).toBe(false);
-    expect(router.currentRoute.value).toMatchObject({
+    expect(router.push).toHaveBeenCalledWith({
       name: 'ProjectInitialization',
       params: { id: 'project-a' },
       query: { purpose: 'ci', returnTo: '/pipeline' },
     });
     expect(await ensureProjectExecutionReady('project-a', router, 'ci')).toBe(true);
     expect(projectInitializationApi.getStatus).toHaveBeenCalledTimes(2);
+    expect(router.push).toHaveBeenCalledOnce();
   });
 
   it('redirects CD to initialization when the environment probe passed but gateway is missing', async () => {
-    const router = createRouter({
-      history: createMemoryHistory(),
-      routes: [
-        { path: '/service/42', component: {} },
-        { path: '/project/:id/initialization', name: 'ProjectInitialization', component: {} },
-      ],
-    });
-    await router.push('/service/42');
-    await router.isReady();
+    const router = {
+      currentRoute: { value: { fullPath: '/service/42' } },
+      push: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Router;
     vi.mocked(projectInitializationApi.getStatus).mockResolvedValue({
       status: 'needs_gateway',
     } as ProjectInitializationStatusResp);
 
     expect(await ensureProjectExecutionReady('project-b', router, 'cd')).toBe(false);
-    expect(router.currentRoute.value).toMatchObject({
+    expect(router.push).toHaveBeenCalledWith({
       name: 'ProjectInitialization',
       params: { id: 'project-b' },
       query: { purpose: 'cd', returnTo: '/service/42' },

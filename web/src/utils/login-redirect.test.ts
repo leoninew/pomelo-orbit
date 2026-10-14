@@ -26,11 +26,17 @@ describe('resolveLoginRedirect', () => {
     ).toBe('/gateway');
   });
 
+  it('falls back to the home route for an unregistered route', () => {
+    const unmatchedRouter = {
+      resolve: () => ({ ...router.resolve('/'), matched: [] }),
+    };
+    expect(resolveLoginRedirect(unmatchedRouter, '/missing')).toBe('/');
+  });
+
   it.each([
     ['/login'],
     ['/login?redirect=/login'],
     ['/google/callback?code=code-1'],
-    ['/missing'],
     ['https://example.com/gateway'],
     ['//example.com/gateway'],
     ['/\\example.com/gateway'],

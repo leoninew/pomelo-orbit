@@ -7,8 +7,6 @@ import {
   componentEnvRequestFromForm,
   componentMountsRequestFromForm,
   componentEndpointsRequestFromForm,
-  componentRequestFromForm,
-  componentAdvancedRequestFromForm,
   componentResourcesRequestFromForm,
   componentRuntimeRequestFromForm,
   componentTmpfsRequestFromForm,
@@ -104,19 +102,19 @@ describe('componentForm', () => {
       ignore_if_exists: false,
     });
 
-    const result = componentRequestFromForm(form);
-
-    expect(result.valid).toBe(true);
-    if (!result.valid) {
-      return;
-    }
-    expect(result.value.entrypoint).toBe('  /docker-entrypoint.sh  ');
-    expect(result.value.command).toBe('  nginx  ');
-    expect(result.value.env).toEqual([{ key: ' TOKEN ', value: ' ${TOKEN} ' }]);
-    expect(result.value.mounts[0]).toMatchObject({
-      content: ' key = value ',
-      mode: '0644',
-      ignore_if_exists: false,
+    expect(componentBasicRequestFromForm(form)).toMatchObject({
+      valid: true,
+      value: { entrypoint: '  /docker-entrypoint.sh  ', command: '  nginx  ' },
+    });
+    expect(componentEnvRequestFromForm(form)).toEqual({
+      valid: true,
+      value: { env: [{ key: ' TOKEN ', value: ' ${TOKEN} ' }] },
+    });
+    expect(componentMountsRequestFromForm(form)).toMatchObject({
+      valid: true,
+      value: {
+        mounts: [{ content: ' key = value ', mode: '0644', ignore_if_exists: false }],
+      },
     });
   });
 
@@ -197,7 +195,7 @@ describe('componentForm', () => {
     form.image = 'nginx:1.27';
     form.ports.push({ host_port: '8080', container_port: '' });
 
-    expect(componentRequestFromForm(form)).toEqual({ valid: false, error: 'ports' });
+    expect(componentEndpointsRequestFromForm(form)).toEqual({ valid: false, error: 'ports' });
   });
 
   it('serializes a group without validating other groups', () => {
@@ -205,24 +203,6 @@ describe('componentForm', () => {
     form.name = 'api';
     form.image = 'nginx:1.27';
     form.ports.push({ host_port: '8080', container_port: '' });
-
-    expect(componentBasicRequestFromForm(form)).toEqual({
-      valid: true,
-      value: {
-        name: 'api',
-        image: 'nginx:1.27',
-        entrypoint: '',
-        command: '',
-        pull_policy: 'missing',
-        restart_policy: 'unless-stopped',
-      },
-    });
-  });
-
-  it('defaults a new component pull policy to missing', () => {
-    const form = emptyComponentForm();
-    form.name = 'api';
-    form.image = 'nginx:1.27';
 
     expect(componentBasicRequestFromForm(form)).toEqual({
       valid: true,
@@ -406,20 +386,6 @@ describe('componentForm', () => {
             bind_address: '127.0.0.1',
           },
         ],
-      },
-    });
-  });
-
-  it('serializes resources with advanced configuration', () => {
-    const form = emptyComponentForm();
-    form.resources.limit_memory = '512m';
-
-    expect(componentAdvancedRequestFromForm(form)).toEqual({
-      valid: true,
-      value: {
-        resources: { limit_memory: '512m' },
-        tmpfs: [],
-        ulimits: [],
       },
     });
   });

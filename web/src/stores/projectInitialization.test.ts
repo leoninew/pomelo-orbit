@@ -27,22 +27,4 @@ describe('projectInitialization store', () => {
     await store.ensureStatus('project-1');
     expect(projectInitializationApi.getStatus).toHaveBeenCalledTimes(1);
   });
-
-  it('shares an in-flight fetch for the same project', async () => {
-    const store = useProjectInitializationStore();
-    let resolveStatus: ((value: typeof status) => void) | undefined;
-    vi.mocked(projectInitializationApi.getStatus).mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveStatus = resolve;
-        }) as never
-    );
-
-    const first = store.fetchStatus('project-1');
-    const second = store.fetchStatus('project-1');
-    resolveStatus?.(status);
-    await Promise.all([first, second]);
-
-    expect(projectInitializationApi.getStatus).toHaveBeenCalledTimes(1);
-  });
 });

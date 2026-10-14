@@ -1,5 +1,5 @@
 import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { authStore, handleUnauthorized } = vi.hoisted(() => ({
   authStore: { token: null as string | null },
@@ -15,6 +15,11 @@ vi.mock('@/utils/handle-unauthorized', () => ({
 }));
 
 import request, { isHttpErrorResponse, toApiError } from '@/utils/request';
+
+const originalAdapter = request.defaults.adapter;
+afterEach(() => {
+  request.defaults.adapter = originalAdapter;
+});
 
 describe('HTTP error contract', () => {
   beforeEach(() => {
@@ -61,7 +66,7 @@ describe('HTTP error contract', () => {
       throw new AxiosError('request failed', 'ERR_BAD_RESPONSE', config, {}, response);
     };
 
-    await expect(request.get('/api/projects')).rejects.toMatchObject({
+    await expect(request.get('/api/project')).rejects.toMatchObject({
       message: '登录已过期，请重新登录',
       status: 401,
       code: 'unauthorized',
@@ -76,7 +81,7 @@ describe('HTTP error contract', () => {
       throw new AxiosError('socket reset', 'ERR_NETWORK', config, {});
     };
 
-    await expect(request.get('/api/projects')).rejects.toMatchObject({
+    await expect(request.get('/api/project')).rejects.toMatchObject({
       message: '网络连接失败，请检查网络设置',
       code: 'network_error',
       kind: 'network',

@@ -1,5 +1,5 @@
 # 前端架构
-最后修改时间: 2026-07-24 10:47:37
+最后修改时间: 2026-10-14
 
 Doc role: living SoT（前端）。目录以仓库 **`web/`** 为准。与代码冲突时以代码为准。
 
@@ -344,6 +344,14 @@ const relativeTime = formatRelativeTime(utcTime);
 
 ## 测试策略
 
+编写、审查与清理测试的具体实践见项目内 [frontend-unit-testing skill](../../skills/frontend-unit-testing/SKILL.md)，包括警告排查和实现变更后的测试漂移检查。
+
+前端只保留轻量单元测试，验证业务规则、数据转换、请求契约和简单组件的输入输出。优先主要正向流程与真实、高风险的失败边界，不追求覆盖率，不补齐每个组件的测试。
+
+不编写并发、性能、集成、端到端或复杂 UI 测试。外部 API 和复杂子组件使用替身；不通过整页挂载串联 Router、Store 和 API，不模拟终端或日志会话的完整生命周期，也不验证 Tooltip 的布局、焦点、Portal 和底层 UI 库行为。
+
+测试使用项目正式语言包，避免因手写部分翻译制造警告。需要模拟路由不存在时，提供未匹配的路由解析结果，不触发 Router 的开发警告；不通过全局静默掩盖警告或错误日志。
+
 ### 单元测试
 ```typescript
 // components/ui/SearchControl.test.ts
@@ -363,8 +371,7 @@ it('emits search when clicked', () => {
 });
 ```
 
-### E2E 测试
-- 待补充
+运行 `yarn --cwd web test`。根目录 `task test -- --cov` 仅收集 Go 覆盖率，前端仍运行普通单元测试。
 
 ## 构建和部署
 

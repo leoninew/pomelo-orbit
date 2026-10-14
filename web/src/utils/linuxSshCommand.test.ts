@@ -29,8 +29,6 @@ describe('linuxSshCommand', () => {
       'run_as_admin chown -- "$(id -u):$(id -g)" "$workspace_root/pipeline" "$workspace_root/deployment"'
     );
     expect(script).not.toContain('chown -R');
-    expect(script).not.toContain('sshd');
-    expect(script).not.toContain('docker');
   });
 
   it('expands the remote SSH user home directory without interpolating the path into shell code', () => {

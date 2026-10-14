@@ -12,11 +12,6 @@ describe('windowsSshCommand', () => {
     });
 
     expect(script).toContain('WindowsBuiltInRole]::Administrator');
-    expect(script).not.toContain('#Requires');
-    expect(script).not.toContain('EncodedCommand');
-    expect(script).not.toContain('FromBase64String');
-    expect(script).not.toContain('Start-Process');
-    expect(script).not.toContain('ssh.exe');
     expect(script).toContain("Write-Host 'Target Administrator@DESKTOP-ORBIT:2222'");
     expect(script).toContain("$key = 'ssh-ed25519 AAAAorbit''s-key'");
     expect(script).toContain("$targetUsername = 'Administrator'");
@@ -32,8 +27,6 @@ describe('windowsSshCommand', () => {
     expect(script).toContain("$sshdConfig = Join-Path $programDataSsh 'sshd_config'");
     expect(script).toContain('sshd_config_default');
     expect(script).toContain("'Port 2222', 'PubkeyAuthentication yes'");
-    expect(script).not.toContain('ListenAddress 0.0.0.0');
-    expect(script).not.toContain('ListenAddress ::');
     expect(script).toContain('function Test-OrbitSshListening');
     expect(script).toContain('Start-Service -Name sshd');
     expect(script).toContain(

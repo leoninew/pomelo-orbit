@@ -17,8 +17,7 @@
     "format": "prettier src --check --ignore-unknown",
     "format:fix": "prettier src --write --ignore-unknown",
     "monaco:assets": "node scripts/copy-monaco-assets.mjs",
-    "test": "vitest run --passWithNoTests",
-    "test:cov": "vitest run --coverage"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@guolao/vue-monaco-editor": "^1.6.0",
@@ -46,7 +45,6 @@
     "@tailwindcss/vite": "^4.2.2",
     "@types/dagre": "^0.7.54",
     "@vitejs/plugin-vue": "6.0.7",
-    "@vitest/coverage-v8": "4.1.9",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",

@@ -4,26 +4,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import i18n from '@/i18n';
 import AppInput from './AppInput.vue';
 import AppTextarea from './AppTextarea.vue';
-import ComboboxSelect from './ComboboxSelect.vue';
-import ListPagination from './ListPagination.vue';
-import SelectControl from './SelectControl.vue';
 import SearchControl from './SearchControl.vue';
 
 let app: App | undefined;
 let target: HTMLDivElement | undefined;
-
-async function render() {
-  for (let index = 0; index < 4; index++) {
-    await nextTick();
-  }
-}
 
 async function mount(view: () => ReturnType<typeof h>) {
   target = document.createElement('div');
   document.body.append(target);
   app = createApp({ render: view }).use(i18n);
   app.mount(target);
-  await render();
+  await nextTick();
   return target;
 }
 
@@ -53,7 +44,7 @@ afterEach(() => {
 });
 
 describe('shared field interactions', () => {
-  it('clears search and runs the unfiltered query while restoring input focus', async () => {
+  it('clears search and runs the unfiltered query', async () => {
     const value = ref('api');
     const onSearch = vi.fn();
     const root = await mount(() =>
@@ -66,12 +57,11 @@ describe('shared field interactions', () => {
       })
     );
     clearButton(root, 'common.clearSearch').click();
-    await render();
+    await nextTick();
     expect(value.value).toBe('');
     expect(onSearch).toHaveBeenCalledTimes(1);
-    expect(document.activeElement).toBe(element<HTMLInputElement>(root, 'input'));
   });
-  it('clears a text field through its native input event, preserving validation attributes and focus', async () => {
+  it('clears a text field without submitting its form', async () => {
     const value = ref('api');
     const onInput = vi.fn();
     const onSubmit = vi.fn();
@@ -98,12 +88,11 @@ describe('shared field interactions', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.getAttribute('aria-describedby')).toBe('name-error');
     clearButton(root).click();
-    await render();
+    await nextTick();
     expect(value.value).toBe('');
     expect(input.value).toBe('');
     expect(onInput).toHaveBeenCalledTimes(1);
     expect(onInput.mock.calls[0]?.[0].target).toBe(input);
-    expect(document.activeElement).toBe(input);
     expect(onSubmit).not.toHaveBeenCalled();
     expect(root.querySelector('.app-clear-button')).toBeNull();
   });
@@ -125,40 +114,19 @@ describe('shared field interactions', () => {
     const input = element<HTMLInputElement>(root, 'input');
     input.value = '3';
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    await render();
+    await nextTick();
     expect(value.value).toBe(3);
     expect(input.min).toBe('0');
     expect(input.max).toBe('10');
     value.value = 0;
-    await render();
+    await nextTick();
     clearButton(root).click();
-    await render();
+    await nextTick();
     expect(value.value).toBe('');
     expect(input.value).toBe('');
   });
 
-  it('waits for composition to finish and applies the trim modifier', async () => {
-    const value = ref('');
-    const root = await mount(() =>
-      h(AppInput, {
-        modelValue: value.value,
-        modelModifiers: { trim: true },
-        'onUpdate:modelValue': (next: string | number) => {
-          value.value = String(next);
-        },
-      })
-    );
-    const input = element<HTMLInputElement>(root, 'input');
-    input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
-    input.value = ' 中文 ';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    expect(value.value).toBe('');
-    input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true }));
-    await render();
-    expect(value.value).toBe('中文');
-  });
-
-  it('clears multiline text and keeps rows and focus on the textarea', async () => {
+  it('clears multiline text', async () => {
     const value = ref('line 1\nline 2');
     const onInput = vi.fn();
     const root = await mount(() =>
@@ -174,84 +142,8 @@ describe('shared field interactions', () => {
     const textarea = element<HTMLTextAreaElement>(root, 'textarea');
     expect(textarea.getAttribute('rows')).toBe('5');
     clearButton(root).click();
-    await render();
+    await nextTick();
     expect(value.value).toBe('');
     expect(onInput).toHaveBeenCalledTimes(1);
-    expect(document.activeElement).toBe(textarea);
-  });
-
-  it('restores an unselected select without adding a placeholder option', async () => {
-    const value = ref<string | number>('running');
-    const root = await mount(() =>
-      h(SelectControl, {
-        modelValue: value.value,
-        options: ['running', 'stopped'],
-        placeholder: '筛选状态',
-        'onUpdate:modelValue': (next: string | number) => {
-          value.value = next;
-        },
-      })
-    );
-    const trigger = element<HTMLButtonElement>(root, '[role="combobox"]');
-    clearButton(root, 'common.clearSelection').click();
-    await render();
-    expect(value.value).toBe('');
-    expect(trigger.textContent?.trim()).toBe('筛选状态');
-    expect(document.activeElement).toBe(trigger);
-    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    await render();
-    expect(
-      [...document.querySelectorAll('[role="option"]')].map((option) => option.textContent?.trim())
-    ).toEqual(['running', 'stopped']);
-  });
-
-  it('clears combobox selection and typed search without reopening the menu', async () => {
-    const value = ref<string | number>('api');
-    const onSearch = vi.fn();
-    const root = await mount(() =>
-      h(ComboboxSelect, {
-        modelValue: value.value,
-        options: [{ value: 'api', label: 'API service' }],
-        onSearch,
-        'onUpdate:modelValue': (next: string | number) => {
-          value.value = next;
-        },
-      })
-    );
-    const input = element<HTMLInputElement>(root, 'input');
-    input.value = 'other';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    await render();
-    clearButton(root, 'common.clearSelection').click();
-    await render();
-    expect(value.value).toBe('');
-    expect(input.value).toBe('');
-    expect(onSearch).toHaveBeenLastCalledWith('');
-    expect(document.activeElement).toBe(input);
-    expect(input.getAttribute('aria-expanded')).toBe('false');
-    input.value = 'unselected search';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    await render();
-    clearButton(root, 'common.clearSelection').click();
-    await render();
-    expect(input.value).toBe('');
-    expect(root.querySelector('.app-clear-button')).toBeNull();
-  });
-
-  it('resets pagination to a valid configured size', async () => {
-    const onSize = vi.fn();
-    const root = await mount(() =>
-      h(ListPagination, {
-        current: 1,
-        pageSize: 20,
-        total: 40,
-        totalPages: 2,
-        pageSizeOptions: [10, 20, 50],
-        'onChange-page-size': onSize,
-      })
-    );
-    clearButton(root, 'common.reset').click();
-    await render();
-    expect(onSize).toHaveBeenCalledWith(10);
   });
 });

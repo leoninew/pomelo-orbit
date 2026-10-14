@@ -92,13 +92,12 @@ tasks:
       - ./bin/golangci-lint run {{.FIX_LINT_ARGS}} ./cmd/... ./internal/... ./sql
 
   test:
-    desc: Run web and Go tests; use -- --cov to collect coverage
+    desc: Run web unit tests and Go tests; use -- --cov to collect Go coverage
     vars:
       COVER_ENABLED: '{{if contains "--cov" (default "" .CLI_ARGS)}}1{{end}}'
       COVER_ARGS: '{{if eq .COVER_ENABLED "1"}}-cover -coverprofile=coverage.out{{end}}'
-      WEB_TEST_TASK: '{{if eq .COVER_ENABLED "1"}}test:cov{{else}}test{{end}}'
     cmds:
-      - yarn --cwd web {{.WEB_TEST_TASK}}
+      - yarn --cwd web test
       - go test {{.COVER_ARGS}} ./cmd/... ./internal/... ./sql
 
   build:

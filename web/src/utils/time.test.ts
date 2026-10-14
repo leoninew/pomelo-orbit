@@ -1,19 +1,21 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { delayAsync } from './time';
+
+afterEach(() => vi.useRealTimers());
 
 describe('delayAsync', () => {
   it('resolves after the configured delay', async () => {
     vi.useFakeTimers();
+    const resolved = vi.fn();
     const delayed = delayAsync(1000);
+    void delayed.then(resolved);
 
     await vi.advanceTimersByTimeAsync(999);
-    await expect(
-      Promise.race([delayed.then(() => 'resolved'), Promise.resolve('pending')])
-    ).resolves.toBe('pending');
+    expect(resolved).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(1);
     await expect(delayed).resolves.toBeUndefined();
-    vi.useRealTimers();
+    expect(resolved).toHaveBeenCalledOnce();
   });
 
   it('resolves immediately when the signal is aborted', async () => {
@@ -31,6 +33,5 @@ describe('delayAsync', () => {
     controller.abort();
     await expect(delayed).resolves.toBeUndefined();
     await vi.advanceTimersByTimeAsync(1000);
-    vi.useRealTimers();
   });
 });

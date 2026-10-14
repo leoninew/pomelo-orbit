@@ -3,35 +3,25 @@ import { createApp, h, nextTick, ref } from 'vue';
 import { describe, expect, it } from 'vitest';
 import { createI18n } from 'vue-i18n';
 import DeploymentDirectoryField from '@/components/deployment/DeploymentDirectoryField.vue';
-import AppDialogActions from '@/components/ui/AppDialogActions.vue';
 import messages from '@/i18n/locales/zh-CN';
 
 describe('DeploymentDirectoryField', () => {
   it.each([false, true])(
-    'warns for a stopped deployed service and still allows confirmation (gateway=%s)',
+    'warns when editing a deployed directory (gateway=%s)',
     async (gateway) => {
       const directory = ref('/old/api');
-      let confirmed = false;
       const target = document.createElement('div');
       const app = createApp({
         render: () =>
-          h('div', [
-            h(DeploymentDirectoryField, {
-              modelValue: directory.value,
-              platform: 'linux',
-              runtimeDirectory: '/old/api',
-              gateway,
-              'onUpdate:modelValue': (value: string) => {
-                directory.value = value;
-              },
-            }),
-            h(AppDialogActions, {
-              confirmLabel: '部署',
-              onConfirm: () => {
-                confirmed = true;
-              },
-            }),
-          ]),
+          h(DeploymentDirectoryField, {
+            modelValue: directory.value,
+            platform: 'linux',
+            runtimeDirectory: '/old/api',
+            gateway,
+            'onUpdate:modelValue': (value: string) => {
+              directory.value = value;
+            },
+          }),
       });
       app.use(createI18n({ legacy: false, locale: 'zh-CN', messages: { 'zh-CN': messages } }));
       document.body.append(target);
@@ -45,18 +35,10 @@ describe('DeploymentDirectoryField', () => {
         input.value = '/new/api';
         input.dispatchEvent(new Event('input', { bubbles: true }));
         await nextTick();
+        expect(directory.value).toBe('/new/api');
         expect(target.querySelector('[role="status"]')?.textContent).toContain(
           '旧数据不会自动迁移'
         );
-        const confirm = [...target.querySelectorAll<HTMLButtonElement>('button')].find(
-          (button) => button.textContent?.trim() === '部署'
-        );
-        if (!confirm) {
-          throw new Error('Deployment confirmation button is missing');
-        }
-        expect(confirm.disabled).toBe(false);
-        confirm.click();
-        expect(confirmed).toBe(true);
         directory.value = '/old//./api/';
         await nextTick();
         expect(target.querySelector('[role="status"]')).toBeNull();

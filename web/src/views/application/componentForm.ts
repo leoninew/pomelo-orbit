@@ -7,7 +7,6 @@ import type {
   ComponentResources,
   ComponentTmpfs,
   ComponentUlimit,
-  VersionComponentAdvancedUpdateReq,
   VersionComponentBasicUpdateReq,
   VersionComponentIdentityUpdateReq,
   VersionComponentCreateReq,
@@ -16,7 +15,6 @@ import type {
   VersionComponentEnvUpdateReq,
   VersionComponentMountsUpdateReq,
   VersionComponentEndpointsUpdateReq,
-  VersionComponentReq,
   VersionComponentResp,
   VersionComponentRuntimeUpdateReq,
 } from '@/gen/proto/orbit/v1/application/version';
@@ -100,7 +98,7 @@ export interface ComponentForm {
   devices: DeviceRow[];
 }
 
-export type ComponentFormValidation<T = VersionComponentReq> =
+export type ComponentFormValidation<T> =
   { valid: true; value: T } | { valid: false; error: ComponentFormError };
 
 export type ComponentFormError =
@@ -464,59 +462,6 @@ export function componentDevicesRequestFromForm(
   return { valid: true, value: { devices } };
 }
 
-export function componentRequestFromForm(form: ComponentForm): ComponentFormValidation {
-  const basic = componentBasicRequestFromForm(form);
-  if (!basic.valid) {
-    return basic;
-  }
-  const identity = componentIdentityRequestFromForm(form);
-  if (!identity.valid) {
-    return identity;
-  }
-  const runtime = componentRuntimeRequestFromForm(form);
-  if (!runtime.valid) {
-    return runtime;
-  }
-  const ports = componentEndpointsRequestFromForm(form);
-  if (!ports.valid) {
-    return ports;
-  }
-  const env = componentEnvRequestFromForm(form);
-  if (!env.valid) {
-    return env;
-  }
-  const mounts = componentMountsRequestFromForm(form);
-  if (!mounts.valid) {
-    return mounts;
-  }
-  const dependencies = componentDependenciesRequestFromForm(form);
-  if (!dependencies.valid) {
-    return dependencies;
-  }
-  const advanced = componentAdvancedRequestFromForm(form);
-  if (!advanced.valid) {
-    return advanced;
-  }
-  const devices = componentDevicesRequestFromForm(form.devices);
-  if (!devices.valid) {
-    return devices;
-  }
-  return {
-    valid: true,
-    value: {
-      ...basic.value,
-      ...identity.value,
-      ...runtime.value,
-      ...ports.value,
-      ...env.value,
-      ...mounts.value,
-      ...dependencies.value,
-      ...advanced.value,
-      ...devices.value,
-    },
-  };
-}
-
 export function componentBasicRequestFromForm(
   form: ComponentForm
 ): ComponentFormValidation<VersionComponentBasicUpdateReq> {
@@ -632,27 +577,6 @@ export function componentDependenciesRequestFromForm(
         name: item.name,
         condition: item.condition,
       })),
-    },
-  };
-}
-
-export function componentAdvancedRequestFromForm(
-  form: ComponentForm
-): ComponentFormValidation<VersionComponentAdvancedUpdateReq> {
-  const tmpfs = componentTmpfsRequestFromForm(form.tmpfs);
-  if (!tmpfs.valid) {
-    return tmpfs;
-  }
-  const ulimits = componentUlimitsRequestFromForm(form.ulimits);
-  if (!ulimits.valid) {
-    return ulimits;
-  }
-  return {
-    valid: true,
-    value: {
-      resources: componentResourcesRequestFromForm(form.resources),
-      tmpfs: tmpfs.value,
-      ulimits: ulimits.value,
     },
   };
 }

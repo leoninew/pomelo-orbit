@@ -20,7 +20,7 @@ Mode: standard
 | Domain | Project、Environment、Application、Gateway、Service、Route 分别提供其完整业务定义的读取、校验、创建、更新与控制面移除能力。Gateway 定义拥有其 Application、Version、runtime Service、dashboard Route、Config 与 Environment binding；不能将其降解为独立 Config 注册。Pipeline 拥有对 Application / Version 引用的查询。缺失能力须先作为完整资源生命周期的一部分实现，不能为 Handover 逐项添加一次性入口，也不能新建跨 Project 的“大聚合仓储”或“替换全部 CD 配置”命令。 |
 | Repository implementation | 沿用各领域现有 SQLC repository；新增查询只进入所属领域的 `sql/query/<domain>/`，新增写入只操作该领域自身的表。 |
 
-现有 POST 请求 UoW 已通过 `internal/infrastructure/database/tx/request.go` 将同一 `context` 的 SQLC 仓储绑定到同一个事务。导入 HTTP 路由不加入现有事务豁免列表，因此“创建/覆盖 Project + 成员关系 + 清理 + 恢复”天然处于一次请求事务；任何错误返回后由 middleware 回滚。
+现有 POST 请求 UoW 已通过 `internal/api/http/middleware/transaction.go` 将同一 `context` 的 SQLC 仓储绑定到同一个事务。导入 HTTP 路由不加入现有事务豁免列表，因此“创建/覆盖 Project + 成员关系 + 清理 + 恢复”天然处于一次请求事务；任何错误返回后由 middleware 回滚。
 
 ### 跨领域删除边界
 

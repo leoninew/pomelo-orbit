@@ -17,7 +17,7 @@ Mode: standard
 
 1. transport 已按 `request.go`、`protojson.go`、`output.go`、`error.go` 和 `mapper.go` 的职责建立；请求体仅走 protobuf JSON 解码。
 2. 所有 HTTP adapter 调用方已改用 transport，`binding`、`codec`、`response` 已删除，未保留兼容入口。
-3. `tx.Middleware` 接收注入的 `ErrorWriter`，不导入 HTTP transport；bootstrap 注入 `transport.WriteError`，事务缓冲、rollback 和 commit 失败处理保留。
+3. `middleware.Transaction` 接收注入的 `ErrorWriter`，不导入 HTTP transport；bootstrap 注入 `transport.WriteError`，事务缓冲、rollback 和 commit 失败处理保留。
 4. proto JSON、成功输出、错误契约、CORS、server fallback、logging 以及事务测试均已迁移或补足。
 
 ## Actual diff

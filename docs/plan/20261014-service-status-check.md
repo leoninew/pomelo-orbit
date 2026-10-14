@@ -70,7 +70,7 @@ Accepted
 
 - `yarn --cwd web lint:fix`、`yarn --cwd web typecheck`：最终表格调整后均通过；修改的前端文件 Prettier 检查通过。
 - `task check`：通过，Go lint 为 0 issues；其后仅调整前端表格和过程文档，前端固定检查已重新通过。
-- `go test ./cmd/... ./internal/...`：最终通过。首轮并行检查时既有 `TestCancellationTimeoutDoesNotBlockNewOperation` 超时，重新运行完整命令通过，未修改该测试或扩大本任务范围。
+- `go test ./cmd/... ./internal/...`：最终通过。首轮并行检查时既有 `TestCancellationTimeoutDoesNotBlockNewOperation` 超时，重新运行完整命令通过，未修改该测试或扩大本任务范围。该不稳定用例后来在独立的[后端治理](../verification/20261014-backend-test-architecture.md)中迁为虚拟时间端口测试，复跑通过未被视为修复依据。
 - `git diff --check`：通过。
 - 实际环境：Windows PowerShell 5 原模板失败可复现；标准 `{{json .}}` 模板通过。用户报错的 Windows SSH Project 经本地运行中的 HTTP API 预览成功返回三条受管服务。
 - 未增加或运行 UI 测试套件；未启停开发服务器或容器。不存在未完成的实现项；结果反映查询时刻，外部后续操作仍需重新检查。

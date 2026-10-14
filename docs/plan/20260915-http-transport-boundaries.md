@@ -34,8 +34,8 @@ Mode: standard
 ### 3. 解除数据库请求事务对 HTTP 包的反向依赖
 
 - 保留 `internal/infrastructure/database/tx` 对 SQL transaction、context 绑定、response buffering 与 rollback 的现有职责和行为。
-- 将 `tx.Middleware` 改为接收由组合根提供的统一错误写入函数；该模块不再导入 `internal/api/http/response` 或新的 transport 包。
-- 在 `internal/bootstrap/http.go` 由 bootstrap 将 `transport.WriteError` 注入 `tx.Middleware`，保持 `routes.Dependencies.MutatingUnitOfWork`、skip path、事务提交失败和 panic rollback 语义不变。
+- 将 `middleware.Transaction` 改为接收由组合根提供的统一错误写入函数；该模块不再导入 `internal/api/http/response` 或新的 transport 包。
+- 在 `internal/bootstrap/http.go` 由 bootstrap 将 `transport.WriteError` 注入 `middleware.Transaction`，保持 `routes.Dependencies.MutatingUnitOfWork`、skip path、事务提交失败和 panic rollback 语义不变。
 - 更新事务 middleware 测试，继续证明 begin/commit/panic 失败返回同一安全错误契约且不会泄漏被缓冲的成功 body。
 
 ### 4. 迁移和补足 transport 测试

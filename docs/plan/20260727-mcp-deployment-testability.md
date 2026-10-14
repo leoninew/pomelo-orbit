@@ -13,7 +13,7 @@ Review status: Accepted
 ## Implementation steps
 
 1. 修正 Go 事务中间件的错误响应时序。
-   - 修改 `internal/infrastructure/database/tx/request.go`：将事务限定于 POST、PUT、PATCH、DELETE API 请求；读请求、OPTIONS、health 和静态响应直接透传。
+   - 修改 `internal/api/http/middleware/transaction.go`：将事务限定于 POST、PUT、PATCH、DELETE API 请求；读请求、OPTIONS、health 和静态响应直接透传。
    - 为事务写请求引入可丢弃的 Gin response buffer。handler 成功时先 commit，再将 2xx headers/body 写入原始 writer；commit 失败时清空 buffer，通过 `transportresponse.WriteError` 返回统一 500。
    - 将 `BeginTx` 失败改为 `apperror.KindInternal` 加 `WriteError`。handler panic 时丢弃 buffer、回滚、恢复原 writer 后重新抛出，由既有 Recovery middleware 输出统一错误。
    - 保留 handler 已产生的 4xx/5xx；这些路径回滚后原样 flush。rollback 失败只记录服务器错误，不生成第二个 HTTP response。
@@ -54,8 +54,8 @@ Review status: Accepted
 
 | File or directory | Planned change |
 | --- | --- |
-| `internal/infrastructure/database/tx/request.go` | 事务范围、response buffer、统一 begin/commit/panic 错误处理。 |
-| `internal/infrastructure/database/tx/request_test.go` | 事务失败和 HTTP response 契约测试。 |
+| `internal/api/http/middleware/transaction.go` | 事务范围、response buffer、统一 begin/commit/panic 错误处理。 |
+| `internal/api/http/middleware/transaction_test.go` | 事务失败和 HTTP response 契约测试。 |
 | `go.mod`, `go.sum` | test-only SQL mock。 |
 | `mcp/src/pomelo_orbit_mcp/mcp_errors.py` | 新增共享 MCP error mapper。 |
 | `mcp/src/pomelo_orbit_mcp/server.py` | 挂接统一 `call_tool` 边界。 |

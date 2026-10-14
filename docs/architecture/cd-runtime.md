@@ -50,7 +50,7 @@ Worker 只启动当前 waiting 任务。执行 Context 在每秒以内轮询任�
 
 Service 目录绑定、状态/版本回写以及 Deployment 启动/完成均使用当前指针和任务状态的 SQL 条件。Service 执行结果与 Deployment 完成在同一短事务提交，零行时回滚并退出；手动取消后的运行观测使用单独条件写入，被接替任务不观测回写。历史删除不清空指针，不恢复旧资格；`active_deployment` 只投影当前非终态任务。
 
-服务列表状态检查在 deployment usecase 复用目标 resolver 与 Runtime，在 HTTP 写事务外以 15 秒预算执行一次环境根目录的 `docker ps --all --format '{{json .}}'`，读取 Compose project/oneoff 标签与容器状态，不要求 Service 运行目录或 Compose 文件。使用标准 JSON 格式避免 Windows PowerShell 5 原生命令参数传递丢失模板内层引号；命令失败将 Runtime 返回的诊断输出（最多 8 KiB）连同原始错误保留在 HTTP 错误日志中。`/api/service/status-check/preview` 返回全量受管 Service 的记录/观测状态。服务端为操作者与 Project 保存最新观测快照，随机 token 关联目标 ID/修订及 Service 数据库基线，15 分钟过期，重启后需要重新检查；快照不包含 SSH 凭据。`/api/service/status-check/confirm` 每次确认一个 service_id，只从服务端快照取观测状态，不再调用 Docker。短请求事务内的条件 SQL 匹配 Service code、版本、目录及其修订、原状态、当前任务指针和目标 ID/修订，并拒绝当前 waiting_to_run/running 任务，零行返回冲突。Web 弹窗顺序更新变化项并逐行反馈，失败继续，关闭或 Project 切换后停止后续请求，整轮结束刷新对应列表；没有后台续跑。
+服务列表状态检查使用 deployment usecase 的独立 `StatusCheckService`，通过目标 resolver 与结构化 `ContainerInventory` 端口读取事实。`infrastructure/runner/docker` 适配器复用 Runtime，在 HTTP 写事务外以用例提供的 15 秒预算执行一次环境根目录的 `docker ps --all --format '{{json .}}'`，读取 Compose project/oneoff 标签与容器状态，不要求 Service 运行目录或 Compose 文件。使用标准 JSON 格式避免 Windows PowerShell 5 原生命令参数传递丢失模板内层引号；命令失败将 Runtime 返回的诊断输出（最多 8 KiB）连同原始错误保留在 HTTP 错误日志中。`/api/service/status-check/preview` 返回全量受管 Service 的记录/观测状态。服务端为操作者与 Project 保存最新观测快照，随机 token 关联目标 ID/修订及 Service 数据库基线，15 分钟过期，重启后需要重新检查；快照不包含 SSH 凭据。`/api/service/status-check/confirm` 每次确认一个 service_id，只从服务端快照取观测状态，不再调用 Docker。短请求事务内的条件 SQL 匹配 Service code、版本、目录及其修订、原状态、当前任务指针和目标 ID/修订，并拒绝当前 waiting_to_run/running 任务，零行返回冲突。Web 弹窗顺序更新变化项并逐行反馈，失败继续，关闭或 Project 切换后停止后续请求，整轮结束刷新对应列表；没有后台续跑。
 
 local/SSH 仅在既有文件准备范围使用短锁，锁等待和文件准备响应 Context，最终文件发布前再次检查取消；Compose 和镜像拉取不持有该锁。已经进入系统调用的写入或 Docker daemon 动作仍可能继续，外层不能强杀任意 Go goroutine，也不承诺物理操作绝对有序。机制只按 Service 协调，不扩展到 Environment、跨 Project 宿主、CI 或存活恢复。
 
@@ -64,7 +64,7 @@ GatewayConfig 保存 Traefik API URL/readiness、`internal_domain`、可选的 `
 
 创建 Gateway deployment 前，默认 Service 切换到保存 profile 所绑定的普通 Version，并持久化该 Version ID。worker 只执行该 ID，不能因之后的 profile 更新重新选择 Version。
 
-API 计划/hash、worker 与 Compose 渲染共用 Gateway enrichment，在有效计划中处理：
+API 计划/hash、worker 与预览在渲染前共用 Gateway enrichment。准备成功后一次发布新计划，失败不改变输入及共享声明；渲染仅消费已准备计划，不再次 enrichment。在有效计划中处理：
 
 - profile Version 的已声明 `/etc/traefik/traefik.yml` 中写入已有 resolver 的 `acme.email`。
 - DNS profile 为 Traefik component 的有效 environment 设置 `CF_DNS_API_TOKEN`。
@@ -105,6 +105,8 @@ TCP Route 的 entrypoint/host port 由选中 Gateway Version 的 Component endpo
 
 ## Web 日志流
 
+容器日志用例通过 `deployment/port.ContainerLogs` 读取容器 ID 和跟随输出；Docker 适配器负责标签查询、JSON 解码和日志 CLI，复用现有 target runtime。成员权限、目标修订、来源与续读编排留在用例，适配器在取消返回前释放读取资源。
+
 CI/CD 日志统一通过 Fetch + SSE 读取，所有入口沿用 Bearer 与 Project 成员授权。CD 操作文件保持位于控制面 `logging.deployment_root`，读取历史不要求远端在线；部署详情容器、Service Component、Gateway 与 Route 日志通过明确的 local/SSH target runtime 执行持续读取。Route 展示关联 Gateway 的输出。
 
 操作文件入口为 `/api/deployment/:deployment_id/log/stream`，部署容器入口为 `/api/deployment/:deployment_id/container-log/stream`，持续运行的容器入口为 `/api/application/:app_id/log/stream`，后者要求显式 service_id，可指定 Component 名称。所有路由均为 GET，并要求 project_id，可携带续读 cursor。旧 Web 日志快照路由已移除；MCP 的 DeploymentLog/RuntimeComposeLogs 按需读取用途独立保留。DeploymentLog 读取控制面操作日志，RuntimeComposeLogs 仍在 Service 运行目录执行带 `-f docker-compose.yml` 的快照命令；Web 日志流的目录解耦不改变这两个工具的前置条件。
@@ -128,3 +130,5 @@ local 在 Orbit 可见路径写文件，DooD 将每个具体相对 bind source �
 Gateway 路由、证书、ACME 及发布记录沿用运行目录；文件接口限制在显式服务范围。目录与目标修订属于 publication preview 依赖，目录变更使旧预览失效，不自动发布业务 Route。
 
 目录归属以当前目标修订下各 Service 的确认目录、运行目录及实际运行容器的 bind mount 为依据，拒绝其他服务的目录和运行挂载占用。通过检查后按本次确认目录准备文件，既有 Compose 按有效计划替换；运行目录为空不阻止部署。local 与 SSH 文件范围同时检查解析后的路径，防止符号链接越界；部署期间复用已有 target session。
+
+运行挂载观察由 Docker `Inventory` 实现应用层的 `MountInventory` 端口，返回 Source 与 Shared 事实。停止容器和 named volume 不计入运行 bind mount；观察或共享声明解析失败时停止部署。用例继续保护 Service 根目录，允许声明共享目录的子目录使用，但不允许覆盖其中未共享的私有挂载。

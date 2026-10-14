@@ -205,7 +205,7 @@ TLS 冲突检查不能简单禁止同域名的不同路径路由：这些路由�
 - 对每个实际父目录调用现有 `Runtime.SyncFiles`，并明确传 `pruneSuffix=""`：例如 dynamic 目录只写所选 YAML，证书版本目录只写该版本的 PEM。该接口要求文件是目录的直接子项，按目录分组即可复用，无需扩展为任意树写入。
 - Route YAML、PEM 和内部发布记录都显式传 Mode，基线沿用现有 Route 写入的 `0600`。共享组读取若得到明确身份支持，仍通过同一 numeric Mode 表达，不能将 mode 为零时的 `0644` fallback 用于私钥。
 - 活动 YAML 与会更新的发布记录使用 `IgnoreIfExists=false`。不可变证书版本已存在时先核对 fingerprint 再复用，不仅凭 IgnoreIfExists 跳过内容/权限检查。
-- 真实部署的 local/SSH writer 遇到 IgnoreIfExists=true 时直接返回，不重新应用权限。`MaterializeLogicalMountSources/materializeFile` helper 的同名场景会 chmod，但当前仅在其测试中调用，不能据此判断 target runtime 行为，也不从 Route 用例调用它绕开 SSH。
+- 真实部署的 local/SSH writer 遇到 IgnoreIfExists=true 时直接返回，不重新应用权限。应用层原有的文件物化 helper 没有生产调用，已在 2026-10-14 治理中随失效测试删除；文件行为以 target runtime 为准，Route 用例沿用其端口。
 - 文件读取/清单、精确撤销和限定归属的清理是现有 Runtime 尚缺的操作，按 Route 发布所需补充。写入、模式字段和路径解析复用现有实现，不增加平行的 Route 文件 writer，也不为 OS 限制扩展平台专项机制。
 
 | 场景 | 写入与提交要求 |

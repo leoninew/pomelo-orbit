@@ -40,7 +40,7 @@ Mode: standard
 - 不改 local / ssh 产品语义。
 - 不把 local 平台/主机/用户持久化或当运行时路由依据。
 - 不把 SQLC / Gin / proto 引入 application / model。
-- 不拆除全部 model `db` tag，不清空 `common/constant`、`common/runtimeconfig`。
+- 不拆除全部 model `db` tag，不清空 `common/constant`。原范围外的 `common/runtimeconfig` 已在 2026-10-14 后端治理中核对无生产调用并移除，不再作为保留约束。
 - 不改已验收 HTTP 错误 JSON 形状。
 - 不把 Probe 放回请求事务，不引入兼容层。
 

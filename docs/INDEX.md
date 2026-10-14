@@ -16,6 +16,7 @@
 | 主题 | 活文档 |
 |------|--------|
 | 后端栈与分层 | [architecture/backend.md](./architecture/backend.md) |
+| 后端治理总进度、后续安排与验证记录 | [verification/20261014-backend-test-architecture.md](./verification/20261014-backend-test-architecture.md) |
 | CD Render / Gateway / 部署执行 | [architecture/cd-runtime.md](./architecture/cd-runtime.md) |
 | 前端架构（目录 `web/`） | [frontend/architecture.md](./frontend/architecture.md) |
 | 前端 Reka / 样式 | [frontend/reka-ui-guide.md](./frontend/reka-ui-guide.md)、[frontend/style-guide.md](./frontend/style-guide.md) |

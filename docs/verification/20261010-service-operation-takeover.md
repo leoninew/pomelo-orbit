@@ -72,8 +72,8 @@ Review status: Accepted
 | 库存状态、活动任务不拦截生命周期命令 | 通过：三种命令与前端入口 diff 一致；`TestDeployRestartAndStopReplaceEachOtherRegardlessOfStoredStatus` 及前端组件检查 |
 | Service 粒度，三类操作互相接替，Gateway 复用 | 通过：当前指针挂在 Service；用例核对三类命令和不同 Service 隔离，Gateway 保留受管 Service 路径 |
 | 后成功受理优先，失败受理保留旧任务 | 通过：事务入口及 `TestFailedAdmissionRollsBackCurrentOperationAndEnqueuedTask` |
-| 新操作不等待旧 runtime 正常退出，终态或缺失旧记录不阻塞 | 通过：`TestNewOperationCompletesBeforeOldRuntimeExitsDespiteCancellationFailure`、`TestOldTerminalOrMissingOperationDoesNotBlockNewExecution` |
-| 旧取消失败或超时最多 warning，新操作继续 | 通过：上述取消失败测试及 `TestCancellationTimeoutDoesNotBlockNewOperation`，检查 warning 与无额外 ERROR |
+| 新操作不等待旧 runtime 正常退出，终态或缺失旧记录不阻塞 | 通过：`TestNewOperationCompletesBeforeOldRuntimeExitsDespiteCancellationFailure`、`TestOldTerminalOrMissingOperationPreservesNewLifecycle`；2026-10-14 治理后分别由虚拟时间编排与真实 SQL 生命周期验证 |
+| 旧取消失败或超时最多 warning，新操作继续 | 通过：上述取消失败测试检查 warning 与无额外 ERROR；`TestSupersededCancellationReturnsBeforeUnresponsiveStore` 验证超时返回。2026-10-14 已迁至虚拟时间端口测试，见[治理记录](20261014-backend-test-architecture.md) |
 | 集中配置的正数超时覆盖整个执行等待 | 通过：配置加载与校验测试，`TestDeploymentExecutionTimeoutReleasesWaitAndPreservesTerminalResult`，代码核对准备、命令与 readiness 使用执行 Context |
 | 过期排队任务不执行，失去归属时取消 Context | 通过：Begin SQL 条件、执行监控及当前资格检查 |
 | 迟到目录、状态、版本与结果不能覆盖新操作 | 通过：`TestLifecycleWritesRequireCurrentAndExecutableOperation`、迟到成功/失败用例及取消后观测条件 |

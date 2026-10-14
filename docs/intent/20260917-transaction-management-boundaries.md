@@ -8,7 +8,7 @@ Mode: standard
 ## Background
 
 系统采用清晰收敛的两层事务管理架构（路线 B：仓储去事务化）：
-1. **HTTP 请求切面事务（全局写 UoW）**：在 `internal/infrastructure/database/tx/request.go` 中通过 `tx.Middleware` 作为 Gin 中间件（`MutatingUnitOfWork`），对所有常规 `POST`、`PUT`、`PATCH`、`DELETE` 写请求统一开启事务，使用标准 `context.Context` 传播，并通过 `bufferedResponseWriter` 实现两阶段提交保障（仅在 Handler 正常且 `sqlTx.Commit()` 成功后才 flush 响应）。**常规 HTTP 业务写请求（包括跨多个 Repository 的应用层编排）默认直接复用此切面事务，应用层无须引入额外的 `TransactionRunner`。**
+1. **HTTP 请求切面事务（全局写 UoW）**：在 `internal/api/http/middleware/transaction.go` 中通过 `middleware.Transaction` 作为 Gin 中间件（`MutatingUnitOfWork`），对所有常规 `POST`、`PUT`、`PATCH`、`DELETE` 写请求统一开启事务，使用标准 `context.Context` 传播，并通过 `bufferedResponseWriter` 实现提交后写出响应的保障（仅在 Handler 正常且 `sqlTx.Commit()` 成功后才 flush 响应）。**常规 HTTP 业务写请求（包括跨多个 Repository 的应用层编排）默认直接复用此切面事务，应用层无须引入额外的 `TransactionRunner`。**
 2. **应用层显式短 UoW（`TransactionRunner`）**：其使用场景严格限定在**缺乏入站请求事务切面**的场景：
    - 异步 Worker 后台任务：Worker 仅持有 `*sql.DB`，容器运行与长任务在事务外执行，仅在最终多表持久化阶段（如 `forkBuildVersion`）使用显式短 UoW。
    - 被排除在切面外的特殊请求（`skipPaths`）：如 `/api/route/sync/confirm`（前后有 Traefik 网络 I/O）、`/api/dialogue`（包含 LLM 外部调用），以及 `/api/pipeline-run/:run_id`（多表删除后有物理文件清理）。应用层 UseCase 在需要保证多表原子写入时显式调用 `TransactionRunner.RunInTransaction`。
@@ -29,7 +29,7 @@ Mode: standard
 
 ## Goal
 
-1. **补齐 `tx.Middleware` 的跳过路径（`skipPaths`）**：
+1. **补齐 `middleware.Transaction` 的跳过路径（`skipPaths`）**：
    - 在 `internal/bootstrap/http.go` 中，将以下 6 个路由加入 `skipPaths`：
      - `"/api/project-initialization/environment/test"`（SSH 网络握手探测）
      - `"/api/auth/login"`（Turnstile 外网 HTTP 校验与 bcrypt 计算）
@@ -48,7 +48,7 @@ Mode: standard
 
 ## Non-goal
 
-- 不废除基于 HTTP 动词拦截与标准 Context 传播的 `tx.Middleware` 全局切面机制。
+- 不废除基于 HTTP 动词拦截与标准 Context 传播的 `middleware.Transaction` 全局切面机制。
 - 不在已有 HTTP 写请求切面的常规业务用例（如 `RemoveGateway`、`DeleteUser`、`CreateProject` 等）中重复注入或调用 `TransactionRunner`。
 - 不废弃基于 Context 的事务传播与 `dbmodel.Queries` 连接动态感知机制。
 - 不改变任何现有 API 路径、请求/响应结构体与 HTTP 状态码。
@@ -98,14 +98,14 @@ Mode: standard
 ## Decisions
 
 1. **路线 B 仓储去事务化**：彻底消除领域仓储内部的 `tx.RunInTx`。仓储是单纯的数据访问对象（DAO），只依赖 `r.q(ctx)`，其原子性完全由调用方传入的 context 决定。
-2. **HTTP 请求事务边界**：面向切面的 `tx.Middleware` 是常规 HTTP 同步写请求的默认且唯一的 UoW。跨聚合编排（如 `gateway.Service.RemoveGateway`、`user.Service.DeleteUser`）直接通过标准 Context 复用该切面事务，不为常规 HTTP 用例引入 `TransactionRunner` 样板代码。
+2. **HTTP 请求事务边界**：面向切面的 `middleware.Transaction` 是常规 HTTP 同步写请求的默认且唯一的 UoW。跨聚合编排（如 `gateway.Service.RemoveGateway`、`user.Service.DeleteUser`）直接通过标准 Context 复用该切面事务，不为常规 HTTP 用例引入 `TransactionRunner` 样板代码。
 3. **显式 UoW 适用场景**：`TransactionRunner` 仅用于 Worker 异步短写阶段以及被排除在切面外的特殊写请求（如 `route/sync/confirm`、`dialogue`、`pipeline-run/:run_id`）。
 4. **排除路由决策**：所有包含外部网络通信（SSH、Cloudflare）、不可逆文件物理 I/O 以及纯读/无写的写动词路由，全部通过 `skipPaths` 显式移出 HTTP 请求级事务切面。
 5. **文件删除与数据库一致性决策**：数据库记录是系统可信事实源。删除流水线采用“先原子提交数据库删除，后异步/后续清理磁盘文件”的时序。
 
 ## Risk
 
-- **路径模式匹配**：`skipPaths` 中的 `/api/service/:service_id/preview`、`/api/version/:version_id/preview` 与 `/api/pipeline-run/:run_id` 包含路径参数，必须依赖 `matchesPathTemplate` 准确识别与匹配。已在 `internal/infrastructure/database/tx/request_test.go` 中有基准测试覆盖。
+- **路径模式匹配**：`skipPaths` 中的 `/api/service/:service_id/preview`、`/api/version/:version_id/preview` 与 `/api/pipeline-run/:run_id` 包含路径参数，必须依赖 `matchesPathTemplate` 准确识别与匹配。已在 `internal/api/http/middleware/transaction_test.go` 中有基准测试覆盖。
 - **孤儿文件清理**：若流水线数据库记录删除后服务异常退出导致文件未清理，依赖已有的工作区孤儿清理机制兜底。
 
 ## User review notes

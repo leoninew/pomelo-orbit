@@ -73,7 +73,7 @@ Gateway 的 image 与 pull policy 只从 Gateway VersionComponent 读取。Gatew
 | --- | --- |
 | Schema 与数据迁移 | `sql/migration/{sqlite,mysql}/{000023_application,000025_gateway,000026_service,000027_deployment}.*.sql`、`sql/query/{application/version,service/service,deployment/deployment}.sql` |
 | 模型与仓储 | `internal/model/{application,service,deployment}.go`、`internal/repository/**`、`internal/repository/impl/sqlc/**`、`internal/gen/sqlc/**` |
-| 业务与渲染 | `internal/application/{application,service,gateway,deployment}/**`、`internal/common/runtimeconfig/**` |
+| 业务与渲染 | `internal/application/{application,service,gateway,deployment}/**`；无生产调用的 `common/runtimeconfig` 已于 2026-10-14 治理中移除，不再作为实现落点。 |
 | API 与生成契约 | `proto/orbit/v1/{application/version,service/service,gateway/gateway}.proto`、`internal/api/http/**`、`internal/gen/proto/**`、`web/src/gen/proto/**` |
 | Web | `web/src/views/service/{ServiceDetail,ServiceComponentDetail}.vue`、`web/src/views/application/VersionComponentDetail.vue`、`web/src/{router,api,i18n}/**` |
 | MCP 与测试 | 控制面 MCP Service client/schema、各层 `*_test.go`、Web 测试 |

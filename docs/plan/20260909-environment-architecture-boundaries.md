@@ -55,7 +55,7 @@ Environment 读/改/Probe/Initialize 对外返回 `environment/dto` View；HTTP 
 2. 收口构造注入。
    - `settingssvc.New(definitions []settingsdto.Definition, envStore)`；导出 `Definitions(cfg config.Config)`（若 `cfg.Base` 非空则用 Base）。构造函数不再持有 `config.Config`。bootstrap 与 settings 测试改调 `Definitions(cfg)`。
    - `gatewaysvc.New(..., traefik config.TraefikConfig, ...)`，不再收整份 `config.Config`。`resolvePath` 参数保持现签名位置，即使仍未使用也不删。`testGatewayConfig()` 改为返回 `TraefikConfig`。
-   - `routes.Dependencies` 用 `MutatingUnitOfWork gin.HandlerFunc` 替换 `Database *sql.DB`。`routes.go` 去掉 `database/sql` 与 `tx` import。bootstrap：`databasetx.Middleware(database, "/api/route/sync/preview", "/api/route/sync/confirm", "/api/project/:project_id/environment/probe")`。Probe 仍排除；Initialize 事务行为不动。
+   - `routes.Dependencies` 用 `MutatingUnitOfWork gin.HandlerFunc` 替换 `Database *sql.DB`。`routes.go` 去掉 `database/sql` 与 `tx` import。bootstrap：`transportmiddleware.Transaction(database, "/api/route/sync/preview", "/api/route/sync/confirm", "/api/project/:project_id/environment/probe")`。Probe 仍排除；Initialize 事务行为不动。
 
 3. Probe 端口化。
    - 新增 `internal/application/environment/port/prober.go`，定义 `Prober`：`Probe(ctx, Environment, DeploymentSSHPrivateKey) (string, error)` 与 `ProbeLocal(ctx) error`。

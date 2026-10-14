@@ -11,6 +11,7 @@ type PipelineRunDispatchInput struct {
 }
 
 type ExecutePipelineRunInput struct {
+	Attempt       int
 	PipelineRunId string
 	ProjectId     string
 	Variables     map[string]any

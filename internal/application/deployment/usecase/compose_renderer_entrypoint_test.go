@@ -11,7 +11,7 @@ import (
 
 func TestRenderComposeIncludesComponentEntrypoint(t *testing.T) {
 	disabled := false
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
+	compose, err := RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
 			Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 			JoinTraefikNetwork: &disabled,
@@ -33,7 +33,7 @@ func TestRenderComposeIncludesComponentEntrypoint(t *testing.T) {
 
 func TestRenderComposePreservesDirectorySourceForNativeOrbit(t *testing.T) {
 	disabled := false
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
+	compose, err := RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
 			Application:        model.Application{Code: "mysql", Kind: status.ApplicationKindStandard},
 			JoinTraefikNetwork: &disabled,

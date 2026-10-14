@@ -10,13 +10,13 @@ import (
 )
 
 func TestRenderComponentPreservesDependencyConditions(t *testing.T) {
-	service, _, err := renderVersionComponentService(model.VersionComponent{
+	service, _, err := renderComponentService(model.VersionComponent{
 		Name: "api", Image: "nginx",
 		Dependencies: []model.VersionComponentDependency{
 			{Name: "mysql", Condition: "service_healthy"},
 			{Name: "redis", Condition: "service_started"},
 		},
-	}, "demo", "", nil, false)
+	}, "demo", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestRenderComponentPreservesDependencyConditions(t *testing.T) {
 
 func TestRenderComposeDeclaresNamedVolumes(t *testing.T) {
 	disabled := false
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
+	compose, err := RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
 			Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 			JoinTraefikNetwork: &disabled,
@@ -58,7 +58,7 @@ func TestRenderComposeDeclaresNamedVolumes(t *testing.T) {
 func TestRenderComponentMergesResourceReservationsAndDevices(t *testing.T) {
 	reservationCPUs := "2"
 	reservationMemory := "8g"
-	service, _, err := renderVersionComponentService(model.VersionComponent{
+	service, _, err := renderComponentService(model.VersionComponent{
 		Name: "tei", Image: "ghcr.io/huggingface/text-embeddings-inference:cuda-1.9.3",
 		Resources: &model.VersionComponentResources{
 			ReservationCPUs:   &reservationCPUs,
@@ -67,7 +67,7 @@ func TestRenderComponentMergesResourceReservationsAndDevices(t *testing.T) {
 		Devices: []model.VersionComponentDeviceRequest{{
 			Driver: "nvidia", Count: "all", Capabilities: []string{"gpu"},
 		}},
-	}, "demo", "", nil, false)
+	}, "demo", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

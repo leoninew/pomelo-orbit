@@ -15,9 +15,6 @@ import (
 type workspaceFake struct {
 	dataRoot      string
 	hasServiceDir bool
-	queryOutput   string
-	queryErr      error
-	queryCalled   bool
 	staged        []deploymentport.Workspace
 	removedLog    workspaceRemovedLog
 	removeLogErr  error
@@ -27,6 +24,13 @@ type workspaceRemovedLog struct {
 	serviceCode  string
 	deploymentId string
 }
+
+type lifecycleCommandsFake struct{}
+
+func (lifecycleCommandsFake) DeployDescription(string, deploymentport.DeploySettings) string {
+	return "deployment command"
+}
+func (lifecycleCommandsFake) StopDescription(string, bool) string { return "stop command" }
 
 func testWorkspace(dataRoot string) *workspaceFake {
 	return &workspaceFake{dataRoot: dataRoot}
@@ -49,14 +53,6 @@ func (w *workspaceFake) StageWorkspace(_ context.Context, _ environmentport.Targ
 	return nil
 }
 
-func (w *workspaceFake) Run(context.Context, environmentport.Target, deploymentport.ServiceLocation, io.Writer, string, ...string) error {
-	return w.queryErr
-}
-
-func (w *workspaceFake) StreamAtEnvironmentRoot(context.Context, environmentport.Target, io.Writer, string, ...string) error {
-	return w.queryErr
-}
-
 func (w *workspaceFake) OpenReader(context.Context, string, string) (logport.Reader, error) {
 	return emptyLogReader{}, nil
 }
@@ -65,21 +61,6 @@ type emptyLogReader struct{}
 
 func (emptyLogReader) Read(context.Context, int64, int) ([]byte, bool, error) { return nil, false, nil }
 func (emptyLogReader) Close() error                                           { return nil }
-
-func (w *workspaceFake) Query(context.Context, environmentport.Target, deploymentport.ServiceLocation, string, ...string) (string, error) {
-	w.queryCalled = true
-	return w.queryOutput, w.queryErr
-}
-
-func (w *workspaceFake) QueryAtEnvironmentRoot(context.Context, environmentport.Target, string, ...string) (string, error) {
-	w.queryCalled = true
-	return w.queryOutput, w.queryErr
-}
-
-func (w *workspaceFake) QueryAtEnvironmentRootInput(context.Context, environmentport.Target, []byte, string, ...string) (string, error) {
-	w.queryCalled = true
-	return w.queryOutput, w.queryErr
-}
 
 func (w *workspaceFake) Writer(string, string) (io.WriteCloser, error) {
 	return nopWriteCloser{Writer: &bytes.Buffer{}}, nil
@@ -126,10 +107,6 @@ func testSSHTarget(projectId string) environmentport.Target {
 			CredentialId: "credential-1", CredentialRevision: revision, HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
 		},
 	}}
-}
-
-func (w *workspaceFake) SyncFiles(context.Context, environmentport.Target, string, []deploymentport.WorkspaceFile, string) error {
-	return nil
 }
 
 func (w *workspaceFake) ResolveDirectory(ctx context.Context, target environmentport.Target, location deploymentport.ServiceLocation) (string, error) {

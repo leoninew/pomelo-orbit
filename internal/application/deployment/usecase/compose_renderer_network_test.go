@@ -11,7 +11,7 @@ import (
 
 func TestRenderComposeSkipsTraefikNetworkWhenDisabled(t *testing.T) {
 	disabled := false
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
+	compose, err := RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 		Service:            model.Service{Code: "demo-default"},
 		JoinTraefikNetwork: &disabled,
@@ -30,8 +30,26 @@ func TestRenderComposeSkipsTraefikNetworkWhenDisabled(t *testing.T) {
 	}
 }
 
+func TestRenderComposeBracketsIPv6LoopbackPort(t *testing.T) {
+	disabled := false
+	compose, err := RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
+		Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
+		JoinTraefikNetwork: &disabled,
+		Components: []model.EffectiveServiceComponent{{
+			Name: "web", Image: "nginx:latest",
+			Endpoints: []model.VersionComponentEndpoint{{Protocol: "http", ContainerPort: 80, Mode: "local", BindAddress: stringPointer("::1"), ListenPort: intPointer(8080)}},
+		}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(compose, "[::1]:8080:80") {
+		t.Fatalf("IPv6 binding is not bracketed:\n%s", compose)
+	}
+}
+
 func TestRenderComposeJoinsSharedGatewayNetworkByDefault(t *testing.T) {
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
+	compose, err := RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 		Gateway:     &model.GatewayConfig{NetworkName: "traefik"},
 		Components:  []model.EffectiveServiceComponent{{Name: "api", Image: "nginx:latest"}},
@@ -45,7 +63,7 @@ func TestRenderComposeJoinsSharedGatewayNetworkByDefault(t *testing.T) {
 }
 
 func TestRenderComposeRejectsMissingEnvironmentGatewayNetwork(t *testing.T) {
-	_, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
+	_, err := RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 		Components:  []model.EffectiveServiceComponent{{Name: "api", Image: "nginx:latest"}},
 	}})

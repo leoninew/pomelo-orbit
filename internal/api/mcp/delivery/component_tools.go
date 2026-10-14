@@ -11,7 +11,7 @@ import (
 )
 
 func (c *core) registerVersionComponentTools(server *mcp.Server) {
-	addTool(server, "orbit_update_version_component_basic", "Replace a Component's basic configuration.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_basic", "Replace a Component's basic configuration.", func(ctx context.Context, input struct {
 		VersionId     string `json:"version_id" jsonschema:"required"`
 		ComponentId   string `json:"component_id" jsonschema:"required"`
 		Name          string `json:"name" jsonschema:"required"`
@@ -39,7 +39,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_basic", input.VersionId, input.ComponentId, "/basic", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_identity", "Replace a Component's container user and supplementary groups. Omit user and use an empty group_add list to restore the image identity.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_identity", "Replace a Component's container user and supplementary groups. Omit user and use an empty group_add list to restore the image identity.", func(ctx context.Context, input struct {
 		VersionId   string   `json:"version_id" jsonschema:"required"`
 		ComponentId string   `json:"component_id" jsonschema:"required"`
 		User        *string  `json:"user,omitempty"`
@@ -59,7 +59,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_identity", input.VersionId, input.ComponentId, "/identity", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_runtime", "Replace a Component's health check.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_runtime", "Replace a Component's health check.", func(ctx context.Context, input struct {
 		VersionId   string                              `json:"version_id" jsonschema:"required"`
 		ComponentId string                              `json:"component_id" jsonschema:"required"`
 		Healthcheck *applicationv1.ComponentHealthcheck `json:"healthcheck,omitempty"`
@@ -81,7 +81,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 	// The following collection tools deliberately keep their collection at the
 	// top level. Python's wrapper schema required mounts: { mounts: [...] };
 	// this Go schema is mounts: [...], and the same applies to peer fields.
-	addTool(server, "orbit_update_version_component_endpoints", "Replace a Component's declared endpoint collection. Each endpoint requires protocol=http|tcp, container_port (1-65535), and mode=internal|local|host|gateway. Use gateway only for an HTTP route exposed by the managed Gateway; use an internal TCP endpoint as a custom TCP Route target. Include bind_address, listen_port, entrypoint, or path_prefix only when that selected mode needs an override. This replaces the complete collection, so preserve unrelated endpoints from the preceding orbit_get_version read.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_endpoints", "Replace a Component's declared endpoint collection. Each endpoint requires protocol=http|tcp, container_port (1-65535), and mode=internal|local|host|gateway. Use gateway only for an HTTP route exposed by the managed Gateway; use an internal TCP endpoint as a custom TCP Route target. Include bind_address, listen_port, entrypoint, or path_prefix only when that selected mode needs an override. This replaces the complete collection, so preserve unrelated endpoints from the preceding orbit_get_version read.", func(ctx context.Context, input struct {
 		VersionId   string                             `json:"version_id" jsonschema:"required"`
 		ComponentId string                             `json:"component_id" jsonschema:"required"`
 		Endpoints   []*applicationv1.ComponentEndpoint `json:"endpoints" jsonschema:"required"`
@@ -100,7 +100,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_endpoints", input.VersionId, input.ComponentId, "/endpoints", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_env", "Replace a Component's environment collection. Use exact ${KEY} placeholders for values owned by the Service runtime configuration; set each concrete value with orbit_update_service_env instead of storing credentials in the Version.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_env", "Replace a Component's environment collection. Use exact ${KEY} placeholders for values owned by the Service runtime configuration; set each concrete value with orbit_update_service_env instead of storing credentials in the Version.", func(ctx context.Context, input struct {
 		VersionId   string                        `json:"version_id" jsonschema:"required"`
 		ComponentId string                        `json:"component_id" jsonschema:"required"`
 		Env         []*applicationv1.ComponentEnv `json:"env" jsonschema:"required"`
@@ -119,7 +119,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_env", input.VersionId, input.ComponentId, "/env", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_mounts", "Replace a Component's mount collection. Each item requires source_type, source, and target. Every non-named_volume source must be either an absolute path such as /etc/app/app.env or C:/etc/app/app.env, or an explicit relative path beginning with ./ such as ./config/app.env; a bare relative source such as config/app.env is invalid because Compose interprets it as a volume name. source_is_host_path=true is only for an absolute host directory/file. source_type=named_volume uses a bare volume name and no file options. source_type=controlled_file is a file mount, never a volume mount; source_is_host_path must be false, and it follows the same absolute-or-./ source rule. Content may be an empty string; mode is required as four-digit Unix octal such as 0644; content is at most 262144 bytes; ignore_if_exists is allowed only here. The source is rendered as provided. This replaces the complete collection, so preserve unrelated mounts from the preceding orbit_get_version read.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_mounts", "Replace a Component's mount collection. Each item requires source_type, source, and target. Every non-named_volume source must be either an absolute path such as /etc/app/app.env or C:/etc/app/app.env, or an explicit relative path beginning with ./ such as ./config/app.env; a bare relative source such as config/app.env is invalid because Compose interprets it as a volume name. source_is_host_path=true is only for an absolute host directory/file. source_type=named_volume uses a bare volume name and no file options. source_type=controlled_file is a file mount, never a volume mount; source_is_host_path must be false, and it follows the same absolute-or-./ source rule. Content may be an empty string; mode is required as four-digit Unix octal such as 0644; content is at most 262144 bytes; ignore_if_exists is allowed only here. The source is rendered as provided. This replaces the complete collection, so preserve unrelated mounts from the preceding orbit_get_version read.", func(ctx context.Context, input struct {
 		VersionId   string                          `json:"version_id" jsonschema:"required"`
 		ComponentId string                          `json:"component_id" jsonschema:"required"`
 		Mounts      []*applicationv1.ComponentMount `json:"mounts" jsonschema:"required"`
@@ -138,7 +138,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_mounts", input.VersionId, input.ComponentId, "/mounts", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_dependencies", "Replace a Component's dependency collection.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_dependencies", "Replace a Component's dependency collection.", func(ctx context.Context, input struct {
 		VersionId    string                               `json:"version_id" jsonschema:"required"`
 		ComponentId  string                               `json:"component_id" jsonschema:"required"`
 		Dependencies []*applicationv1.ComponentDependency `json:"dependencies" jsonschema:"required"`
@@ -157,7 +157,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_dependencies", input.VersionId, input.ComponentId, "/dependencies", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_devices", "Replace a Component's device requests without changing resources, tmpfs, or ulimits.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_devices", "Replace a Component's device requests without changing resources, tmpfs, or ulimits.", func(ctx context.Context, input struct {
 		VersionId   string                                  `json:"version_id" jsonschema:"required"`
 		ComponentId string                                  `json:"component_id" jsonschema:"required"`
 		Devices     []*applicationv1.ComponentDeviceRequest `json:"devices" jsonschema:"required"`
@@ -176,7 +176,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_devices", input.VersionId, input.ComponentId, "/devices", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_advanced", "Replace a Component's resources, tmpfs, and ulimit settings.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_advanced", "Replace a Component's resources, tmpfs, and ulimit settings.", func(ctx context.Context, input struct {
 		VersionId   string                            `json:"version_id" jsonschema:"required"`
 		ComponentId string                            `json:"component_id" jsonschema:"required"`
 		Resources   *applicationv1.ComponentResources `json:"resources,omitempty"`
@@ -197,7 +197,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_advanced", input.VersionId, input.ComponentId, "/advanced", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_resources", "Replace a Component's resource constraints and preserve its tmpfs and ulimit settings.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_resources", "Replace a Component's resource constraints and preserve its tmpfs and ulimit settings.", func(ctx context.Context, input struct {
 		VersionId   string                            `json:"version_id" jsonschema:"required"`
 		ComponentId string                            `json:"component_id" jsonschema:"required"`
 		Resources   *applicationv1.ComponentResources `json:"resources,omitempty"`
@@ -220,7 +220,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_resources", input.VersionId, input.ComponentId, "/advanced", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_tmpfs", "Replace a Component's tmpfs collection and preserve its resource and ulimit settings.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_tmpfs", "Replace a Component's tmpfs collection and preserve its resource and ulimit settings.", func(ctx context.Context, input struct {
 		VersionId   string                          `json:"version_id" jsonschema:"required"`
 		ComponentId string                          `json:"component_id" jsonschema:"required"`
 		Tmpfs       []*applicationv1.ComponentTmpfs `json:"tmpfs" jsonschema:"required"`
@@ -243,7 +243,7 @@ func (c *core) registerVersionComponentTools(server *mcp.Server) {
 		return componentWriteResult("update_version_component_tmpfs", input.VersionId, input.ComponentId, "/advanced", component), nil
 	})
 
-	addTool(server, "orbit_update_version_component_ulimits", "Replace a Component's ulimit collection and preserve its resource and tmpfs settings.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version_component_ulimits", "Replace a Component's ulimit collection and preserve its resource and tmpfs settings.", func(ctx context.Context, input struct {
 		VersionId   string                           `json:"version_id" jsonschema:"required"`
 		ComponentId string                           `json:"component_id" jsonschema:"required"`
 		Ulimits     []*applicationv1.ComponentUlimit `json:"ulimits" jsonschema:"required"`

@@ -35,7 +35,7 @@ func TestComponentIdentityMergeRenderAndHash(t *testing.T) {
 				t.Fatal(err)
 			}
 			hashes = append(hashes, hash)
-			result, err := (Service{}).RenderCompose(context.Background(), RenderInput{Plan: plan})
+			result, err := RenderCompose(context.Background(), RenderInput{Plan: plan})
 			if err != nil {
 				t.Fatal(err)
 			}

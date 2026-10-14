@@ -41,18 +41,18 @@ func verifyRunTargetSnapshot(run model.PipelineRun, environment model.Environmen
 	return nil
 }
 
-func (s Service) resolveProjectTarget(ctx context.Context, projectId string) (environmentport.Target, error) {
-	if s.targetResolver == nil {
+func resolveProjectTarget(ctx context.Context, resolver environmentport.TargetResolver, projectId string) (environmentport.Target, error) {
+	if resolver == nil {
 		return environmentport.Target{}, apperror.New(apperror.KindInternal, "pipeline target resolver is not configured")
 	}
-	return s.targetResolver.ResolveProjectTarget(ctx, projectId)
+	return resolver.ResolveProjectTarget(ctx, projectId)
 }
 
-func (s Service) runEnvironment(ctx context.Context, projectId string, run model.PipelineRun) (model.Environment, error) {
-	if s.environments == nil {
+func runEnvironment(ctx context.Context, environments repository.EnvironmentStore, projectId string, run model.PipelineRun) (model.Environment, error) {
+	if environments == nil {
 		return model.Environment{}, errors.New("pipeline environment store is not configured")
 	}
-	environment, err := s.environments.EnvironmentByProject(ctx, projectId)
+	environment, err := environments.EnvironmentByProject(ctx, projectId)
 	if errors.Is(err, repository.ErrNotFound) {
 		return model.Environment{}, errors.New("project environment no longer exists; pipeline run files cannot be located")
 	}
@@ -73,15 +73,15 @@ func (s Service) runEnvironment(ctx context.Context, projectId string, run model
 	return environment, nil
 }
 
-func (s Service) resolveQueuedTarget(ctx context.Context, projectId string, run model.PipelineRun) (environmentport.Target, error) {
-	environment, err := s.runEnvironment(ctx, projectId, run)
+func (s ExecutionService) resolveQueuedTarget(ctx context.Context, projectId string, run model.PipelineRun) (environmentport.Target, error) {
+	environment, err := runEnvironment(ctx, s.environments, projectId, run)
 	if err != nil {
 		return environmentport.Target{}, err
 	}
 	if run.EnvironmentId == nil {
 		return environmentport.Target{}, errors.New("historical pipeline run cannot execute without a target snapshot; retry run")
 	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
+	target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 	if err != nil {
 		return environmentport.Target{}, fmt.Errorf("project environment is not ready for queued pipeline run: %w; retry run", err)
 	}
@@ -94,14 +94,14 @@ func (s Service) resolveQueuedTarget(ctx context.Context, projectId string, run 
 	return target, nil
 }
 
-func (s Service) workspaceForEnvironment(ctx context.Context, environment model.Environment) (pipelinerunport.Workspace, error) {
+func workspaceForEnvironment(ctx context.Context, workspace pipelinerunport.Workspace, environment model.Environment) (pipelinerunport.Workspace, error) {
 	if !environment.IsLocal() {
 		return nil, errors.New("remote pipeline workspace is not available until SSH CI execution is installed")
 	}
 	if strings.TrimSpace(environment.WorkspaceRoot) == "" {
 		return nil, errors.New("project environment workspace root is required")
 	}
-	resolver, ok := s.workspace.(pipelinerunport.TargetWorkspaceResolver)
+	resolver, ok := workspace.(pipelinerunport.TargetWorkspaceResolver)
 	if !ok {
 		return nil, errors.New("target-aware pipeline workspace is not configured")
 	}
@@ -111,11 +111,10 @@ func (s Service) workspaceForEnvironment(ctx context.Context, environment model.
 type runRuntime struct {
 	workspace pipelinerunport.Workspace
 	runner    pipelinerunport.ContainerRunner
-	reader    pipelinerunport.LogReader
 	writer    pipelinerunport.ExecutionLogStore
 }
 
-func (s Service) runtimeForTarget(ctx context.Context, target environmentport.Target) (runRuntime, error) {
+func (s ExecutionService) runtimeForTarget(ctx context.Context, target environmentport.Target) (runRuntime, error) {
 	if target.Environment.IsSSH() {
 		if s.remoteRuntime == nil {
 			return runRuntime{}, errors.New("SSH pipeline runtime is not configured")
@@ -124,38 +123,42 @@ func (s Service) runtimeForTarget(ctx context.Context, target environmentport.Ta
 		if err != nil {
 			return runRuntime{}, err
 		}
-		return runRuntime{workspace: workspace, runner: runner, reader: logs, writer: logs}, nil
+		return runRuntime{workspace: workspace, runner: runner, writer: logs}, nil
 	}
-	return s.runtimeForEnvironment(ctx, target.Environment)
+	workspace, err := workspaceForEnvironment(ctx, s.workspace, target.Environment)
+	return runRuntime{workspace: workspace, runner: s.runner, writer: s.executionLogStore}, err
 }
 
-func (s Service) runtimeForEnvironment(ctx context.Context, environment model.Environment) (runRuntime, error) {
-	workspace, err := s.workspaceForEnvironment(ctx, environment)
+func (s Service) runtimeForRun(ctx context.Context, projectId string, run model.PipelineRun) (runFiles, error) {
+	environment, err := runEnvironment(ctx, s.environments, projectId, run)
 	if err != nil {
-		return runRuntime{}, err
-	}
-	return runRuntime{workspace: workspace, runner: s.runner, reader: s.logStore, writer: s.executionLogStore}, nil
-}
-
-func (s Service) runtimeForRun(ctx context.Context, projectId string, run model.PipelineRun) (runRuntime, error) {
-	environment, err := s.runEnvironment(ctx, projectId, run)
-	if err != nil {
-		return runRuntime{}, err
+		return runFiles{}, err
 	}
 	if environment.IsSSH() {
-		target, err := s.resolveProjectTarget(ctx, projectId)
+		target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 		if err != nil {
-			return runRuntime{}, err
+			return runFiles{}, err
 		}
 		if err := verifyRunTargetSnapshot(run, target.Environment); err != nil {
-			return runRuntime{}, err
+			return runFiles{}, err
 		}
-		return s.runtimeForTarget(ctx, target)
+		if s.remoteRuntime == nil {
+			return runFiles{}, errors.New("SSH pipeline runtime is not configured")
+		}
+		workspace, _, logs, err := s.remoteRuntime.RuntimeForTarget(ctx, target)
+		return runFiles{workspace: workspace, reader: logs}, err
 	}
-	return s.runtimeForEnvironment(ctx, environment)
+	workspace, err := workspaceForEnvironment(ctx, s.workspace, environment)
+	return runFiles{workspace: workspace, reader: s.logStore}, err
 }
 
 func (s Service) workspaceForRun(ctx context.Context, projectId string, run model.PipelineRun) (pipelinerunport.Workspace, error) {
 	runtime, err := s.runtimeForRun(ctx, projectId, run)
 	return runtime.workspace, err
+}
+
+// runFiles is the read/cleanup resource view; it cannot execute a stage.
+type runFiles struct {
+	workspace pipelinerunport.Workspace
+	reader    pipelinerunport.LogReader
 }

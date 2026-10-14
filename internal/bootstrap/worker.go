@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"log/slog"
 
+	dockerrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/docker"
+
 	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
-	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
 	pipelinerunsvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/usecase"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/config"
@@ -32,16 +33,13 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 	transactionRunner := databasetx.NewTransactionRunner(database)
 	targetResolver := environmentsvc.NewTargetResolver(stores.environment, stores.environmentCredential, cfg.Jwt.SecretKey)
 	_, runtime := newDeploymentRuntime(dockerPathResolver)
-	gatewayService := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.deployment, dockerPathResolver, transactionRunner)
 	routeManager := traefik.NewRouteManager(targetResolver, runtime, routeSyncTimeouts(cfg.Route))
 	applicationService := applicationsvc.New(stores.project, stores.application)
 	pipelineRunService := pipelinerunsvc.NewExecutionService(
-		stores.project,
 		stores.credential,
 		stores.repository,
 		stores.pipeline,
 		stores.pipelineRun,
-		stores.application,
 		stores.environment,
 		targetResolver,
 		applicationService,
@@ -56,11 +54,7 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		localSource,
 	).WithRemoteRuntime(sshrunner.NewPipelineRuntime())
 	deploymentService := deploymentsvc.NewExecutionService(
-		stores.project,
-		stores.application,
-		stores.service,
-		stores.deployment,
-		gatewayService,
+		deploymentExecutionStore{stores.application, stores.service, stores.deployment},
 		logger,
 		targetResolver,
 		runtime,
@@ -70,6 +64,9 @@ func NewTaskRouter(database *sql.DB, cfg config.Config, logger *slog.Logger) *wo
 		cfg.Deployment.CancelTimeout,
 		transactionRunner,
 		routeManager,
+		dockerrunner.NewInventory(runtime),
+		dockerrunner.NewRuntimeInspector(runtime),
+		dockerrunner.NewLifecycle(runtime),
 	)
 
 	router := worker.NewRouter()

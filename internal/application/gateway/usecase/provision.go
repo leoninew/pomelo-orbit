@@ -7,9 +7,8 @@ import (
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 )
 
-// ProvisionGateway is an idempotent resource-preparation operation. It never
-// publishes a Version, creates a Deployment, waits for runtime state, or
-// changes an existing Service binding. Missing Gateway resources are not created.
+// ProvisionGateway returns existing Gateway resources and their Service binding.
+// Missing resources produce gateway_not_ready.
 func (s Service) ProvisionGateway(ctx context.Context, userId string, input gatewaydto.ProvisionGatewayInput) (gatewaydto.ProvisionGatewayResult, error) {
 	projectId := input.ProjectId
 	if projectId == "" {

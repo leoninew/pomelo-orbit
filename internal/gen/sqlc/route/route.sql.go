@@ -536,3 +536,43 @@ func (q *Queries) UpdateRoute(ctx context.Context, arg UpdateRouteParams) error 
 	)
 	return err
 }
+
+const updateRouteCertificate = `-- name: UpdateRouteCertificate :execrows
+UPDATE route
+SET https_enabled = ?, cert_pem = ?, cert_key = ?,
+    cert_type = ?, acme_challenge = ?, updated_at = ?
+WHERE id = ? AND project_id = ?
+  AND protocol = 'http' AND domain = ? AND updated_at = ?
+`
+
+type UpdateRouteCertificateParams struct {
+	HttpsEnabled      int64          `db:"https_enabled"`
+	CertPem           sql.NullString `db:"cert_pem"`
+	CertKey           sql.NullString `db:"cert_key"`
+	CertType          string         `db:"cert_type"`
+	AcmeChallenge     string         `db:"acme_challenge"`
+	UpdatedAt         time.Time      `db:"updated_at"`
+	Id                string         `db:"id"`
+	ProjectId         sql.NullString `db:"project_id"`
+	ExpectedDomain    string         `db:"expected_domain"`
+	ExpectedUpdatedAt time.Time      `db:"expected_updated_at"`
+}
+
+func (q *Queries) UpdateRouteCertificate(ctx context.Context, arg UpdateRouteCertificateParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateRouteCertificate,
+		arg.HttpsEnabled,
+		arg.CertPem,
+		arg.CertKey,
+		arg.CertType,
+		arg.AcmeChallenge,
+		arg.UpdatedAt,
+		arg.Id,
+		arg.ProjectId,
+		arg.ExpectedDomain,
+		arg.ExpectedUpdatedAt,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}

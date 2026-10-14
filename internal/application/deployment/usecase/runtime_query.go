@@ -6,6 +6,7 @@ import (
 	"path"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
@@ -21,7 +22,7 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, projectId
 	if err != nil {
 		return nil, err
 	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
+	target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 	if err != nil {
 		return nil, err
 	}
@@ -39,15 +40,11 @@ func (s Service) ApplicationStatus(ctx context.Context, userId string, projectId
 	if !exists {
 		return []deploymentdto.RuntimeContainer{}, nil
 	}
-	command := containerPsCommand(composeProjectName(service.Code))
-	output, err := s.runtime.Query(ctx, target, location, command.Name, command.Args...)
+	observation, err := s.inspector.Containers(ctx, deploymentport.RuntimeScope{Target: target, Location: location, Project: service.Code})
 	if err != nil {
-		return nil, apperror.New(apperror.KindInternal, outputOrError(output, err))
+		return nil, err
 	}
-	containers, err := parseComposePsOutput(output)
-	if err != nil {
-		return nil, apperror.Wrap(apperror.KindInternal, "Failed to parse compose status", err)
-	}
+	containers := observation.Containers
 	if err := s.populateContainerComponentIds(ctx, projectId, service.VersionId, containers); err != nil {
 		return nil, err
 	}
@@ -79,7 +76,7 @@ func applyContainerComponentIds(containers []deploymentdto.RuntimeContainer, ver
 
 // PreviewService renders a saved service configuration without creating a deployment.
 func (s Service) PreviewService(ctx context.Context, userId string, projectId string, serviceId string, input deploymentdto.PreviewComposeInput) (string, error) {
-	if s.commandStore == nil || s.executionStore == nil {
+	if s.commandStore == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment stores are not configured")
 	}
 	service, app, err := s.serviceForUser(ctx, userId, projectId, serviceId)
@@ -97,11 +94,11 @@ func (s Service) PreviewService(ctx context.Context, userId string, projectId st
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list components", err)
 	}
-	overlays, err := s.executionStore.ServiceComponentsByService(ctx, projectId, service.Id)
+	overlays, err := s.commandStore.ServiceComponentsByService(ctx, projectId, service.Id)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to list service components", err)
 	}
-	env, err := s.executionStore.ServiceEnvByService(ctx, projectId, service.Id)
+	env, err := s.commandStore.ServiceEnvByService(ctx, projectId, service.Id)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to load service environment", err)
 	}
@@ -149,7 +146,10 @@ func (s Service) renderComposePreview(ctx context.Context, projectId string, app
 		return "", err
 	}
 	plan.Gateway = gateway
-	content, err := s.RenderCompose(ctx, RenderInput{
+	if err := enrichGatewayPlan(&plan); err != nil {
+		return "", apperror.New(apperror.KindValidation, err.Error())
+	}
+	content, err := RenderCompose(ctx, RenderInput{
 		Plan:          plan,
 		LogicalSvcDir: path.Join("/.pomelo-orbit-preview", plan.Service.Code),
 	})

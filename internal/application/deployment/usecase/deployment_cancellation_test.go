@@ -33,25 +33,21 @@ func TestObservedServiceStatus(t *testing.T) {
 
 func TestReconcileCanceledServiceUsesObservedRuntimeWithoutChangingDeployment(t *testing.T) {
 	tests := []struct {
-		name      string
-		workspace bool
-		output    string
-		runErr    error
-		want      string
+		name       string
+		containers []deploymentdto.RuntimeContainer
+		runErr     error
+		want       string
 	}{
-		{name: "running", workspace: true, output: `[{"State":"running"}]`, want: status.ServiceStatusRunning},
-		{name: "stopped", workspace: true, output: "[]", want: status.ServiceStatusStopped},
-		{name: "unobservable", workspace: true, runErr: context.Canceled},
+		{name: "running", containers: []deploymentdto.RuntimeContainer{{State: "running"}}, want: status.ServiceStatusRunning},
+		{name: "stopped", want: status.ServiceStatusStopped},
+		{name: "unobservable", runErr: context.Canceled},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			store := &canceledServiceStore{}
-			runtime := testWorkspace(t.TempDir())
-			runtime.hasServiceDir = test.workspace
-			runtime.queryOutput = test.output
-			runtime.queryErr = test.runErr
-			service := Service{executionStore: store, runtime: runtime}
-			service.reconcileCanceledService(context.Background(), "project-1", "deployment-1", environmentport.Target{}, model.Application{Code: "demo"}, model.Service{Id: "service-1", Code: "demo-default"})
+			observer := &runtimeInspectorFake{observation: deploymentport.ContainerObservation{Containers: test.containers}, err: test.runErr}
+			service := NewExecutionService(store, nil, nil, nil, nil, 0, 0, 0, nil, nil, nil, observer, nil)
+			service.reconcileCanceledService(context.Background(), "project-1", "deployment-1", environmentport.Target{}, model.Service{Id: "service-1", Code: "demo-default"})
 			if store.status != test.want {
 				t.Fatalf("service status = %q, want %q", store.status, test.want)
 			}

@@ -26,24 +26,6 @@ func renderSharedMountsLabel(mounts []model.VersionComponentMount) (string, erro
 	return string(encoded), err
 }
 
-func sharedMountTargets(labels map[string]string) (map[string]bool, error) {
-	result := map[string]bool{}
-	if value := labels[sharedMountsLabel]; value != "" {
-		var targets []string
-		if err := json.Unmarshal([]byte(value), &targets); err != nil {
-			return nil, err
-		}
-		for _, target := range targets {
-			result[sharedMountTargetKey(target)] = true
-		}
-	}
-	return result, nil
-}
-
-func sharedMountTargetKey(value string) string {
-	return path.Clean(dockerMountComparisonPath(value, ""))
-}
-
 func mountSourceContains(parent, child, platform string) bool {
 	parent = strings.TrimRight(path.Clean(dockerMountComparisonPath(parent, platform)), "/")
 	child = strings.TrimRight(path.Clean(dockerMountComparisonPath(child, platform)), "/")

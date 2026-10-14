@@ -3,7 +3,6 @@ package deploymentsvc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"log/slog"
@@ -25,53 +24,26 @@ type Service struct {
 	application     repository.ApplicationStore
 	service         repository.ServiceStore
 	deployment      repository.DeploymentStore
-	logStore        deploymentport.ExecutionLogStore
+	logStore        deploymentport.DeploymentLogs
 	targetResolver  environmentport.TargetResolver
-	runtime         deploymentport.Runtime
-	store           *stores
-	executionStore  deploymentport.ExecutionStore
+	runtime         deploymentport.WorkspaceReader
+	inspector       deploymentport.RuntimeInspector
+	commands        deploymentport.LifecycleCommands
+	containerLogs   deploymentport.ContainerLogs
 	dispatcher      deploymentport.Dispatcher
 
 	logger            *slog.Logger
-	pollInterval      time.Duration
-	executionTimeout  time.Duration
-	cancelTimeout     time.Duration
 	transactionRunner deploymentport.TransactionRunner
 
 	commandStore       deploymentport.CommandStore
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator
-	gatewayReadiness   deploymentport.GatewayReadinessChecker
-	statusChecks       *serviceStatusChecks
-}
-
-func New(
-	project repository.ProjectReader,
-	application repository.ApplicationStore,
-	service repository.ServiceStore,
-	deployment repository.DeploymentStore,
-	targetResolver environmentport.TargetResolver,
-	runtime deploymentport.Runtime,
-	logStore deploymentport.ExecutionLogStore,
-	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
-) Service {
-	store := &stores{
-		project: project, application: application,
-		service: service, deployment: deployment,
-	}
-	return Service{
-		project: project, application: application,
-		service: service, deployment: deployment,
-		logStore: logStore, targetResolver: targetResolver, runtime: runtime, store: store, executionStore: store,
-		gatewayCoordinator: gatewayCoordinator,
-		statusChecks:       newServiceStatusChecks(),
-	}
 }
 
 func (s Service) ListDeployments(ctx context.Context, userId string, input deploymentdto.DeploymentListInput) (repository.Page[model.Deployment], error) {
 	if input.ProjectId == "" {
 		return repository.Page[model.Deployment]{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, input.ProjectId, userId); err != nil {
+	if err := ensureProjectMembership(ctx, s.project, input.ProjectId, userId); err != nil {
 		return repository.Page[model.Deployment]{}, err
 	}
 	dateFrom, err := parseOptionalRunTime(input.DateFrom, "date_from")
@@ -92,7 +64,7 @@ func (s Service) ListDeployments(ctx context.Context, userId string, input deplo
 // ClearProjectDeploymentHistory removes persisted deployment records without
 // touching runtime workspaces, containers, or execution logs.
 func (s Service) ClearProjectDeploymentHistory(ctx context.Context, userId, projectId string) error {
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+	if err := ensureProjectMembership(ctx, s.project, projectId, userId); err != nil {
 		return err
 	}
 	if err := s.deployment.ClearProjectDeploymentHistory(ctx, projectId); err != nil {
@@ -163,7 +135,7 @@ func (s Service) loadDeploymentForUser(ctx context.Context, userId string, proje
 	if projectId == "" {
 		return model.Deployment{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+	if err := ensureProjectMembership(ctx, s.project, projectId, userId); err != nil {
 		return model.Deployment{}, err
 	}
 	deployment, err := s.deployment.Deployment(ctx, projectId, deploymentId)
@@ -211,14 +183,14 @@ func (s Service) warnDeploymentLogCleanupSkipped(deploymentId string, reason str
 	}
 }
 
-func (s Service) ensureProjectMembership(ctx context.Context, projectId string, userId string) error {
-	if _, err := s.project.Project(ctx, projectId); err != nil {
+func ensureProjectMembership(ctx context.Context, project repository.ProjectReader, projectId string, userId string) error {
+	if _, err := project.Project(ctx, projectId); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return apperror.New(apperror.KindNotFound, "Project "+projectId+" not found")
 		}
 		return apperror.Wrap(apperror.KindInternal, "Failed to load project", err)
 	}
-	member, err := s.project.IsProjectMember(ctx, projectId, userId)
+	member, err := project.IsProjectMember(ctx, projectId, userId)
 	if err != nil {
 		return apperror.Wrap(apperror.KindInternal, "Failed to check project member", err)
 	}
@@ -239,7 +211,7 @@ func (s Service) readDeploymentLog(ctx context.Context, projectId string, deploy
 		}
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load application", err)
 	}
-	svc, err := s.resolveServiceFromDeployment(ctx, projectId, app.Id, deployment)
+	svc, err := resolveServiceFromDeployment(ctx, s.commandStore, projectId, app.Id, deployment)
 	if err != nil {
 		return "", offset, apperror.Wrap(apperror.KindInternal, "Failed to load service", err)
 	}
@@ -259,11 +231,4 @@ func parseOptionalRunTime(value string, name string) (*time.Time, error) {
 		return nil, apperror.New(apperror.KindValidation, name+" must be ISO 8601")
 	}
 	return &parsed, nil
-}
-
-func outputOrError(output string, err error) string {
-	if output != "" {
-		return output
-	}
-	return fmt.Sprint(err)
 }

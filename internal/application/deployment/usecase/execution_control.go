@@ -36,7 +36,7 @@ func (e *deploymentSupersededError) Error() string {
 
 func (*deploymentSupersededError) Unwrap() error { return errDeploymentSuperseded }
 
-func (s Service) executeDeployment(ctx context.Context, projectId, applicationId, deploymentId, operation string, body deploymentBody) error {
+func (s ExecutionService) executeDeployment(ctx context.Context, projectId, applicationId, deploymentId, operation string, body deploymentBody) error {
 	started := time.Now()
 	if s.executionTimeout <= 0 || s.cancelTimeout <= 0 {
 		return errors.New("deployment execution and cancellation timeouts must be configured")
@@ -113,7 +113,7 @@ func (s Service) executeDeployment(ctx context.Context, projectId, applicationId
 	return s.finishDeploymentBounded(ctx, projectId, deploymentId, operation, executionErr)
 }
 
-func (s Service) monitorDeployment(ctx context.Context, cancel context.CancelCauseFunc, projectId, serviceId, deploymentId string) {
+func (s ExecutionService) monitorDeployment(ctx context.Context, cancel context.CancelCauseFunc, projectId, serviceId, deploymentId string) {
 	interval := s.pollInterval
 	if interval <= 0 || interval > time.Second {
 		interval = time.Second
@@ -146,7 +146,7 @@ func (s Service) monitorDeployment(ctx context.Context, cancel context.CancelCau
 	}
 }
 
-func (s Service) ensureDeploymentCurrent(ctx context.Context, projectId, deploymentId string) error {
+func (s ExecutionService) ensureDeploymentCurrent(ctx context.Context, projectId, deploymentId string) error {
 	if err := ctx.Err(); err != nil {
 		return context.Cause(ctx)
 	}
@@ -177,7 +177,7 @@ func (s Service) ensureDeploymentCurrent(ctx context.Context, projectId, deploym
 	return ctx.Err()
 }
 
-func (s Service) cancelSupersededDeployments(ctx context.Context, projectId, serviceId, deploymentId string) {
+func (s ExecutionService) cancelSupersededDeployments(ctx context.Context, projectId, serviceId, deploymentId string) {
 	started := time.Now()
 	cancelCtx, stop := context.WithTimeout(ctx, s.cancelTimeout)
 	defer stop()
@@ -210,7 +210,7 @@ func isDeploymentCancellation(err error) bool {
 	return errors.Is(err, errDeploymentSuperseded) || errors.Is(err, errDeploymentCanceled) || errors.Is(err, errDeploymentSkipped)
 }
 
-func (s Service) finishDeploymentBounded(ctx context.Context, projectId, deploymentId, operation string, executionErr error) error {
+func (s ExecutionService) finishDeploymentBounded(ctx context.Context, projectId, deploymentId, operation string, executionErr error) error {
 	cleanupCtx, stop := context.WithTimeout(context.WithoutCancel(ctx), s.cancelTimeout)
 	defer stop()
 	done := make(chan error, 1)
@@ -227,7 +227,7 @@ func (s Service) finishDeploymentBounded(ctx context.Context, projectId, deploym
 	}
 }
 
-func (s Service) finishDeployment(ctx context.Context, projectId, deploymentId, operation string, executionErr error) error {
+func (s ExecutionService) finishDeployment(ctx context.Context, projectId, deploymentId, operation string, executionErr error) error {
 	deployment, err := s.executionStore.Deployment(ctx, projectId, deploymentId)
 	if errors.Is(err, repository.ErrNotFound) {
 		s.warnExecution(projectId, "", deploymentId, "execution_record_missing", err)
@@ -259,7 +259,7 @@ func (s Service) finishDeployment(ctx context.Context, projectId, deploymentId, 
 		return nil
 	}
 	if deployment.Status == status.WorkStatusCanceled {
-		target, err := s.resolveProjectTarget(ctx, projectId)
+		target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 		if err != nil {
 			s.warnExecution(projectId, serviceId, deploymentId, "cancel_target_resolution", err)
 			return nil
@@ -273,7 +273,7 @@ func (s Service) finishDeployment(ctx context.Context, projectId, deploymentId, 
 			s.warnExecution(projectId, serviceId, deploymentId, "cancel_target_changed", err)
 			return nil
 		}
-		s.reconcileCanceledService(ctx, projectId, deploymentId, target, model.Application{}, svc)
+		s.reconcileCanceledService(ctx, projectId, deploymentId, target, svc)
 		return nil
 	}
 	if isDeploymentCancellation(executionErr) || status.WorkStatusIsComplete(deployment.Status) {
@@ -313,7 +313,7 @@ func (s Service) finishDeployment(ctx context.Context, projectId, deploymentId, 
 	return errors.Join(executionErr, err)
 }
 
-func (s Service) warnExecution(projectId, serviceId, deploymentId, stage string, err error, elapsed ...time.Duration) {
+func (s ExecutionService) warnExecution(projectId, serviceId, deploymentId, stage string, err error, elapsed ...time.Duration) {
 	if s.logger != nil {
 		fields := []any{"project_id", projectId, "service_id", serviceId, "deployment_id", deploymentId, "stage", stage, "execution_timeout", s.executionTimeout, "cancel_timeout", s.cancelTimeout, "cause", err}
 		if len(elapsed) > 0 {

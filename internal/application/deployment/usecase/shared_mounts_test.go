@@ -2,15 +2,15 @@ package deploymentsvc
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"testing"
 
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
 )
 
-func TestSharedMountLabelMatchesRunningMount(t *testing.T) {
+func TestSharedMountDeclarationAndOwnership(t *testing.T) {
 	joinNetwork := false
 	plan := model.EffectiveServicePlan{Application: model.Application{Code: "workspace", Kind: "standard"}, JoinTraefikNetwork: &joinNetwork, Components: []model.EffectiveServiceComponent{{
 		Name: "worker", Image: "worker:1", PullPolicy: "missing", Mounts: []model.VersionComponentMount{
@@ -18,7 +18,7 @@ func TestSharedMountLabelMatchesRunningMount(t *testing.T) {
 			{SourceType: "directory", Source: "/private", Target: "/logs", SourceIsHostPath: true},
 		},
 	}}}
-	compose, err := (Service{}).RenderCompose(context.Background(), RenderInput{Plan: plan})
+	compose, err := RenderCompose(context.Background(), RenderInput{Plan: plan})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,41 +50,28 @@ func TestSharedMountLabelMatchesRunningMount(t *testing.T) {
 		t.Fatal("shared declaration did not affect the configuration hash")
 	}
 	for _, tc := range []struct {
-		name, label, source, destination, desired string
-		allowed                                   bool
+		name, source, desired string
+		shared, allowed       bool
 	}{
-		{"shared workspace", label, "/host", "/data", "/host/b", true},
-		{"normalized target", `["/data/"]`, "/host", "/data", "/host/b", true},
-		{"unmarked data", "", "/host", "/data", "/host/b", false},
-		{"different target", label, "/host", "/logs", "/host/b", false},
-		{"nested private source", label, "/host/b/data", "/data/private", "/host/b", false},
-		{"parent write", label, "/host/b/data", "/data", "/host/b", false},
-		{"Windows shared workspace", label, `D:\Data`, "/data", "/run/desktop/mnt/host/d/data/b", true},
+		{"shared workspace", "/host", "/host/b", true, true},
+		{"unmarked data", "/host", "/host/b", false, false},
+		{"parent write", "/host/b/data", "/host/b", true, false},
+		{"nested private source", "/host", "/host/b", true, false},
+		{"Windows shared workspace", `D:\Data`, "/run/desktop/mnt/host/d/data/b", true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			service, runtime, _ := directoryMountTestService(t)
-			runtime.psOutput = "any-managed-container"
-			fixture := []map[string]any{{
-				"State":  map[string]bool{"Running": true},
-				"Config": map[string]any{"Labels": map[string]string{sharedMountsLabel: tc.label}},
-				"Mounts": []map[string]string{{"Type": "bind", "Source": tc.source, "Destination": tc.destination}},
-			}}
+			runtime.mounts = []deploymentport.RunningBindMount{{Source: tc.source, Shared: tc.shared}}
 			if tc.name == "nested private source" {
-				fixture[0]["Mounts"] = append(fixture[0]["Mounts"].([]map[string]string), map[string]string{"Type": "bind", "Source": "/host", "Destination": "/data"})
+				runtime.mounts = append(runtime.mounts, deploymentport.RunningBindMount{Source: "/host/b/data"})
 			}
-			encoded, err := json.Marshal(fixture)
-			if err != nil {
-				t.Fatal(err)
-			}
-			runtime.inspectOutput = string(encoded)
-			err = service.checkRunningMountOwnership(context.Background(), deploymentTestTarget(1), "any-service", []string{tc.desired}, "linux")
+			err := service.checkRunningMountOwnership(context.Background(), deploymentTestTarget(1), "any-service", []string{tc.desired}, "linux")
 			if (err == nil) != tc.allowed {
 				t.Fatalf("allowed=%t, err=%v", tc.allowed, err)
 			}
 		})
 	}
 }
-
 func TestSharedMountDoesNotReleaseServiceRoot(t *testing.T) {
 	service, runtime, current := directoryMountTestService(t)
 	service.executionStore.(*directoryOwnershipStore).services[1].RuntimeDirectory = "/app"
@@ -109,27 +96,12 @@ func TestSharedWorkspaceOwnershipUsesLocalAndSSHPaths(t *testing.T) {
 				target.Environment.SSH.Platform = model.EnvironmentPlatformLinux
 				directory = "/host/b"
 			}
-			runtime.psOutput = "shared-workspace-container"
-			fixture := []map[string]any{{
-				"State":  map[string]bool{"Running": true},
-				"Config": map[string]any{"Labels": map[string]string{sharedMountsLabel: `["/data"]`}},
-				"Mounts": []map[string]string{{"Type": "bind", "Source": "/host", "Destination": "/data"}},
-			}}
-			encoded, err := json.Marshal(fixture)
-			if err != nil {
-				t.Fatal(err)
-			}
-			runtime.inspectOutput = string(encoded)
+			runtime.mounts = []deploymentport.RunningBindMount{{Source: "/host", Shared: true}}
 			mounts := []ResolvedMount{{Relative: true, HostSource: "/host/b/data"}}
 			if err := service.checkDirectoryOwnership(context.Background(), target, current, directory, mounts); err != nil {
 				t.Fatalf("shared workspace rejected: %v", err)
 			}
-			fixture[0]["Config"] = map[string]any{"Labels": map[string]string{}}
-			encoded, err = json.Marshal(fixture)
-			if err != nil {
-				t.Fatal(err)
-			}
-			runtime.inspectOutput = string(encoded)
+			runtime.mounts[0].Shared = false
 			if err := service.checkDirectoryOwnership(context.Background(), target, current, directory, mounts); err == nil || !strings.Contains(err.Error(), "running service a") {
 				t.Fatalf("unmarked workspace accepted: %v", err)
 			}

@@ -19,6 +19,7 @@ type Querier interface {
 	RouteById(ctx context.Context, arg RouteByIdParams) (RouteByIdRow, error)
 	RouteByProjectIdAndDomain(ctx context.Context, arg RouteByProjectIdAndDomainParams) (RouteByProjectIdAndDomainRow, error)
 	UpdateRoute(ctx context.Context, arg UpdateRouteParams) error
+	UpdateRouteCertificate(ctx context.Context, arg UpdateRouteCertificateParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

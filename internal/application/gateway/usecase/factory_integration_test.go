@@ -1,3 +1,5 @@
+//go:build !unit
+
 package gatewaysvc
 
 import (
@@ -12,7 +14,6 @@ import (
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	gatewayport "github.com/leoninew/pomelo-orbit/internal/application/gateway/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
-	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	databasepkg "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
@@ -49,8 +50,8 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	if got := created.Service; got.Code != "traefik-default" || got.Status != status.ServiceStatusStopped {
 		t.Fatalf("gateway service = %#v", got)
 	}
-	if created.Application.Code != "traefik" {
-		t.Fatalf("application code = %q", created.Application.Code)
+	if created.Application.Code != "traefik" || created.Application.Name != "Traefik" {
+		t.Fatalf("application = %#v", created.Application)
 	}
 	if created.Application.Kind != status.ApplicationKindGateway {
 		t.Fatalf("application kind = %q", created.Application.Kind)
@@ -143,38 +144,7 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	}
 }
 
-func TestCreateGatewayInitializationCodesDoNotRepeatProjectDefault(t *testing.T) {
-	service, _, _, database := newGatewayFactoryService(t, nil)
-	defer func() { _ = database.Close() }()
-
-	input := managedGatewayCreateInput()
-	input.Code = ManagedGatewayCode()
-	input.Name = ManagedGatewayName()
-	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, input)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if created.Application.Code != "traefik" || created.Application.Name != "Traefik" {
-		t.Fatalf("application = %#v", created.Application)
-	}
-	if created.Service == nil || created.Service.Code != "traefik-default" {
-		t.Fatalf("gateway service = %#v", created.Service)
-	}
-}
-
-func TestCreateGatewayRequiresFreshEnvironmentProbe(t *testing.T) {
-	service, _, _, database := newGatewayFactoryService(t, nil)
-	defer func() { _ = database.Close() }()
-	if _, err := database.Exec(`UPDATE environment SET last_probe_revision = NULL, last_probe_status = NULL WHERE project_id = ?`, gatewayFactoryProjectId); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput())
-	if err == nil || !apperror.IsKind(err, apperror.KindValidation) || !strings.Contains(err.Error(), "must pass probe") {
-		t.Fatalf("CreateGateway error = %v, want fresh Probe validation", err)
-	}
-}
-func TestProvisionGatewayOnlyPreparesStoppedServices(t *testing.T) {
+func TestProvisionGatewayReturnsExistingUnpublishedService(t *testing.T) {
 	service, applications, _, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
 	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, managedGatewayCreateInput())
@@ -256,7 +226,6 @@ func TestCreateGatewayRollsBackWhenGatewayConfigWriteFails(t *testing.T) {
 		failingGatewayConfigStore{GatewayStore: gatewayrepo.NewRepository(database), err: errors.New("gateway config write failed")},
 		servicerepo.NewRepository(database),
 		deploymentrepo.NewRepository(database),
-		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
 	)
 
@@ -303,13 +272,8 @@ func newGatewayFactoryService(t *testing.T, configStore gatewayport.ConfigStore)
 		configStore,
 		services,
 		deploymentrepo.NewRepository(database),
-		resolveGatewayPathForTest,
 		databasetx.NewTransactionRunner(database),
 	), applications, services, database
-}
-
-func resolveGatewayPathForTest(_ context.Context, logicalPath string) (string, error) {
-	return logicalPath, nil
 }
 
 func seedGatewayFactoryEnvironment(t *testing.T, database *sql.DB) {
@@ -362,8 +326,8 @@ func managedGatewayCreateInput() gatewaydto.GatewayCreateInput {
 	timeout := 20
 	return gatewaydto.GatewayCreateInput{
 		ProjectId:               gatewayFactoryProjectId,
-		Code:                    managedGatewayCode,
-		Name:                    managedGatewayName,
+		Code:                    ManagedGatewayCode(),
+		Name:                    ManagedGatewayName(),
 		RestApiUrl:              model.GatewayRestApiContainerUrl,
 		RestApiHostUrl:          model.GatewayRestApiHostUrl,
 		RestReadyTimeoutSeconds: &timeout,

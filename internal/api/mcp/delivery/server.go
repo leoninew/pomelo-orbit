@@ -92,6 +92,23 @@ func addTool[In any](server *mcp.Server, name, description string, handler func(
 	})
 }
 
+// addWriteTool commits database-only writes before exposing their result.
+// Runtime operations and tools with their own short application UoW use addTool.
+func addWriteTool[In any](server *mcp.Server, runner TransactionRunner, name, description string, handler func(context.Context, In) (map[string]any, error)) {
+	addTool(server, name, description, func(ctx context.Context, input In) (map[string]any, error) {
+		if runner == nil {
+			return nil, apperror.New(apperror.KindInternal, "MCP write transaction runner is not configured")
+		}
+		var output map[string]any
+		err := runner.RunInTransaction(ctx, func(txCtx context.Context) error {
+			var err error
+			output, err = handler(txCtx, input)
+			return err
+		})
+		return output, err
+	})
+}
+
 func toolError(err error) error {
 	if appErr, ok := apperror.As(err); ok {
 		classification := apperror.Classify(appErr)
@@ -203,7 +220,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return map[string]any{"gateway": gatewayOutput(gateway)}, nil
 	})
 
-	addTool(server, "orbit_update_gateway", "Update an Orbit-managed Gateway configuration through Orbit.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_gateway", "Update an Orbit-managed Gateway configuration through Orbit.", func(ctx context.Context, input struct {
 		GatewayId               string  `json:"gateway_id" jsonschema:"required"`
 		Name                    *string `json:"name,omitempty"`
 		RestApiUrl              *string `json:"rest_api_url,omitempty"`
@@ -234,7 +251,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return writeResult("update_gateway", map[string]string{"gateway_id": input.GatewayId, "application_id": input.GatewayId}, "PUT", "/api/gateway/"+input.GatewayId, map[string]any{"gateway": gatewayOutput(gateway)}), nil
 	})
 
-	addTool(server, "orbit_create_application", "Create a standard Application in the selected Project and return its initial draft Version.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_create_application", "Create a standard Application in the selected Project and return its initial unpublished Version.", func(ctx context.Context, input struct {
 		Name string `json:"name" jsonschema:"required"`
 		Code string `json:"code" jsonschema:"required"`
 		Kind string `json:"kind,omitempty"`
@@ -284,7 +301,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return map[string]any{"application": applicationOutput(app)}, nil
 	})
 
-	addTool(server, "orbit_delete_application", "Delete an Orbit Application after its Services have been removed.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_delete_application", "Delete an Orbit Application after its Services have been removed.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		if _, err := c.applicationInScope(ctx, input.ApplicationId); err != nil {
@@ -338,7 +355,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return map[string]any{"version": versionOutput(version)}, nil
 	})
 
-	addTool(server, "orbit_create_version_component", "Add a Component with basic configuration to an unpublished Version. pull_policy and restart_policy are required and validated by the application.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_create_version_component", "Add a Component with basic configuration to an unpublished Version. pull_policy and restart_policy are required and validated by the application.", func(ctx context.Context, input struct {
 		VersionId string                             `json:"version_id" jsonschema:"required"`
 		Component *applicationv1.VersionComponentReq `json:"component" jsonschema:"required"`
 	}) (map[string]any, error) {
@@ -360,7 +377,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return writeResult("create_version_component", map[string]string{"version_id": input.VersionId, "component_id": component.Id}, "POST", "/api/version/"+input.VersionId+"/component", map[string]any{"component": componentOutput(component)}), nil
 	})
 
-	addTool(server, "orbit_create_version", "Create a Version using a complete Component collection. Each component must include valid pull_policy and restart_policy values.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_create_version", "Create a Version using a complete Component collection. Each component must include valid pull_policy and restart_policy values.", func(ctx context.Context, input struct {
 		ApplicationId string                               `json:"application_id" jsonschema:"required"`
 		Label         string                               `json:"label" jsonschema:"required"`
 		Components    []*applicationv1.VersionComponentReq `json:"components" jsonschema:"required"`
@@ -388,7 +405,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return writeResult("create_version", map[string]string{"application_id": input.ApplicationId, "version_id": version.Version.Id}, "POST", "/api/application/"+input.ApplicationId+"/version", map[string]any{"version": versionOutput(version)}), nil
 	})
 
-	addTool(server, "orbit_update_version", "Update Version metadata; Components have dedicated tools.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_version", "Update Version metadata; Components have dedicated tools.", func(ctx context.Context, input struct {
 		VersionId string  `json:"version_id" jsonschema:"required"`
 		Label     *string `json:"label,omitempty"`
 		Note      *string `json:"note,omitempty"`
@@ -413,7 +430,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 	c.registerVersionComponentTools(server)
 	c.registerRouteTools(server)
 
-	addTool(server, "orbit_publish_version", "Mark a Version published through Orbit; publication does not lock later edits or deletion.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_publish_version", "Publish a Version through Orbit. Published Components are read-only; Version metadata remains editable and unreferenced Versions can be deleted.", func(ctx context.Context, input struct {
 		VersionId string `json:"version_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {
@@ -430,7 +447,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 		return writeResult("publish_version", map[string]string{"version_id": input.VersionId}, "POST", "/api/version/"+input.VersionId+"/publish", map[string]any{"version": versionOutput(version)}), nil
 	})
 
-	addTool(server, "orbit_delete_version", "Delete an unreferenced Version through Orbit regardless of its published marker.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_delete_version", "Delete an unreferenced Version through Orbit regardless of its published marker.", func(ctx context.Context, input struct {
 		VersionId string `json:"version_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		if err := c.versionInScope(ctx, input.VersionId); err != nil {

@@ -46,7 +46,7 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 		return map[string]any{"route": routeOutput(route)}, nil
 	})
 
-	addTool(server, "orbit_create_route", "Create a custom Route using the Route form fields. HTTP accepts an optional path_prefix (default /) and requires either a managed HTTP target (service_id, component_name, endpoint_protocol, endpoint_container_port) or custom target_url. TCP requires a managed TCP target and listen_port; it cannot use path_prefix or target_url.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_create_route", "Create a custom Route using the Route form fields. HTTP accepts an optional path_prefix (default /) and requires either a managed HTTP target (service_id, component_name, endpoint_protocol, endpoint_container_port) or custom target_url. TCP requires a managed TCP target and listen_port; it cannot use path_prefix or target_url.", func(ctx context.Context, input struct {
 		Name                  string `json:"name" jsonschema:"required"`
 		Protocol              string `json:"protocol" jsonschema:"required"`
 		Domain                string `json:"domain" jsonschema:"required"`
@@ -75,7 +75,7 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 		return writeResult("create_route", map[string]string{"route_id": route.Id}, "POST", "/api/route", map[string]any{"route": routeOutput(route)}), nil
 	})
 
-	addTool(server, "orbit_update_route", "Update a custom Route with the Route form fields. Supply only fields that change. To change an HTTP Route from a managed target to custom target_url, set service_id, component_name, and endpoint_protocol to empty strings; to switch protocol, provide the required target fields for the destination protocol.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_route", "Update a custom Route with the Route form fields. Supply only fields that change. To change an HTTP Route from a managed target to custom target_url, set service_id, component_name, and endpoint_protocol to empty strings; to switch protocol, provide the required target fields for the destination protocol.", func(ctx context.Context, input struct {
 		RouteId               string  `json:"route_id" jsonschema:"required"`
 		Name                  *string `json:"name,omitempty"`
 		Protocol              *string `json:"protocol,omitempty"`
@@ -105,7 +105,7 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 		return writeResult("update_route", map[string]string{"route_id": route.Id}, "PUT", "/api/route/"+route.Id, map[string]any{"route": routeOutput(route)}), nil
 	})
 
-	addTool(server, "orbit_enable_route", "Enable one custom Route in business data. Explicitly preview and confirm Route sync to publish its owned file. For TCP, the target Gateway must already expose the selected listen_port.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_enable_route", "Enable one custom Route in business data. Explicitly preview and confirm Route sync to publish its owned file. For TCP, the target Gateway must already expose the selected listen_port.", func(ctx context.Context, input struct {
 		RouteId string `json:"route_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		projectId, _, err := c.requireReadyEnvironment(ctx)
@@ -119,7 +119,7 @@ func (c *core) registerRouteTools(server *mcp.Server) {
 		return writeResult("enable_route", map[string]string{"route_id": route.Id}, "POST", "/api/route/"+route.Id+"/enable", map[string]any{"route": routeOutput(route)}), nil
 	})
 
-	addTool(server, "orbit_disable_route", "Disable one custom Route in business data. Explicitly preview and confirm Route sync to withdraw its owned file.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_disable_route", "Disable one custom Route in business data. Explicitly preview and confirm Route sync to withdraw its owned file.", func(ctx context.Context, input struct {
 		RouteId string `json:"route_id" jsonschema:"required"`
 	}) (map[string]any, error) {
 		projectId, _, err := c.requireReadyEnvironment(ctx)

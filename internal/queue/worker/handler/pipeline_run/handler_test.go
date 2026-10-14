@@ -29,12 +29,15 @@ func TestHandleExecutesPipelineRun(t *testing.T) {
 	executor := &fakeExecutor{}
 	handler := NewHandler(executor)
 
-	err := handler.Handle(context.Background(), tasksvc.Task{PayloadJSON: `{"pipeline_run_id":"run-1","project_id":"project-1","variables":{"IMAGE":"demo"}}`})
+	err := handler.Handle(context.Background(), tasksvc.Task{Attempts: 2, PayloadJSON: `{"pipeline_run_id":"run-1","project_id":"project-1","variables":{"IMAGE":"demo"}}`})
 	if err != nil {
 		t.Fatalf("Handle returned error: %v", err)
 	}
 	if executor.input.PipelineRunId != "run-1" {
 		t.Fatalf("unexpected pipeline run id: %s", executor.input.PipelineRunId)
+	}
+	if executor.input.Attempt != 2 {
+		t.Fatalf("unexpected execution attempt: %d", executor.input.Attempt)
 	}
 	if executor.input.ProjectId != "project-1" {
 		t.Fatalf("unexpected project id: %s", executor.input.ProjectId)

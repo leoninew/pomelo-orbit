@@ -1,4 +1,4 @@
-package deploymentsvc
+package dockerrunner
 
 import "testing"
 

@@ -118,7 +118,21 @@ func (r terminalTestRunner) StartTerminal(ctx context.Context, target environmen
 	return r.session, nil
 }
 
-func terminalHTTPFixture(t *testing.T, origins []string) (*httptest.Server, *environmentsvc.TerminalService, *terminalTestStore, terminalTestRunner, <-chan struct{}) {
+type terminalMonitorStub struct {
+	TerminalApplication
+	reason <-chan string
+}
+
+func (s terminalMonitorStub) MonitorSession(ctx context.Context, _ environmentsvc.TerminalGrant, _ func() time.Time) string {
+	select {
+	case reason := <-s.reason:
+		return reason
+	case <-ctx.Done():
+		return ""
+	}
+}
+
+func terminalHTTPFixture(t *testing.T, origins []string, monitorReason <-chan string) (*httptest.Server, *environmentsvc.TerminalService, *terminalTestStore, terminalTestRunner, <-chan struct{}) {
 	t.Helper()
 	revision := int64(1)
 	status := model.EnvironmentProbeStatusSucceeded
@@ -142,7 +156,11 @@ func terminalHTTPFixture(t *testing.T, origins []string) (*httptest.Server, *env
 	runner := terminalTestRunner{session: newTerminalTestSession(), targets: make(chan environmentport.Target, 1), blockConnect: &atomic.Bool{}}
 	runner.session.fingerprint = "SHA256:hostkey"
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	handler := Handler{logger: logger, terminal: terminal, runner: runner, origins: origins}
+	var application TerminalApplication = terminal
+	if monitorReason != nil {
+		application = terminalMonitorStub{TerminalApplication: terminal, reason: monitorReason}
+	}
+	handler := (Handler{logger: logger}).WithTerminal(application, runner, origins)
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()
 	engine.Use(middleware.LogRequest(logger, middleware.LogRequestConfig{Enabled: true, ResponseBodyLimit: 1024}))
@@ -191,7 +209,7 @@ func awaitTerminalClosed(t *testing.T, finished <-chan struct{}) {
 }
 
 func TestTerminalWebSocketTransfersInputOutputResizeAndExit(t *testing.T) {
-	server, svc, _, runner, finished := terminalHTTPFixture(t, nil)
+	server, svc, _, runner, finished := terminalHTTPFixture(t, nil, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	conn, _, err := dialTestTerminal(t, ctx, server, svc, server.URL)
@@ -239,7 +257,7 @@ func TestTerminalWebSocketTransfersInputOutputResizeAndExit(t *testing.T) {
 }
 
 func TestTerminalRejectsForeignOriginBeforeStartingSSH(t *testing.T) {
-	server, svc, _, runner, finished := terminalHTTPFixture(t, nil)
+	server, svc, _, runner, finished := terminalHTTPFixture(t, nil, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_, response, err := dialTestTerminal(t, ctx, server, svc, "https://foreign.example")
@@ -255,7 +273,7 @@ func TestTerminalRejectsForeignOriginBeforeStartingSSH(t *testing.T) {
 }
 
 func TestTerminalAllowsConfiguredOriginAndClosesWithClient(t *testing.T) {
-	server, svc, _, _, finished := terminalHTTPFixture(t, []string{"https://orbit.example"})
+	server, svc, _, _, finished := terminalHTTPFixture(t, []string{"https://orbit.example"}, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	conn, _, err := dialTestTerminal(t, ctx, server, svc, "https://orbit.example")
@@ -270,7 +288,7 @@ func TestTerminalAllowsConfiguredOriginAndClosesWithClient(t *testing.T) {
 }
 
 func TestTerminalStopsBeforeForwardingInputAfterMembershipRemoval(t *testing.T) {
-	server, svc, store, _, finished := terminalHTTPFixture(t, nil)
+	server, svc, store, _, finished := terminalHTTPFixture(t, nil, nil)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	conn, _, err := dialTestTerminal(t, ctx, server, svc, server.URL)
@@ -302,7 +320,7 @@ func TestTerminalTicketRequiresLogin(t *testing.T) {
 }
 
 func TestTerminalDisconnectCancelsPendingSSHConnection(t *testing.T) {
-	server, svc, _, runner, finished := terminalHTTPFixture(t, nil)
+	server, svc, _, runner, finished := terminalHTTPFixture(t, nil, nil)
 	runner.blockConnect.Store(true)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -319,28 +337,36 @@ func TestTerminalDisconnectCancelsPendingSSHConnection(t *testing.T) {
 	awaitTerminalClosed(t, finished)
 }
 
-func TestTerminalClosesAfterTargetChangesWithoutClientInput(t *testing.T) {
-	server, svc, store, _, finished := terminalHTTPFixture(t, nil)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	conn, _, err := dialTestTerminal(t, ctx, server, svc, server.URL)
-	if err != nil {
-		t.Fatal(err)
+func TestTerminalClosesWhenSessionMonitorEndsWithoutClientInput(t *testing.T) {
+	for _, reason := range []string{"access_or_target_changed", "idle_timeout"} {
+		t.Run(reason, func(t *testing.T) {
+			monitorReason := make(chan string, 1)
+			server, svc, _, runner, finished := terminalHTTPFixture(t, nil, monitorReason)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			conn, _, err := dialTestTerminal(t, ctx, server, svc, server.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = conn.CloseNow() }()
+			_ = readTerminalControl(t, ctx, conn)
+			monitorReason <- reason
+			if readTerminalControl(t, ctx, conn).Type != reason {
+				t.Fatal("session monitor reason was not forwarded")
+			}
+			_, _, _ = conn.Read(ctx)
+			awaitTerminalClosed(t, finished)
+			select {
+			case <-runner.session.done:
+			default:
+				t.Fatal("terminal session was not closed")
+			}
+		})
 	}
-	defer func() { _ = conn.CloseNow() }()
-	_ = readTerminalControl(t, ctx, conn)
-	store.mu.Lock()
-	store.environment.TargetRevision++
-	store.mu.Unlock()
-	if readTerminalControl(t, ctx, conn).Type != "access_or_target_changed" {
-		t.Fatal("target change did not stop an idle terminal")
-	}
-	_, _, _ = conn.Read(ctx)
-	awaitTerminalClosed(t, finished)
 }
 
 func TestLocalTerminalConnectsAndSurvivesDockerProbeFailure(t *testing.T) {
-	server, svc, store, runner, finished := terminalHTTPFixture(t, nil)
+	server, svc, store, runner, finished := terminalHTTPFixture(t, nil, nil)
 	store.environment.TargetType, store.environment.SSH = model.EnvironmentTargetTypeLocal, nil
 	store.environment.LastProbeRevision, store.environment.LastProbeStatus = nil, nil
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -372,7 +398,7 @@ func TestLocalTerminalConnectsAndSurvivesDockerProbeFailure(t *testing.T) {
 }
 
 func TestTerminalPinsFirstHostKeyWithoutProbeBeforeReady(t *testing.T) {
-	server, svc, store, _, finished := terminalHTTPFixture(t, nil)
+	server, svc, store, _, finished := terminalHTTPFixture(t, nil, nil)
 	store.environment.SSH.HostKeyFingerprint = ""
 	store.environment.LastProbeRevision, store.environment.LastProbeStatus = nil, nil
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -395,7 +421,7 @@ func TestTerminalPinsFirstHostKeyWithoutProbeBeforeReady(t *testing.T) {
 }
 
 func TestTerminalDoesNotSendReadyOrInputWhenHostKeyConfirmationFails(t *testing.T) {
-	server, svc, _, runner, finished := terminalHTTPFixture(t, nil)
+	server, svc, _, runner, finished := terminalHTTPFixture(t, nil, nil)
 	runner.session.fingerprint = "SHA256:different"
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

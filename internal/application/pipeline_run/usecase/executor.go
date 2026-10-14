@@ -182,7 +182,7 @@ func (e Executor) executeStage(ctx context.Context, executionCtx context.Context
 	if err := logWriter.Close(); err != nil {
 		return e.failStage(ctx, projectId, pipelineStageRun, fmt.Sprintf("close stage log: %v", err))
 	}
-	if _, err := e.store.CompletePipelineStageRun(ctx, projectId, pipelineStageRun); err != nil {
+	if err := e.completeStage(ctx, projectId, pipelineStageRun); err != nil {
 		e.logger.Error("pipeline stage run update failed", "run", run.Id, "stage", stage.Name, "error", err)
 		return false
 	}
@@ -281,7 +281,9 @@ func (e Executor) completeStageFailed(ctx context.Context, projectId string, pip
 	pipelineStageRun.Status = status.WorkStatusFaulted
 	pipelineStageRun.ExitCode = &exitCode
 	pipelineStageRun.ErrorMessage = &message
-	_, _ = e.store.CompletePipelineStageRun(ctx, projectId, pipelineStageRun)
+	if err := e.completeStage(ctx, projectId, pipelineStageRun); err != nil {
+		e.logger.Error("pipeline stage run update failed", "run", pipelineStageRun.PipelineRunId, "error", err)
+	}
 	e.logger.Warn("stage failed", "run", pipelineStageRun.PipelineRunId, "stage", pipelineStageRun.StageName, "exit_code", exitCode)
 	return false
 }
@@ -291,9 +293,18 @@ func (e Executor) failStage(ctx context.Context, projectId string, pipelineStage
 	pipelineStageRun.FinishedAt = &finished
 	pipelineStageRun.Status = status.WorkStatusFaulted
 	pipelineStageRun.ErrorMessage = &message
-	_, _ = e.store.CompletePipelineStageRun(ctx, projectId, pipelineStageRun)
+	if err := e.completeStage(ctx, projectId, pipelineStageRun); err != nil {
+		e.logger.Error("pipeline stage run update failed", "run", pipelineStageRun.PipelineRunId, "error", err)
+	}
 	e.logger.Error("stage faulted", "run", pipelineStageRun.PipelineRunId, "stage", pipelineStageRun.StageName, "error", message)
 	return false
+}
+
+func (e Executor) completeStage(ctx context.Context, projectId string, stage model.PipelineStageRun) error {
+	cleanupCtx, stop := context.WithTimeout(context.WithoutCancel(ctx), pipelineRunCompletionTimeout)
+	defer stop()
+	_, err := e.store.CompletePipelineStageRun(cleanupCtx, projectId, stage)
+	return err
 }
 
 func (e Executor) saveArtifacts(ctx context.Context, projectId string, run model.PipelineRun, stage model.StageDefinition, stages map[string]model.StageDefinition, runOptions pipelinerunport.RunOptions, runtimeDatetime string) error {

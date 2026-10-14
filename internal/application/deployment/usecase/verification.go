@@ -3,13 +3,14 @@ package deploymentsvc
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
-	"gopkg.in/yaml.v3"
 )
 
 // VerifyDeployment compares the persisted deployment intent, rendered Compose
@@ -79,7 +80,11 @@ func (s Service) VerifyDeployment(ctx context.Context, userId, projectId, applic
 	evidence["preview_compose"] = preview
 	evidence["compose_config"] = config.Text
 	evidence["containers"] = ps.Containers
-	evidence["inspections"] = inspections
+	rawInspections := make(map[string]any, len(inspections))
+	for id, inspection := range inspections {
+		rawInspections[id] = inspection.Raw
+	}
+	evidence["inspections"] = rawInspections
 	evidence["stability"] = stability
 	if state, _ := stability["state"].(string); state == "inconclusive" || state == "failed" {
 		issues, _ := stability["issues"].([]string)
@@ -89,7 +94,7 @@ func (s Service) VerifyDeployment(ctx context.Context, userId, projectId, applic
 		}
 		return verificationResult(conclusion, issues, evidence), nil
 	}
-	differences := compareRuntimeCompose(preview, config.Text, ps.Containers, inspections)
+	differences := s.compareRuntimeCompose(preview, config.Text, ps.Containers)
 	conclusion := "consistent"
 	if len(differences) > 0 {
 		conclusion = "drift"
@@ -101,17 +106,17 @@ func verificationResult(conclusion string, differences []string, evidence map[st
 	return deploymentdto.DeploymentVerificationResult{Conclusion: conclusion, Differences: differences, Evidence: evidence, Summary: verificationSummary(evidence, differences)}
 }
 
-func (s Service) runtimeInspections(ctx context.Context, target deploymentdto.RuntimeTarget, containers []deploymentdto.RuntimeContainer) (map[string]any, error) {
-	items := make(map[string]any, len(containers))
+func (s Service) runtimeInspections(ctx context.Context, target deploymentdto.RuntimeTarget, containers []deploymentdto.RuntimeContainer) (map[string]deploymentport.ContainerInspection, error) {
+	items := make(map[string]deploymentport.ContainerInspection, len(containers))
 	for _, container := range containers {
 		if container.Id == "" {
 			return nil, apperror.New(apperror.KindInternal, "docker compose ps result did not contain a container id")
 		}
-		inspect, err := s.RuntimeContainerInspect(ctx, target, container.Id)
+		inspect, err := s.inspectManagedContainer(ctx, target, container.Id)
 		if err != nil {
 			return nil, err
 		}
-		items[container.Id] = inspect.Data
+		items[container.Id] = inspect
 	}
 	return items, nil
 }
@@ -175,63 +180,52 @@ func (s Service) observeRuntimeStability(ctx context.Context, target deploymentd
 	}
 }
 
-func inspectRuntimeState(value any, container deploymentdto.RuntimeContainer) (string, string, int) {
-	items, _ := value.([]any)
-	if len(items) == 0 {
-		return strings.ToLower(container.State), "", 0
-	}
-	item, _ := items[0].(map[string]any)
-	stateValue, _ := item["State"].(map[string]any)
-	state, _ := stateValue["Status"].(string)
+func inspectRuntimeState(inspection deploymentport.ContainerInspection, container deploymentdto.RuntimeContainer) (string, string, int) {
+	state := inspection.State
 	if state == "" {
 		state = container.State
 	}
-	health := ""
-	if healthValue, ok := stateValue["Health"].(map[string]any); ok {
-		health, _ = healthValue["Status"].(string)
-	}
-	restarts := 0
-	if raw, ok := item["RestartCount"].(float64); ok {
-		restarts = int(raw)
-	}
-	return strings.ToLower(state), strings.ToLower(health), restarts
+	return strings.ToLower(state), strings.ToLower(inspection.Health), inspection.RestartCount
 }
 
-func compareRuntimeCompose(previewYAML, configYAML string, containers []deploymentdto.RuntimeContainer, inspections map[string]any) []string {
-	preview := map[string]any{}
-	config := map[string]any{}
-	if yaml.Unmarshal([]byte(previewYAML), &preview) != nil || yaml.Unmarshal([]byte(configYAML), &config) != nil {
+func (s Service) compareRuntimeCompose(previewYAML, configYAML string, containers []deploymentdto.RuntimeContainer) []string {
+	expected, err := s.inspector.ConfigurationServices(previewYAML)
+	if err != nil {
 		return []string{"Compose configuration could not be parsed"}
 	}
-	expectedServices := mapping(preview["services"])
-	actualServices := mapping(config["services"])
+	actual, err := s.inspector.ConfigurationServices(configYAML)
+	if err != nil {
+		return []string{"Compose configuration could not be parsed"}
+	}
+	return compareRuntimeServices(expected, actual, containers)
+}
+
+func compareRuntimeServices(expectedServices, actualServices map[string]string, containers []deploymentdto.RuntimeContainer) []string {
 	running := map[string]struct{}{}
 	for _, container := range containers {
 		running[container.Service] = struct{}{}
 	}
 	differences := make([]string, 0)
-	for name, expectedValue := range expectedServices {
-		expected := mapping(expectedValue)
-		actualValue, ok := actualServices[name]
+	names := make([]string, 0, len(expectedServices))
+	for name := range expectedServices {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		actualImage, ok := actualServices[name]
 		if !ok {
 			differences = append(differences, "Compose config is missing expected service "+name)
 			continue
 		}
-		actual := mapping(actualValue)
 		if _, ok := running[name]; !ok {
 			differences = append(differences, "Docker has no running container for expected service "+name)
 		}
-		if expectedImage, ok := expected["image"].(string); ok {
-			if actualImage, ok := actual["image"].(string); ok && actualImage != expectedImage {
-				differences = append(differences, "service "+name+" image differs between preview and Compose config")
-			}
+		if expectedImage := expectedServices[name]; expectedImage != "" && actualImage != expectedImage {
+			differences = append(differences, "service "+name+" image differs between preview and Compose config")
 		}
 	}
-	_ = inspections
 	return differences
 }
-
-func mapping(value any) map[string]any { result, _ := value.(map[string]any); return result }
 
 func verificationSummary(evidence map[string]any, differences []string) map[string]any {
 	containers, _ := evidence["containers"].([]deploymentdto.RuntimeContainer)

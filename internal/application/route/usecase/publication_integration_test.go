@@ -1,137 +1,15 @@
+//go:build !unit
+
 package routesvc
 
 import (
 	"context"
-	"errors"
-	"os"
 	"reflect"
 	"testing"
-	"time"
 
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
-	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
-	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
-
-func testRouteSyncTimeouts() routeport.SyncTimeouts {
-	return routeport.SyncTimeouts{GatewayLock: 30 * time.Second, StateLoad: 60 * time.Second, FilePublication: 60 * time.Second, ApiRequest: 3 * time.Second, Reload: 5 * time.Second, ConfigurationMatch: 10 * time.Second, Recovery: 10 * time.Second}
-}
-
-func TestRouteSyncBoundsGatewayLockWait(t *testing.T) {
-	service, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	service.syncTimeouts.GatewayLock = 50 * time.Millisecond
-	blocked := &deadlineLockPublisher{RouteConfigPublisher: publisher}
-	service.routePublisher = blocked
-	started := time.Now()
-	_, err := service.ConfirmRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{BusinessHash: "business", PublicationHash: "publication"})
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("expected timeout while waiting for Gateway lock, got %v", err)
-	}
-	if blocked.deadline.IsZero() || blocked.deadline.After(started.Add(service.syncTimeouts.GatewayLock+time.Millisecond)) {
-		t.Fatalf("Gateway lock did not receive its stage deadline: %s", blocked.deadline)
-	}
-}
-
-type deadlineLockPublisher struct {
-	routeport.RouteConfigPublisher
-	deadline time.Time
-}
-
-func (publisher *deadlineLockPublisher) LockGateway(ctx context.Context, _ string) (func(), error) {
-	publisher.deadline, _ = ctx.Deadline()
-	<-ctx.Done()
-	return nil, ctx.Err()
-}
-
-func TestSelectedSyncDoesNotCarryAnotherRoutesUnsyncedEdit(t *testing.T) {
-	s, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-	a := createSyncTestRoute(t, s, "a")
-	b := createSyncTestRoute(t, s, "b")
-	preview := selectedPreview(t, s, a.Id)
-	target := "http://new-b:8080"
-	if _, err := s.UpdateRoute(ctx, routeTestUserId, routeTestProjectId, b.Id, routedto.RouteUpdateInput{TargetUrl: &target}); err != nil {
-		t.Fatal(err)
-	}
-	result := confirmPreview(t, s, preview)
-	if result.Code != "route_sync_completed" || len(publisher.published) != 1 || publisher.published[0].Id != a.Id {
-		t.Fatalf("result=%+v published=%+v", result, publisher.published)
-	}
-	if publisher.lists != 0 || len(publisher.inspected) != 2 {
-		t.Fatalf("selected synchronization listed publications or repeated inspection: lists=%d inspected=%+v", publisher.lists, publisher.inspected)
-	}
-	for _, route := range publisher.inspected {
-		if route.Id != a.Id || route.Name != a.Name {
-			t.Fatalf("selected synchronization inspected another Route or omitted its business code: %+v", route)
-		}
-	}
-}
-
-func TestPreviewRuleProtocolDescribesIngressRatherThanUpstream(t *testing.T) {
-	for _, item := range []struct {
-		protocol string
-		https    bool
-		target   string
-	}{
-		{protocol: "http", target: "https://upstream:8443"},
-		{protocol: "https", https: true, target: "http://upstream:8080"},
-	} {
-		t.Run(item.protocol, func(t *testing.T) {
-			rule := plannedRouteRule(model.Route{
-				Protocol: "http", HTTPSEnabled: item.https, Domain: "api.example.test", PathPrefix: "/api", TargetUrl: item.target,
-			})
-			if rule.Protocol != item.protocol || rule.Match != "Host(`api.example.test`) && PathPrefix(`/api`)" || rule.Target != item.target {
-				t.Fatalf("rule=%+v", rule)
-			}
-		})
-	}
-}
-
-func TestBatchSyncContinuesAfterFailureInFrozenOrder(t *testing.T) {
-	s, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	a, b, c := createSyncTestRoute(t, s, "a"), createSyncTestRoute(t, s, "b"), createSyncTestRoute(t, s, "c")
-	preview := selectedPreview(t, s, a.Id, b.Id, c.Id)
-	publisher.failures = map[string]error{b.Id: os.ErrPermission}
-	result := confirmPreview(t, s, preview)
-	if result.Code != "route_sync_incomplete" || len(result.Results) != 3 || result.Results[0].Code != "route_sync_completed" || result.Results[1].Code != routeSyncPermissionDeniedCode || result.Results[2].Code != "route_sync_completed" {
-		t.Fatalf("batch=%+v", result)
-	}
-	if !reflect.DeepEqual(publisher.attempts, []string{a.Id, b.Id, c.Id}) || len(publisher.published) != 2 {
-		t.Fatalf("attempts=%v published=%+v", publisher.attempts, publisher.published)
-	}
-}
-
-func TestRouteSyncPreservesSafeConfigurationFailureReason(t *testing.T) {
-	service, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	route := createSyncTestRoute(t, service, "api")
-	preview := selectedPreview(t, service, route.Id)
-	message := "Traefik API queries failed or timed out before the Route configuration could be confirmed"
-	publisher.failures = map[string]error{route.Id: apperror.WrapWithCode(apperror.KindUnavailable, "route_sync_configuration_unavailable", message, errors.New("private diagnostic"))}
-	result := confirmPreview(t, service, preview)
-	if result.Code != "route_sync_incomplete" || len(result.Results) != 1 || result.Results[0].Code != "route_sync_configuration_unavailable" || result.Results[0].Error != message {
-		t.Fatalf("configuration failure was replaced by a generic publication message: %+v", result)
-	}
-}
-
-func TestRouteSyncContinuesAfterItemTimeout(t *testing.T) {
-	service, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	a, b := createSyncTestRoute(t, service, "a"), createSyncTestRoute(t, service, "b")
-	preview := selectedPreview(t, service, a.Id, b.Id)
-	publisher.failures = map[string]error{a.Id: errors.Join(context.DeadlineExceeded, errors.New("private SFTP diagnostic"))}
-	result := confirmPreview(t, service, preview)
-	if result.Code != "route_sync_incomplete" || len(result.Results) != 2 || result.Results[0].Code != "route_sync_publish_timeout" || result.Results[0].Error != "The Route file publication step timed out." || result.Results[1].Code != "route_sync_completed" {
-		t.Fatalf("item timeout did not retain its safe cause and continue the batch: %+v", result)
-	}
-	if !reflect.DeepEqual(publisher.attempts, []string{a.Id, b.Id}) {
-		t.Fatalf("item timeout skipped later Routes: %v", publisher.attempts)
-	}
-}
 
 func TestProjectPreviewCanBeConfirmedOneRouteAtATime(t *testing.T) {
 	s, publisher, _, database := newRouteIntegrationService(t)
@@ -170,33 +48,6 @@ func TestProjectPreviewCanBeConfirmedOneRouteAtATime(t *testing.T) {
 	}
 }
 
-func TestItemRevisionRejectsEditedRouteWithoutInvalidatingOtherItems(t *testing.T) {
-	s, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-	a, b, c := createSyncTestRoute(t, s, "a"), createSyncTestRoute(t, s, "b"), createSyncTestRoute(t, s, "c")
-	preview := selectedPreview(t, s, a.Id, b.Id, c.Id)
-	target := "http://unreviewed-b:8080"
-	if _, err := s.UpdateRoute(ctx, routeTestUserId, routeTestProjectId, b.Id, routedto.RouteUpdateInput{TargetUrl: &target}); err != nil {
-		t.Fatal(err)
-	}
-	for _, item := range preview.Items {
-		result, err := s.ConfirmRouteSync(ctx, routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
-			RouteIds: []string{item.RouteId}, BusinessHash: item.BusinessHash, PublicationHash: item.PublicationHash,
-		})
-		if item.RouteId == b.Id {
-			if err == nil || apperror.Classify(err).Code != routeSyncPreviewExpiredCode {
-				t.Fatalf("edited Route result=%+v err=%v", result, err)
-			}
-		} else if err != nil || result.Code != "route_sync_completed" {
-			t.Fatalf("item=%+v result=%+v err=%v", item, result, err)
-		}
-	}
-	if !reflect.DeepEqual(publisher.attempts, []string{a.Id, c.Id}) {
-		t.Fatalf("attempts=%v", publisher.attempts)
-	}
-}
-
 func TestProjectPreviewWithdrawsDeletedPublishedRoute(t *testing.T) {
 	s, publisher, _, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
@@ -218,32 +69,6 @@ func TestProjectPreviewWithdrawsDeletedPublishedRoute(t *testing.T) {
 	confirmPreview(t, s, preview)
 	if publisher.published[1].Enabled {
 		t.Fatal("deleted Route was republished")
-	}
-}
-
-func TestProjectPreviewSkipsPublicationDirectoriesWithoutRecords(t *testing.T) {
-	service, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	route := createSyncTestRoute(t, service, "api")
-	publisher.listedIds = []string{"empty-publication-directory"}
-	preview, err := service.PreviewRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncPreviewInput{Scope: "project"})
-	if err != nil || !reflect.DeepEqual(preview.RouteIds, []string{route.Id}) || len(preview.Items) != 1 {
-		t.Fatalf("empty publication directory blocked the business scope: preview=%+v err=%v", preview, err)
-	}
-	if result := confirmPreview(t, service, preview); result.Code != "route_sync_completed" {
-		t.Fatalf("project confirmation=%+v", result)
-	}
-}
-
-func TestTargetChangeInvalidatesFirstPublicationPreview(t *testing.T) {
-	s, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	route := createSyncTestRoute(t, s, "first")
-	preview := selectedPreview(t, s, route.Id)
-	publisher.dependencies = "new-target-revision"
-	_, err := s.ConfirmRouteSync(context.Background(), routeTestUserId, routeTestProjectId, confirmInput(preview))
-	if err == nil || apperror.Classify(err).Code != routeSyncPreviewExpiredCode || len(publisher.published) != 0 {
-		t.Fatalf("err=%v published=%v", err, publisher.published)
 	}
 }
 
@@ -282,26 +107,4 @@ func createSyncTestRoute(t *testing.T, s Service, name string) model.Route {
 		t.Fatal(err)
 	}
 	return route
-}
-
-func selectedPreview(t *testing.T, s Service, ids ...string) routedto.RouteSyncPreview {
-	t.Helper()
-	preview, err := s.PreviewRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncPreviewInput{Scope: "selected", RouteIds: ids})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return preview
-}
-
-func confirmInput(preview routedto.RouteSyncPreview) routedto.RouteSyncConfirmInput {
-	return routedto.RouteSyncConfirmInput{RouteIds: preview.RouteIds, BusinessHash: preview.BusinessHash, PublicationHash: preview.PublicationHash}
-}
-
-func confirmPreview(t *testing.T, s Service, preview routedto.RouteSyncPreview) routedto.RouteSyncConfirmResult {
-	t.Helper()
-	result, err := s.ConfirmRouteSync(context.Background(), routeTestUserId, routeTestProjectId, confirmInput(preview))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return result
 }

@@ -61,24 +61,29 @@ func (m *RouteManager) WaitUntilReady(ctx context.Context, projectId string, gat
 	if timeout <= 0 {
 		return apperror.New(apperror.KindValidation, "gateway rest_ready_timeout_seconds is required")
 	}
-	deadline := time.Now().Add(timeout)
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	var lastErr error
-	for {
-		_, lastErr = m.get(ctx, projectId, gateway, "/api/overview")
+	for waitCtx.Err() == nil {
+		_, lastErr = m.get(waitCtx, projectId, gateway, "/api/overview")
+		if waitCtx.Err() != nil {
+			break
+		}
 		if lastErr == nil {
 			return nil
 		}
-		if !time.Now().Before(deadline) {
-			return apperror.Wrap(apperror.KindInternal, "Traefik REST API not ready within timeout", lastErr)
-		}
 		timer := time.NewTimer(restApiReadyPollInterval)
 		select {
-		case <-ctx.Done():
+		case <-waitCtx.Done():
 			timer.Stop()
-			return apperror.Wrap(apperror.KindInternal, "Traefik REST API readiness canceled", lastErr)
 		case <-timer.C:
 		}
 	}
+	message := "Traefik REST API not ready within timeout"
+	if ctx.Err() != nil {
+		message = "Traefik REST API readiness canceled"
+	}
+	return apperror.Wrap(apperror.KindInternal, message, errors.Join(waitCtx.Err(), lastErr))
 }
 
 func (m *RouteManager) ListRouters(ctx context.Context, projectId string, gateway model.GatewayConfig) ([]routeport.TraefikRouter, error) {

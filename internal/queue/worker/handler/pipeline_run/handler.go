@@ -35,5 +35,5 @@ func (h Handler) Handle(ctx context.Context, item tasksvc.Task) error {
 	if payload.PipelineRunId == "" || payload.ProjectId == "" {
 		return fmt.Errorf("pipeline_run_id and project_id are required")
 	}
-	return h.executor.ExecutePipelineRun(ctx, pipelinerundto.ExecutePipelineRunInput{PipelineRunId: payload.PipelineRunId, ProjectId: payload.ProjectId, Variables: payload.Variables})
+	return h.executor.ExecutePipelineRun(ctx, pipelinerundto.ExecutePipelineRunInput{Attempt: item.Attempts, PipelineRunId: payload.PipelineRunId, ProjectId: payload.ProjectId, Variables: payload.Variables})
 }

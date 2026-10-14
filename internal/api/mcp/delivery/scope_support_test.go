@@ -99,6 +99,9 @@ func (s *readyGatewayService) ProvisionGateway(context.Context, string, gatewayd
 }
 
 func withReadyScope(deps Dependencies) Dependencies {
+	if deps.TransactionRunner == nil {
+		deps.TransactionRunner = toolTransactionStub{}
+	}
 	if deps.ActorUserId == "" {
 		deps.ActorUserId = "actor"
 	}
@@ -115,6 +118,12 @@ func withReadyScope(deps Dependencies) Dependencies {
 		deps.Gateway = &readyGatewayService{}
 	}
 	return deps
+}
+
+type toolTransactionStub struct{}
+
+func (toolTransactionStub) RunInTransaction(ctx context.Context, fn func(context.Context) error) error {
+	return fn(ctx)
 }
 
 func newScopedServer(t *testing.T, deps Dependencies) *mcp.Server {

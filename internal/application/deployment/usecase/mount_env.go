@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -20,22 +19,13 @@ const (
 	maxMountContentBytes = 256 * 1024
 )
 
-var (
-	envPlaceholderRequired        = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$`)
-	envPlaceholderDefault         = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*):-([^}]*)\}$`)
-	envPlaceholderRequiredMessage = regexp.MustCompile(`^\$\{([A-Za-z_][A-Za-z0-9_]*):\?[^}]*\}$`)
-)
-
 type MountSpec = model.VersionComponentMount
-
-type EnvVar struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
 
 type ResolvedMount struct {
 	Relative          bool
-	Compose           string
+	Source            string
+	Target            string
+	ReadOnly          bool
 	HostSource        string
 	LogicalSource     string
 	IsFile            bool
@@ -112,50 +102,6 @@ func parseUnixFileMode(mode string) (os.FileMode, error) {
 	return os.FileMode(parsed), nil
 }
 
-type placeholderNeed struct {
-	Required   bool
-	Default    string
-	HasDefault bool
-}
-
-func parsePlaceholder(value string) (string, placeholderNeed, bool) {
-	if m := envPlaceholderRequiredMessage.FindStringSubmatch(value); len(m) == 2 {
-		return m[1], placeholderNeed{Required: true}, true
-	}
-	if m := envPlaceholderRequired.FindStringSubmatch(value); len(m) == 2 {
-		return m[1], placeholderNeed{Required: true}, true
-	}
-	if m := envPlaceholderDefault.FindStringSubmatch(value); len(m) == 3 {
-		return m[1], placeholderNeed{HasDefault: true, Default: m[2]}, true
-	}
-	return "", placeholderNeed{}, false
-}
-
-func applyEnvPlaceholders(vars []EnvVar, runtime map[string]string) map[string]string {
-	if len(vars) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(vars))
-	for _, item := range vars {
-		value := item.Value
-		if name, _, ok := parsePlaceholder(value); ok && runtime != nil {
-			if resolved, exists := runtime[name]; exists {
-				value = resolved
-			}
-		}
-		out[item.Key] = value
-	}
-	return out
-}
-
-func componentEnv(component []model.VersionComponentEnv, runtime map[string]string) map[string]string {
-	vars := make([]EnvVar, 0, len(component))
-	for _, item := range component {
-		vars = append(vars, EnvVar{Key: item.Key, Value: item.Value})
-	}
-	return applyEnvPlaceholders(vars, runtime)
-}
-
 func isAbsoluteMountSource(source string) bool {
 	if source == "" {
 		return false
@@ -181,17 +127,13 @@ func hasParentMountSegment(source string) bool {
 	return false
 }
 
-func resolveMountSpecs(mounts []MountSpec, composeMountSourceDir string) ([]ResolvedMount, error) {
-	return resolveMountSpecsForPaths(mounts, composeMountSourceDir, composeMountSourceDir)
-}
-
 func resolveMountSpecsForPaths(mounts []MountSpec, logicalServiceDir string, composeMountSourceDir string) ([]ResolvedMount, error) {
 	out := make([]ResolvedMount, 0, len(mounts))
 	for _, mount := range mounts {
 		if err := validateMountSpec(mount); err != nil {
 			return nil, err
 		}
-		item := ResolvedMount{Relative: strings.HasPrefix(mount.Source, "./"), SourceType: mount.SourceType, Content: mount.Content, IgnoreIfExists: mount.IgnoreIfExists}
+		item := ResolvedMount{Source: mount.Source, Target: mount.Target, ReadOnly: mount.ReadOnly, Relative: strings.HasPrefix(mount.Source, "./"), SourceType: mount.SourceType, Content: mount.Content, IgnoreIfExists: mount.IgnoreIfExists}
 		if mount.SourceType == mountSourceControlledFile {
 			mode, err := parseUnixFileMode(mount.Mode)
 			if err != nil {
@@ -204,7 +146,7 @@ func resolveMountSpecsForPaths(mounts []MountSpec, logicalServiceDir string, com
 			if mount.SourceIsHostPath {
 				item.HostSource = mount.Source
 				item.IsFile = mount.SourceType == mountSourceFile
-				item.Compose = item.HostSource + ":" + mount.Target
+				item.Source = item.HostSource
 				break
 			}
 			absoluteSource := isAbsoluteMountSource(mount.Source)
@@ -218,74 +160,17 @@ func resolveMountSpecsForPaths(mounts []MountSpec, logicalServiceDir string, com
 			}
 			item.IsFile = mount.SourceType == mountSourceFile || mount.SourceType == mountSourceControlledFile
 			item.ShouldMaterialize = mount.SourceType == mountSourceDirectory || mount.SourceType == mountSourceControlledFile
-			if composeMountSourceDir == "" {
-				item.Compose = mount.Source + ":" + mount.Target
-			} else if absoluteSource {
+			if composeMountSourceDir != "" && absoluteSource {
 				item.HostSource = mount.Source
-				item.Compose = item.HostSource + ":" + mount.Target
-			} else {
+				item.Source = item.HostSource
+			} else if composeMountSourceDir != "" {
 				item.HostSource = filepath.ToSlash(filepath.Join(composeMountSourceDir, filepath.FromSlash(mount.Source)))
-				item.Compose = item.HostSource + ":" + mount.Target
+				item.Source = item.HostSource
 			}
 		case mountSourceNamedVolume:
-			item.Compose = mount.Source + ":" + mount.Target
 			item.NamedVolumeName = mount.Source
-		}
-		if mount.ReadOnly {
-			item.Compose += ":ro"
 		}
 		out = append(out, item)
 	}
 	return out, nil
-}
-
-func MaterializeLogicalMountSources(resolved []ResolvedMount) error {
-	for _, item := range resolved {
-		if !item.ShouldMaterialize {
-			continue
-		}
-		if item.LogicalSource == "" {
-			return fmt.Errorf("logical mount source is required for materialization")
-		}
-		logicalSource := filepath.FromSlash(item.LogicalSource)
-		if item.IsFile {
-			if err := materializeFile(logicalSource, item.Content, item.IgnoreIfExists, item.FileMode); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := os.MkdirAll(logicalSource, 0o755); err != nil {
-			return fmt.Errorf("create mount directory %s: %w", logicalSource, err)
-		}
-	}
-	return nil
-}
-
-func materializeFile(path string, content string, ignoreIfExists bool, mode os.FileMode) error {
-	if st, err := os.Stat(path); err == nil {
-		if st.IsDir() {
-			return fmt.Errorf("mount source %s exists as directory but must be a file", path)
-		}
-		if !ignoreIfExists {
-			if err := os.WriteFile(path, []byte(content), mode); err != nil {
-				return fmt.Errorf("write controlled mount file %s: %w", path, err)
-			}
-		}
-		if err := os.Chmod(path, mode); err != nil {
-			return fmt.Errorf("set controlled mount file mode %s: %w", path, err)
-		}
-		return nil
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("stat mount source %s: %w", path, err)
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create parent for mount file %s: %w", path, err)
-	}
-	if err := os.WriteFile(path, []byte(content), mode); err != nil {
-		return fmt.Errorf("create mount file %s: %w", path, err)
-	}
-	if err := os.Chmod(path, mode); err != nil {
-		return fmt.Errorf("set controlled mount file mode %s: %w", path, err)
-	}
-	return nil
 }

@@ -16,7 +16,7 @@ func (s Service) OpenDeploymentLogStream(ctx context.Context, userId, projectId,
 	if deployment.ApplicationId == nil {
 		return logstream.Subscription{}, apperror.New(apperror.KindNotFound, "Deployment application not found")
 	}
-	service, err := s.resolveServiceFromDeployment(ctx, projectId, *deployment.ApplicationId, deployment)
+	service, err := resolveServiceFromDeployment(ctx, s.commandStore, projectId, *deployment.ApplicationId, deployment)
 	if err != nil {
 		return logstream.Subscription{}, apperror.New(apperror.KindNotFound, "Deployment service not found")
 	}

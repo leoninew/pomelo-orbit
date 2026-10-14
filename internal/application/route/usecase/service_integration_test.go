@@ -1,17 +1,16 @@
+//go:build !unit
+
 package routesvc
 
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"os"
-	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
 
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
-	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/config"
@@ -26,154 +25,8 @@ import (
 	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
 )
 
-const (
-	routeTestUserId    = "01KKX2YNPF6VJ9N7QYCWG61KVK"
-	routeTestProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
-)
-
-func TestRouteServicePublishesCertificatesAndTraefikViews(t *testing.T) {
-	service, publisher, client, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-
-	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "api-route", Protocol: "http", Domain: "api.example.test", PathPrefix: "/api", TargetUrl: "http://host.docker.internal:8081", Enabled: false})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if route.Id == "" || route.CertType != "manual" || route.HTTPSEnabled {
-		t.Fatalf("unexpected created route: %+v", route)
-	}
-	if err := service.DeleteRoute(ctx, routeTestUserId, routeTestProjectId, route.Id); err != nil {
-		t.Fatal(err)
-	}
-
-	enabled, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "enabled-route", Protocol: "http", Domain: "enabled.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8082", Enabled: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !enabled.Enabled {
-		t.Fatalf("expected created route to preserve enabled=true, got %+v", enabled)
-	}
-	if len(publisher.published) != 0 {
-		t.Fatalf("expected no snapshot publication before explicit sync, got %+v", publisher.published)
-	}
-	if err := service.DeleteRoute(ctx, routeTestUserId, routeTestProjectId, enabled.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("expected enabled route delete validation error, got %v", err)
-	}
-	disabled, err := service.DisableRoute(ctx, routeTestUserId, routeTestProjectId, enabled.Id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if disabled.Enabled {
-		t.Fatalf("expected disabled route, got %+v", disabled)
-	}
-	if len(publisher.published) != 0 {
-		t.Fatalf("expected no snapshot publication after disable, got %+v", publisher.published)
-	}
-
-	certRoute, err := service.UploadRouteCert(ctx, routeTestUserId, routeTestProjectId, disabled.Id, "CERT", "KEY")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !certRoute.HTTPSEnabled || certRoute.CertType != "manual" {
-		t.Fatalf("unexpected manual cert route: %+v", certRoute)
-	}
-	certRoute, err = service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, disabled.Id, acmeChallengeHTTP)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !certRoute.HTTPSEnabled || certRoute.CertType != "letsencrypt" || certRoute.CertPEM != nil || certRoute.CertKey != nil {
-		t.Fatalf("unexpected letsencrypt route: %+v", certRoute)
-	}
-	dashboardProject := routeTestProjectId
-	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Protocol: "http", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual", AcmeChallenge: acmeChallengeHTTP}); err != nil {
-		t.Fatal(err)
-	}
-	gwRepo := gatewayrepo.NewRepository(database)
-	gw, err := gwRepo.GatewayConfigByProject(ctx, routeTestProjectId)
-	if err != nil {
-		t.Fatal(err)
-	}
-	gw.ExternalDomain = "public.example.test"
-	if err := gwRepo.UpsertGatewayConfig(ctx, gw); err != nil {
-		t.Fatal(err)
-	}
-	cfg, err := service.TraefikRouteConfig(ctx, routeTestUserId, routeTestProjectId)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.DashboardDomain != "traefik.lvh.me" || !cfg.HTTPSEnabled || cfg.ExternalDomain != "public.example.test" {
-		t.Fatalf("unexpected traefik config: %+v", cfg)
-	}
-	client.routers = []routeport.TraefikRouter{{Name: "api@docker", Provider: "docker", Status: "enabled", Rule: "Host(`api.lvh.me`)", Service: "api-service", Entrypoints: []string{"websecure"}, TLS: true}}
-	routes, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(routes) != 1 || routes[0].Name != "api@docker" || routes[0].Provider != "docker" || routes[0].Status != "enabled" || routes[0].Rule != "Host(`api.lvh.me`)" || routes[0].Service != "api-service" || len(routes[0].Entrypoints) != 1 || routes[0].Entrypoints[0] != "websecure" || !routes[0].TLS {
-		t.Fatalf("unexpected traefik routes: %+v", routes)
-	}
-	client.routers[0].Name = "mutated@docker"
-	client.routers[0].Entrypoints[0] = "web"
-	if routes[0].Name != "api@docker" || routes[0].Entrypoints[0] != "websecure" {
-		t.Fatalf("expected application view to be independent from the port data, got %+v", routes)
-	}
-	routes[0].Entrypoints[0] = "mutated-response"
-	if client.routers[0].Entrypoints[0] != "web" {
-		t.Fatalf("expected port data to be independent from the application view, got %+v", client.routers)
-	}
-	client.err = errors.New("connection refused")
-	client.unavailableMessage = "Traefik REST API is unavailable on the remote host at http://127.0.0.1:8080."
-	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || !apperror.IsKind(err, apperror.KindUnavailable) || apperror.Classify(err).Message != client.unavailableMessage {
-		t.Fatalf("expected Traefik unavailable error with access context, got %v", err)
-	}
-	client.unavailableMessage = ""
-	if _, err := service.ListTraefikRoutes(ctx, routeTestUserId, routeTestProjectId); err == nil || !apperror.IsKind(err, apperror.KindInternal) {
-		t.Fatalf("expected non-request Traefik error to remain internal, got %v", err)
-	}
-}
-
-func TestRouteServiceRequiresTokenAndGatewayCapabilityForDNSLetsEncrypt(t *testing.T) {
+func TestRouteDisablePersistsWithoutPublishing(t *testing.T) {
 	service, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "dns-route", Protocol: "http", Domain: "dns.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8084", Enabled: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, route.Id, acmeChallengeDNS); err == nil || !strings.Contains(err.Error(), "Gateway DNS API token") {
-		t.Fatalf("missing DNS token error = %v", err)
-	}
-	stored, err := service.route.Route(ctx, routeTestProjectId, route.Id)
-	if err != nil || stored.HTTPSEnabled || stored.CertType != certTypeManual {
-		t.Fatalf("route changed after token refusal: %+v, err=%v", stored, err)
-	}
-	gateway, err := service.gateway.GatewayConfigByProject(ctx, routeTestProjectId)
-	if err != nil {
-		t.Fatal(err)
-	}
-	gateway.DNSApiToken = "cfat_test_token"
-	if err := service.gateway.UpsertGatewayConfig(ctx, gateway); err != nil {
-		t.Fatal(err)
-	}
-	enabled, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, route.Id, acmeChallengeDNS)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if enabled.AcmeChallenge != acmeChallengeDNS || !enabled.HTTPSEnabled || enabled.CertType != certTypeLetsEncrypt {
-		t.Fatalf("DNS route = %+v", enabled)
-	}
-	if len(publisher.published) != 0 {
-		t.Fatalf("expected no snapshot publication after certificate change, got %+v", publisher.published)
-	}
-	switched, err := service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, route.Id, acmeChallengeHTTP)
-	if err != nil || switched.AcmeChallenge != acmeChallengeHTTP {
-		t.Fatalf("switch Let's Encrypt challenge = %+v, err=%v", switched, err)
-	}
-}
-
-func TestRouteServiceMutationsDoNotPublishWhenTraefikHasUnmanagedFileRoute(t *testing.T) {
-	service, publisher, client, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
@@ -183,11 +36,10 @@ func TestRouteServiceMutationsDoNotPublishWhenTraefikHasUnmanagedFileRoute(t *te
 	if err != nil {
 		t.Fatal(err)
 	}
-	client.routers = []routeport.TraefikRouter{{Name: "legacy-route@file", Provider: "file", Status: "enabled"}}
 	published := len(publisher.published)
 
 	if _, err := service.DisableRoute(ctx, routeTestUserId, routeTestProjectId, managed.Id); err != nil {
-		t.Fatalf("expected route change to ignore unmanaged router, got %v", err)
+		t.Fatalf("disable route: %v", err)
 	}
 	stored, err := service.RouteForUser(ctx, routeTestUserId, routeTestProjectId, managed.Id)
 	if err != nil {
@@ -198,41 +50,6 @@ func TestRouteServiceMutationsDoNotPublishWhenTraefikHasUnmanagedFileRoute(t *te
 	}
 	if len(publisher.published) != published {
 		t.Fatalf("expected no snapshot publication, got %+v", publisher.published[published:])
-	}
-}
-
-func TestRouteServiceProjectSyncPreservesUnmanagedResources(t *testing.T) {
-	service, publisher, client, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	client.routers = []routeport.TraefikRouter{{Name: "legacy-route@file", Provider: "file", Status: "enabled"}}
-
-	created, err := service.CreateRoute(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
-		Name: "legacy", Protocol: "http", Domain: "legacy.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8090", Enabled: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !created.Enabled {
-		t.Fatalf("expected adopted route to be enabled: %+v", created)
-	}
-	if len(publisher.published) != 0 {
-		t.Fatalf("expected no snapshot before explicit sync, got %+v", publisher.published)
-	}
-	preview, err := service.PreviewRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncPreviewInput{Scope: "project"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(preview.Items) != 1 || preview.Items[0].RouteId != created.Id || preview.Items[0].Action != "publish" {
-		t.Fatalf("publication list=%+v", preview.Items)
-	}
-	if _, err := service.ConfirmRouteSync(context.Background(), routeTestUserId, routeTestProjectId, routedto.RouteSyncConfirmInput{
-		BusinessHash: preview.BusinessHash,
-		RouteIds:     preview.RouteIds, PublicationHash: preview.PublicationHash,
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if len(publisher.published) != 1 || publisher.published[0].Id != created.Id {
-		t.Fatalf("expected explicit sync to replace the snapshot, got %+v", publisher.published)
 	}
 }
 
@@ -439,20 +256,8 @@ func TestRouteServiceReportsSavedStateWhenPublishFails(t *testing.T) {
 		t.Fatalf("retry = %+v, err=%v", result, err)
 	}
 }
-func TestRouteRuntimeChangeDoesNotInvalidatePublicationList(t *testing.T) {
-	service, publisher, client, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	route := createSyncTestRoute(t, service, "runtime")
-	preview := selectedPreview(t, service, route.Id)
-	client.err = errors.New("runtime query is unavailable")
-	result := confirmPreview(t, service, preview)
-	if result.Code != "route_sync_completed" || len(publisher.published) != 1 {
-		t.Fatalf("result=%+v", result)
-	}
-}
-
-func TestRouteServiceRenameWaitsForFullSync(t *testing.T) {
-	service, publisher, client, database := newRouteIntegrationService(t)
+func TestRouteRenamePersistsWithoutPublishing(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
 	defer func() { _ = database.Close() }()
 	ctx := context.Background()
 
@@ -462,12 +267,11 @@ func TestRouteServiceRenameWaitsForFullSync(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	client.routers = []routeport.TraefikRouter{{Name: "renamed-route@file", Provider: "file", Status: "enabled"}}
 	published := len(publisher.published)
 	newName := "renamed-route"
 
 	if _, err := service.UpdateRoute(ctx, routeTestUserId, routeTestProjectId, route.Id, routedto.RouteUpdateInput{Name: &newName}); err != nil {
-		t.Fatalf("expected rename to ignore unmanaged router, got %v", err)
+		t.Fatalf("rename route: %v", err)
 	}
 	stored, err := service.RouteForUser(ctx, routeTestUserId, routeTestProjectId, route.Id)
 	if err != nil {
@@ -478,31 +282,6 @@ func TestRouteServiceRenameWaitsForFullSync(t *testing.T) {
 	}
 	if len(publisher.published) != published {
 		t.Fatalf("expected no snapshot publication, got %+v", publisher.published[published:])
-	}
-}
-
-func TestRouteServiceKeepsEnabledCustomTargetWhenAnotherRouteIsDisabled(t *testing.T) {
-	service, publisher, _, database := newRouteIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-
-	_, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
-		Name: "custom-route", Protocol: "http", Domain: "custom.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8090", Enabled: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	other, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{
-		Name: "other-route", Protocol: "http", Domain: "other.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8091", Enabled: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.DisableRoute(ctx, routeTestUserId, routeTestProjectId, other.Id); err != nil {
-		t.Fatal(err)
-	}
-	if len(publisher.published) != 0 {
-		t.Fatalf("expected no snapshot before explicit sync, got %+v", publisher.published)
 	}
 }
 
@@ -533,36 +312,6 @@ func newRouteIntegrationService(t *testing.T) (Service, *recordingRoutePublisher
 	)
 	seedRouteTestGateway(t, database)
 	return service, publisher, client, database
-}
-
-func TestRouteValidationSeparatesIdentityFromCustomTargetUrl(t *testing.T) {
-	if !validRouteCode("a"+strings.Repeat("b", 31)) || !validRouteCode("api1") || validRouteCode("1-api") || validRouteCode("123") || validRouteCode(strings.Repeat("a", 33)) || validRouteCode("bad_name") || validRouteCode("bad.name") || validRouteCode("bad-") {
-		t.Fatal("route code DNS label validation is inconsistent")
-	}
-	validTargets := []string{
-		"http://host",
-		"https://host",
-		"http://host:8080",
-		"https://api.example.test:443",
-	}
-	for _, target := range validTargets {
-		if !validRouteIdentity("api-route", "api.example.test", "/") || !routeTargetUrlPattern.MatchString(target) {
-			t.Errorf("expected target URL to be valid: %s", target)
-		}
-	}
-
-	invalidTargets := []string{
-		"host:8080",
-		"http://",
-		"http://host/path",
-		"ftp://host",
-		"http://host:",
-	}
-	for _, target := range invalidTargets {
-		if routeTargetUrlPattern.MatchString(target) {
-			t.Errorf("expected target URL to be invalid: %s", target)
-		}
-	}
 }
 
 func TestRouteServiceCreatesAndSyncsManagedHTTPRouteWithoutServiceEnvironment(t *testing.T) {
@@ -860,7 +609,7 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 		ProjectId: &projectId,
 		Name:      "Test Gateway",
 		Code:      "test-gateway",
-		Kind:      status.ApplicationKindStandard,
+		Kind:      status.ApplicationKindGateway,
 	}
 	if err := appRepo.CreateApplication(ctx, app); err != nil {
 		t.Fatalf("seed gateway app: %v", err)
@@ -907,91 +656,78 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 	}
 }
 
-type recordingRoutePublisher struct {
-	published    []model.Route
-	publications map[string]routeport.Publication
-	failures     map[string]error
-	attempts     []string
-	dependencies string
-	inspected    []model.Route
-	lists        int
-	listedIds    []string
-	err          error
-}
+func TestRouteServicePersistsCertificatesAndDashboardConfiguration(t *testing.T) {
+	service, publisher, _, database := newRouteIntegrationService(t)
+	defer func() { _ = database.Close() }()
+	ctx := context.Background()
 
-func (p *recordingRoutePublisher) LockGateway(context.Context, string) (func(), error) {
-	return func() {}, nil
-}
-func (p *recordingRoutePublisher) ValidateGateway(context.Context, string, model.GatewayConfig, []model.Route) (string, error) {
-	return p.dependencies, nil
-}
-func (p *recordingRoutePublisher) OpenSession(ctx context.Context, _ string) (context.Context, func(), error) {
-	return ctx, func() {}, nil
-}
-
-func (p *recordingRoutePublisher) ListPublicationRouteIds(context.Context, string, model.GatewayConfig) ([]string, error) {
-	p.lists++
-	ids := append([]string(nil), p.listedIds...)
-	for id := range p.publications {
-		ids = append(ids, id)
+	route, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "api-route", Protocol: "http", Domain: "api.example.test", PathPrefix: "/api", TargetUrl: "http://host.docker.internal:8081", Enabled: false})
+	if err != nil {
+		t.Fatal(err)
 	}
-	return ids, nil
-}
-
-func (p *recordingRoutePublisher) InspectPublication(_ context.Context, _ string, _ model.GatewayConfig, route model.Route) (*routeport.Publication, error) {
-	p.inspected = append(p.inspected, route)
-	if item, found := p.publications[route.Id]; found {
-		return &item, nil
+	if route.Id == "" || route.CertType != "manual" || route.HTTPSEnabled {
+		t.Fatalf("unexpected created route: %+v", route)
 	}
-	return nil, nil
-}
-func (p *recordingRoutePublisher) PublishRoute(_ context.Context, _ string, _ model.GatewayConfig, route model.Route, _ string) (routeport.PublicationResult, error) {
-	p.attempts = append(p.attempts, route.Id)
-	result := routeport.PublicationResult{OperationId: "operation-" + route.Id, FileCommit: "committed", ConfigurationMatch: "matched", CertificateVerification: "not_applicable", Recovery: "not_needed", Cleanup: "completed"}
-	if route.HTTPSEnabled {
-		result.CertificateVerification = "unverified"
+	if err := service.DeleteRoute(ctx, routeTestUserId, routeTestProjectId, route.Id); err != nil {
+		t.Fatal(err)
 	}
-	if p.err != nil {
-		return result, p.err
+
+	enabled, err := service.CreateRoute(ctx, routeTestUserId, routeTestProjectId, routedto.RouteCreateInput{Name: "enabled-route", Protocol: "http", Domain: "enabled.example.test", PathPrefix: "/", TargetUrl: "http://host.docker.internal:8082", Enabled: true})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := p.failures[route.Id]; err != nil {
-		return result, err
+	if !enabled.Enabled {
+		t.Fatalf("expected created route to preserve enabled=true, got %+v", enabled)
 	}
-	p.published = append(p.published, route)
-	if p.publications == nil {
-		p.publications = make(map[string]routeport.Publication)
+	if len(publisher.published) != 0 {
+		t.Fatalf("expected no snapshot publication before explicit sync, got %+v", publisher.published)
 	}
-	p.publications[route.Id] = routeport.Publication{Route: route, Phase: "confirmed"}
-	return result, nil
-}
-
-type recordingCertificateGenerator struct{}
-
-func (recordingCertificateGenerator) Generate(context.Context, string) (string, string, error) {
-	return "CERT", "KEY", nil
-}
-
-type recordingTraefikClient struct {
-	routers            []routeport.TraefikRouter
-	services           []routeport.TraefikService
-	err                error
-	unavailableMessage string
-}
-
-func (c *recordingTraefikClient) ListRouters(_ context.Context, _ string, _ model.GatewayConfig) ([]routeport.TraefikRouter, error) {
-	if c.err != nil {
-		return nil, c.err
+	if err := service.DeleteRoute(ctx, routeTestUserId, routeTestProjectId, enabled.Id); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
+		t.Fatalf("expected enabled route delete validation error, got %v", err)
 	}
-	return c.routers, nil
-}
-
-func (c *recordingTraefikClient) ListServices(_ context.Context, _ string, _ model.GatewayConfig) ([]routeport.TraefikService, error) {
-	if c.err != nil {
-		return nil, c.err
+	disabled, err := service.DisableRoute(ctx, routeTestUserId, routeTestProjectId, enabled.Id)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return c.services, nil
-}
+	if disabled.Enabled {
+		t.Fatalf("expected disabled route, got %+v", disabled)
+	}
+	if len(publisher.published) != 0 {
+		t.Fatalf("expected no snapshot publication after disable, got %+v", publisher.published)
+	}
 
-func (c *recordingTraefikClient) TraefikUnavailableMessage(err error) (string, bool) {
-	return c.unavailableMessage, c.unavailableMessage != "" && errors.Is(err, c.err)
+	certRoute, err := service.UploadRouteCert(ctx, routeTestUserId, routeTestProjectId, disabled.Id, "CERT", "KEY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !certRoute.HTTPSEnabled || certRoute.CertType != "manual" {
+		t.Fatalf("unexpected manual cert route: %+v", certRoute)
+	}
+	certRoute, err = service.EnableRouteLetsEncrypt(ctx, routeTestUserId, routeTestProjectId, disabled.Id, acmeChallengeHTTP)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !certRoute.HTTPSEnabled || certRoute.CertType != "letsencrypt" || certRoute.CertPEM != nil || certRoute.CertKey != nil {
+		t.Fatalf("unexpected letsencrypt route: %+v", certRoute)
+	}
+	dashboardProject := routeTestProjectId
+	if err := service.route.CreateRoute(ctx, model.Route{Id: "01KTRAETFIKROUTE0000000001", ProjectId: &dashboardProject, Name: "traefik-dashboard", Protocol: "http", Domain: "traefik.lvh.me", PathPrefix: "/", TargetUrl: "http://traefik:8080", Enabled: true, HTTPSEnabled: true, CertType: "manual", AcmeChallenge: acmeChallengeHTTP}); err != nil {
+		t.Fatal(err)
+	}
+	gwRepo := gatewayrepo.NewRepository(database)
+	gw, err := gwRepo.GatewayConfigByProject(ctx, routeTestProjectId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gw.ExternalDomain = "public.example.test"
+	if err := gwRepo.UpsertGatewayConfig(ctx, gw); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := service.TraefikRouteConfig(ctx, routeTestUserId, routeTestProjectId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DashboardDomain != "traefik.lvh.me" || !cfg.HTTPSEnabled || cfg.ExternalDomain != "public.example.test" {
+		t.Fatalf("unexpected traefik config: %+v", cfg)
+	}
 }

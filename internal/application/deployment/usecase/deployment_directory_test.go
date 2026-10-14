@@ -18,6 +18,7 @@ import (
 
 type directoryFailureRuntime struct {
 	*workspaceFake
+	deploymentport.ServiceLifecycle
 	stageErr, runErr error
 	ran              bool
 	location         deploymentport.ServiceLocation
@@ -33,8 +34,8 @@ func (r *directoryFailureRuntime) StageWorkspace(ctx context.Context, target env
 	}
 	return r.workspaceFake.StageWorkspace(ctx, target, workspace)
 }
-func (r *directoryFailureRuntime) Run(_ context.Context, _ environmentport.Target, location deploymentport.ServiceLocation, _ io.Writer, _ string, _ ...string) error {
-	r.ran, r.location = true, location
+func (r *directoryFailureRuntime) Deploy(_ context.Context, scope deploymentport.RuntimeScope, _ deploymentport.DeploySettings, _ io.Writer) error {
+	r.ran, r.location = true, scope.Location
 	if r.onRun != nil {
 		r.onRun()
 	}
@@ -66,8 +67,8 @@ func (s *directoryVersionSelector) SelectServiceDeploymentVersion(_ context.Cont
 
 func TestDeploymentRequestFreezesVersionDirectoryAndRevision(t *testing.T) {
 	directory := filepath.ToSlash(filepath.Join(t.TempDir(), "api"))
-	service, store, _, _ := independentDeploymentTestService(t, false)
-	service.commandStore, service.dispatcher = store, directoryDispatcher{}
+	executor, store, _, _ := independentDeploymentTestService(t, false)
+	service := Service{commands: lifecycleCommandsFake{}, commandStore: store, dispatcher: directoryDispatcher{}, targetResolver: executor.targetResolver, transactionRunner: testDeploymentTransaction{}}
 	service.gatewayCoordinator = &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{ApplicationId: "gateway-1", NetworkName: "traefik"}}
 	selector := &directoryVersionSelector{store: store}
 	service.versionSelector = selector
@@ -84,7 +85,7 @@ func TestDeploymentRequestFreezesVersionDirectoryAndRevision(t *testing.T) {
 	}
 	store.service.DeploymentDirectory = "/later/edit"
 	store.service.VersionId = "later-version"
-	if err := executeIndependentDeployment(service, "deploy"); err != nil {
+	if err := executeIndependentDeployment(executor, "deploy"); err != nil {
 		t.Fatal(err)
 	}
 	if filepath.ToSlash(store.service.RuntimeDirectory) != directory {
@@ -93,8 +94,8 @@ func TestDeploymentRequestFreezesVersionDirectoryAndRevision(t *testing.T) {
 }
 
 func TestDeploymentRejectsStaleEnvironmentBeforeChangingConfiguration(t *testing.T) {
-	service, store, _, _ := independentDeploymentTestService(t, false)
-	service.commandStore, service.dispatcher = store, directoryDispatcher{}
+	executor, store, _, _ := independentDeploymentTestService(t, false)
+	service := Service{commands: lifecycleCommandsFake{}, commandStore: store, dispatcher: directoryDispatcher{}, targetResolver: executor.targetResolver, transactionRunner: testDeploymentTransaction{}}
 	selector := &directoryVersionSelector{store: store}
 	service.versionSelector = selector
 	_, err := service.DeployService(context.Background(), "user-1", "project-1", "service-1", deploymentdto.DeployServiceInput{
@@ -106,8 +107,8 @@ func TestDeploymentRejectsStaleEnvironmentBeforeChangingConfiguration(t *testing
 }
 
 func TestRestartFreezesRuntimeDirectoryInsteadOfPendingDirectory(t *testing.T) {
-	service, store, _, _ := independentDeploymentTestService(t, false)
-	service.commandStore, service.dispatcher = store, directoryDispatcher{}
+	executor, store, _, _ := independentDeploymentTestService(t, false)
+	service := Service{commands: lifecycleCommandsFake{}, commandStore: store, dispatcher: directoryDispatcher{}, targetResolver: executor.targetResolver, transactionRunner: testDeploymentTransaction{}}
 	service.gatewayCoordinator = &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{ApplicationId: "gateway-1", NetworkName: "traefik"}}
 	store.service.Status = status.ServiceStatusRunning
 	store.service.RuntimeDirectory, store.service.RuntimeTargetRevision = "/running/api", 1
@@ -117,7 +118,7 @@ func TestRestartFreezesRuntimeDirectoryInsteadOfPendingDirectory(t *testing.T) {
 	if *store.deployment.WorkingDirectory != "/running/api" || store.service.DeploymentDirectory != "/custom/demo" {
 		t.Fatalf("deployment=%+v service=%+v", store.deployment, store.service)
 	}
-	if err := executeIndependentDeployment(service, "restart"); err != nil {
+	if err := executeIndependentDeployment(executor, "restart"); err != nil {
 		t.Fatal(err)
 	}
 	if store.service.RuntimeDirectory != "/running/api" {
@@ -128,8 +129,8 @@ func TestRestartFreezesRuntimeDirectoryInsteadOfPendingDirectory(t *testing.T) {
 func TestRuntimeOperationsRejectMissingServiceDirectoryWithActionableError(t *testing.T) {
 	for _, operation := range []string{"stop", "restart"} {
 		t.Run(operation, func(t *testing.T) {
-			service, store, _, _ := independentDeploymentTestService(t, false)
-			service.commandStore, service.dispatcher = store, directoryDispatcher{}
+			executor, store, _, _ := independentDeploymentTestService(t, false)
+			service := Service{commands: lifecycleCommandsFake{}, commandStore: store, dispatcher: directoryDispatcher{}, targetResolver: executor.targetResolver, transactionRunner: testDeploymentTransaction{}}
 			store.service.Status = status.ServiceStatusFaulted
 			store.service.DeploymentDirectory = ""
 			input := deploymentdto.ServiceTargetInput{ServiceId: store.service.Id}
@@ -165,8 +166,8 @@ func TestLifecycleOperationsUseConfirmedDirectoryWithoutRuntimeRecord(t *testing
 	for _, operation := range []string{"stop", "restart"} {
 		for _, serviceState := range []string{status.ServiceStatusStopped, status.ServiceStatusRunning} {
 			t.Run(operation+"/"+serviceState, func(t *testing.T) {
-				service, store, _, _ := independentDeploymentTestService(t, false)
-				service.commandStore, service.dispatcher = store, directoryDispatcher{}
+				executor, store, _, _ := independentDeploymentTestService(t, false)
+				service := Service{commands: lifecycleCommandsFake{}, commandStore: store, dispatcher: directoryDispatcher{}, targetResolver: executor.targetResolver, transactionRunner: testDeploymentTransaction{}}
 				service.gatewayCoordinator = &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{ApplicationId: "gateway-1", NetworkName: "traefik"}}
 				store.service.Status = serviceState
 				input := deploymentdto.ServiceTargetInput{ServiceId: store.service.Id}
@@ -201,7 +202,7 @@ func TestCanceledDeploymentKeepsTheDirectoryBoundAtCancellation(t *testing.T) {
 			} else {
 				runtime.onRun, runtime.runErr = cancel, context.Canceled
 			}
-			service.runtime, service.logStore = runtime, runtime
+			service.runtime, service.logStore, service.lifecycle = runtime, runtime, runtime
 			if err := executeIndependentDeployment(service, "deploy"); err != nil {
 				t.Fatal(err)
 			}
@@ -222,7 +223,7 @@ func TestDeploymentDirectoryBindingFollowsPreparation(t *testing.T) {
 			if stageFailure {
 				runtime.stageErr = failure
 			}
-			service.runtime, service.logStore = runtime, runtime
+			service.runtime, service.logStore, service.lifecycle = runtime, runtime, runtime
 			if err := executeIndependentDeployment(service, "deploy"); !errors.Is(err, failure) {
 				t.Fatalf("error=%v", err)
 			}
@@ -241,13 +242,13 @@ func TestDeploymentDirectoryBindingFollowsPreparation(t *testing.T) {
 }
 
 func TestComposeMapsEachRelativeBindSource(t *testing.T) {
-	service, store, _, _ := independentDeploymentTestService(t, true)
+	_, store, _, _ := independentDeploymentTestService(t, true)
 	plan, _, err := BuildEffectiveServicePlan(store.application, store.version, store.service, store.components, store.serviceComponents, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	plan.Gateway = testGatewayEnrichmentPlan("", "", "").Gateway
-	result, err := service.RenderComposeDetailed(context.Background(), RenderInput{
+	result, err := RenderComposeDetailed(context.Background(), RenderInput{
 		Plan: plan, LogicalSvcDir: "/app/custom", ComposeMountSourceDir: "/host/custom",
 		ResolveMountSource: func(_ context.Context, source string) (string, error) {
 			source = filepath.ToSlash(source)
@@ -279,7 +280,7 @@ func TestDirectoryOwnershipChecksNestedDockerMountSources(t *testing.T) {
 	store := &directoryOwnershipStore{services: []model.Service{{
 		Id: "other", Code: "other", DeploymentDirectory: "/other-owned", DirectoryTargetRevision: 1,
 	}}}
-	usecase := Service{executionStore: store, runtime: testWorkspace(t.TempDir())}
+	usecase := ExecutionService{executionStore: store, runtime: testWorkspace(t.TempDir()), mountInventory: &directoryMountRuntime{}}
 	target := deploymentTestTarget(1)
 	if err := usecase.checkDirectoryOwnership(context.Background(), target, service, "/outside/workspace", nil); err != nil {
 		t.Fatal(err)

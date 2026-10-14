@@ -17,7 +17,7 @@ func (s Service) OpenStageLogStream(ctx context.Context, userId, projectId, runI
 	if err != nil || stage.PipelineRunId != run.Id {
 		return logstream.Subscription{}, apperror.New(apperror.KindNotFound, "Pipeline stage not found")
 	}
-	environment, err := s.runEnvironment(ctx, projectId, run)
+	environment, err := runEnvironment(ctx, s.environments, projectId, run)
 	if err != nil {
 		return logstream.Subscription{}, apperror.Wrap(apperror.KindConflict, "Pipeline log target changed", err)
 	}
@@ -35,12 +35,12 @@ func (s Service) OpenStageLogStream(ctx context.Context, userId, projectId, runI
 		if err != nil {
 			return "", err
 		}
-		currentEnvironment, err := s.runEnvironment(ctx, projectId, currentRun)
+		currentEnvironment, err := runEnvironment(ctx, s.environments, projectId, currentRun)
 		if err != nil || currentEnvironment.Id != environment.Id || currentEnvironment.TargetRevision != environment.TargetRevision {
 			return "", apperror.New(apperror.KindConflict, "Pipeline log target changed")
 		}
 		if environment.IsSSH() {
-			target, err := s.resolveProjectTarget(ctx, projectId)
+			target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 			if err != nil {
 				return "", err
 			}

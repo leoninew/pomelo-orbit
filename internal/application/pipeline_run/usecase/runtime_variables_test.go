@@ -45,11 +45,10 @@ func TestPipelineRunExecutionVariablesRequiresMatchingRepositoryRef(t *testing.T
 		t.Fatalf("marshal run variable snapshot: %v", err)
 	}
 
-	service := Service{}
-	if _, err := service.pipelineRunExecutionVariables(model.PipelineRun{RepositoryRef: "release", VariablesSnapshot: data}); err != nil {
+	if _, err := pipelineRunExecutionVariables(model.PipelineRun{RepositoryRef: "release", VariablesSnapshot: data}); err != nil {
 		t.Fatalf("load matching run variables: %v", err)
 	}
-	if _, err := service.pipelineRunExecutionVariables(model.PipelineRun{RepositoryRef: "main", VariablesSnapshot: data}); err == nil || !strings.Contains(err.Error(), "does not match") {
+	if _, err := pipelineRunExecutionVariables(model.PipelineRun{RepositoryRef: "main", VariablesSnapshot: data}); err == nil || !strings.Contains(err.Error(), "does not match") {
 		t.Fatalf("expected mismatched ref error, got %v", err)
 	}
 }

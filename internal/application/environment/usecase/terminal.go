@@ -16,10 +16,10 @@ import (
 
 const (
 	TerminalTicketLifetime = 30 * time.Second
-	TerminalIdleLimit      = 15 * time.Minute
+	terminalIdleLimit      = 15 * time.Minute
 	TerminalSessionLimit   = 2 * time.Hour
 	TerminalConnectLimit   = 15 * time.Second
-	TerminalCheckInterval  = 2 * time.Second
+	terminalCheckInterval  = 2 * time.Second
 	maxTerminalTickets     = 1024
 	maxTerminalSessions    = 16
 	maxUserTerminals       = 2

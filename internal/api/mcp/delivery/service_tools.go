@@ -10,7 +10,7 @@ import (
 )
 
 func (c *core) registerServiceTools(server *mcp.Server) {
-	addTool(server, "orbit_create_service", "Create a stopped Service whose Component overlays initially inherit the Version. The Service code is immutable after creation and must be unique within the selected Project.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_create_service", "Create a stopped Service whose Component overlays initially inherit the Version. The Service code is immutable after creation and must be unique within the selected Project.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 		VersionId     string `json:"version_id" jsonschema:"required"`
 		Code          string `json:"code" jsonschema:"required"`
@@ -30,7 +30,7 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		return writeResult("create_service", map[string]string{"application_id": input.ApplicationId, "service_id": service.Service.Id}, "POST", "/api/service", map[string]any{"service": serviceOutput(service)}), nil
 	})
 
-	addTool(server, "orbit_update_service_component_overlay", "Replace one declared Service Component's complete sparse overlay, including env, mounts, resources, endpoints, entrypoint, command, pull policy, and restart policy. Preserve unrelated overlay entries because this replaces the complete overlay. Omit an optional runtime field to clear that Service override so it inherits the Version declaration; an empty entrypoint or command string explicitly selects an empty argv.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_service_component_overlay", "Replace one declared Service Component's complete sparse overlay, including env, mounts, resources, endpoints, entrypoint, command, pull policy, and restart policy. Preserve unrelated overlay entries because this replaces the complete overlay. Omit an optional runtime field to clear that Service override so it inherits the Version declaration; an empty entrypoint or command string explicitly selects an empty argv.", func(ctx context.Context, input struct {
 		ServiceId   string                                      `json:"service_id" jsonschema:"required"`
 		ComponentId string                                      `json:"component_id" jsonschema:"required"`
 		Overlay     *servicev1.ServiceComponentOverlayUpdateReq `json:"overlay" jsonschema:"required"`
@@ -51,7 +51,7 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 
 	// env is a top-level collection by design. This avoids the Python wrapper's
 	// env: { env: [...] } shape while retaining the same application DTO.
-	addTool(server, "orbit_update_service_env", "Replace the Service environment shared by declared Components and resolve their Version ${KEY} placeholders. Generate credentials securely once and keep them stable. Database bootstrap credentials apply only to an empty data volume, so changing a value here and redeploying does not rotate an initialized database credential; require an explicit in-place rotation or volume-reset decision.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_service_env", "Replace the Service environment shared by declared Components and resolve their Version ${KEY} placeholders. Generate credentials securely once and keep them stable. Database bootstrap credentials apply only to an empty data volume, so changing a value here and redeploying does not rotate an initialized database credential; require an explicit in-place rotation or volume-reset decision.", func(ctx context.Context, input struct {
 		ServiceId string                  `json:"service_id" jsonschema:"required"`
 		Env       []*servicev1.ServiceEnv `json:"env" jsonschema:"required"`
 	}) (map[string]any, error) {
@@ -69,7 +69,7 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		return writeResult("update_service_env", map[string]string{"service_id": input.ServiceId}, "PUT", "/api/service/"+input.ServiceId+"/env", map[string]any{"service": serviceOutput(service)}), nil
 	})
 
-	addTool(server, "orbit_update_service_basic", "Replace a Service's selected Version.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_service_basic", "Replace a Service's selected Version.", func(ctx context.Context, input struct {
 		ServiceId string `json:"service_id" jsonschema:"required"`
 		VersionId string `json:"version_id" jsonschema:"required"`
 	}) (map[string]any, error) {

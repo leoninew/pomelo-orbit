@@ -12,11 +12,11 @@ import (
 
 func TestRenderGatewayComposeUsesDeclaredVersionTopology(t *testing.T) {
 	baseVersionId := "version-1"
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{
+	compose, err := RenderCompose(context.Background(), RenderInput{
 		LogicalSvcDir:         t.TempDir(),
 		ComposeMountSourceDir: t.TempDir(),
 		Plan: model.EffectiveServicePlan{
-			Application: model.Application{Id: "gateway-1", Code: "traefik", Kind: status.ApplicationKindStandard},
+			Application: model.Application{Id: "gateway-1", Code: "traefik", Kind: status.ApplicationKindGateway},
 			Version:     model.Version{Id: baseVersionId},
 			Service:     model.Service{Code: "traefik-default"},
 			Gateway: &model.GatewayConfig{

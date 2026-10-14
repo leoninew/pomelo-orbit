@@ -52,6 +52,7 @@ type Dependencies struct {
 	ApplicationService           applicationsvc.Service
 	ServiceService               servicesvc.Service
 	DeploymentService            deploymentsvc.Service
+	ServiceStatusCheck           *deploymentsvc.StatusCheckService
 	DialogueService              dialoguesvc.Service
 	EnvironmentService           environmentsvc.Service
 	EnvironmentTerminalService   *environmentsvc.TerminalService

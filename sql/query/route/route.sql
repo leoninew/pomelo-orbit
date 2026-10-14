@@ -57,3 +57,10 @@ WHERE id = sqlc.arg(id)
 DELETE FROM route
 WHERE id = sqlc.arg(id)
   AND project_id = sqlc.arg(project_id);
+
+-- name: UpdateRouteCertificate :execrows
+UPDATE route
+SET https_enabled = sqlc.arg(https_enabled), cert_pem = sqlc.arg(cert_pem), cert_key = sqlc.arg(cert_key),
+    cert_type = sqlc.arg(cert_type), acme_challenge = sqlc.arg(acme_challenge), updated_at = sqlc.arg(updated_at)
+WHERE id = sqlc.arg(id) AND project_id = sqlc.arg(project_id)
+  AND protocol = 'http' AND domain = sqlc.arg(expected_domain) AND updated_at = sqlc.arg(expected_updated_at);

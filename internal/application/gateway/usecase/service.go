@@ -63,7 +63,6 @@ func New(
 	configStore gatewayport.ConfigStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
-	resolvePath gatewayport.PhysicalPathResolver,
 	transaction gatewayport.TransactionRunner,
 ) Service {
 	return Service{

@@ -1,4 +1,4 @@
-package tx
+package middleware
 
 import (
 	"bytes"
@@ -9,16 +9,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 )
 
 const unwrittenResponseSize = -1
 
 type ErrorWriter func(*gin.Context, error)
 
-// Middleware begins a request-scoped transaction for API writes. Successful
+// Transaction begins a request-scoped transaction for API writes. Successful
 // responses stay buffered until the transaction commits.
 
-func Middleware(db *sql.DB, writeError ErrorWriter, skipPaths ...string) gin.HandlerFunc {
+func Transaction(db *sql.DB, writeError ErrorWriter, skipPaths ...string) gin.HandlerFunc {
 	skipped := make(map[string]struct{}, len(skipPaths))
 	for _, path := range skipPaths {
 		skipped[path] = struct{}{}
@@ -33,13 +34,13 @@ func Middleware(db *sql.DB, writeError ErrorWriter, skipPaths ...string) gin.Han
 			return
 		}
 
-		ctx := WithDb(c.Request.Context(), db)
+		ctx := tx.WithDb(c.Request.Context(), db)
 		sqlTx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			writeError(c, apperror.Wrap(apperror.KindInternal, "", err))
 			return
 		}
-		ctx = WithTx(ctx, sqlTx)
+		ctx = tx.WithTx(ctx, sqlTx)
 		c.Request = c.Request.WithContext(ctx)
 
 		originalWriter := c.Writer

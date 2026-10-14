@@ -58,14 +58,16 @@ type ExecutionStore interface {
 	Service(ctx context.Context, projectId string, id string) (model.Service, error)
 	BeginDeployment(ctx context.Context, projectId string, id string) (bool, error)
 	CompleteDeployment(ctx context.Context, projectId string, id string, status string, message string) (bool, error)
-	GatewayConfig(ctx context.Context, applicationId string) (model.GatewayConfig, error)
 }
 
-type ExecutionLogStore interface {
+type DeploymentLogs interface {
 	OpenReader(ctx context.Context, serviceCode, deploymentId string) (logport.Reader, error)
 	Read(serviceCode string, deploymentId string, offset int) ([]byte, int, error)
-	Writer(serviceCode string, deploymentId string) (io.WriteCloser, error)
 	Remove(serviceCode string, deploymentId string) error
+}
+
+type ExecutionLogWriter interface {
+	Writer(serviceCode string, deploymentId string) (io.WriteCloser, error)
 }
 
 type WorkspaceFile struct {
@@ -104,7 +106,19 @@ type Workspace struct {
 	DeploymentId string
 }
 
-// Runtime is the only deployment execution boundary. Every operation receives
+// WorkspaceReader resolves and checks an existing service workspace.
+type WorkspaceReader interface {
+	ServiceDirExists(ctx context.Context, target environmentport.Target, location ServiceLocation) (bool, error)
+	ResolveDirectory(ctx context.Context, target environmentport.Target, location ServiceLocation) (string, error)
+}
+
+type ExecutionWorkspace interface {
+	ResolveDirectory(context.Context, environmentport.Target, ServiceLocation) (string, error)
+	ComposeMountSourceDir(context.Context, environmentport.Target, ServiceLocation) (string, error)
+	StageWorkspace(context.Context, environmentport.Target, Workspace) error
+}
+
+// Runtime provides deployment execution capabilities. Every operation receives
 // an explicit Project Environment target and dispatches only by target type.
 type Runtime interface {
 	StreamAtEnvironmentRoot(ctx context.Context, target environmentport.Target, output io.Writer, name string, args ...string) error

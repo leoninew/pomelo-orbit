@@ -11,13 +11,11 @@ import (
 	"strings"
 	"time"
 
-	applicationport "github.com/leoninew/pomelo-orbit/internal/application/application/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	pipelinevariable "github.com/leoninew/pomelo-orbit/internal/application/pipeline/rule/pipelinevariable"
 	pipelinesvc "github.com/leoninew/pomelo-orbit/internal/application/pipeline/usecase"
 	pipelinerundto "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/dto"
 	pipelinerunport "github.com/leoninew/pomelo-orbit/internal/application/pipeline_run/port"
-	repositoryport "github.com/leoninew/pomelo-orbit/internal/application/repository/port"
 	"github.com/leoninew/pomelo-orbit/internal/application/variableview"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
@@ -30,22 +28,13 @@ type Service struct {
 	store             stores
 	environments      repository.EnvironmentStore
 	targetResolver    environmentport.TargetResolver
-	executionStore    pipelineExecutionStore
-	versionForker     applicationport.BuildVersionForker
 	transactionRunner pipelinerunport.TransactionRunner
 	dispatcher        pipelinerunport.PipelineRunDispatcher
 	workspace         pipelinerunport.Workspace
 	logStore          pipelinerunport.LogReader
-	executionLogStore pipelinerunport.ExecutionLogStore
-	secretKey         string
 	logger            *slog.Logger
-	executionTimeout  time.Duration
-	pollInterval      time.Duration
-	runner            pipelinerunport.ContainerRunner
 	remoteRuntime     pipelinerunport.RemoteRuntimeFactory
-	localSource       repositoryport.LocalDirectorySource
 }
-
 type pipelineExecutionStore interface {
 	PipelineRun(ctx context.Context, projectId string, id string) (model.PipelineRun, error)
 	ListPipelineStageRuns(ctx context.Context, projectId string, runId string) ([]model.PipelineStageRun, error)
@@ -72,16 +61,10 @@ type stores struct {
 	application repository.ApplicationStore
 }
 
-func New(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, environments repository.EnvironmentStore, targetResolver environmentport.TargetResolver, versionForker applicationport.BuildVersionForker, transactionRunner pipelinerunport.TransactionRunner, dispatcher pipelinerunport.PipelineRunDispatcher, workspace pipelinerunport.Workspace, secretKey string, logger *slog.Logger, runner pipelinerunport.ContainerRunner, logStore pipelinerunport.LogReader, localSource repositoryport.LocalDirectorySource) Service {
-	store := stores{project: project, credential: credential, repository: repos, pipeline: pipeline, pipelineRun: pipelineRun, application: application}
-	return Service{store: store, executionStore: store, environments: environments, targetResolver: targetResolver, versionForker: versionForker, transactionRunner: transactionRunner, dispatcher: dispatcher, workspace: workspace, secretKey: secretKey, logger: logger, runner: runner, logStore: logStore, localSource: localSource}
+func New(project repository.ProjectReader, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, environments repository.EnvironmentStore, targetResolver environmentport.TargetResolver, transactionRunner pipelinerunport.TransactionRunner, dispatcher pipelinerunport.PipelineRunDispatcher, workspace pipelinerunport.Workspace, logger *slog.Logger, logStore pipelinerunport.LogReader) Service {
+	store := stores{project: project, repository: repos, pipeline: pipeline, pipelineRun: pipelineRun, application: application}
+	return Service{store: store, environments: environments, targetResolver: targetResolver, transactionRunner: transactionRunner, dispatcher: dispatcher, workspace: workspace, logger: logger, logStore: logStore}
 }
-
-func NewExecutionService(project repository.ProjectReader, credential repository.CredentialStore, repos repository.RepositoryStore, pipeline repository.PipelineStore, pipelineRun repository.PipelineRunStore, application repository.ApplicationStore, environments repository.EnvironmentStore, targetResolver environmentport.TargetResolver, versionForker applicationport.BuildVersionForker, transactionRunner pipelinerunport.TransactionRunner, workspace pipelinerunport.Workspace, secretKey string, logger *slog.Logger, executionTimeout time.Duration, pollInterval time.Duration, runner pipelinerunport.ContainerRunner, logStore pipelinerunport.ExecutionLogStore, localSource repositoryport.LocalDirectorySource) Service {
-	store := stores{project: project, credential: credential, repository: repos, pipeline: pipeline, pipelineRun: pipelineRun, application: application}
-	return Service{store: store, executionStore: store, environments: environments, targetResolver: targetResolver, versionForker: versionForker, transactionRunner: transactionRunner, workspace: workspace, secretKey: secretKey, logger: logger, executionTimeout: executionTimeout, pollInterval: pollInterval, runner: runner, logStore: logStore, executionLogStore: logStore, localSource: localSource}
-}
-
 func (s Service) WithRemoteRuntime(runtime pipelinerunport.RemoteRuntimeFactory) Service {
 	s.remoteRuntime = runtime
 	return s
@@ -291,7 +274,7 @@ func (s Service) createPipelineRun(ctx context.Context, projectId string, pipeli
 	if _, _, err := pipelinevariable.ResolveRuntimeVariablesFromPipelineStages(repo, pipeline, stages, overrides); err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
+	target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 	if err != nil {
 		return pipelinerundto.PipelineRunDetail{}, err
 	}
@@ -420,7 +403,7 @@ func (s Service) DeletePipelineRun(ctx context.Context, userId string, projectId
 }
 
 func (s Service) ensureWorkspaceReady(ctx context.Context, environment model.Environment) error {
-	if _, err := s.workspaceForEnvironment(ctx, environment); err != nil {
+	if _, err := workspaceForEnvironment(ctx, s.workspace, environment); err != nil {
 		return apperror.New(apperror.KindValidation, err.Error())
 	}
 	return nil

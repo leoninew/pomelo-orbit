@@ -18,7 +18,7 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 		return map[string]any{"environment": environmentOutput(environment), "project_id": projectId}, nil
 	})
 
-	addTool(server, "orbit_update_project_environment", "Update the explicit local or SSH target of the selected Project's unique deployment Environment. Local requires the nested local object; SSH requires the nested ssh object.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_project_environment", "Update the explicit local or SSH target of the selected Project's unique deployment Environment. Local requires the nested local object; SSH requires the nested ssh object.", func(ctx context.Context, input struct {
 		TargetType *string `json:"target_type,omitempty"`
 		Local      *struct {
 			WorkspaceRoot string `json:"workspace_root"`

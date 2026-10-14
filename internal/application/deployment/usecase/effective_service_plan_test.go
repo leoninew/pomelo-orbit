@@ -182,7 +182,7 @@ func TestBuildVersionPreviewPlanUsesVersionDeclarations(t *testing.T) {
 
 	disabled := false
 	plan.JoinTraefikNetwork = &disabled
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: plan})
+	compose, err := RenderCompose(context.Background(), RenderInput{Plan: plan})
 	if err != nil {
 		t.Fatalf("RenderCompose returned error: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestBuildVersionPreviewPlanRendersGatewayHTTPHost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildVersionPreviewPlan returned error: %v", err)
 	}
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: plan})
+	compose, err := RenderCompose(context.Background(), RenderInput{Plan: plan})
 	if err != nil {
 		t.Fatalf("RenderCompose returned error: %v", err)
 	}

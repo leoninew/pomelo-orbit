@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strings"
 	"testing"
 	"time"
 
@@ -22,6 +21,8 @@ func TestDeploymentAndRestartDoNotRequireRoutePublication(t *testing.T) {
 			}
 			t.Run(name, func(t *testing.T) {
 				service, store, runtime, readiness := independentDeploymentTestService(t, gateway)
+				observer := &runtimeInspectorFake{}
+				service.observer = observer
 				if !gateway {
 					readiness.err = errors.New("Gateway is unavailable")
 				}
@@ -31,10 +32,10 @@ func TestDeploymentAndRestartDoNotRequireRoutePublication(t *testing.T) {
 				if store.deployment.Status != status.WorkStatusRanToCompletion || store.service.Status != status.ServiceStatusRunning {
 					t.Fatalf("deployment status=%s, service status=%s", store.deployment.Status, store.service.Status)
 				}
-				if !strings.Contains(runtime.command, "up") || len(runtime.staged) != 1 {
-					t.Fatalf("deployment did not execute Compose: command=%s staged=%d", runtime.command, len(runtime.staged))
+				if !runtime.deployed || len(runtime.staged) != 1 {
+					t.Fatalf("deployment did not execute: deployed=%t staged=%d", runtime.deployed, len(runtime.staged))
 				}
-				if runtime.queryCalled {
+				if len(observer.scopes) != 0 {
 					t.Fatal("deployment queried runtime state outside Gateway readiness")
 				}
 				if !gateway && readiness.calls != 0 {
@@ -57,14 +58,43 @@ func TestGatewayDeploymentAndRestartStillRequireGatewayReadiness(t *testing.T) {
 			if !errors.Is(err, readiness.err) {
 				t.Fatalf("Gateway readiness error = %v", err)
 			}
-			if !strings.Contains(runtime.command, "up") || store.deployment.Status != status.WorkStatusFaulted || store.service.Status != status.ServiceStatusFaulted {
-				t.Fatalf("command=%s deployment status=%s service status=%s", runtime.command, store.deployment.Status, store.service.Status)
+			if !runtime.deployed || store.deployment.Status != status.WorkStatusFaulted || store.service.Status != status.ServiceStatusFaulted {
+				t.Fatalf("deployed=%t deployment status=%s service status=%s", runtime.deployed, store.deployment.Status, store.service.Status)
 			}
 		})
 	}
 }
 
-func executeIndependentDeployment(service Service, operation string) error {
+func TestStopUsesSavedVolumeOptionAndServiceScope(t *testing.T) {
+	for _, removeVolumes := range []bool{false, true} {
+		name := "keep volumes"
+		if removeVolumes {
+			name = "remove volumes"
+		}
+		t.Run(name, func(t *testing.T) {
+			service, store, runtime, _ := independentDeploymentTestService(t, false)
+			options, err := parseDeployOptions(store.deployment.OptionsJSON)
+			if err != nil {
+				t.Fatal(err)
+			}
+			options.RemoveVolumes = removeVolumes
+			if err := setDeploymentOptions(&store.deployment, options); err != nil {
+				t.Fatal(err)
+			}
+			if err := service.ExecuteApplicationStop(context.Background(), "project-1", store.application.Id, store.deployment.Id, false); err != nil {
+				t.Fatal(err)
+			}
+			if !runtime.stopped || runtime.removeVolumes != removeVolumes || runtime.scope.Project != store.service.Code || runtime.scope.Location.Directory != store.service.DeploymentDirectory {
+				t.Fatalf("stop=%t removeVolumes=%t scope=%+v", runtime.stopped, runtime.removeVolumes, runtime.scope)
+			}
+			if store.deployment.Status != status.WorkStatusRanToCompletion || store.service.Status != status.ServiceStatusStopped {
+				t.Fatalf("deployment=%s service=%s", store.deployment.Status, store.service.Status)
+			}
+		})
+	}
+}
+
+func executeIndependentDeployment(service ExecutionService, operation string) error {
 	deployment, err := service.executionStore.Deployment(context.Background(), "project-1", "deployment-1")
 	if err != nil {
 		return err
@@ -75,7 +105,7 @@ func executeIndependentDeployment(service Service, operation string) error {
 	return service.ExecuteApplicationDeploy(context.Background(), "project-1", "app-1", deployment.Id, false)
 }
 
-func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *independentDeploymentStore, *gatewayDeploymentRuntimeFake, *gatewayReadinessFake) {
+func independentDeploymentTestService(t *testing.T, gateway bool) (ExecutionService, *independentDeploymentStore, *gatewayDeploymentRuntimeFake, *gatewayReadinessFake) {
 	t.Helper()
 	projectId := "project-1"
 	store := &independentDeploymentStore{runtimeQueryStore: &runtimeQueryStore{
@@ -129,7 +159,7 @@ func independentDeploymentTestService(t *testing.T, gateway bool) (Service, *ind
 	store.service.CurrentDeploymentId = &store.deployment.Id
 	runtime := &gatewayDeploymentRuntimeFake{workspaceFake: testWorkspace(t.TempDir())}
 	readiness := &gatewayReadinessFake{}
-	service := Service{executionStore: store, targetResolver: staticTargetResolver{target: target}, runtime: runtime, logStore: runtime, gatewayReadiness: readiness, executionTimeout: time.Minute, cancelTimeout: time.Second, transactionRunner: testDeploymentTransaction{}}
+	service := NewExecutionService(store, nil, staticTargetResolver{target: target}, runtime, runtime, 0, time.Minute, time.Second, testDeploymentTransaction{}, readiness, nil, &runtimeInspectorFake{}, runtime)
 	return service, store, runtime, readiness
 }
 

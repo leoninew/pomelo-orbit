@@ -10,14 +10,14 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func (s Service) resolveProjectTarget(ctx context.Context, projectId string) (environmentport.Target, error) {
+func resolveProjectTarget(ctx context.Context, resolver environmentport.TargetResolver, projectId string) (environmentport.Target, error) {
 	if projectId == "" {
 		return environmentport.Target{}, fmt.Errorf("project scope is required")
 	}
-	if s.targetResolver == nil {
+	if resolver == nil {
 		return environmentport.Target{}, fmt.Errorf("deployment target resolver is not configured")
 	}
-	return s.targetResolver.ResolveProjectTarget(ctx, projectId)
+	return resolver.ResolveProjectTarget(ctx, projectId)
 }
 
 func applyDeploymentTargetSnapshot(deployment *model.Deployment, target environmentport.Target, gateway *model.GatewayConfig) {

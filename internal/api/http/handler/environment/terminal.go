@@ -190,24 +190,13 @@ func (h Handler) ConnectTerminal(c *gin.Context) {
 		}
 	}()
 	go func() {
-		ticker := time.NewTicker(environmentsvc.TerminalCheckInterval)
-		defer ticker.Stop()
-		for {
+		reason := h.terminal.MonitorSession(ctx, grant, func() time.Time {
+			return time.Unix(0, lastActivity.Load())
+		})
+		if reason != "" {
 			select {
+			case events <- reason:
 			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if time.Since(time.Unix(0, lastActivity.Load())) >= environmentsvc.TerminalIdleLimit {
-					events <- "idle_timeout"
-					return
-				}
-				checkCtx, checkCancel := context.WithTimeout(ctx, 5*time.Second)
-				checkErr := h.terminal.ValidateSession(checkCtx, grant)
-				checkCancel()
-				if checkErr != nil {
-					events <- "access_or_target_changed"
-					return
-				}
 			}
 		}
 	}()

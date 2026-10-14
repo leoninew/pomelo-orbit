@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
@@ -15,12 +16,10 @@ import (
 	logdto "github.com/leoninew/pomelo-orbit/internal/application/logstream/dto"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
-	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 type containerStreamStore struct {
 	*runtimeQueryStore
-	repository.DeploymentStore
 	mu         sync.Mutex
 	deployment model.Deployment
 	member     bool
@@ -36,28 +35,12 @@ func (s *containerStreamStore) IsProjectMember(context.Context, string, string) 
 	defer s.mu.Unlock()
 	return s.member, nil
 }
-func (s *containerStreamStore) CreateDeployment(ctx context.Context, projectId string, deployment model.Deployment) error {
-	return s.runtimeQueryStore.CreateDeployment(ctx, projectId, deployment)
-}
-func (s *containerStreamStore) HasActiveDeployment(ctx context.Context, projectId, appId string) (bool, error) {
-	return s.runtimeQueryStore.HasActiveDeployment(ctx, projectId, appId)
-}
 
 type containerStreamRuntime struct {
-	deploymentport.Runtime
 	mu       sync.Mutex
 	id       string
-	commands []string
+	requests []deploymentport.ContainerLogRequest
 	closed   int
-}
-
-type containerStreamApplicationStore struct {
-	repository.ApplicationStore
-	store *runtimeQueryStore
-}
-
-func (s containerStreamApplicationStore) VersionComponentsByVersion(ctx context.Context, projectId, versionId string) ([]model.VersionComponent, error) {
-	return s.store.VersionComponentsByVersion(ctx, projectId, versionId)
 }
 
 type containerStreamTargetResolver struct {
@@ -68,18 +51,18 @@ func (r *containerStreamTargetResolver) ResolveProjectTarget(context.Context, st
 	return r.target, nil
 }
 
-func (r *containerStreamRuntime) QueryAtEnvironmentRoot(context.Context, environmentport.Target, string, ...string) (string, error) {
+func (r *containerStreamRuntime) ContainerIds(context.Context, environmentport.Target, string, string) ([]string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.id == "" {
-		return "", nil
+		return nil, nil
 	}
-	return fmt.Sprintf(`{"ID":%q}`, r.id), nil
+	return []string{r.id}, nil
 }
-func (r *containerStreamRuntime) StreamAtEnvironmentRoot(ctx context.Context, _ environmentport.Target, output io.Writer, _ string, args ...string) error {
+func (r *containerStreamRuntime) Follow(ctx context.Context, _ environmentport.Target, request deploymentport.ContainerLogRequest, output io.Writer) error {
 	r.mu.Lock()
 	id := r.id
-	r.commands = append(r.commands, strings.Join(args, " "))
+	r.requests = append(r.requests, request)
 	r.mu.Unlock()
 	defer func() { r.mu.Lock(); r.closed++; r.mu.Unlock() }()
 	if _, err := fmt.Fprintf(output, "web | 2026-09-30T00:00:00.123456789Z %s\n", id); err != nil {
@@ -90,7 +73,7 @@ func (r *containerStreamRuntime) StreamAtEnvironmentRoot(ctx context.Context, _ 
 }
 
 func newContainerStreamService() (Service, *containerStreamStore, *containerStreamRuntime) {
-	svc, queryStore := newRuntimeQueryService()
+	_, queryStore := newRuntimeQueryService()
 	queryStore.service.ProjectId = "project-1"
 	appId, serviceId := "app-1", "service-1"
 	options := "{}"
@@ -100,88 +83,90 @@ func newContainerStreamService() (Service, *containerStreamStore, *containerStre
 	store.deployment.OptionsJSON = &options
 	applyDeploymentTargetSnapshot(&store.deployment, target, nil)
 	runtime := &containerStreamRuntime{}
-	svc.project, svc.commandStore, svc.executionStore, svc.deployment = store, store, store, store
-	svc.targetResolver = staticTargetResolver{target: target}
-	svc.runtime = runtime
+	svc := NewCommandService(store, queryStore, queryStore, store, nil, nil, staticTargetResolver{target: target}, nil, nil, runtime, nil, nil, nil, nil, lifecycleCommandsFake{})
 	return svc, store, runtime
 }
 
 func TestDeploymentContainerLogsWaitThenFollowRebuildAfterDeploymentCompletes(t *testing.T) {
-	svc, store, runtime := newContainerStreamService()
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-	defer cancel()
-	stream, err := svc.OpenDeploymentContainerLogStream(ctx, "user-1", "project-1", "deployment-1", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var chunks []string
-	var gap bool
-	err = stream.Run(ctx, func(event logdto.Event) error {
-		switch event.Type {
-		case "waiting":
-			store.mu.Lock()
-			store.deployment.Status = status.WorkStatusRanToCompletion
-			store.mu.Unlock()
-			runtime.mu.Lock()
-			runtime.id = "container-1"
-			runtime.mu.Unlock()
-		case "gap":
-			gap = true
-		case "chunk":
-			chunks = append(chunks, string(event.Data))
-			if len(chunks) == 1 {
-				runtime.mu.Lock()
-				runtime.id = "container-2"
-				runtime.mu.Unlock()
-			} else {
-				cancel()
-			}
-		case "complete":
-			t.Fatal("deployment completion must not complete container logs")
+	synctest.Test(t, func(t *testing.T) {
+		svc, store, runtime := newContainerStreamService()
+		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+		defer cancel()
+		stream, err := svc.OpenDeploymentContainerLogStream(ctx, "user-1", "project-1", "deployment-1", "")
+		if err != nil {
+			t.Fatal(err)
 		}
-		return nil
+		var chunks []string
+		var gap bool
+		err = stream.Run(ctx, func(event logdto.Event) error {
+			switch event.Type {
+			case "waiting":
+				store.mu.Lock()
+				store.deployment.Status = status.WorkStatusRanToCompletion
+				store.mu.Unlock()
+				runtime.mu.Lock()
+				runtime.id = "container-1"
+				runtime.mu.Unlock()
+			case "gap":
+				gap = true
+			case "chunk":
+				chunks = append(chunks, string(event.Data))
+				if len(chunks) == 1 {
+					runtime.mu.Lock()
+					runtime.id = "container-2"
+					runtime.mu.Unlock()
+				} else {
+					cancel()
+				}
+			case "complete":
+				t.Fatal("deployment completion must not complete container logs")
+			}
+			return nil
+		})
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("follow result = %v", err)
+		}
+		if len(chunks) != 2 || !strings.Contains(chunks[0], "container-1") || !strings.Contains(chunks[1], "container-2") || !gap {
+			t.Fatalf("chunks=%v, gap=%v", chunks, gap)
+		}
+		runtime.mu.Lock()
+		defer runtime.mu.Unlock()
+		if runtime.closed != 2 {
+			t.Fatalf("follow commands closed = %d", runtime.closed)
+		}
+		if len(runtime.requests) != 2 || runtime.requests[0].Since != "2026-09-30T00:00:00Z" || runtime.requests[1].Since != "2026-09-29T23:59:58.123456789Z" {
+			t.Fatalf("requests = %v", runtime.requests)
+		}
 	})
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("follow result = %v", err)
-	}
-	if len(chunks) != 2 || !strings.Contains(chunks[0], "container-1") || !strings.Contains(chunks[1], "container-2") || !gap {
-		t.Fatalf("chunks=%v, gap=%v", chunks, gap)
-	}
-	runtime.mu.Lock()
-	defer runtime.mu.Unlock()
-	if runtime.closed != 2 {
-		t.Fatalf("follow commands closed = %d", runtime.closed)
-	}
-	if !strings.Contains(runtime.commands[0], "--follow --timestamps --no-color --since 2026-09-30T00:00:00Z") || !strings.Contains(runtime.commands[1], "--since 2026-09-29T23:59:58.123456789Z") {
-		t.Fatalf("commands = %v", runtime.commands)
-	}
 }
 
 func TestContainerLogSubscriptionStopsWhenMembershipIsRevoked(t *testing.T) {
-	svc, store, runtime := newContainerStreamService()
-	runtime.id = "container-1"
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	stream, err := svc.OpenApplicationLogStream(ctx, "user-1", "project-1", "app-1", "service-1", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = stream.Run(ctx, func(event logdto.Event) error {
-		if event.Type == "chunk" {
-			store.mu.Lock()
-			store.member = false
-			store.mu.Unlock()
+	synctest.Test(t, func(t *testing.T) {
+		svc, store, runtime := newContainerStreamService()
+		runtime.id = "container-1"
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		stream, err := svc.OpenApplicationLogStream(ctx, "user-1", "project-1", "app-1", "service-1", "", "")
+		if err != nil {
+			t.Fatal(err)
 		}
-		return nil
+		err = stream.Run(ctx, func(event logdto.Event) error {
+			if event.Type == "chunk" {
+				store.mu.Lock()
+				store.member = false
+				store.mu.Unlock()
+			}
+			return nil
+		})
+		if err == nil || !strings.Contains(err.Error(), "Permission denied") {
+			t.Fatalf("membership revocation = %v", err)
+		}
+		runtime.mu.Lock()
+		defer runtime.mu.Unlock()
+		if runtime.closed != 1 {
+			t.Fatal("revoked subscription left follower running")
+		}
 	})
-	if err == nil || !strings.Contains(err.Error(), "Permission denied") {
-		t.Fatalf("membership revocation = %v", err)
-	}
-	runtime.mu.Lock()
-	defer runtime.mu.Unlock()
-	if runtime.closed != 1 {
-		t.Fatal("revoked subscription left follower running")
-	}
 }
 
 func TestLocalApplicationContainerLogs(t *testing.T) {
@@ -193,7 +178,6 @@ func TestLocalApplicationContainerLogs(t *testing.T) {
 	svc.targetResolver = staticTargetResolver{target: target}
 	store.version = model.Version{Id: "version-1"}
 	store.components = []model.VersionComponent{{VersionId: "version-1", Name: "web"}}
-	svc.application = containerStreamApplicationStore{store: store.runtimeQueryStore}
 	runtime.id = "container-1"
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -217,11 +201,11 @@ func TestLocalApplicationContainerLogs(t *testing.T) {
 	}
 	runtime.mu.Lock()
 	defer runtime.mu.Unlock()
-	if runtime.closed != 1 || len(runtime.commands) != 1 {
-		t.Fatalf("closed=%d, commands=%v", runtime.closed, runtime.commands)
+	if runtime.closed != 1 || len(runtime.requests) != 1 {
+		t.Fatalf("closed=%d, requests=%v", runtime.closed, runtime.requests)
 	}
-	if !strings.Contains(runtime.commands[0], "--follow --timestamps --no-color --tail 200 web") {
-		t.Fatalf("command = %s", runtime.commands[0])
+	if runtime.requests[0] != (deploymentport.ContainerLogRequest{Project: "demo-default", Component: "web", Tail: 200}) {
+		t.Fatalf("request = %+v", runtime.requests[0])
 	}
 }
 
@@ -233,7 +217,6 @@ func TestStoppedServiceContainerLogs(t *testing.T) {
 			store.service.RuntimeDirectory, store.service.RuntimeTargetRevision = "", 0
 			store.version = model.Version{Id: "version-1"}
 			store.components = []model.VersionComponent{{VersionId: "version-1", Name: "web"}}
-			svc.application = containerStreamApplicationStore{store: store.runtimeQueryStore}
 			target := testSSHTarget("project-1")
 			if targetType == model.EnvironmentTargetTypeLocal {
 				target.Environment.TargetType = targetType
@@ -261,8 +244,8 @@ func TestStoppedServiceContainerLogs(t *testing.T) {
 			if !strings.Contains(string(chunk.Data), runtime.id) || chunk.Cursor == "" {
 				t.Fatalf("stopped service log chunk = %+v", chunk)
 			}
-			if len(runtime.commands) != 1 || runtime.commands[0] != "compose -p demo-default logs --follow --timestamps --no-color --tail 200 web" || runtime.closed != 1 {
-				t.Fatalf("commands = %v, closed = %d", runtime.commands, runtime.closed)
+			if len(runtime.requests) != 1 || runtime.requests[0] != (deploymentport.ContainerLogRequest{Project: "demo-default", Component: "web", Tail: 200}) || runtime.closed != 1 {
+				t.Fatalf("requests = %v, closed = %d", runtime.requests, runtime.closed)
 			}
 		})
 	}
@@ -297,8 +280,8 @@ func TestContainerLogSubscriptionRejectsChangedTarget(t *testing.T) {
 			if err == nil || !strings.Contains(err.Error(), "Container log target changed") {
 				t.Fatalf("target change result = %v", err)
 			}
-			if len(runtime.commands) != 0 {
-				t.Fatalf("changed target started a follower: %v", runtime.commands)
+			if len(runtime.requests) != 0 {
+				t.Fatalf("changed target started a follower: %v", runtime.requests)
 			}
 		})
 	}

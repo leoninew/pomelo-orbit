@@ -26,6 +26,7 @@ import (
 // concrete services are composed in bootstrap; tool handlers never see stores
 // or infrastructure implementations.
 type Dependencies struct {
+	TransactionRunner  TransactionRunner
 	ActorUserId        string
 	ActorAuthenticator ActorAuthenticator
 	SelectedProjectId  string
@@ -37,6 +38,11 @@ type Dependencies struct {
 	Environment        EnvironmentService
 	Gateway            GatewayService
 	Route              RouteService
+}
+
+// TransactionRunner provides the short UoW used by database-only tool writes.
+type TransactionRunner interface {
+	RunInTransaction(context.Context, func(context.Context) error) error
 }
 
 // ActorAuthenticator validates the configured stdio credential before every

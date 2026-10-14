@@ -1,3 +1,5 @@
+//go:build !unit
+
 package pipelinerunsvc
 
 import (
@@ -117,16 +119,20 @@ func TestSharedRepositoryRunsInEachProjectWithSharedCredential(t *testing.T) {
 		environment.Id = "env-" + projectId
 		environment.ProjectId = projectId
 		runner := &remoteRunnerStub{}
-		service := NewExecutionService(projects, credentials, repositories, pipelines, runs, applications,
+		executor := NewExecutionService(credentials, repositories, pipelines, runs,
 			&runTargetEnvironmentStore{environment: environment}, directTriggerTargetResolver{environment: environment},
 			nil, nil, directTriggerWorkspace{}, secretKey, slog.New(slog.NewTextHandler(io.Discard, nil)),
 			30*time.Second, time.Second, nil, nil, nil,
+		).WithRemoteRuntime(remoteResourcesStub{workspace: &remoteWorkspaceStub{}, runner: runner, logs: &remoteLogStub{}})
+		service := New(projects, repositories, pipelines, runs, applications,
+			&runTargetEnvironmentStore{environment: environment}, directTriggerTargetResolver{environment: environment},
+			nil, nil, directTriggerWorkspace{}, slog.New(slog.NewTextHandler(io.Discard, nil)), nil,
 		).WithRemoteRuntime(remoteResourcesStub{workspace: &remoteWorkspaceStub{}, runner: runner, logs: &remoteLogStub{}})
 		created, err := service.TriggerPipeline(ctx, userId, projectId, instance.Pipeline.Id, "main")
 		if err != nil {
 			t.Fatalf("trigger in %s: %v", projectId, err)
 		}
-		if err := service.ExecutePipelineRun(ctx, pipelinerundto.ExecutePipelineRunInput{ProjectId: projectId, PipelineRunId: created.Run.Id}); err != nil {
+		if err := executor.ExecutePipelineRun(ctx, pipelinerundto.ExecutePipelineRunInput{ProjectId: projectId, PipelineRunId: created.Run.Id}); err != nil {
 			t.Fatalf("execute in %s: %v", projectId, err)
 		}
 		stored, err := runs.PipelineRun(ctx, projectId, created.Run.Id)

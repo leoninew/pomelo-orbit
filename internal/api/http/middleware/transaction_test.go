@@ -1,4 +1,4 @@
-package tx
+package middleware
 
 import (
 	"database/sql"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
 	"github.com/gin-gonic/gin"
@@ -27,7 +28,7 @@ func TestMiddlewareCommitOnSuccess(t *testing.T) {
 
 	r := newRouter(db)
 	r.POST("/api/ok", func(c *gin.Context) {
-		conn, err := DbTXFrom(c.Request.Context())
+		conn, err := tx.DbTXFrom(c.Request.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -61,7 +62,7 @@ func TestMiddlewareRollbackOnError(t *testing.T) {
 
 	r := newRouter(db)
 	r.POST("/api/fail", func(c *gin.Context) {
-		conn, err := DbTXFrom(c.Request.Context())
+		conn, err := tx.DbTXFrom(c.Request.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -127,9 +128,9 @@ func TestMiddlewareSkipsConfiguredParameterizedWritePath(t *testing.T) {
 	db, mock := openMock(t)
 	r := gin.New()
 	addRequestId(r)
-	r.Use(Middleware(db, transport.WriteError, "/api/environment/probe"))
+	r.Use(Transaction(db, transport.WriteError, "/api/environment/probe"))
 	r.POST("/api/environment/probe", func(c *gin.Context) {
-		if _, ok := TxFrom(c.Request.Context()); ok {
+		if _, ok := tx.TxFrom(c.Request.Context()); ok {
 			t.Fatal("expected no request transaction")
 		}
 		c.Status(http.StatusOK)
@@ -152,7 +153,7 @@ func TestMiddlewareDiscardsSuccessResponseWhenCommitFails(t *testing.T) {
 
 	r := newRouter(db)
 	r.POST("/api/commit", func(c *gin.Context) {
-		connection, err := DbTXFrom(c.Request.Context())
+		connection, err := tx.DbTXFrom(c.Request.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -184,9 +185,9 @@ func TestMiddlewarePanicDiscardsBufferedSuccessResponse(t *testing.T) {
 	r.Use(gin.CustomRecovery(func(c *gin.Context, _ any) {
 		transport.WriteError(c, apperror.Wrap(apperror.KindInternal, "", errors.New("handler panic")))
 	}))
-	r.Use(Middleware(db, transport.WriteError))
+	r.Use(Transaction(db, transport.WriteError))
 	r.POST("/api/panic", func(c *gin.Context) {
-		connection, err := DbTXFrom(c.Request.Context())
+		connection, err := tx.DbTXFrom(c.Request.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,7 +216,7 @@ func newRouter(db *sql.DB) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	addRequestId(r)
-	r.Use(Middleware(db, transport.WriteError))
+	r.Use(Transaction(db, transport.WriteError))
 	return r
 }
 

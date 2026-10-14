@@ -10,11 +10,12 @@ import (
 func (r Router) registerService(engine *gin.Engine) {
 	handler := servicehandler.New(r.logger, r.deps.ServiceService, r.deps.Authenticator)
 	deploymentHandler := deploymenthandler.New(r.logger, r.deps.DeploymentService, r.deps.Authenticator)
+	statusCheckHandler := deploymenthandler.NewStatusCheck(r.deps.ServiceStatusCheck, r.deps.Authenticator)
 
 	engine.GET("/api/service", handler.ListServices)
 	engine.POST("/api/service", handler.CreateService)
-	engine.POST("/api/service/status-check/preview", deploymentHandler.PreviewServiceStatusCheck)
-	engine.POST("/api/service/status-check/confirm", deploymentHandler.ConfirmServiceStatusCheck)
+	engine.POST("/api/service/status-check/preview", statusCheckHandler.PreviewServiceStatusCheck)
+	engine.POST("/api/service/status-check/confirm", statusCheckHandler.ConfirmServiceStatusCheck)
 	engine.GET("/api/service/:service_id", handler.GetService)
 	engine.DELETE("/api/service/:service_id", handler.DeleteService)
 	engine.PUT("/api/service/:service_id/basic", handler.UpdateServiceBasic)

@@ -3,6 +3,7 @@ package pipelinerunsvc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -14,19 +15,43 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.ExecutePipelineRunInput) error {
+const pipelineRunCompletionTimeout = 5 * time.Second
+
+func (s ExecutionService) ExecutePipelineRun(ctx context.Context, input pipelinerundto.ExecutePipelineRunInput) (executionErr error) {
 	projectId := input.ProjectId
 	runId := input.PipelineRunId
 	if projectId == "" || runId == "" {
 		return fmt.Errorf("project_id and pipeline_run_id are required")
 	}
+	if s.executionTimeout <= 0 {
+		return errors.New("pipeline execution timeout must be configured")
+	}
+	// The worker lease exceeds this budget, including target and workspace setup.
+	ctx, stop := context.WithTimeout(ctx, s.executionTimeout)
+	defer stop()
 	begun, err := s.executionStore.BeginPipelineRun(ctx, projectId, runId)
 	if err != nil {
 		return err
 	}
 	if !begun {
-		return nil
+		run, err := s.executionStore.PipelineRun(ctx, projectId, runId)
+		if err != nil {
+			return err
+		}
+		if status.WorkStatusIsComplete(run.Status) {
+			return nil
+		}
+		if run.Status == status.WorkStatusRunning && input.Attempt > 1 {
+			// A reclaimed task cannot safely replay external stage side effects.
+			return s.failRun(ctx, projectId, runId, "Previous pipeline execution was interrupted; retry the pipeline run")
+		}
+		return fmt.Errorf("pipeline run %s cannot begin with status %s", runId, run.Status)
 	}
+	defer func() {
+		if executionErr != nil {
+			executionErr = errors.Join(executionErr, s.failRun(ctx, projectId, runId, executionErr.Error()))
+		}
+	}()
 	run, err := s.executionStore.PipelineRun(ctx, projectId, runId)
 	if err != nil {
 		return err
@@ -61,7 +86,7 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 	if err := json.Unmarshal([]byte(snapshot.StagesSnapshot), &stages); err != nil {
 		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Stage resolution failed: %v", err))
 	}
-	variables, err := s.pipelineRunExecutionVariables(run)
+	variables, err := pipelineRunExecutionVariables(run)
 	if err != nil {
 		return s.failRun(ctx, projectId, run.Id, fmt.Sprintf("Variable resolution failed: %v", err))
 	}
@@ -96,18 +121,19 @@ func (s Service) ExecutePipelineRun(ctx context.Context, input pipelinerundto.Ex
 	return s.failRun(ctx, projectId, run.Id, message)
 }
 
-func (s Service) failRun(ctx context.Context, projectId, runId string, message string) error {
+func (s ExecutionService) failRun(ctx context.Context, projectId, runId string, message string) error {
 	return s.completeRun(ctx, projectId, runId, status.WorkStatusFaulted, message)
 }
 
-func (s Service) completeRun(ctx context.Context, projectId, runId, statusValue, message string) error {
-	_, err := s.executionStore.CompletePipelineRun(ctx, projectId, runId, statusValue, message)
+func (s ExecutionService) completeRun(ctx context.Context, projectId, runId, statusValue, message string) error {
+	cleanupCtx, stop := context.WithTimeout(context.WithoutCancel(ctx), pipelineRunCompletionTimeout)
+	defer stop()
+	_, err := s.executionStore.CompletePipelineRun(cleanupCtx, projectId, runId, statusValue, message)
 	return err
 }
 
-func (s Service) pipelineExecutionContext(ctx context.Context, projectId string, runId string) (context.Context, context.CancelFunc) {
-	timedCtx, cancelTimeout := context.WithTimeout(ctx, s.executionTimeout)
-	monitoredCtx, cancelMonitored := context.WithCancel(timedCtx)
+func (s ExecutionService) pipelineExecutionContext(ctx context.Context, projectId string, runId string) (context.Context, context.CancelFunc) {
+	monitoredCtx, cancelMonitored := context.WithCancel(ctx)
 	done := make(chan struct{})
 	interval := s.pollInterval
 	if interval <= 0 || interval > time.Second {
@@ -120,7 +146,7 @@ func (s Service) pipelineExecutionContext(ctx context.Context, projectId string,
 			select {
 			case <-done:
 				return
-			case <-timedCtx.Done():
+			case <-ctx.Done():
 				return
 			case <-ticker.C:
 				run, err := s.executionStore.PipelineRun(ctx, projectId, runId)
@@ -134,7 +160,6 @@ func (s Service) pipelineExecutionContext(ctx context.Context, projectId string,
 	return monitoredCtx, func() {
 		close(done)
 		cancelMonitored()
-		cancelTimeout()
 	}
 }
 
@@ -146,7 +171,7 @@ func stageRunByStageId(stageRuns []model.PipelineStageRun) map[string]model.Pipe
 	return byStageId
 }
 
-func (s Service) pipelineRunExecutionVariables(run model.PipelineRun) (pipelinevariable.RuntimeVariables, error) {
+func pipelineRunExecutionVariables(run model.PipelineRun) (pipelinevariable.RuntimeVariables, error) {
 	_, variables, err := pipelinevariable.UnmarshalRuntimeVariableSnapshot(run.VariablesSnapshot)
 	if err != nil {
 		return pipelinevariable.RuntimeVariables{}, err

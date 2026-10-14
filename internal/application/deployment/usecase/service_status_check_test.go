@@ -3,145 +3,128 @@ package deploymentsvc
 import (
 	"context"
 	"errors"
-	"strings"
+	"reflect"
 	"testing"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
-	servicerepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/service"
+	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-type statusCheckRuntime struct {
-	deploymentport.Runtime
-	output string
-	err    error
-	calls  int
+type statusCheckProject struct{ repository.ProjectReader }
+
+func (statusCheckProject) Project(context.Context, string) (model.Project, error) {
+	return model.Project{Id: "project-1"}, nil
+}
+func (statusCheckProject) IsProjectMember(context.Context, string, string) (bool, error) {
+	return true, nil
 }
 
-func (r *statusCheckRuntime) QueryAtEnvironmentRoot(_ context.Context, target environmentport.Target, name string, args ...string) (string, error) {
-	r.calls++
-	if target.Environment.Id != "environment-1" || name != "docker" || len(args) != 6 || args[0] != "ps" || args[1] != "--all" || args[5] != "{{json .}}" {
-		return "", errors.New("expected one environment-scoped docker ps --all query")
+type statusCheckStore struct {
+	services []model.Service
+	saved    []serviceStatusObservation
+	changed  bool
+}
+
+func (s *statusCheckStore) DirectoryServices(context.Context, string) ([]model.Service, error) {
+	return append([]model.Service(nil), s.services...), nil
+}
+func (s *statusCheckStore) UpdateServiceObservedStatus(_ context.Context, baseline model.Service, environmentId string, revision int64, state string) (bool, error) {
+	if environmentId != "environment-1" || revision != 1 {
+		return false, errors.New("incorrect observation target")
 	}
-	return r.output, r.err
+	s.saved = append(s.saved, serviceStatusObservation{service: baseline, status: state})
+	return s.changed, nil
+}
+
+type statusCheckInventory struct {
+	containers map[string][]deploymentport.ContainerState
+	err        error
+	calls      int
+}
+
+func (i *statusCheckInventory) Containers(_ context.Context, target environmentport.Target) (map[string][]deploymentport.ContainerState, error) {
+	i.calls++
+	if target.Environment.Id != "environment-1" {
+		return nil, errors.New("incorrect inventory target")
+	}
+	return i.containers, i.err
+}
+func newStatusCheckTestService() (*StatusCheckService, *statusCheckStore, *statusCheckInventory) {
+	store := &statusCheckStore{changed: true, services: []model.Service{
+		{Id: "service-1", ProjectId: "project-1", Code: "example", Status: status.ServiceStatusStopped, VersionId: "version-1", DeploymentDirectory: "/custom/example"},
+		{Id: "service-2", ProjectId: "project-1", Code: "other", Status: status.ServiceStatusRunning, VersionId: "version-1"},
+	}}
+	inventory := &statusCheckInventory{containers: map[string][]deploymentport.ContainerState{"example": {{State: "running"}}, "other": {{State: "exited"}}}}
+	resolver := staticTargetResolver{target: environmentport.Target{Environment: model.Environment{Id: "environment-1", ProjectId: "project-1", TargetRevision: 1}}}
+	return NewStatusCheckService(statusCheckProject{}, store, resolver, inventory), store, inventory
 }
 
 func TestServiceStatusCheckObservesBatchAndConfirmsEachService(t *testing.T) {
-	s, database := takeoverTestService(t)
-	runtime := &statusCheckRuntime{output: `
-{"Labels":"com.docker.compose.project=example,com.docker.compose.oneoff=False","State":"running","Status":"Up 1 minute"}
-{"Labels":"com.docker.compose.project=other","State":"exited","Status":"Exited (0) 1 minute ago"}
-{"Labels":"com.docker.compose.project=other,com.docker.compose.oneoff=True","State":"running"}
-{"Labels":"com.docker.compose.project=example-extra","State":"exited"}
-`}
-	s.project, s.service, s.runtime, s.statusChecks = takeoverProjectReader{}, servicerepo.NewRepository(database), runtime, newServiceStatusChecks()
+	service, store, inventory := newStatusCheckTestService()
 	ctx := context.Background()
-	preview, err := s.PreviewServiceStatusCheck(ctx, "user-1", "project-1")
+	preview, err := service.PreviewServiceStatusCheck(ctx, "user-1", "project-1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(preview.Items) != 2 || preview.Items[0].ObservedStatus != status.ServiceStatusRunning || preview.Items[1].ObservedStatus != status.ServiceStatusStopped {
-		t.Fatalf("expected exact project matching and one-off exclusion: %+v", preview.Items)
+	if len(preview.Items) != 2 || preview.Items[0].ObservedStatus != status.ServiceStatusRunning || preview.Items[1].ObservedStatus != status.ServiceStatusStopped || len(store.saved) != 0 {
+		t.Fatalf("preview=%+v writes=%v", preview, store.saved)
 	}
-	before, err := s.service.Service(ctx, "project-1", "service-1")
-	if err != nil || before.Status != status.ServiceStatusStopped {
-		t.Fatalf("preview changed saved status: %+v, %v", before, err)
-	}
-	if _, err := s.ConfirmServiceStatusCheck(ctx, "other-user", "project-1", preview.Token, "service-1"); !apperror.IsKind(err, apperror.KindConflict) {
-		t.Fatalf("another actor could use the snapshot: %v", err)
+	if _, err := service.ConfirmServiceStatusCheck(ctx, "other-user", "project-1", preview.Token, "service-1"); !apperror.IsKind(err, apperror.KindConflict) {
+		t.Fatalf("another actor used snapshot: %v", err)
 	}
 	for _, item := range preview.Items {
-		state, err := s.ConfirmServiceStatusCheck(ctx, "user-1", "project-1", preview.Token, item.ServiceId)
+		state, err := service.ConfirmServiceStatusCheck(ctx, "user-1", "project-1", preview.Token, item.ServiceId)
 		if err != nil || state != item.ObservedStatus {
-			t.Fatalf("confirm %s: %q, %v", item.ServiceId, state, err)
-		}
-		stored, err := s.service.Service(ctx, "project-1", item.ServiceId)
-		if err != nil || stored.Status != item.ObservedStatus || stored.VersionId != "version-1" || stored.DeploymentDirectory == "" {
-			t.Fatalf("expected status-only update: %+v, %v", stored, err)
+			t.Fatalf("confirm=%s %v", state, err)
 		}
 	}
-	if runtime.calls != 1 {
-		t.Fatalf("Docker queried %d times, want one for the whole round", runtime.calls)
+	if inventory.calls != 1 || len(store.saved) != 2 || !reflect.DeepEqual(store.saved[0].service, store.services[0]) || store.saved[0].status != status.ServiceStatusRunning {
+		t.Fatalf("calls=%d saved=%+v", inventory.calls, store.saved)
 	}
 }
 
 func TestServiceStatusCheckFailedQueryLeavesRecordsUntouched(t *testing.T) {
-	s, database := takeoverTestService(t)
-	runtime := &statusCheckRuntime{output: "Docker daemon connection refused", err: errors.New("exit status 1")}
-	s.project, s.service, s.runtime, s.statusChecks = takeoverProjectReader{}, servicerepo.NewRepository(database), runtime, newServiceStatusChecks()
+	service, store, inventory := newStatusCheckTestService()
+	inventory.err = errors.New("Docker daemon connection refused")
+	if _, err := service.PreviewServiceStatusCheck(context.Background(), "user-1", "project-1"); !apperror.IsKind(err, apperror.KindUnavailable) || !errors.Is(err, inventory.err) {
+		t.Fatalf("error=%v", err)
+	}
+	if len(store.saved) != 0 || len(service.checks.snapshots) != 0 {
+		t.Fatal("failed query saved records or published a snapshot")
+	}
+}
+
+func TestServiceStatusCheckReportsConditionalWriteConflict(t *testing.T) {
+	service, store, inventory := newStatusCheckTestService()
 	ctx := context.Background()
-	if _, err := s.PreviewServiceStatusCheck(ctx, "user-1", "project-1"); !apperror.IsKind(err, apperror.KindUnavailable) || !strings.Contains(err.Error(), runtime.output) {
-		t.Fatalf("expected unavailable error, got %v", err)
+	preview, err := service.PreviewServiceStatusCheck(ctx, "user-1", "project-1")
+	if err != nil {
+		t.Fatal(err)
 	}
-	stored, err := s.service.Service(ctx, "project-1", "service-2")
-	if err != nil || stored.Status != status.ServiceStatusRunning || len(s.statusChecks.snapshots) != 0 {
-		t.Fatalf("failed query changed service or published a snapshot: %+v, %v", stored, err)
+	store.changed = false
+	if _, err := service.ConfirmServiceStatusCheck(ctx, "user-1", "project-1", preview.Token, "service-1"); !apperror.IsKind(err, apperror.KindConflict) {
+		t.Fatalf("conflict=%v", err)
 	}
-}
-
-func TestServiceStatusCheckRejectsChangedBaselineAndActiveDeployment(t *testing.T) {
-	tests := []struct {
-		name   string
-		before []string
-		after  []string
-	}{
-		{name: "changed environment", after: []string{`UPDATE environment SET target_revision = 2 WHERE id = 'environment-1'`}},
-		{name: "changed service", after: []string{`UPDATE service SET version_id = 'version-2', updated_at = '2030-01-01 00:00:00' WHERE id = 'service-1'`}},
-		{name: "new operation", after: []string{`UPDATE service SET current_deployment_id = 'new-deployment' WHERE id = 'service-1'`}},
-		{name: "waiting operation", before: []string{
-			`INSERT INTO deployment (id,project_id,service_id,application_name,operation_type,trigger_type,status,is_rollback) VALUES ('deployment-1','project-1','service-1','App','deploy','manual','waiting_to_run',0)`,
-			`UPDATE service SET current_deployment_id = 'deployment-1' WHERE id = 'service-1'`,
-		}},
-		{name: "running operation", before: []string{
-			`INSERT INTO deployment (id,project_id,service_id,application_name,operation_type,trigger_type,status,is_rollback) VALUES ('deployment-1','project-1','service-1','App','deploy','manual','running',0)`,
-			`UPDATE service SET current_deployment_id = 'deployment-1' WHERE id = 'service-1'`,
-		}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s, database := takeoverTestService(t)
-			for _, statement := range test.before {
-				if _, err := database.Exec(statement); err != nil {
-					t.Fatal(err)
-				}
-			}
-			runtime := &statusCheckRuntime{output: `{"Labels":"com.docker.compose.project=example","State":"running"}`}
-			s.project, s.service, s.runtime, s.statusChecks = takeoverProjectReader{}, servicerepo.NewRepository(database), runtime, newServiceStatusChecks()
-			ctx := context.Background()
-			preview, err := s.PreviewServiceStatusCheck(ctx, "user-1", "project-1")
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, statement := range test.after {
-				if _, err := database.Exec(statement); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if _, err := s.ConfirmServiceStatusCheck(ctx, "user-1", "project-1", preview.Token, "service-1"); !apperror.IsKind(err, apperror.KindConflict) {
-				t.Fatalf("expected conflict, got %v", err)
-			}
-			stored, err := s.service.Service(ctx, "project-1", "service-1")
-			if err != nil || stored.Status != status.ServiceStatusStopped || runtime.calls != 1 {
-				t.Fatalf("stale observation changed status or queried Docker again: %+v, %v", stored, err)
-			}
-		})
+	if inventory.calls != 1 {
+		t.Fatal("confirmation repeated external observation")
 	}
 }
-
 func TestInventoryServiceStatus(t *testing.T) {
 	tests := []struct {
 		name       string
-		containers []serviceInventoryContainer
+		containers []deploymentport.ContainerState
 		want       string
 	}{
 		{name: "no containers", want: status.ServiceStatusStopped},
-		{name: "stopped outside Orbit", containers: []serviceInventoryContainer{{State: "exited"}, {State: "exited"}}, want: status.ServiceStatusStopped},
-		{name: "started outside Orbit", containers: []serviceInventoryContainer{{State: "running"}, {State: "running"}}, want: status.ServiceStatusRunning},
-		{name: "partial stop", containers: []serviceInventoryContainer{{State: "running"}, {State: "exited"}}, want: status.ServiceStatusFaulted},
-		{name: "restarting", containers: []serviceInventoryContainer{{State: "restarting"}}, want: status.ServiceStatusFaulted},
-		{name: "unhealthy", containers: []serviceInventoryContainer{{State: "running", Status: "Up 1 minute (unhealthy)"}}, want: status.ServiceStatusFaulted},
+		{name: "stopped outside Orbit", containers: []deploymentport.ContainerState{{State: "exited"}, {State: "exited"}}, want: status.ServiceStatusStopped},
+		{name: "started outside Orbit", containers: []deploymentport.ContainerState{{State: "running"}, {State: "running"}}, want: status.ServiceStatusRunning},
+		{name: "partial stop", containers: []deploymentport.ContainerState{{State: "running"}, {State: "exited"}}, want: status.ServiceStatusFaulted},
+		{name: "restarting", containers: []deploymentport.ContainerState{{State: "restarting"}}, want: status.ServiceStatusFaulted},
+		{name: "unhealthy", containers: []deploymentport.ContainerState{{State: "running", Unhealthy: true}}, want: status.ServiceStatusFaulted},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
-	"time"
 
 	"github.com/leoninew/pomelo-orbit/internal/common/workspacepath"
 
@@ -19,66 +18,36 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
-// NewCommandService is the future HTTP-facing constructor. It keeps command
+// NewCommandService constructs the HTTP-facing command service. It keeps command
 // creation and its asynchronous dispatch contract inside the deployment domain.
 func NewCommandService(
 	project repository.ProjectReader,
 	application repository.ApplicationStore,
 	service repository.ServiceStore,
 	deployment repository.DeploymentStore,
-	gateway repository.GatewayStore,
 	dispatcher deploymentport.Dispatcher,
 	logger *slog.Logger,
 	targetResolver environmentport.TargetResolver,
-	runtime deploymentport.Runtime,
-	logStore deploymentport.ExecutionLogStore,
+	runtime deploymentport.WorkspaceReader,
+	logStore deploymentport.DeploymentLogs,
+	containerLogs deploymentport.ContainerLogs,
 	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
 	versionSelector deploymentport.ServiceVersionSelector,
 	transactionRunner deploymentport.TransactionRunner,
+	inspector deploymentport.RuntimeInspector,
+	commands deploymentport.LifecycleCommands,
 ) Service {
 	store := &stores{
-		project: project, application: application,
-		service: service, deployment: deployment, gateway: gateway,
+		ProjectReader: project, ApplicationStore: application,
+		ServiceStore: service, DeploymentStore: deployment,
 	}
 	return Service{
-		project: project, application: application,
-		service: service, deployment: deployment, store: store, executionStore: store,
-		dispatcher: dispatcher, commandStore: store, logger: logger,
-		targetResolver: targetResolver, runtime: runtime, logStore: logStore,
-		gatewayCoordinator: gatewayCoordinator, versionSelector: versionSelector, transactionRunner: transactionRunner,
-		statusChecks: newServiceStatusChecks(),
-	}
-}
-
-// NewExecutionService constructs the worker-facing deployment service.
-func NewExecutionService(
-	project repository.ProjectReader,
-	application repository.ApplicationStore,
-	service repository.ServiceStore,
-	deployment repository.DeploymentStore,
-	gatewayCoordinator deploymentport.GatewayDeploymentCoordinator,
-	logger *slog.Logger,
-	targetResolver environmentport.TargetResolver,
-	runtime deploymentport.Runtime,
-	logStore deploymentport.ExecutionLogStore,
-	pollInterval time.Duration,
-	executionTimeout time.Duration,
-	cancelTimeout time.Duration,
-	transactionRunner deploymentport.TransactionRunner,
-	gatewayReadiness deploymentport.GatewayReadinessChecker,
-) Service {
-	store := &stores{
 		project: project, application: application,
 		service: service, deployment: deployment,
-	}
-	return Service{
-		project: project, application: application,
-		service: service, deployment: deployment, store: store, executionStore: store,
-		logger: logger, targetResolver: targetResolver, runtime: runtime, pollInterval: pollInterval,
-		logStore:           logStore,
-		gatewayCoordinator: gatewayCoordinator,
-		gatewayReadiness:   gatewayReadiness,
-		executionTimeout:   executionTimeout, cancelTimeout: cancelTimeout, transactionRunner: transactionRunner,
+		dispatcher: dispatcher, commandStore: store, logger: logger,
+		targetResolver: targetResolver, runtime: runtime, logStore: logStore, containerLogs: containerLogs,
+		gatewayCoordinator: gatewayCoordinator, versionSelector: versionSelector, transactionRunner: transactionRunner,
+		inspector: inspector, commands: commands,
 	}
 }
 
@@ -94,7 +63,7 @@ func (s Service) deployService(ctx context.Context, userId string, projectId str
 	if err := validateDeploymentPullPolicy(pullPolicy); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.New(apperror.KindValidation, err.Error())
 	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
+	target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 	if err != nil {
 		return deploymentdto.DeployServiceResult{}, err
 	}
@@ -186,7 +155,7 @@ func (s Service) deployService(ctx context.Context, userId string, projectId str
 	}
 	deployment.ServiceId = &service.Id
 	deployment.EffectivePlanHash = &planHash
-	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), opts.PullPolicy, forceRecreate).String()
+	deployment.CommandText = s.commands.DeployDescription(service.Code, deploymentport.DeploySettings{PullPolicy: opts.PullPolicy, ForceRecreate: forceRecreate})
 	if err := s.createCurrentDeployment(ctx, projectId, deployment); err != nil {
 		return deploymentdto.DeployServiceResult{}, apperror.Wrap(apperror.KindInternal, "Failed to create deployment", err)
 	}
@@ -205,7 +174,7 @@ func (s Service) stopApplication(ctx context.Context, userId string, projectId s
 	if err != nil {
 		return "", err
 	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
+	target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 	if err != nil {
 		return "", err
 	}
@@ -222,7 +191,7 @@ func (s Service) stopApplication(ctx context.Context, userId string, projectId s
 	if err := setDeploymentOptions(&deployment, options); err != nil {
 		return "", err
 	}
-	deployment.CommandText = stopComposeCommand(composeProjectName(service.Code), input.RemoveVolumes).String()
+	deployment.CommandText = s.commands.StopDescription(service.Code, input.RemoveVolumes)
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}
@@ -244,7 +213,7 @@ func (s Service) restartApplication(ctx context.Context, userId string, projectI
 	if err != nil {
 		return "", err
 	}
-	target, err := s.resolveProjectTarget(ctx, projectId)
+	target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 	if err != nil {
 		return "", err
 	}
@@ -301,7 +270,7 @@ func (s Service) restartApplication(ctx context.Context, userId string, projectI
 		return "", err
 	}
 	deployment.EffectivePlanHash = &planHash
-	deployment.CommandText = deployComposeCommand(composeProjectName(service.Code), restartOptions.PullPolicy, restartOptions.ForceRecreate).String()
+	deployment.CommandText = s.commands.DeployDescription(service.Code, deploymentport.DeploySettings{PullPolicy: restartOptions.PullPolicy, ForceRecreate: restartOptions.ForceRecreate})
 	if s.dispatcher == nil {
 		return "", apperror.New(apperror.KindInternal, "deployment dispatcher is not configured")
 	}

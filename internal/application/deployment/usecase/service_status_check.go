@@ -4,20 +4,30 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
+	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
+	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
+
+type StatusCheckService struct {
+	project        repository.ProjectReader
+	services       deploymentport.StatusCheckStore
+	targetResolver environmentport.TargetResolver
+	inventory      deploymentport.ContainerInventory
+	checks         *serviceStatusChecks
+}
+
+func NewStatusCheckService(project repository.ProjectReader, services deploymentport.StatusCheckStore, targetResolver environmentport.TargetResolver, inventory deploymentport.ContainerInventory) *StatusCheckService {
+	return &StatusCheckService{project: project, services: services, targetResolver: targetResolver, inventory: inventory, checks: newServiceStatusChecks()}
+}
 
 const serviceStatusCheckLifetime = 15 * time.Minute
 
@@ -58,14 +68,14 @@ func (s *serviceStatusChecks) prune() {
 	}
 }
 
-func (s Service) PreviewServiceStatusCheck(ctx context.Context, actorId, projectId string) (deploymentdto.ServiceStatusCheckPreview, error) {
+func (s *StatusCheckService) PreviewServiceStatusCheck(ctx context.Context, actorId, projectId string) (deploymentdto.ServiceStatusCheckPreview, error) {
 	if projectId == "" {
 		return deploymentdto.ServiceStatusCheckPreview{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
-	if err := s.ensureProjectMembership(ctx, projectId, actorId); err != nil {
+	if err := ensureProjectMembership(ctx, s.project, projectId, actorId); err != nil {
 		return deploymentdto.ServiceStatusCheckPreview{}, err
 	}
-	services, err := s.service.DirectoryServices(ctx, projectId)
+	services, err := s.services.DirectoryServices(ctx, projectId)
 	if err != nil {
 		return deploymentdto.ServiceStatusCheckPreview{}, apperror.Wrap(apperror.KindInternal, "Failed to list services", err)
 	}
@@ -75,21 +85,9 @@ func (s Service) PreviewServiceStatusCheck(ctx context.Context, actorId, project
 	}
 	queryCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	const format = `{{json .}}`
-	output, err := s.runtime.QueryAtEnvironmentRoot(queryCtx, target, "docker", "ps", "--all", "--filter", "label=com.docker.compose.project", "--format", format)
+	containers, err := s.inventory.Containers(queryCtx, target)
 	if err != nil {
-		if diagnostic := strings.TrimSpace(output); diagnostic != "" {
-			const maxDiagnosticBytes = 8192
-			if len(diagnostic) > maxDiagnosticBytes {
-				diagnostic = "...\n" + diagnostic[len(diagnostic)-maxDiagnosticBytes:]
-			}
-			err = fmt.Errorf("%w\n%s", err, diagnostic)
-		}
 		return deploymentdto.ServiceStatusCheckPreview{}, apperror.WrapWithCode(apperror.KindUnavailable, "service_status_check_unavailable", "Failed to query environment containers", err)
-	}
-	containers, err := parseServiceContainerInventory(output)
-	if err != nil {
-		return deploymentdto.ServiceStatusCheckPreview{}, apperror.Wrap(apperror.KindUnavailable, "Failed to read environment container states", err)
 	}
 	var secret [32]byte
 	if _, err := rand.Read(secret[:]); err != nil {
@@ -112,24 +110,24 @@ func (s Service) PreviewServiceStatusCheck(ctx context.Context, actorId, project
 		})
 		snapshot.observations[service.Id] = serviceStatusObservation{service: service, status: observed}
 	}
-	s.statusChecks.mu.Lock()
-	defer s.statusChecks.mu.Unlock()
-	s.statusChecks.prune()
-	s.statusChecks.snapshots[serviceStatusCheckScope{actorId: actorId, projectId: projectId}] = snapshot
+	s.checks.mu.Lock()
+	defer s.checks.mu.Unlock()
+	s.checks.prune()
+	s.checks.snapshots[serviceStatusCheckScope{actorId: actorId, projectId: projectId}] = snapshot
 	return preview, nil
 }
 
-func (s Service) ConfirmServiceStatusCheck(ctx context.Context, actorId, projectId, token, serviceId string) (string, error) {
+func (s *StatusCheckService) ConfirmServiceStatusCheck(ctx context.Context, actorId, projectId, token, serviceId string) (string, error) {
 	if projectId == "" || token == "" || serviceId == "" {
 		return "", apperror.New(apperror.KindValidation, "project_id, token and service_id are required")
 	}
-	if err := s.ensureProjectMembership(ctx, projectId, actorId); err != nil {
+	if err := ensureProjectMembership(ctx, s.project, projectId, actorId); err != nil {
 		return "", err
 	}
-	s.statusChecks.mu.Lock()
-	s.statusChecks.prune()
-	snapshot, found := s.statusChecks.snapshots[serviceStatusCheckScope{actorId: actorId, projectId: projectId}]
-	s.statusChecks.mu.Unlock()
+	s.checks.mu.Lock()
+	s.checks.prune()
+	snapshot, found := s.checks.snapshots[serviceStatusCheckScope{actorId: actorId, projectId: projectId}]
+	s.checks.mu.Unlock()
 	if !found || snapshot.token != token {
 		return "", apperror.NewWithCode(apperror.KindConflict, "service_status_check_expired", "Status check expired; check again")
 	}
@@ -137,7 +135,7 @@ func (s Service) ConfirmServiceStatusCheck(ctx context.Context, actorId, project
 	if !found {
 		return "", apperror.New(apperror.KindValidation, "Service is outside this status check")
 	}
-	updated, err := s.service.UpdateServiceObservedStatus(ctx, observation.service, snapshot.environmentId, snapshot.targetRevision, observation.status)
+	updated, err := s.services.UpdateServiceObservedStatus(ctx, observation.service, snapshot.environmentId, snapshot.targetRevision, observation.status)
 	if err != nil {
 		return "", apperror.Wrap(apperror.KindInternal, "Failed to update service status", err)
 	}
@@ -147,41 +145,7 @@ func (s Service) ConfirmServiceStatusCheck(ctx context.Context, actorId, project
 	return observation.status, nil
 }
 
-type serviceInventoryContainer struct {
-	Labels string
-	State  string
-	Status string
-}
-
-func parseServiceContainerInventory(output string) (map[string][]serviceInventoryContainer, error) {
-	result := make(map[string][]serviceInventoryContainer)
-	decoder := json.NewDecoder(strings.NewReader(output))
-	for {
-		var container serviceInventoryContainer
-		if err := decoder.Decode(&container); err != nil {
-			if errors.Is(err, io.EOF) {
-				return result, nil
-			}
-			return nil, err
-		}
-		project, oneoff := "", ""
-		for _, label := range strings.Split(container.Labels, ",") {
-			key, value, _ := strings.Cut(label, "=")
-			switch key {
-			case "com.docker.compose.project":
-				project = value
-			case "com.docker.compose.oneoff":
-				oneoff = value
-			}
-		}
-		if project == "" || strings.EqualFold(oneoff, "true") {
-			continue
-		}
-		result[project] = append(result[project], container)
-	}
-}
-
-func inventoryServiceStatus(containers []serviceInventoryContainer) string {
+func inventoryServiceStatus(containers []deploymentport.ContainerState) string {
 	if len(containers) == 0 {
 		return status.ServiceStatusStopped
 	}
@@ -189,7 +153,7 @@ func inventoryServiceStatus(containers []serviceInventoryContainer) string {
 	for _, container := range containers {
 		switch container.State {
 		case "running":
-			if strings.Contains(container.Status, "(unhealthy)") {
+			if container.Unhealthy {
 				return status.ServiceStatusFaulted
 			}
 			running++

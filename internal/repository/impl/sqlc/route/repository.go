@@ -138,6 +138,19 @@ func (r Repository) UpdateRoute(ctx context.Context, projectId string, route mod
 	return nil
 }
 
+func (r Repository) UpdateRouteCertificate(ctx context.Context, projectId string, route model.Route) (bool, error) {
+	rows, err := r.q(ctx).UpdateRouteCertificate(ctx, routesqlc.UpdateRouteCertificateParams{
+		HttpsEnabled: dbmodel.BoolInt(route.HTTPSEnabled), CertPem: dbmodel.NullString(route.CertPEM), CertKey: dbmodel.NullString(route.CertKey),
+		CertType: route.CertType, AcmeChallenge: route.AcmeChallenge, UpdatedAt: time.Now().UTC(), Id: route.Id,
+		ProjectId:      sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+		ExpectedDomain: route.Domain, ExpectedUpdatedAt: route.UpdatedAt,
+	})
+	if err != nil {
+		return false, fmt.Errorf("update route certificate %s: %w", route.Id, err)
+	}
+	return rows == 1, nil
+}
+
 func (r Repository) DeleteRoute(ctx context.Context, projectId, id string) error {
 	if err := r.q(ctx).DeleteRoute(ctx, routesqlc.DeleteRouteParams{Id: id, ProjectId: sql.NullString{String: strings.TrimSpace(projectId), Valid: true}}); err != nil {
 		return fmt.Errorf("delete route %s: %w", id, err)

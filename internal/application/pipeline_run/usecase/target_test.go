@@ -179,7 +179,7 @@ func TestQueuedRunRejectsChangedTargetBeforeLocalSideEffects(t *testing.T) {
 			environment.SSH = &ssh
 			testCase.mutate(&environment)
 			store := &runTargetEnvironmentStore{environment: environment}
-			service := Service{environments: store, targetResolver: directTriggerTargetResolver{environment: environment}}
+			service := ExecutionService{environments: store, targetResolver: directTriggerTargetResolver{environment: environment}}
 			_, err := service.resolveQueuedTarget(context.Background(), "project-1", run)
 			if err == nil || !strings.Contains(err.Error(), "retry run") {
 				t.Fatalf("changed target error = %v", err)
@@ -260,8 +260,8 @@ func TestQueuedRunFailsBeforeRepositoryAccessOnTargetChange(t *testing.T) {
 	applyRunTargetSnapshot(&run, structTarget(environment))
 	environment.TargetRevision++
 	store := &queuedRunStore{run: run}
-	service := Service{environments: &runTargetEnvironmentStore{environment: environment},
-		targetResolver: directTriggerTargetResolver{environment: environment}, executionStore: store,
+	service := ExecutionService{environments: &runTargetEnvironmentStore{environment: environment},
+		targetResolver: directTriggerTargetResolver{environment: environment}, executionStore: store, executionTimeout: time.Minute,
 		workspace: directTriggerWorkspace{}}
 	if err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{
 		ProjectId: "project-1", PipelineRunId: run.Id,
@@ -280,8 +280,8 @@ func TestQueuedSSHRunCannotFallBackToLocalRunner(t *testing.T) {
 	run := model.PipelineRun{Id: "run-1", RepositoryId: "repo-1"}
 	applyRunTargetSnapshot(&run, structTarget(environment))
 	store := &queuedRunStore{run: run}
-	service := Service{environments: &runTargetEnvironmentStore{environment: environment},
-		targetResolver: directTriggerTargetResolver{environment: environment}, executionStore: store,
+	service := ExecutionService{environments: &runTargetEnvironmentStore{environment: environment},
+		targetResolver: directTriggerTargetResolver{environment: environment}, executionStore: store, executionTimeout: time.Minute,
 		workspace: directTriggerWorkspace{}}
 	if err := service.ExecutePipelineRun(context.Background(), pipelinerundto.ExecutePipelineRunInput{
 		ProjectId: "project-1", PipelineRunId: run.Id,

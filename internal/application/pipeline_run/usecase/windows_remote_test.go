@@ -222,8 +222,8 @@ func TestWindowsRuntimeSelectionAndSafeRemoteCleanup(t *testing.T) {
 	target := structTarget(environment)
 	service := Service{remoteRuntime: resources, targetResolver: directTriggerTargetResolver{environment: environment},
 		environments: &runTargetEnvironmentStore{environment: environment}, workspace: directTriggerWorkspace{}}
-	runtime, err := service.runtimeForTarget(context.Background(), target)
-	if err != nil || runtime.workspace != workspace || runtime.runner != resources.runner || runtime.reader != resources.logs {
+	runtime, err := (ExecutionService{remoteRuntime: resources}).runtimeForTarget(context.Background(), target)
+	if err != nil || runtime.workspace != workspace || runtime.runner != resources.runner || runtime.writer != resources.logs {
 		t.Fatalf("selected remote runtime=%+v err=%v", runtime, err)
 	}
 	projectId := "project-1"
@@ -321,7 +321,7 @@ func TestLinuxSSHTriggerRetryAndRuntimeSelection(t *testing.T) {
 	}
 	runStore.run = first.Run
 	selected, err := service.runtimeForRun(context.Background(), "project-1", first.Run)
-	if err != nil || selected.workspace != workspace || selected.runner != runner || selected.reader != logs {
+	if err != nil || selected.workspace != workspace || selected.reader != logs {
 		t.Fatalf("Linux run resources = %+v, err = %v", selected, err)
 	}
 	second, err := service.RetryPipelineRun(context.Background(), "user-1", "project-1", first.Run.Id)

@@ -528,13 +528,20 @@ func (s Service) EnableRouteMkcert(ctx context.Context, userId, projectId, route
 	if err != nil {
 		return model.Route{}, err
 	}
+	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+		return model.Route{}, err
+	}
 	route.HTTPSEnabled = true
 	route.CertPEM = &certPEM
 	route.CertKey = &keyPEM
 	route.CertType = certTypeMkcert
 	route.AcmeChallenge = acmeChallengeHTTP
-	if err := s.route.UpdateRoute(ctx, projectId, route); err != nil {
+	saved, err := s.route.UpdateRouteCertificate(ctx, projectId, route)
+	if err != nil {
 		return model.Route{}, apperror.Wrap(apperror.KindInternal, "Failed to enable mkcert", err)
+	}
+	if !saved {
+		return model.Route{}, apperror.New(apperror.KindConflict, "Route changed while generating the certificate; retry")
 	}
 	updated, err := s.route.Route(ctx, projectId, route.Id)
 	if err != nil {

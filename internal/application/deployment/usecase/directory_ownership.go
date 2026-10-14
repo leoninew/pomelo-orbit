@@ -2,7 +2,6 @@ package deploymentsvc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"runtime"
 	"strings"
@@ -13,7 +12,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
-func (s Service) checkDirectoryOwnership(ctx context.Context, target environmentport.Target, service model.Service, directory string, mounts []ResolvedMount) error {
+func (s ExecutionService) checkDirectoryOwnership(ctx context.Context, target environmentport.Target, service model.Service, directory string, mounts []ResolvedMount) error {
 	services, err := s.executionStore.DirectoryServices(ctx, service.ProjectId)
 	if err != nil {
 		return err
@@ -69,55 +68,24 @@ func (s Service) checkDirectoryOwnership(ctx context.Context, target environment
 	return nil
 }
 
-func (s Service) checkRunningMountOwnership(ctx context.Context, target environmentport.Target, serviceCode string, sources []string, platform string) error {
-	output, err := s.runtime.QueryAtEnvironmentRoot(ctx, target, "docker", "ps", "--filter", "label=com.docker.compose.project="+composeProjectName(serviceCode), "--filter", "status=running", "--format", "{{.ID}}")
+func (s ExecutionService) checkRunningMountOwnership(ctx context.Context, target environmentport.Target, serviceCode string, sources []string, platform string) error {
+	mounts, err := s.mountInventory.RunningBindMounts(ctx, target, serviceCode)
 	if err != nil {
-		return fmt.Errorf("list running containers for service %s: %w", serviceCode, err)
+		return err
 	}
-	ids := strings.Fields(output)
-	if len(ids) == 0 {
-		return nil
-	}
-	// Native inspect JSON avoids PowerShell stripping quotes from template keys.
-	args := append([]string{"inspect", "--type", "container"}, ids...)
-	output, err = s.runtime.QueryAtEnvironmentRoot(ctx, target, "docker", args...)
-	if err != nil {
-		return fmt.Errorf("inspect running mounts for service %s: %w", serviceCode, err)
-	}
-	var containers []struct {
-		Config struct{ Labels map[string]string }
-		State  struct{ Running bool }
-		Mounts []struct{ Type, Source, Destination string }
-	}
-	if err := json.Unmarshal([]byte(output), &containers); err != nil {
-		return fmt.Errorf("parse running mounts for service %s: %w", serviceCode, err)
-	}
-	for _, container := range containers {
-		if !container.State.Running {
-			continue
-		}
-		sharedTargets, err := sharedMountTargets(container.Config.Labels)
-		if err != nil {
-			return fmt.Errorf("parse shared mounts for service %s: %w", serviceCode, err)
-		}
-		for _, mount := range container.Mounts {
-			if mount.Type != "bind" {
+	for _, mount := range mounts {
+		occupied := dockerMountComparisonPath(mount.Source, platform)
+		for _, source := range sources {
+			if mount.Shared && mountSourceContains(occupied, source, platform) {
 				continue
 			}
-			occupied := dockerMountComparisonPath(mount.Source, platform)
-			for _, source := range sources {
-				if sharedTargets[sharedMountTargetKey(mount.Destination)] && mountSourceContains(occupied, source, platform) {
-					continue
-				}
-				if workspacepath.OverlappingDirectories(dockerMountComparisonPath(source, platform), occupied, platform) {
-					return fmt.Errorf("docker mount directory %s overlaps bind mount %s used by running service %s", source, mount.Source, serviceCode)
-				}
+			if workspacepath.OverlappingDirectories(dockerMountComparisonPath(source, platform), occupied, platform) {
+				return fmt.Errorf("docker mount directory %s overlaps bind mount %s used by running service %s", source, mount.Source, serviceCode)
 			}
 		}
 	}
 	return nil
 }
-
 func dockerMountComparisonPath(value, platform string) string {
 	if platform == model.EnvironmentPlatformWindows || len(value) > 1 && value[1] == ':' {
 		value = strings.ReplaceAll(value, "\\", "/")

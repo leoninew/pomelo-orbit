@@ -9,6 +9,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
@@ -175,15 +176,17 @@ func TestRouteManagerDoesNotClassifyConfigurationOrDecodeErrorsAsUnavailable(t *
 }
 
 func TestRouteManagerWaitUntilReadyPollsRemoteHost(t *testing.T) {
-	runtime := newRouteRuntimeFake()
-	runtime.failures["/api/overview"] = 2
-	manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
-	if err := manager.WaitUntilReady(context.Background(), "project-1", testGateway(), 3*time.Second); err != nil {
-		t.Fatal(err)
-	}
-	if runtime.attempts["/api/overview"] != 3 {
-		t.Fatalf("readiness attempts = %d", runtime.attempts["/api/overview"])
-	}
+	synctest.Test(t, func(t *testing.T) {
+		runtime := newRouteRuntimeFake()
+		runtime.failures["/api/overview"] = 2
+		manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
+		if err := manager.WaitUntilReady(context.Background(), "project-1", testGateway(), 3*time.Second); err != nil {
+			t.Fatal(err)
+		}
+		if runtime.attempts["/api/overview"] != 3 {
+			t.Fatalf("readiness attempts = %d", runtime.attempts["/api/overview"])
+		}
+	})
 }
 
 func TestBuildRouteSnapshotSkipsDisabled(t *testing.T) {
@@ -340,8 +343,8 @@ func (r *routeRuntimeFake) Query(_ context.Context, target environmentport.Targe
 	}
 	return r.query(target, args...)
 }
-func (r *routeRuntimeFake) QueryAtEnvironmentRoot(_ context.Context, target environmentport.Target, name string, args ...string) (string, error) {
-	return r.QueryAtEnvironmentRootInput(context.Background(), target, nil, name, args...)
+func (r *routeRuntimeFake) QueryAtEnvironmentRoot(ctx context.Context, target environmentport.Target, name string, args ...string) (string, error) {
+	return r.QueryAtEnvironmentRootInput(ctx, target, nil, name, args...)
 }
 func (r *routeRuntimeFake) QueryAtEnvironmentRootInput(ctx context.Context, target environmentport.Target, _ []byte, name string, args ...string) (string, error) {
 	r.environmentQueries++

@@ -1,16 +1,13 @@
+//go:build !unit
+
 package deploymentsvc
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
-	"log/slog"
-	"path/filepath"
-	"strings"
-	"sync"
+
 	"testing"
-	"time"
 
 	_ "modernc.org/sqlite"
 
@@ -40,9 +37,9 @@ func (takeoverProjectReader) IsProjectMember(context.Context, string, string) (b
 	return true, nil
 }
 
-func takeoverTestService(t *testing.T) (Service, *sql.DB) {
+func takeoverTestService(t *testing.T) (Service, *stores, *sql.DB) {
 	t.Helper()
-	database, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "operations.db"))
+	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,8 +51,8 @@ func takeoverTestService(t *testing.T) (Service, *sql.DB) {
 	for _, statement := range []string{
 		"INSERT INTO project (id,name,code) VALUES ('project-1','Project','project')",
 		"INSERT INTO application (id,project_id,name,code,kind) VALUES ('app-1','project-1','App','app','standard')",
-		"INSERT INTO version (id,application_id,label,status) VALUES ('version-1','app-1','v1','draft')",
-		"INSERT INTO version (id,application_id,label,status) VALUES ('version-2','app-1','v2','draft')",
+		"INSERT INTO version (id,application_id,label,status) VALUES ('version-1','app-1','v1','unpublished')",
+		"INSERT INTO version (id,application_id,label,status) VALUES ('version-2','app-1','v2','unpublished')",
 		"INSERT INTO environment (id,project_id,code,target_type,workspace_root,target_revision) VALUES ('environment-1','project-1','project','local','/workspace',1)",
 		"INSERT INTO service (id,project_id,application_id,code,version_id,status,deployment_directory,directory_target_revision) VALUES ('service-1','project-1','app-1','example','version-1','stopped','/custom/example',1)",
 		"INSERT INTO service (id,project_id,application_id,code,version_id,status,deployment_directory,directory_target_revision) VALUES ('service-2','project-1','app-1','other','version-1','running','/custom/other',1)",
@@ -64,9 +61,10 @@ func takeoverTestService(t *testing.T) (Service, *sql.DB) {
 			t.Fatal(err)
 		}
 	}
-	store := &stores{project: takeoverProjectReader{}, application: applicationrepo.NewRepository(database), service: servicerepo.NewRepository(database), deployment: deploymentrepo.NewRepository(database)}
+	store := &stores{ProjectReader: takeoverProjectReader{}, ApplicationStore: applicationrepo.NewRepository(database), ServiceStore: servicerepo.NewRepository(database), DeploymentStore: deploymentrepo.NewRepository(database)}
 	target := environmentport.Target{Environment: model.Environment{Id: "environment-1", ProjectId: "project-1", TargetType: model.EnvironmentTargetTypeLocal, TargetRevision: 1}}
-	return Service{commandStore: store, executionStore: store, dispatcher: dispatch.NewDeploymentDispatcher(tasksvc.New(taskrepo.NewRepository(database), 1)), transactionRunner: tx.NewTransactionRunner(database), targetResolver: staticTargetResolver{target: target}, executionTimeout: 3 * time.Second, cancelTimeout: 200 * time.Millisecond, pollInterval: 5 * time.Millisecond}, database
+	service := NewCommandService(store, store, store, store, dispatch.NewDeploymentDispatcher(tasksvc.New(taskrepo.NewRepository(database), 1)), nil, staticTargetResolver{target: target}, nil, nil, nil, nil, nil, tx.NewTransactionRunner(database), nil, lifecycleCommandsFake{})
+	return service, store, database
 }
 
 func admitTakeoverStop(t *testing.T, service Service, serviceId string) string {
@@ -76,17 +74,6 @@ func admitTakeoverStop(t *testing.T, service Service, serviceId string) string {
 		t.Fatal(err)
 	}
 	return id
-}
-
-func awaitTakeoverResult(t *testing.T, done <-chan error) error {
-	t.Helper()
-	select {
-	case err := <-done:
-		return err
-	case <-time.After(5 * time.Second):
-		t.Fatal("operation did not finish within test deadline")
-		return nil
-	}
 }
 
 type enqueueFailureDispatcher struct {
@@ -102,7 +89,7 @@ func (d enqueueFailureDispatcher) DispatchStop(ctx context.Context, input deploy
 }
 
 func TestFailedAdmissionRollsBackCurrentOperationAndEnqueuedTask(t *testing.T) {
-	service, database := takeoverTestService(t)
+	service, store, database := takeoverTestService(t)
 	first := admitTakeoverStop(t, service, "service-1")
 	failure := errors.New("enqueue transaction failed")
 	service.dispatcher = enqueueFailureDispatcher{Dispatcher: service.dispatcher, failure: failure}
@@ -110,7 +97,7 @@ func TestFailedAdmissionRollsBackCurrentOperationAndEnqueuedTask(t *testing.T) {
 	if !errors.Is(err, failure) || id != "" {
 		t.Fatalf("id=%s error=%v", id, err)
 	}
-	current, err := service.executionStore.Service(context.Background(), "project-1", "service-1")
+	current, err := store.Service(context.Background(), "project-1", "service-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +116,7 @@ func TestFailedAdmissionRollsBackCurrentOperationAndEnqueuedTask(t *testing.T) {
 }
 
 func TestDeployRestartAndStopReplaceEachOtherRegardlessOfStoredStatus(t *testing.T) {
-	service, database := takeoverTestService(t)
+	service, store, database := takeoverTestService(t)
 	service.gatewayCoordinator = &gatewayDeploymentCoordinatorFake{}
 	ctx := context.Background()
 	previous := ""
@@ -152,240 +139,69 @@ func TestDeployRestartAndStopReplaceEachOtherRegardlessOfStoredStatus(t *testing
 		if err != nil {
 			t.Fatalf("admit %s with status %s: %v", operation, storedStatus, err)
 		}
-		current, err := service.executionStore.Service(ctx, "project-1", "service-1")
+		current, err := store.Service(ctx, "project-1", "service-1")
 		if err != nil || current.CurrentDeploymentId == nil || *current.CurrentDeploymentId != id {
 			t.Fatalf("current operation=%+v %v", current, err)
 		}
 		if previous != "" {
-			if changed, err := service.executionStore.CompleteDeployment(ctx, "project-1", previous, status.WorkStatusRanToCompletion, ""); err != nil || changed {
+			if changed, err := store.CompleteDeployment(ctx, "project-1", previous, status.WorkStatusRanToCompletion, ""); err != nil || changed {
 				t.Fatalf("previous operation completed: %t %v", changed, err)
 			}
 		}
-		if begun, err := service.executionStore.BeginDeployment(ctx, "project-1", id); err != nil || !begun {
+		if begun, err := store.BeginDeployment(ctx, "project-1", id); err != nil || !begun {
 			t.Fatalf("begin=%t %v", begun, err)
 		}
 		previous = id
 	}
 }
 
-type failingTakeoverCancellation struct {
-	deploymentport.ExecutionStore
-	failure error
-}
-
-type blockedTakeoverCancellation struct {
-	deploymentport.ExecutionStore
-	release <-chan struct{}
-	exited  chan<- struct{}
-}
-
-func (s blockedTakeoverCancellation) CancelSupersededDeployments(context.Context, string, string, string) ([]string, error) {
-	defer close(s.exited)
-	<-s.release
-	return nil, nil
-}
-
-func TestCancellationTimeoutDoesNotBlockNewOperation(t *testing.T) {
-	service, _ := takeoverTestService(t)
-	service.cancelTimeout = 30 * time.Millisecond
-	release, exited := make(chan struct{}), make(chan struct{})
-	t.Cleanup(func() {
-		close(release)
-		select {
-		case <-exited:
-		case <-time.After(time.Second):
-			t.Error("cancellation helper did not exit")
-		}
-	})
-	service.executionStore = blockedTakeoverCancellation{ExecutionStore: service.executionStore, release: release, exited: exited}
-	id := admitTakeoverStop(t, service, "service-1")
-	done := make(chan error, 1)
-	go func() {
-		done <- service.executeDeployment(context.Background(), "project-1", "app-1", id, "stop", func(context.Context, model.Application, model.Deployment) error { return nil })
-	}()
-	if err := awaitTakeoverResult(t, done); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case <-exited:
-		t.Fatal("new operation waited for cancellation helper")
-	default:
-	}
-}
-
-func (s failingTakeoverCancellation) CancelSupersededDeployments(context.Context, string, string, string) ([]string, error) {
-	return nil, s.failure
-}
-
-type takeoverLog struct {
-	sync.Mutex
-	buffer bytes.Buffer
-}
-
-func (w *takeoverLog) Write(data []byte) (int, error) {
-	w.Lock()
-	defer w.Unlock()
-	return w.buffer.Write(data)
-}
-func (w *takeoverLog) String() string { w.Lock(); defer w.Unlock(); return w.buffer.String() }
-
-func TestNewOperationCompletesBeforeOldRuntimeExitsDespiteCancellationFailure(t *testing.T) {
-	for _, lateFailure := range []bool{false, true} {
-		t.Run(map[bool]string{false: "late success", true: "late failure"}[lateFailure], func(t *testing.T) {
-			service, _ := takeoverTestService(t)
-			logs := &takeoverLog{}
-			service.logger = slog.New(slog.NewJSONHandler(logs, nil))
-			store := service.executionStore
-			first := admitTakeoverStop(t, service, "service-1")
-			started, release, exited := make(chan struct{}), make(chan struct{}), make(chan struct{})
-			var releaseOnce sync.Once
-			t.Cleanup(func() {
-				releaseOnce.Do(func() { close(release) })
-				select {
-				case <-exited:
-				case <-time.After(time.Second):
-					t.Error("late runtime did not exit")
-				}
-			})
-			oldDone := make(chan error, 1)
-			go func() {
-				oldDone <- service.executeDeployment(context.Background(), "project-1", "app-1", first, "stop", func(ctx context.Context, _ model.Application, _ model.Deployment) error {
-					close(started)
-					<-release
-					defer close(exited)
-					if lateFailure {
-						return errors.New("late Docker failure")
-					}
-					return nil
-				})
-			}()
-			select {
-			case <-started:
-			case <-time.After(time.Second):
-				t.Fatal("old operation did not start")
-			}
-			second := admitTakeoverStop(t, service, "service-1")
-			service.executionStore = failingTakeoverCancellation{ExecutionStore: store, failure: errors.New("old cancellation write failed")}
-			ran := false
-			if err := service.executeDeployment(context.Background(), "project-1", "app-1", second, "stop", func(context.Context, model.Application, model.Deployment) error { ran = true; return nil }); err != nil {
-				t.Fatal(err)
-			}
-			if !ran {
-				t.Fatal("new operation did not execute")
-			}
-			if err := awaitTakeoverResult(t, oldDone); err != nil {
-				t.Fatalf("old cancellation became an error: %v", err)
-			}
-			select {
-			case <-exited:
-				t.Fatal("new operation waited for old runtime exit")
-			default:
-			}
-			releaseOnce.Do(func() { close(release) })
-			<-exited
-			current, err := store.Service(context.Background(), "project-1", "service-1")
-			if err != nil {
-				t.Fatal(err)
-			}
-			completed, err := store.Deployment(context.Background(), "project-1", second)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if current.CurrentDeploymentId == nil || *current.CurrentDeploymentId != second || current.Status != status.ServiceStatusStopped || completed.Status != status.WorkStatusRanToCompletion {
-				t.Fatalf("service=%+v deployment=%+v", current, completed)
-			}
-			if output := logs.String(); !strings.Contains(output, "old cancellation write failed") || !strings.Contains(output, `"level":"WARN"`) || strings.Contains(output, `"level":"ERROR"`) {
-				t.Fatalf("cancellation diagnostics: %s", output)
-			}
-		})
-	}
-}
-
-func TestDeploymentExecutionTimeoutReleasesWaitAndPreservesTerminalResult(t *testing.T) {
-	service, _ := takeoverTestService(t)
-	service.executionTimeout = 30 * time.Millisecond
-	id := admitTakeoverStop(t, service, "service-1")
-	release, exited := make(chan struct{}), make(chan struct{})
-	var releaseOnce sync.Once
-	t.Cleanup(func() {
-		releaseOnce.Do(func() { close(release) })
-		select {
-		case <-exited:
-		case <-time.After(time.Second):
-			t.Error("late runtime did not exit")
-		}
-	})
-	err := service.executeDeployment(context.Background(), "project-1", "app-1", id, "stop", func(ctx context.Context, _ model.Application, _ model.Deployment) error {
-		setDeploymentStage(ctx, "compose_stop")
-		<-release
-		close(exited)
-		return nil
-	})
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("timeout result=%v", err)
-	}
-	stored, err := service.executionStore.Deployment(context.Background(), "project-1", id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if stored.Status != status.WorkStatusFaulted || stored.ErrorMessage == nil || !strings.Contains(*stored.ErrorMessage, "30ms") || !strings.Contains(*stored.ErrorMessage, "compose_stop") {
-		t.Fatalf("timed out deployment=%+v", stored)
-	}
-	releaseOnce.Do(func() { close(release) })
-	<-exited
-	stored, err = service.executionStore.Deployment(context.Background(), "project-1", id)
-	if err != nil || stored.Status != status.WorkStatusFaulted {
-		t.Fatalf("late result changed timeout: %+v %v", stored, err)
-	}
-}
-
 func TestLifecycleWritesRequireCurrentAndExecutableOperation(t *testing.T) {
-	service, database := takeoverTestService(t)
+	service, store, database := takeoverTestService(t)
 	ctx := context.Background()
 	first := admitTakeoverStop(t, service, "service-1")
-	if begun, err := service.executionStore.BeginDeployment(ctx, "project-1", first); err != nil || !begun {
+	if begun, err := store.BeginDeployment(ctx, "project-1", first); err != nil || !begun {
 		t.Fatalf("begin=%t %v", begun, err)
 	}
 	second := admitTakeoverStop(t, service, "service-1")
 	version := "version-2"
-	if changed, err := service.executionStore.UpdateServiceDeploymentResult(ctx, "project-1", "service-1", first, status.ServiceStatusRunning, &version); err != nil || changed {
+	if changed, err := store.UpdateServiceDeploymentResult(ctx, "project-1", "service-1", first, status.ServiceStatusRunning, &version); err != nil || changed {
 		t.Fatalf("old result changed Service: %t %v", changed, err)
 	}
-	if changed, err := service.executionStore.BindServiceRuntimeDirectory(ctx, "project-1", "service-1", first, "/old/runtime", 1); err != nil || changed {
+	if changed, err := store.BindServiceRuntimeDirectory(ctx, "project-1", "service-1", first, "/old/runtime", 1); err != nil || changed {
 		t.Fatalf("old directory bound: %t %v", changed, err)
 	}
-	if changed, err := service.executionStore.CompleteDeployment(ctx, "project-1", first, status.WorkStatusRanToCompletion, ""); err != nil || changed {
+	if changed, err := store.CompleteDeployment(ctx, "project-1", first, status.WorkStatusRanToCompletion, ""); err != nil || changed {
 		t.Fatalf("old task completed: %t %v", changed, err)
 	}
-	if begun, err := service.executionStore.BeginDeployment(ctx, "project-1", second); err != nil || !begun {
+	if begun, err := store.BeginDeployment(ctx, "project-1", second); err != nil || !begun {
 		t.Fatalf("begin=%t %v", begun, err)
 	}
-	if changed, err := service.executionStore.BindServiceRuntimeDirectory(ctx, "project-1", "service-1", second, "/current/runtime", 1); err != nil || !changed {
+	if changed, err := store.BindServiceRuntimeDirectory(ctx, "project-1", "service-1", second, "/current/runtime", 1); err != nil || !changed {
 		t.Fatalf("current binding=%t %v", changed, err)
 	}
-	if changed, err := service.executionStore.CompleteDeployment(ctx, "project-1", second, status.WorkStatusFaulted, "timeout"); err != nil || !changed {
+	if changed, err := store.CompleteDeployment(ctx, "project-1", second, status.WorkStatusFaulted, "timeout"); err != nil || !changed {
 		t.Fatalf("complete=%t %v", changed, err)
 	}
-	if changed, err := service.executionStore.UpdateServiceDeploymentResult(ctx, "project-1", "service-1", second, status.ServiceStatusRunning, &version); err != nil || changed {
+	if changed, err := store.UpdateServiceDeploymentResult(ctx, "project-1", "service-1", second, status.ServiceStatusRunning, &version); err != nil || changed {
 		t.Fatalf("terminal task wrote Service: %t %v", changed, err)
 	}
-	if _, err := service.executionStore.CancelObsoleteDeployment(ctx, "project-1", first); err != nil {
+	if _, err := store.CancelObsoleteDeployment(ctx, "project-1", first); err != nil {
 		t.Fatal(err)
 	}
-	if changed, err := service.executionStore.ReconcileServiceAfterCancellation(ctx, "project-1", "service-1", first, status.ServiceStatusRunning); err != nil || changed {
+	if changed, err := store.ReconcileServiceAfterCancellation(ctx, "project-1", "service-1", first, status.ServiceStatusRunning); err != nil || changed {
 		t.Fatalf("old observation changed Service: %t %v", changed, err)
 	}
 	repo := deploymentrepo.NewRepository(database)
 	if err := repo.DeleteDeployment(ctx, "project-1", second); err != nil {
 		t.Fatal(err)
 	}
-	if changed, err := service.executionStore.BindServiceRuntimeDirectory(ctx, "project-1", "service-1", first, "/resurrected/runtime", 1); err != nil || changed {
+	if changed, err := store.BindServiceRuntimeDirectory(ctx, "project-1", "service-1", first, "/resurrected/runtime", 1); err != nil || changed {
 		t.Fatalf("history deletion restored old binding: %t %v", changed, err)
 	}
-	if changed, err := service.executionStore.CompleteDeployment(ctx, "project-1", first, status.WorkStatusRanToCompletion, ""); err != nil || changed {
+	if changed, err := store.CompleteDeployment(ctx, "project-1", first, status.WorkStatusRanToCompletion, ""); err != nil || changed {
 		t.Fatalf("history deletion restored old completion: %t %v", changed, err)
 	}
-	current, err := service.executionStore.Service(ctx, "project-1", "service-1")
+	current, err := store.Service(ctx, "project-1", "service-1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,38 +214,38 @@ func TestLifecycleWritesRequireCurrentAndExecutableOperation(t *testing.T) {
 }
 
 func TestLateCancellationCannotCancelNewerServiceOperation(t *testing.T) {
-	service, _ := takeoverTestService(t)
+	service, store, _ := takeoverTestService(t)
 	ctx := context.Background()
 	first := admitTakeoverStop(t, service, "service-1")
 	second := admitTakeoverStop(t, service, "service-1")
 	current := admitTakeoverStop(t, service, "service-1")
 	other := admitTakeoverStop(t, service, "service-2")
-	if ids, err := service.executionStore.CancelSupersededDeployments(ctx, "project-1", "service-1", second); err != nil || len(ids) != 0 {
+	if ids, err := store.CancelSupersededDeployments(ctx, "project-1", "service-1", second); err != nil || len(ids) != 0 {
 		t.Fatalf("obsolete owner canceled tasks: %v %v", ids, err)
 	}
-	if changed, err := service.executionStore.CancelObsoleteDeployment(ctx, "project-1", current); err != nil || changed {
+	if changed, err := store.CancelObsoleteDeployment(ctx, "project-1", current); err != nil || changed {
 		t.Fatalf("current operation canceled: %t %v", changed, err)
 	}
-	ids, err := service.executionStore.CancelSupersededDeployments(ctx, "project-1", "service-1", current)
+	ids, err := store.CancelSupersededDeployments(ctx, "project-1", "service-1", current)
 	if err != nil || len(ids) != 2 {
 		t.Fatalf("superseded ids=%v %v", ids, err)
 	}
 	for _, id := range []string{first, second} {
-		deployment, err := service.executionStore.Deployment(ctx, "project-1", id)
+		deployment, err := store.Deployment(ctx, "project-1", id)
 		if err != nil || deployment.Status != status.WorkStatusCanceled {
 			t.Fatalf("old deployment=%+v %v", deployment, err)
 		}
 	}
-	deployment, err := service.executionStore.Deployment(ctx, "project-1", other)
+	deployment, err := store.Deployment(ctx, "project-1", other)
 	if err != nil || deployment.Status != status.WorkStatusWaitingToRun {
 		t.Fatalf("other Service changed: %+v %v", deployment, err)
 	}
 }
 
-func TestOldTerminalOrMissingOperationDoesNotBlockNewExecution(t *testing.T) {
+func TestOldTerminalOrMissingOperationPreservesNewLifecycle(t *testing.T) {
 	for _, oldState := range []string{status.WorkStatusFaulted, status.WorkStatusRanToCompletion, "missing"} {
 		t.Run(oldState, func(t *testing.T) {
-			service, database := takeoverTestService(t)
+			service, _, database := takeoverTestService(t)
 			ctx := context.Background()
 			first := admitTakeoverStop(t, service, "service-1")
 			repo := deploymentrepo.NewRepository(database)
@@ -446,9 +262,14 @@ func TestOldTerminalOrMissingOperationDoesNotBlockNewExecution(t *testing.T) {
 				}
 			}
 			current := admitTakeoverStop(t, service, "service-1")
-			ran := false
-			if err := service.executeDeployment(ctx, "project-1", "app-1", current, "stop", func(context.Context, model.Application, model.Deployment) error { ran = true; return nil }); err != nil || !ran {
-				t.Fatalf("execution=%t %v", ran, err)
+			if begun, err := repo.BeginDeployment(ctx, "project-1", current); err != nil || !begun {
+				t.Fatalf("begin current=%t %v", begun, err)
+			}
+			if _, err := repo.CancelSupersededDeployments(ctx, "project-1", "service-1", current); err != nil {
+				t.Fatal(err)
+			}
+			if changed, err := repo.CompleteDeployment(ctx, "project-1", current, status.WorkStatusRanToCompletion, ""); err != nil || !changed {
+				t.Fatalf("complete current=%t %v", changed, err)
 			}
 			if oldState != "missing" {
 				old, err := repo.Deployment(ctx, "project-1", first)

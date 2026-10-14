@@ -12,8 +12,7 @@ import (
 func TestRenderComposeIncludesStructuredRuntimeFields(t *testing.T) {
 	restartPolicy := "unless-stopped"
 	disabled := false
-	service := Service{}
-	compose, err := service.RenderCompose(context.Background(), RenderInput{
+	compose, err := RenderCompose(context.Background(), RenderInput{
 		Plan: model.EffectiveServicePlan{
 			Application:        model.Application{Code: "demo", Kind: status.ApplicationKindStandard},
 			JoinTraefikNetwork: &disabled,

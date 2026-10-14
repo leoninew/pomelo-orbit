@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
@@ -19,8 +20,9 @@ func TestDeploymentPullPolicyIsSavedAndExecuted(t *testing.T) {
 				name = "gateway/" + policy
 			}
 			t.Run(name, func(t *testing.T) {
-				service, store, runtime, _ := independentDeploymentTestService(t, gateway)
-				service.commandStore, service.dispatcher = store, directoryDispatcher{}
+				executor, store, runtime, _ := independentDeploymentTestService(t, gateway)
+				description := &recordingLifecycleCommands{}
+				service := Service{commands: description, commandStore: store, dispatcher: directoryDispatcher{}, targetResolver: executor.targetResolver, transactionRunner: testDeploymentTransaction{}}
 				config := &model.GatewayConfig{ApplicationId: "gateway-1", NetworkName: "traefik"}
 				if gateway {
 					config = testGatewayEnrichmentPlan("", "", "").Gateway
@@ -47,14 +49,17 @@ func TestDeploymentPullPolicyIsSavedAndExecuted(t *testing.T) {
 				if err != nil || options.PullPolicy != want {
 					t.Fatalf("saved pull policy = %q, want %q; error = %v", options.PullPolicy, want, err)
 				}
-				if !strings.Contains(store.deployment.CommandText, "--pull "+want) {
+				if store.deployment.CommandText != "deployment command" {
 					t.Fatalf("saved command = %s", store.deployment.CommandText)
 				}
-				if err := service.ExecuteApplicationDeploy(context.Background(), "project-1", store.application.Id, result.DeploymentId, false); err != nil {
+				if err := executor.ExecuteApplicationDeploy(context.Background(), "project-1", store.application.Id, result.DeploymentId, false); err != nil {
 					t.Fatal(err)
 				}
-				if runtime.command != store.deployment.CommandText {
-					t.Fatalf("executed command = %s, saved command = %s", runtime.command, store.deployment.CommandText)
+				if !runtime.deployed || runtime.settings.PullPolicy != want || runtime.settings.ForceRecreate != options.ForceRecreate || runtime.scope.Project != store.service.Code {
+					t.Fatalf("executed settings = %+v, saved options = %+v", runtime.settings, options)
+				}
+				if description.settings != runtime.settings || description.project != runtime.scope.Project {
+					t.Fatalf("described=%+v executed=%+v", description, runtime.settings)
 				}
 				if len(runtime.staged) != 1 || !strings.Contains(runtime.staged[0].Compose, "restart: unless-stopped") {
 					t.Fatal("deployment did not preserve the component restart policy")
@@ -64,9 +69,20 @@ func TestDeploymentPullPolicyIsSavedAndExecuted(t *testing.T) {
 	}
 }
 
+type recordingLifecycleCommands struct {
+	lifecycleCommandsFake
+	project  string
+	settings deploymentport.DeploySettings
+}
+
+func (r *recordingLifecycleCommands) DeployDescription(project string, settings deploymentport.DeploySettings) string {
+	r.project, r.settings = project, settings
+	return "deployment command"
+}
+
 func TestDeploymentRejectsInvalidPullPolicyBeforeChangingConfiguration(t *testing.T) {
-	service, store, _, _ := independentDeploymentTestService(t, false)
-	service.commandStore, service.dispatcher = store, directoryDispatcher{}
+	executor, store, _, _ := independentDeploymentTestService(t, false)
+	service := Service{commands: lifecycleCommandsFake{}, commandStore: store, dispatcher: directoryDispatcher{}, targetResolver: executor.targetResolver, transactionRunner: testDeploymentTransaction{}}
 	policy := "unless-stopped"
 	_, err := service.DeployService(context.Background(), "user-1", "project-1", store.service.Id, deploymentdto.DeployServiceInput{
 		DeploymentDirectory: "/new/api", EnvironmentTargetRevision: 1, PullPolicy: &policy,

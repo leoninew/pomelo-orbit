@@ -1,6 +1,8 @@
 package deploymentsvc
 
 import (
+	"context"
+	"encoding/json"
 	"reflect"
 	"strings"
 	"testing"
@@ -9,6 +11,70 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
 )
+
+func TestEnrichGatewayPlanPreservesDeclarationOwnership(t *testing.T) {
+	for _, scenario := range []string{"success", "missing-token", "invalid-resolver"} {
+		t.Run(scenario, func(t *testing.T) {
+			declaration := testGatewayEnrichmentPlan("dns", "ops@example.test", "new-token")
+			declaration.Components[0].Env = []model.VersionComponentEnv{{Key: gatewayDNSApiEnvKey, Value: "old-token"}}
+			declaration.Components[0].Mounts[1].ReadOnly = false
+			if scenario == "missing-token" {
+				declaration.Gateway.DNSApiToken = ""
+			}
+			if scenario == "invalid-resolver" {
+				declaration.Components[0].Mounts[0].Content = "providers: {}\n"
+			}
+			before, err := json.Marshal(declaration)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plan := declaration
+			err = enrichGatewayPlan(&plan)
+			if (err != nil) != (scenario != "success") {
+				t.Fatalf("enrichment error = %v", err)
+			}
+			after, err := json.Marshal(declaration)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(before) != string(after) {
+				t.Fatal("enrichment mutated shared declarations")
+			}
+			if scenario != "success" {
+				if !reflect.DeepEqual(plan, declaration) {
+					t.Fatal("failed enrichment partially updated the plan")
+				}
+				return
+			}
+			if plan.Components[0].Env[0].Value != "new-token" || !plan.Components[0].Mounts[1].ReadOnly {
+				t.Fatal("successful enrichment did not publish managed settings")
+			}
+		})
+	}
+}
+
+func TestRenderPreparedGatewayPlanPreservesPlan(t *testing.T) {
+	plan := testGatewayEnrichmentPlan("dns", "ops@example.test", "token")
+	plan.Components[0].Image = "traefik:3.6"
+	if err := enrichGatewayPlan(&plan); err != nil {
+		t.Fatal(err)
+	}
+	before, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := RenderComposeDetailed(context.Background(), RenderInput{Plan: plan, LogicalSvcDir: "/preview"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) || result.ResolvedMounts[0].Content != plan.Components[0].Mounts[0].Content {
+		t.Fatal("rendering changed prepared plan or static configuration")
+	}
+}
 
 func TestEnrichGatewayPlanPatchesDeclaredResolverAndInjectsDNSToken(t *testing.T) {
 	plan := testGatewayEnrichmentPlan("http-dns", "ops@example.test", "cfat_gateway_token")
@@ -137,7 +203,7 @@ func testGatewayEnrichmentPlan(profile, email, token string) model.EffectiveServ
 	}
 	versionId := "version-" + role
 	return model.EffectiveServicePlan{
-		Application: model.Application{Id: "gateway-1", Code: "traefik", Kind: status.ApplicationKindStandard},
+		Application: model.Application{Id: "gateway-1", Code: "traefik", Kind: status.ApplicationKindGateway},
 		Version:     model.Version{Id: versionId},
 		Gateway: &model.GatewayConfig{
 			ApplicationId: "gateway-1", NetworkName: "traefik", AcmeProfile: profile, AcmeEmail: email, DNSApiToken: token,

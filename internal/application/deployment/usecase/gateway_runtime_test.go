@@ -40,7 +40,7 @@ func TestGatewayDeploymentOverwritesStaticConfigAndRecreatesContainer(t *testing
 	for _, gateway := range []bool{true, false} {
 		t.Run(map[bool]string{true: "gateway", false: "ordinary-service"}[gateway], func(t *testing.T) {
 			workspace := &gatewayDeploymentRuntimeFake{workspaceFake: testWorkspace(t.TempDir())}
-			service := Service{runtime: workspace, logStore: workspace}
+			service := ExecutionService{runtime: workspace, logStore: workspace, lifecycle: workspace}
 			plan := testGatewayEnrichmentPlan("", "", "")
 			plan.Service.Code = "traefik-default"
 			plan.Service.DeploymentDirectory = "/custom/traefik"
@@ -52,14 +52,18 @@ func TestGatewayDeploymentOverwritesStaticConfigAndRecreatesContainer(t *testing
 			plan.Components[0].Mounts[0].Content = "providers:\n  rest:\n    insecure: true\n"
 			plan.Components[0].Mounts[0].IgnoreIfExists = true
 			if !gateway {
+				plan.Application.Kind = status.ApplicationKindStandard
 				plan.Gateway = nil
 				plan.JoinTraefikNetwork = new(bool)
+			}
+			if err := enrichGatewayPlan(&plan); err != nil {
+				t.Fatal(err)
 			}
 			if err := service.renderAndDeployWithOptions(context.Background(), environmentport.Target{}, plan, "deployment-1", deploymentdto.DeployOptionsJSON{PullPolicy: "missing"}); err != nil {
 				t.Fatal(err)
 			}
-			if strings.Contains(workspace.command, "--force-recreate") != gateway {
-				t.Fatalf("deployment command = %s", workspace.command)
+			if !workspace.deployed || workspace.settings.ForceRecreate != gateway {
+				t.Fatalf("deployment settings = %+v", workspace.settings)
 			}
 			if len(workspace.staged) != 1 || len(workspace.staged[0].Files) != 1 {
 				t.Fatalf("staged workspace = %+v", workspace.staged)
@@ -77,11 +81,20 @@ func TestGatewayDeploymentOverwritesStaticConfigAndRecreatesContainer(t *testing
 
 type gatewayDeploymentRuntimeFake struct {
 	*workspaceFake
-	command string
+	deployed      bool
+	settings      deploymentport.DeploySettings
+	scope         deploymentport.RuntimeScope
+	stopped       bool
+	removeVolumes bool
 }
 
-func (f *gatewayDeploymentRuntimeFake) Run(_ context.Context, _ environmentport.Target, _ deploymentport.ServiceLocation, _ io.Writer, command string, args ...string) error {
-	f.command = command + " " + strings.Join(args, " ")
+func (f *gatewayDeploymentRuntimeFake) Deploy(_ context.Context, scope deploymentport.RuntimeScope, settings deploymentport.DeploySettings, _ io.Writer) error {
+	f.deployed, f.scope, f.settings = true, scope, settings
+	return nil
+}
+
+func (f *gatewayDeploymentRuntimeFake) Stop(_ context.Context, scope deploymentport.RuntimeScope, removeVolumes bool, _ io.Writer) error {
+	f.stopped, f.scope, f.removeVolumes = true, scope, removeVolumes
 	return nil
 }
 

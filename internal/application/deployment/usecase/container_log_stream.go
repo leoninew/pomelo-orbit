@@ -13,6 +13,7 @@ import (
 	"time"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
+	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	logdto "github.com/leoninew/pomelo-orbit/internal/application/logstream/dto"
 	logstream "github.com/leoninew/pomelo-orbit/internal/application/logstream/usecase"
@@ -89,23 +90,11 @@ func sameLogTarget(a, b model.Environment) bool {
 }
 
 func (s Service) logContainerSource(ctx context.Context, target environmentport.Target, service model.Service, component, scope string) (string, error) {
-	args := []string{"ps", "--all", "--filter", "label=com.docker.compose.project=" + service.Code, "--format", "{{json .}}"}
-	if component != "" {
-		args = append(args, "--filter", "label=com.docker.compose.service="+component)
-	}
 	queryCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	output, err := s.runtime.QueryAtEnvironmentRoot(queryCtx, target, "docker", args...)
+	ids, err := s.containerLogs.ContainerIds(queryCtx, target, service.Code, component)
 	if err != nil {
-		return "", apperror.Wrap(apperror.KindUnavailable, "Failed to inspect log containers", err)
-	}
-	containers, err := parseComposePsOutput(output)
-	if err != nil {
-		return "", apperror.Wrap(apperror.KindInternal, "Invalid container observation", err)
-	}
-	ids := make([]string, 0, len(containers))
-	for _, container := range containers {
-		ids = append(ids, container.Id)
+		return "", err
 	}
 	if len(ids) == 0 {
 		return "", nil
@@ -115,7 +104,7 @@ func (s Service) logContainerSource(ctx context.Context, target environmentport.
 }
 
 func (s Service) openContainerLogStream(ctx context.Context, userId, projectId string, service model.Service, component, cursor string, since time.Time, deployment *model.Deployment) (logstream.Subscription, error) {
-	target, err := s.resolveProjectTarget(ctx, projectId)
+	target, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 	if err != nil {
 		return logstream.Subscription{}, err
 	}
@@ -164,7 +153,7 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+			if err := ensureProjectMembership(ctx, s.project, projectId, userId); err != nil {
 				return err
 			}
 			if deployment != nil {
@@ -182,7 +171,7 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 			if err := s.validateLogComponent(ctx, projectId, currentService, component); err != nil {
 				return err
 			}
-			currentTarget, err := s.resolveProjectTarget(ctx, projectId)
+			currentTarget, err := resolveProjectTarget(ctx, s.targetResolver, projectId)
 			if err != nil {
 				return err
 			}
@@ -217,24 +206,20 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 			}
 			currentSource = source
 			resume.Source = source
-			// An explicit project name lets Compose read existing containers without loading configuration.
-			command := composeCommand{Name: "docker", Args: []string{"compose", "-p", service.Code, "logs", "--follow", "--timestamps", "--no-color"}}
+			request := deploymentport.ContainerLogRequest{Project: service.Code, Component: component}
 			if resume.Time != "" {
 				lastTime, _ := time.Parse(time.RFC3339Nano, resume.Time)
-				command.Args = append(command.Args, "--since", lastTime.Add(-2*time.Second).UTC().Format(time.RFC3339Nano))
+				request.Since = lastTime.Add(-2 * time.Second).UTC().Format(time.RFC3339Nano)
 			} else if !since.IsZero() {
-				command.Args = append(command.Args, "--since", since.UTC().Format(time.RFC3339Nano))
+				request.Since = since.UTC().Format(time.RFC3339Nano)
 			} else {
-				command.Args = append(command.Args, "--tail", "200")
-			}
-			if component != "" {
-				command.Args = append(command.Args, component)
+				request.Tail = 200
 			}
 			if err := emit(logdto.Event{Type: "ready", SourceId: source}); err != nil {
 				return err
 			}
 			check := func(ctx context.Context) error {
-				if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
+				if err := ensureProjectMembership(ctx, s.project, projectId, userId); err != nil {
 					return err
 				}
 				if deployment != nil {
@@ -251,7 +236,7 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 				}
 				return s.validateLogComponent(ctx, projectId, current, component)
 			}
-			changed, err := s.followContainerCommand(ctx, target, service, component, scope, source, command, &resume, emit, check)
+			changed, err := s.followContainerLogs(ctx, target, service, component, scope, source, request, &resume, emit, check)
 			if err != nil {
 				return err
 			}
@@ -264,14 +249,14 @@ func (s Service) openContainerLogStream(ctx context.Context, userId, projectId s
 	}}, nil
 }
 
-func (s Service) followContainerCommand(ctx context.Context, target environmentport.Target, service model.Service, component, scope, source string, command composeCommand, resume *containerCursor, emit logdto.Emit, check func(context.Context) error) (bool, error) {
+func (s Service) followContainerLogs(ctx context.Context, target environmentport.Target, service model.Service, component, scope, source string, request deploymentport.ContainerLogRequest, resume *containerCursor, emit logdto.Emit, check func(context.Context) error) (bool, error) {
 	commandCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	reader, writer := io.Pipe()
 	defer func() { _ = reader.Close() }()
 	done := make(chan error, 1)
 	go func() {
-		err := s.runtime.StreamAtEnvironmentRoot(commandCtx, target, writer, command.Name, command.Args...)
+		err := s.containerLogs.Follow(commandCtx, target, request, writer)
 		_ = writer.CloseWithError(err)
 		done <- err
 	}()
@@ -328,7 +313,7 @@ func (s Service) followContainerCommand(ctx context.Context, target environmentp
 			if err := check(ctx); err != nil {
 				return false, err
 			}
-			current, err := s.resolveProjectTarget(ctx, service.ProjectId)
+			current, err := resolveProjectTarget(ctx, s.targetResolver, service.ProjectId)
 			if err != nil {
 				return false, err
 			}

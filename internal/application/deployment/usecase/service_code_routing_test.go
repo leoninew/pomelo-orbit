@@ -10,7 +10,7 @@ import (
 )
 
 func TestRenderComposeUsesComponentServiceHosts(t *testing.T) {
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
+	compose, err := RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "ragflow", Kind: status.ApplicationKindStandard},
 		Service:     model.Service{Code: "ragflow-service"},
 		Gateway:     &model.GatewayConfig{InternalDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "traefik"},
@@ -30,7 +30,7 @@ func TestRenderComposeUsesComponentServiceHosts(t *testing.T) {
 }
 
 func TestRenderComposeDoesNotPublishTCPDeclaration(t *testing.T) {
-	compose, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
+	compose, err := RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "mysql", Kind: status.ApplicationKindStandard},
 		Service:     model.Service{Code: "mysql-default"},
 		Gateway:     &model.GatewayConfig{NetworkName: "traefik"},
@@ -51,7 +51,7 @@ func TestRenderComposeDoesNotPublishTCPDeclaration(t *testing.T) {
 }
 
 func TestRenderComposeRejectsDuplicateGatewayHTTPRoute(t *testing.T) {
-	_, err := Service{}.RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
+	_, err := RenderCompose(context.Background(), RenderInput{Plan: model.EffectiveServicePlan{
 		Application: model.Application{Code: "api", Kind: status.ApplicationKindStandard},
 		Service:     model.Service{Code: "api-default"},
 		Gateway:     &model.GatewayConfig{InternalDomain: "example.test", DefaultEntrypoint: "web", NetworkName: "traefik"},

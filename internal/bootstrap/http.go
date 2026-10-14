@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	transporthttp "github.com/leoninew/pomelo-orbit/internal/api/http"
+	transportmiddleware "github.com/leoninew/pomelo-orbit/internal/api/http/middleware"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/routes"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
@@ -35,9 +36,9 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/turnstile"
 	deliverymcpclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/mcp/delivery"
+	dockerrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/docker"
 
 	environmentrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/environment"
-	pipelinerunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/pipeline"
 	sshrunner "github.com/leoninew/pomelo-orbit/internal/infrastructure/runner/ssh"
 
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/storage/local/envfile"
@@ -55,6 +56,7 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sql.DB, tas
 }
 
 type applicationServices struct {
+	TransactionRunner            databasetx.TransactionRunner
 	AuthService                  authsvc.Service
 	RoleService                  rolesvc.Service
 	UserService                  usersvc.Service
@@ -73,6 +75,7 @@ type applicationServices struct {
 	ApplicationService           applicationsvc.Service
 	ServiceService               servicesvc.Service
 	DeploymentService            deploymentsvc.Service
+	ServiceStatusCheck           *deploymentsvc.StatusCheckService
 	DialogueService              dialoguesvc.Service
 	GatewayService               gatewaysvc.Service
 	TaskService                  tasksvc.Service
@@ -88,13 +91,14 @@ func newDeliveryMCPServer(actorUserId string, projectId string, services applica
 
 func newDeliveryMCPDependencies(services applicationServices) deliverymcp.Dependencies {
 	return deliverymcp.Dependencies{
-		Project:     services.ProjectService,
-		Application: services.ApplicationService,
-		Service:     services.ServiceService,
-		Deployment:  services.DeploymentService,
-		Environment: services.EnvironmentService,
-		Gateway:     services.GatewayService,
-		Route:       services.RouteService,
+		TransactionRunner: services.TransactionRunner,
+		Project:           services.ProjectService,
+		Application:       services.ApplicationService,
+		Service:           services.ServiceService,
+		Deployment:        services.DeploymentService,
+		Environment:       services.EnvironmentService,
+		Gateway:           services.GatewayService,
+		Route:             services.RouteService,
 	}
 }
 
@@ -132,7 +136,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		transactionRunner,
 		routeSyncTimeouts(cfg.Route),
 	)
-	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.deployment, dockerPathResolver, transactionRunner).
+	gatewayCore := gatewaysvc.New(stores.project, stores.environment, stores.application, stores.gateway, stores.service, stores.deployment, transactionRunner).
 		WithDefinitionServices(applicationService, serviceService)
 	projectInitializationService := projectinitializationsvc.New(projectService, environmentService, gatewayCore, cfg.ProjectInitialization, localDisplay)
 	deploymentService := deploymentsvc.NewCommandService(
@@ -140,36 +144,33 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		stores.application,
 		stores.service,
 		stores.deployment,
-		stores.gateway,
 		deploymentDispatcher,
 		logger,
 		targetResolver,
 		runtime,
 		deploymentLogStore,
+		dockerrunner.NewContainerLogs(runtime),
 		gatewayCore,
 		serviceService,
 		transactionRunner,
+		dockerrunner.NewRuntimeInspector(runtime),
+		dockerrunner.Commands{},
 	)
 	gatewayService := gatewayCore
 	pipelineService := pipelinesvc.New(stores.project, stores.pipeline, stores.pipelineRun, stores.application, stores.repository, logger)
 	pipelineRunService := pipelinerunsvc.New(
 		stores.project,
-		stores.credential,
 		stores.repository,
 		stores.pipeline,
 		stores.pipelineRun,
 		stores.application,
 		stores.environment,
 		targetResolver,
-		applicationService,
 		transactionRunner,
 		pipelineRunDispatcher,
 		pipelineWorkspace,
-		cfg.Jwt.SecretKey,
 		logger,
-		pipelinerunner.DockerRunner{},
 		pipelineLogStore,
-		localSource,
 	).WithRemoteRuntime(sshrunner.NewPipelineRuntime())
 	projectHandoverService := handoversvc.New(
 		projectService,
@@ -185,6 +186,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	)
 
 	services := applicationServices{
+		TransactionRunner:            transactionRunner,
 		AuthService:                  authService,
 		RoleService:                  rolesvc.New(stores.role, stores.user),
 		UserService:                  usersvc.New(stores.user, stores.role, projectService),
@@ -209,6 +211,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		ApplicationService: applicationService,
 		ServiceService:     serviceService,
 		DeploymentService:  deploymentService,
+		ServiceStatusCheck: deploymentsvc.NewStatusCheckService(stores.project, stores.service, targetResolver, dockerrunner.NewInventory(runtime)),
 		GatewayService:     gatewayService,
 		TaskService:        taskService,
 	}
@@ -228,11 +231,13 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) routes.Dependencies {
 	services := newApplicationServices(cfg, logger, database, taskRepo)
 	return routes.Dependencies{
-		MutatingUnitOfWork: databasetx.Middleware(
+		MutatingUnitOfWork: transportmiddleware.Transaction(
 			database,
 			transport.WriteError,
 			"/api/route/sync/preview",
 			"/api/route/sync/confirm",
+			"/api/route/:route_id/mkcert",
+			"/api/setting/config",
 			"/api/environment/probe",
 			"/api/environment/terminal/ticket",
 			"/api/project-initialization/probe",
@@ -262,6 +267,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		ApplicationService:           services.ApplicationService,
 		ServiceService:               services.ServiceService,
 		DeploymentService:            services.DeploymentService,
+		ServiceStatusCheck:           services.ServiceStatusCheck,
 		DialogueService:              services.DialogueService,
 		GatewayService:               services.GatewayService,
 		TaskService:                  services.TaskService,

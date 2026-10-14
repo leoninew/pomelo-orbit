@@ -15,5 +15,6 @@ type RouteStore interface {
 	RouteByProjectAndDomain(ctx context.Context, projectId string, domain string) (model.Route, error)
 	CreateRoute(ctx context.Context, route model.Route) error
 	UpdateRoute(ctx context.Context, projectId string, route model.Route) error
+	UpdateRouteCertificate(ctx context.Context, projectId string, route model.Route) (bool, error)
 	DeleteRoute(ctx context.Context, projectId, id string) error
 }

@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
-	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	logdto "github.com/leoninew/pomelo-orbit/internal/application/logstream/dto"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -19,6 +18,8 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	store.service.Status = status.ServiceStatusStopped
 	workspace := testWorkspace(t.TempDir())
 	service.runtime = workspace
+	inspector := &runtimeInspectorFake{}
+	service.inspector = inspector
 	service.targetResolver = staticTargetResolver{target: testSSHTarget("project-1")}
 
 	containers, err := service.ApplicationStatus(context.Background(), "user-1", "project-1", "app-1", deploymentdto.ServiceTargetInput{
@@ -30,18 +31,15 @@ func TestApplicationStatusReturnsNoContainersBeforeFirstDeployment(t *testing.T)
 	if len(containers) != 0 {
 		t.Fatalf("containers = %+v, want none", containers)
 	}
-	if workspace.queryCalled {
+	if len(inspector.scopes) != 0 {
 		t.Fatal("status query must not run without a deployment workspace")
 	}
 }
 
 func TestApplicationLogStreamWaitsBeforeFirstDeployment(t *testing.T) {
-	service, store := newRuntimeQueryService()
+	service, store, _ := newContainerStreamService()
 	store.service.Status = status.ServiceStatusStopped
-	workspace := testWorkspace(t.TempDir())
-	service.runtime = workspace
-	service.targetResolver = staticTargetResolver{target: testSSHTarget("project-1")}
-	service.project = store
+	store.service.RuntimeDirectory, store.service.RuntimeTargetRevision = "", 0
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stream, err := service.OpenApplicationLogStream(ctx, "user-1", "project-1", "app-1", "service-1", "", "")
@@ -71,7 +69,6 @@ func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
 	}
 	service := Service{
 		commandStore:       store,
-		executionStore:     store,
 		targetResolver:     staticTargetResolver{err: errors.New("Project environment is unavailable")},
 		gatewayCoordinator: &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{NetworkName: "traefik"}},
 	}
@@ -93,17 +90,37 @@ func TestComposePreviewsDoNotRequireConfiguredProjectEnvironment(t *testing.T) {
 	}
 }
 
+func TestGatewayComposePreviewPreparesManagedSettings(t *testing.T) {
+	plan := testGatewayEnrichmentPlan("dns", "ops@example.test", "preview-token")
+	plan.Components[0].Image = "traefik:3.6"
+	plan.Components[0].Mounts = plan.Components[0].Mounts[:1]
+	service := Service{gatewayCoordinator: &gatewayDeploymentCoordinatorFake{gateway: plan.Gateway}}
+	plan.Gateway = nil
+	compose, err := service.renderComposePreview(context.Background(), "project-1", plan.Application, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"CF_DNS_API_TOKEN: preview-token", "./gateway/dynamic:/etc/traefik/dynamic:ro", "./gateway/acme:/letsencrypt"} {
+		if !strings.Contains(compose, want) {
+			t.Fatalf("preview missing %q:\n%s", want, compose)
+		}
+	}
+}
+
 func newRuntimeQueryService() (Service, *runtimeQueryStore) {
 	projectId := "project-1"
 	store := &runtimeQueryStore{
 		application: model.Application{Id: "app-1", ProjectId: &projectId, Code: "demo", Kind: status.ApplicationKindStandard},
 		service:     model.Service{Id: "service-1", ApplicationId: "app-1", VersionId: "version-1", Code: "demo-default"},
 	}
-	return Service{commandStore: store}, store
+	return NewCommandService(store, store, store, store, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, lifecycleCommandsFake{}), store
 }
 
 type runtimeQueryStore struct {
-	deploymentport.ExecutionStore
+	repository.ProjectReader
+	repository.ApplicationStore
+	repository.ServiceStore
+	repository.DeploymentStore
 	application       model.Application
 	service           model.Service
 	version           model.Version

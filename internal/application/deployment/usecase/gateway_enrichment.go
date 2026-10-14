@@ -2,10 +2,11 @@ package deploymentsvc
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
+	deploymentrender "github.com/leoninew/pomelo-orbit/internal/application/deployment/render"
 	"github.com/leoninew/pomelo-orbit/internal/model"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -38,9 +39,22 @@ func enrichGatewayPlan(plan *model.EffectiveServicePlan) error {
 	if !isGatewayCarrier(*plan) {
 		return nil
 	}
-	if plan.Gateway == nil {
-		return fmt.Errorf("gateway configuration snapshot is required")
+	// Only these slices are changed by enrichment. Preserve declaration ownership,
+	// including on validation/encoding failure, and publish the prepared plan once.
+	prepared := *plan
+	prepared.Components = slices.Clone(plan.Components)
+	for index := range prepared.Components {
+		prepared.Components[index].Mounts = slices.Clone(prepared.Components[index].Mounts)
+		prepared.Components[index].Env = slices.Clone(prepared.Components[index].Env)
 	}
+	if err := applyGatewayPlan(&prepared); err != nil {
+		return err
+	}
+	*plan = prepared
+	return nil
+}
+
+func applyGatewayPlan(plan *model.EffectiveServicePlan) error {
 	cfg := plan.Gateway
 	role := cfg.AcmeProfile
 	if role == "" {
@@ -61,12 +75,6 @@ func enrichGatewayPlan(plan *model.EffectiveServicePlan) error {
 	if file == nil {
 		return fmt.Errorf("gateway component %q does not declare %s", component.Name, gatewayMountTargetTraefikYml)
 	}
-	patched, err := patchGatewayRouteProvider(file.Content)
-	if err != nil {
-		return err
-	}
-	file.Content = patched
-	file.IgnoreIfExists = false
 	for _, required := range []model.VersionComponentMount{
 		{SourceType: "directory", Source: model.GatewayRouteConfigSource, Target: model.GatewayRouteConfigTarget, ReadOnly: true},
 		{SourceType: "directory", Source: "./gateway/certs", Target: "/etc/traefik/certs", ReadOnly: true},
@@ -84,67 +92,29 @@ func enrichGatewayPlan(plan *model.EffectiveServicePlan) error {
 			component.Mounts = append(component.Mounts, required)
 		}
 	}
-	if cfg.AcmeProfile == "" {
-		return nil
-	}
-	if strings.TrimSpace(cfg.AcmeEmail) == "" {
-		return fmt.Errorf("gateway ACME email is required for profile %s", cfg.AcmeProfile)
-	}
-	resolvers := gatewayProfileResolvers(cfg.AcmeProfile)
-	if len(resolvers) == 0 {
-		return fmt.Errorf("gateway ACME profile %q is invalid", cfg.AcmeProfile)
+	var resolvers []string
+	if cfg.AcmeProfile != "" {
+		if strings.TrimSpace(cfg.AcmeEmail) == "" {
+			return fmt.Errorf("gateway ACME email is required for profile %s", cfg.AcmeProfile)
+		}
+		resolvers = gatewayProfileResolvers(cfg.AcmeProfile)
+		if len(resolvers) == 0 {
+			return fmt.Errorf("gateway ACME profile %q is invalid", cfg.AcmeProfile)
+		}
+		if cfg.AcmeProfile == "dns" || cfg.AcmeProfile == "http-dns" {
+			if strings.TrimSpace(cfg.DNSApiToken) == "" {
+				return fmt.Errorf("gateway DNS API token is required for profile %s", cfg.AcmeProfile)
+			}
+			setEffectiveComponentEnv(component, gatewayDNSApiEnvKey, cfg.DNSApiToken)
+		}
 	}
 	file = gatewayStaticConfigMount(component)
-	patched, err = patchDeclaredResolverEmails(file.Content, resolvers, cfg.AcmeEmail)
+	patched, err := deploymentrender.PatchGatewayConfig(file.Content, deploymentrender.GatewayConfigOptions{RouteDirectory: model.GatewayRouteConfigTarget, Resolvers: resolvers, Email: cfg.AcmeEmail})
 	if err != nil {
 		return err
 	}
-	file.Content = patched
-	if cfg.AcmeProfile == "dns" || cfg.AcmeProfile == "http-dns" {
-		if strings.TrimSpace(cfg.DNSApiToken) == "" {
-			return fmt.Errorf("gateway DNS API token is required for profile %s", cfg.AcmeProfile)
-		}
-		setEffectiveComponentEnv(component, gatewayDNSApiEnvKey, cfg.DNSApiToken)
-	}
+	file.Content, file.IgnoreIfExists = patched, false
 	return nil
-}
-
-func patchGatewayRouteProvider(content string) (string, error) {
-	var document yaml.Node
-	if err := yaml.Unmarshal([]byte(content), &document); err != nil {
-		return "", fmt.Errorf("parse declared Gateway static config: %w", err)
-	}
-	if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode {
-		return "", fmt.Errorf("declared Gateway static config must be a YAML mapping")
-	}
-	root := document.Content[0]
-	providers := yamlMappingValue(root, "providers")
-	if providers == nil {
-		providers = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "providers"}, providers)
-	}
-	if providers.Kind != yaml.MappingNode {
-		return "", fmt.Errorf("declared Gateway providers must be a YAML mapping")
-	}
-	var file yaml.Node
-	if err := file.Encode(struct {
-		Directory string `yaml:"directory"`
-		Watch     bool   `yaml:"watch"`
-	}{Directory: model.GatewayRouteConfigTarget, Watch: true}); err != nil {
-		return "", fmt.Errorf("encode managed Gateway File provider: %w", err)
-	}
-	entries := make([]*yaml.Node, 0, len(providers.Content)+2)
-	for index := 0; index+1 < len(providers.Content); index += 2 {
-		if key := providers.Content[index].Value; key != "file" && key != "rest" {
-			entries = append(entries, providers.Content[index], providers.Content[index+1])
-		}
-	}
-	providers.Content = append(entries, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "file"}, &file)
-	result, err := yaml.Marshal(&document)
-	if err != nil {
-		return "", fmt.Errorf("marshal Gateway static config: %w", err)
-	}
-	return string(result), nil
 }
 
 func gatewayPlanComponent(plan *model.EffectiveServicePlan, name string) *model.EffectiveServiceComponent {
@@ -177,51 +147,6 @@ func gatewayProfileResolvers(profile string) []string {
 	default:
 		return nil
 	}
-}
-
-func patchDeclaredResolverEmails(content string, resolvers []string, email string) (string, error) {
-	var document yaml.Node
-	if err := yaml.Unmarshal([]byte(content), &document); err != nil {
-		return "", fmt.Errorf("parse declared Gateway static config: %w", err)
-	}
-	if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode {
-		return "", fmt.Errorf("declared Gateway static config must be a YAML mapping")
-	}
-	resolverMap := yamlMappingValue(document.Content[0], "certificatesResolvers")
-	if resolverMap == nil || resolverMap.Kind != yaml.MappingNode {
-		return "", fmt.Errorf("declared Gateway static config is missing certificatesResolvers")
-	}
-	for _, name := range resolvers {
-		resolver := yamlMappingValue(resolverMap, name)
-		if resolver == nil || resolver.Kind != yaml.MappingNode {
-			return "", fmt.Errorf("declared Gateway static config is missing resolver %q", name)
-		}
-		acme := yamlMappingValue(resolver, "acme")
-		if acme == nil || acme.Kind != yaml.MappingNode {
-			return "", fmt.Errorf("declared Gateway resolver %q is missing acme", name)
-		}
-		emailNode := yamlMappingValue(acme, "email")
-		if emailNode == nil || emailNode.Kind != yaml.ScalarNode {
-			return "", fmt.Errorf("declared Gateway resolver %q is missing acme.email", name)
-		}
-		emailNode.Tag = "!!str"
-		emailNode.Value = email
-		emailNode.Style = yaml.DoubleQuotedStyle
-	}
-	result, err := yaml.Marshal(&document)
-	if err != nil {
-		return "", fmt.Errorf("marshal declared Gateway static config: %w", err)
-	}
-	return string(result), nil
-}
-
-func yamlMappingValue(mapping *yaml.Node, key string) *yaml.Node {
-	for index := 0; index+1 < len(mapping.Content); index += 2 {
-		if mapping.Content[index].Value == key {
-			return mapping.Content[index+1]
-		}
-	}
-	return nil
 }
 
 func setEffectiveComponentEnv(component *model.EffectiveServiceComponent, key, value string) {

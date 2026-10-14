@@ -5,11 +5,22 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/security"
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
+	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	servicev1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/service"
 )
 
-func (h Handler) PreviewServiceStatusCheck(c *gin.Context) {
+type StatusCheckHandler struct {
+	service       *deploymentsvc.StatusCheckService
+	authenticator security.Authenticator
+}
+
+func NewStatusCheck(service *deploymentsvc.StatusCheckService, authenticator security.Authenticator) StatusCheckHandler {
+	return StatusCheckHandler{service: service, authenticator: authenticator}
+}
+
+func (h StatusCheckHandler) PreviewServiceStatusCheck(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -28,7 +39,7 @@ func (h Handler) PreviewServiceStatusCheck(c *gin.Context) {
 	transport.WriteProtoJSON(c, http.StatusOK, &servicev1.ServiceStatusCheckPreviewResp{Token: preview.Token, ObservedAt: preview.ObservedAt.Format(time.RFC3339Nano), Items: items})
 }
 
-func (h Handler) ConfirmServiceStatusCheck(c *gin.Context) {
+func (h StatusCheckHandler) ConfirmServiceStatusCheck(c *gin.Context) {
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return

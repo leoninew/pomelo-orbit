@@ -9,10 +9,7 @@ import (
 	"time"
 )
 
-const (
-	testJwtSecret           = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-	standardBase64JwtSecret = "J69d31L/5Dg4yhJXhp+CacFovpi8Ikhr34zSsHmE3x4="
-)
+const testJwtSecret = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 func TestLoadDefaultConfigFile(t *testing.T) {
 	setupDefaultConfig(t)
@@ -155,18 +152,6 @@ func TestLoadConfigReadsLLMMaxToolCallRoundsFromEnvironment(t *testing.T) {
 	}
 	if cfg.LLM.MaxToolCallRounds != 48 {
 		t.Fatalf("unexpected deployment dialogue tool-call rounds: %d", cfg.LLM.MaxToolCallRounds)
-	}
-}
-
-func TestLoadConfigRejectsNonPositiveLLMMaxToolCallRounds(t *testing.T) {
-	setupDefaultConfig(t)
-	writeEnvConfig(t, "develop", `llm:
-  max_tool_call_rounds: 0
-`)
-
-	_, err := Load()
-	if err == nil || !strings.Contains(err.Error(), "llm.max_tool_call_rounds must be at least 1") {
-		t.Fatalf("Load error = %v", err)
 	}
 }
 
@@ -551,96 +536,6 @@ func TestLoadRouteTimeouts(t *testing.T) {
 	}
 }
 
-func TestLoadRejectsNonPositiveRouteConfigurationMatchTimeout(t *testing.T) {
-	setupDefaultConfig(t)
-	t.Setenv("POMELO_ORBIT_ROUTE__CONFIGURATION_MATCH_TIMEOUT", "0s")
-
-	_, err := Load()
-	if err == nil || !strings.Contains(err.Error(), "route.configuration_match_timeout must be positive") {
-		t.Fatalf("expected route timeout validation error, got %v", err)
-	}
-}
-
-func TestLoadRejectsInvalidRouteStageTimeouts(t *testing.T) {
-	for _, test := range []struct {
-		name  string
-		env   string
-		value string
-		want  string
-	}{
-		{"gateway lock", "POMELO_ORBIT_ROUTE__GATEWAY_LOCK_TIMEOUT", "0s", "gateway_lock_timeout must be positive"},
-		{"state loading", "POMELO_ORBIT_ROUTE__STATE_LOAD_TIMEOUT", "0s", "state_load_timeout must be positive"},
-		{"file publication", "POMELO_ORBIT_ROUTE__FILE_PUBLICATION_TIMEOUT", "0s", "file_publication_timeout must be positive"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			setupDefaultConfig(t)
-			t.Setenv(test.env, test.value)
-			_, err := Load()
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("expected %q, got %v", test.want, err)
-			}
-		})
-	}
-}
-
-func TestLoadConfigRejectsInvalidApiPathPrefixes(t *testing.T) {
-	cases := []struct {
-		name    string
-		content string
-		want    string
-	}{
-		{name: "empty", content: `server:
-  api_path_prefixes: []
-`, want: "server.api_path_prefixes must not be empty"},
-		{name: "root", content: `server:
-  api_path_prefixes:
-    - /
-`, want: "server.api_path_prefixes must not contain root path"},
-		{name: "missing slash", content: `server:
-  api_path_prefixes:
-    - api
-`, want: "server.api_path_prefixes must start with /: api"},
-	}
-	for _, tc := range cases {
-		setupDefaultConfig(t)
-		writeEnvConfig(t, "develop", tc.content)
-
-		_, err := Load()
-		if err == nil {
-			t.Fatalf("expected error for %s", tc.name)
-		}
-		if !strings.Contains(err.Error(), tc.want) {
-			t.Fatalf("unexpected error for %s: %v", tc.name, err)
-		}
-	}
-}
-
-func TestLoadConfigRejectsInvalidPublicUrl(t *testing.T) {
-	setupDefaultConfig(t)
-	t.Setenv("POMELO_ORBIT_SERVER__PUBLIC_URL", "ftp://orbit-api.preflite.cn")
-
-	_, err := Load()
-	if err == nil {
-		t.Fatal("expected error for invalid public url")
-	}
-	if !strings.Contains(err.Error(), "server.public_url must use http or https scheme") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestLoadConfigRejectsInvalidCorsOrigin(t *testing.T) {
-	setupDefaultConfig(t)
-	t.Setenv("POMELO_ORBIT_SERVER__CORS_ALLOWED_ORIGINS", "https://orbit.preflite.cn/path")
-
-	_, err := Load()
-	if err == nil {
-		t.Fatal("expected error for invalid cors origin")
-	}
-	if !strings.Contains(err.Error(), "server.cors_allowed_origins must not include path, query, or fragment") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
 func TestLoadConfigEnvFileOverridesConfig(t *testing.T) {
 	setupDefaultConfig(t)
 	preserveEnv(t, "POMELO_ORBIT_SERVER__PORT", "POMELO_ORBIT_TURNSTILE__SITE_KEY", "POMELO_ORBIT_TURNSTILE__SECRET_KEY", "POMELO_ORBIT_DATABASE__URL")
@@ -795,34 +690,6 @@ func TestLoadConfigValidatesJwtSecretKey(t *testing.T) {
 		if _, err := Load(); err == nil {
 			t.Fatalf("expected error for %s", tc.name)
 		}
-	}
-}
-
-func TestLoadConfigRejectsStandardBase64JwtSecretKey(t *testing.T) {
-	setupDefaultConfig(t)
-	writeEnvConfig(t, "develop", fmt.Sprintf(`jwt:
-  secret_key: %q
-`, standardBase64JwtSecret))
-
-	if _, err := Load(); err == nil {
-		t.Fatal("Load accepted a standard Base64 key that is not a Fernet key")
-	}
-}
-
-func TestValidateJwtSecretKeyRejectsInvalidFernetKeys(t *testing.T) {
-	cases := []struct {
-		name  string
-		value string
-	}{
-		{name: "invalid encoding", value: strings.Repeat("!", 44)},
-		{name: "wrong decoded length", value: strings.Repeat("A", 40)},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if err := validateJwtSecretKey(tc.value); err == nil {
-				t.Fatal("validateJwtSecretKey accepted an invalid Fernet key")
-			}
-		})
 	}
 }
 

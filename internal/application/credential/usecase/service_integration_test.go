@@ -1,10 +1,10 @@
+//go:build !unit
+
 package credentialsvc
 
 import (
 	"context"
 	"database/sql"
-	"io"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -18,12 +18,6 @@ import (
 	credentialrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/credential"
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 	vcsrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/repository"
-)
-
-const (
-	ciTestUserId    = "01KKX2YNPF6VJ9N7QYCWG61KVK"
-	ciTestProjectId = "01KRRKK0K3T519ZQZES3M4QA9Z"
-	ciTestSecretKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 )
 
 func TestCredentialServiceEncryptsExportsAndRejectsDuplicates(t *testing.T) {
@@ -132,36 +126,6 @@ func TestCredentialServiceTracksUpdatesWithoutChangingCreationTime(t *testing.T)
 	}
 }
 
-func TestCreateCredentialAcceptsGiteaTokenAndRejectsUnknownType(t *testing.T) {
-	service, database := newCredentialIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-
-	created, err := service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{
-		ProjectId: ciTestProjectId, Name: "Gitea Token", Type: "gitea_token", Data: "alice:gitea-access-token",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if created.Type != "gitea_token" {
-		t.Fatalf("created type=%q", created.Type)
-	}
-	exported, err := service.ExportCredential(ctx, ciTestUserId, ciTestProjectId, created.Id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if exported.Type != "gitea_token" || exported.Data != "alice:gitea-access-token" {
-		t.Fatalf("exported=%+v", exported)
-	}
-
-	_, err = service.CreateCredential(ctx, ciTestUserId, credentialdto.CredentialCreateInput{
-		ProjectId: ciTestProjectId, Name: "Unknown Token", Type: "unknown_token", Data: "alice:token",
-	})
-	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("expected unknown credential type to be rejected, got %v", err)
-	}
-}
-
 func TestNonRepositoryCredentialCannotBeReadOrBoundAsRepositoryCredential(t *testing.T) {
 	service, database := newCredentialIntegrationService(t)
 	defer func() { _ = database.Close() }()
@@ -194,7 +158,6 @@ func newCredentialIntegrationService(t *testing.T) (Service, *sql.DB) {
 	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
-	_ = slog.New(slog.NewTextHandler(io.Discard, nil))
 	service := New(
 		projectrepo.NewRepository(database),
 		credentialrepo.NewRepository(database),

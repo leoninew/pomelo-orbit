@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	_ "modernc.org/sqlite"
 )
@@ -16,31 +18,11 @@ func TestRepositoryListsMessagesInOrderAndDeletesConversationCascade(t *testing.
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
-	if _, err := database.Exec(`
-		PRAGMA foreign_keys = ON;
-		CREATE TABLE user (id TEXT PRIMARY KEY);
-		CREATE TABLE project (id TEXT PRIMARY KEY);
-		CREATE TABLE deployment_dialogue_conversation (
-			id TEXT PRIMARY KEY,
-			project_id TEXT NOT NULL,
-			created_by_user_id TEXT NOT NULL,
-			title TEXT NOT NULL,
-			created_at DATETIME NOT NULL,
-			updated_at DATETIME NOT NULL,
-			FOREIGN KEY (project_id) REFERENCES project(id) ON DELETE CASCADE,
-			FOREIGN KEY (created_by_user_id) REFERENCES user(id) ON DELETE RESTRICT
-		);
-		CREATE TABLE deployment_dialogue_message (
-			id TEXT PRIMARY KEY,
-			conversation_id TEXT NOT NULL,
-			role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-			content TEXT NOT NULL,
-			created_at DATETIME NOT NULL,
-			FOREIGN KEY (conversation_id) REFERENCES deployment_dialogue_conversation(id) ON DELETE CASCADE
-		);
-		INSERT INTO user (id) VALUES ('user-1');
-		INSERT INTO project (id) VALUES ('project-1'), ('project-2');
-	`); err != nil {
+	database.SetMaxOpenConns(1)
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project one', 'project-one'), ('project-2', 'Project two', 'project-two')`); err != nil {
 		t.Fatal(err)
 	}
 

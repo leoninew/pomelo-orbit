@@ -27,7 +27,7 @@ func setupTestRoleDb(t *testing.T) *sql.DB {
 	return database
 }
 
-func TestCreateRoleRollsBackWhenPermissionFails(t *testing.T) {
+func TestCreateRoleParticipatesInCallerRollback(t *testing.T) {
 	database := setupTestRoleDb(t)
 	defer func() { _ = database.Close() }()
 
@@ -67,7 +67,7 @@ func TestCreateRoleRollsBackWhenPermissionFails(t *testing.T) {
 	}
 }
 
-func TestCreateRoleSucceedsAtomically(t *testing.T) {
+func TestCreateRolePersistsPermissionMapping(t *testing.T) {
 	database := setupTestRoleDb(t)
 	defer func() { _ = database.Close() }()
 
@@ -107,7 +107,7 @@ func TestCreateRoleSucceedsAtomically(t *testing.T) {
 	}
 }
 
-func TestUpdateRoleRollsBackWhenPermissionFails(t *testing.T) {
+func TestUpdateRoleParticipatesInCallerRollback(t *testing.T) {
 	database := setupTestRoleDb(t)
 	defer func() { _ = database.Close() }()
 

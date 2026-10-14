@@ -21,7 +21,7 @@ func TestListRoutesBindsSearchAndPaginationForSQLite(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = database.Close() })
 	database.SetMaxOpenConns(1)
-	if err := databaseinfra.MigrateTo(database, config.DatabaseDriverSQLite, 35); err != nil {
+	if err := databaseinfra.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 

@@ -8,42 +8,15 @@ import (
 	"time"
 
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 	_ "modernc.org/sqlite"
 )
 
 func TestListQueriesBindNamedPaginationParameters(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	if _, err := database.Exec(`
-		CREATE TABLE pipeline_run (
-			id TEXT PRIMARY KEY, project_id TEXT, repository_id TEXT NOT NULL, repository_name TEXT NOT NULL,
-			snapshot_id TEXT NOT NULL, pipeline_id TEXT NOT NULL, pipeline_name TEXT NOT NULL,
-			pipeline_version INTEGER NOT NULL, trigger TEXT NOT NULL, repository_ref TEXT NOT NULL,
-			variables_snapshot TEXT NOT NULL, status TEXT NOT NULL, retry_of TEXT,
-			environment_id TEXT, environment_target_type TEXT, environment_target_revision INTEGER,
-			ssh_credential_id TEXT, ssh_credential_revision INTEGER, started_at DATETIME, finished_at DATETIME, error_message TEXT, created_at DATETIME NOT NULL
-		);
-		CREATE TABLE artifact (
-			id TEXT PRIMARY KEY, project_id TEXT, pipeline_run_id TEXT NOT NULL, repository_id TEXT NOT NULL,
-			repository_name TEXT NOT NULL, pipeline_id TEXT NOT NULL, pipeline_name TEXT NOT NULL,
-			pipeline_stage_id TEXT NOT NULL, stage_name TEXT NOT NULL, collector TEXT NOT NULL, name TEXT NOT NULL,
-			location TEXT, value TEXT, value_format TEXT, image_ref TEXT, local_image_sha256 TEXT,
-			source_artifact_id TEXT, created_at DATETIME NOT NULL
-		);
-		CREATE TABLE pipeline_run_version_binding (
-			pipeline_run_id TEXT PRIMARY KEY, application_id TEXT NOT NULL, application_name TEXT NOT NULL,
-			source_version_id TEXT NOT NULL, source_version_label TEXT NOT NULL,
-			generated_version_id TEXT, generated_version_label TEXT
-		);
-		CREATE TABLE version_component (id TEXT PRIMARY KEY, name TEXT NOT NULL, artifact_id TEXT);
-	`); err != nil {
-		t.Fatal(err)
-	}
+	database := openRepositoryTestDatabase(t)
 
 	ctx := context.Background()
 	createdAt := time.Now().UTC()
@@ -101,19 +74,9 @@ func TestListQueriesBindNamedPaginationParameters(t *testing.T) {
 }
 
 func TestBeginPipelineStageRunRequiresRunningParentRun(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
+	database := openRepositoryTestDatabase(t)
 	if _, err := database.Exec(`
-		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, status TEXT NOT NULL);
-		CREATE TABLE pipeline_stage_run (
-			id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL, stage_id TEXT NOT NULL,
-			stage_name TEXT NOT NULL, status TEXT NOT NULL, started_at DATETIME,
-			finished_at DATETIME, exit_code INTEGER, error_message TEXT
-		);
-		INSERT INTO pipeline_run (id, project_id, status) VALUES ('run-1', 'project-1', 'canceled');
+		INSERT INTO pipeline_run (id, project_id, status, repository_id, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref) VALUES ('run-1', 'project-1', 'canceled', 'repository-1', 'snapshot-1', 'pipeline-1', 'Build', 1, 'manual', 'main');
 		INSERT INTO pipeline_stage_run (id, pipeline_run_id, stage_id, stage_name, status)
 		VALUES ('stage-run-1', 'run-1', 'stage-1', 'build', 'waiting_to_run');
 	`); err != nil {
@@ -150,20 +113,12 @@ func TestBeginPipelineStageRunRequiresRunningParentRun(t *testing.T) {
 }
 
 func TestDeletePipelineRunDeletesRelatedRecords(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
+	database := openRepositoryTestDatabase(t)
 	if _, err := database.Exec(`
-		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, project_id TEXT NOT NULL);
-		CREATE TABLE pipeline_stage_run (id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL);
-		CREATE TABLE pipeline_run_version_binding (pipeline_run_id TEXT PRIMARY KEY);
-		CREATE TABLE artifact (id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL);
-		INSERT INTO pipeline_run (id, project_id) VALUES ('run-1', 'project-1');
-		INSERT INTO pipeline_stage_run (id, pipeline_run_id) VALUES ('stage-run-1', 'run-1');
-		INSERT INTO pipeline_run_version_binding (pipeline_run_id) VALUES ('run-1');
-		INSERT INTO artifact (id, pipeline_run_id) VALUES ('artifact-1', 'run-1');
+		INSERT INTO pipeline_run (id, project_id, status, repository_id, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref) VALUES ('run-1', 'project-1', 'ran_to_completion', 'repository-1', 'snapshot-1', 'pipeline-1', 'Build', 1, 'manual', 'main');
+		INSERT INTO pipeline_stage_run (id, pipeline_run_id, stage_id, stage_name, status) VALUES ('stage-run-1', 'run-1', 'stage-1', 'Build', 'ran_to_completion');
+		INSERT INTO pipeline_run_version_binding (pipeline_run_id, application_id, application_name, source_version_id, source_version_label) VALUES ('run-1', 'application-1', 'Application', 'version-1', 'v1');
+		INSERT INTO artifact (id, project_id, pipeline_run_id, pipeline_stage_id, stage_name, name, collector) VALUES ('artifact-1', 'project-1', 'run-1', 'stage-1', 'Build', 'report', 'file');
 	`); err != nil {
 		t.Fatal(err)
 	}
@@ -194,34 +149,15 @@ func TestDeletePipelineRunDeletesRelatedRecords(t *testing.T) {
 }
 
 func TestPipelineRunDerivedQueriesRequireMatchingProject(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
+	database := openRepositoryTestDatabase(t)
 	if _, err := database.Exec(`
-		CREATE TABLE pipeline_run (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, status TEXT NOT NULL);
-		CREATE TABLE pipeline_stage_run (
-			id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL, stage_id TEXT NOT NULL,
-			stage_name TEXT NOT NULL, status TEXT NOT NULL, started_at DATETIME,
-			finished_at DATETIME, exit_code INTEGER, error_message TEXT
-		);
-		CREATE TABLE pipeline_run_version_binding (
-			pipeline_run_id TEXT PRIMARY KEY, application_id TEXT NOT NULL, application_name TEXT NOT NULL,
-			source_version_id TEXT NOT NULL, source_version_label TEXT NOT NULL,
-			generated_version_id TEXT, generated_version_label TEXT
-		);
-		CREATE TABLE artifact (
-			id TEXT PRIMARY KEY, pipeline_run_id TEXT NOT NULL, pipeline_stage_id TEXT NOT NULL,
-			name TEXT NOT NULL, collector TEXT NOT NULL, value TEXT, value_format TEXT
-		);
-		INSERT INTO pipeline_run (id, project_id, status) VALUES ('run-1', 'project-1', 'running');
+		INSERT INTO pipeline_run (id, project_id, status, repository_id, snapshot_id, pipeline_id, pipeline_name, pipeline_version, trigger, repository_ref) VALUES ('run-1', 'project-1', 'running', 'repository-1', 'snapshot-1', 'pipeline-1', 'Build', 1, 'manual', 'main');
 		INSERT INTO pipeline_stage_run (id, pipeline_run_id, stage_id, stage_name, status)
 		VALUES ('stage-run-1', 'run-1', 'stage-1', 'Build', 'waiting_to_run');
 		INSERT INTO pipeline_run_version_binding (pipeline_run_id, application_id, application_name, source_version_id, source_version_label)
 		VALUES ('run-1', 'application-1', 'Application', 'version-1', 'v1');
-		INSERT INTO artifact (id, pipeline_run_id, pipeline_stage_id, name, collector, value, value_format)
-		VALUES ('artifact-1', 'run-1', 'stage-1', 'commit', 'command', '0123456789012345678901234567890123456789', 'git_object_id');
+		INSERT INTO artifact (id, pipeline_run_id, pipeline_stage_id, stage_name, name, collector, value, value_format)
+		VALUES ('artifact-1', 'run-1', 'stage-1', 'Build', 'commit', 'command', '0123456789012345678901234567890123456789', 'git_object_id');
 	`); err != nil {
 		t.Fatal(err)
 	}
@@ -250,23 +186,7 @@ func TestPipelineRunDerivedQueriesRequireMatchingProject(t *testing.T) {
 }
 
 func TestPipelineRunTargetSnapshotRoundTrip(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	_, err = database.Exec(`CREATE TABLE pipeline_run (
-		id TEXT PRIMARY KEY, project_id TEXT, repository_id TEXT NOT NULL, repository_name TEXT NOT NULL,
-		snapshot_id TEXT NOT NULL, pipeline_id TEXT NOT NULL, pipeline_name TEXT NOT NULL,
-		pipeline_version INTEGER NOT NULL, trigger TEXT NOT NULL, repository_ref TEXT NOT NULL,
-		variables_snapshot TEXT NOT NULL, status TEXT NOT NULL, retry_of TEXT,
-		environment_id TEXT, environment_target_type TEXT, environment_target_revision INTEGER,
-		ssh_credential_id TEXT, ssh_credential_revision INTEGER,
-		started_at DATETIME, finished_at DATETIME, error_message TEXT, created_at DATETIME NOT NULL
-	)`)
-	if err != nil {
-		t.Fatal(err)
-	}
+	database := openRepositoryTestDatabase(t)
 	projectId, environmentId, targetType, credentialId := "project-1", "environment-1", model.EnvironmentTargetTypeSSH, "credential-1"
 	targetRevision, credentialRevision := int64(3), int64(5)
 	run := model.PipelineRun{Id: "run-1", ProjectId: &projectId, RepositoryId: "repo-1", RepositoryName: "repo",
@@ -294,4 +214,20 @@ func TestPipelineRunTargetSnapshotRoundTrip(t *testing.T) {
 		*listed.Items[0].SSHCredentialRevision != credentialRevision {
 		t.Fatalf("listed run target = %+v, err = %v", listed, err)
 	}
+}
+func openRepositoryTestDatabase(t *testing.T) *sql.DB {
+	t.Helper()
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	database.SetMaxOpenConns(1)
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := database.Exec(`INSERT INTO project (id, name, code) VALUES ('project-1', 'Project one', 'project-one')`); err != nil {
+		t.Fatal(err)
+	}
+	return database
 }

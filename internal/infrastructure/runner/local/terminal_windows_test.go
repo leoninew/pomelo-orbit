@@ -1,6 +1,8 @@
 package localrunner
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -26,25 +28,39 @@ func terminalTestProcessAlive(pid int) bool {
 }
 
 func TestLocalTerminalReleasesWindowsHandles(t *testing.T) {
-	countHandles := windows.NewLazySystemDLL("kernel32.dll").NewProc("GetProcessHandleCount")
-	count := func() uint32 {
-		t.Helper()
-		var count uint32
-		result, _, err := countHandles.Call(uintptr(windows.CurrentProcess()), uintptr(unsafe.Pointer(&count)))
-		if result == 0 {
-			t.Fatal(err)
-		}
-		return count
-	}
-	// Warm up Go's process and pipe bookkeeping before taking a baseline.
 	session, _ := startTestLocalTerminal(t, t.TempDir())
-	_ = session.Close()
-	before := count()
-	for range 8 {
-		session, _ := startTestLocalTerminal(t, t.TempDir())
-		_ = session.Close()
+	terminal := session.(*localTerminal)
+	process := terminal.process.(*windowsTerminalProcess)
+	// Query the owned resource types: process-wide counts include runtime
+	// handles, and a closed handle value may be reused for an event or pipe.
+	queries := map[string]func() error{
+		"process": func() error {
+			var code uint32
+			return windows.GetExitCodeProcess(process.process, &code)
+		},
+		"job": func() error {
+			var limits windows.JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+			return windows.QueryInformationJobObject(process.job, windows.JobObjectExtendedLimitInformation,
+				uintptr(unsafe.Pointer(&limits)), uint32(unsafe.Sizeof(limits)), nil)
+		},
 	}
-	if after := count(); after > before+2 {
-		t.Fatalf("terminal leaked Windows handles: before=%d after=%d", before, after)
+	for name, query := range queries {
+		if err := query(); err != nil {
+			t.Fatalf("%s was not open: %v", name, err)
+		}
+	}
+	if err := session.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for name, query := range queries {
+		if err := query(); !errors.Is(err, windows.ERROR_INVALID_HANDLE) {
+			t.Fatalf("%s remains open after Close: %v", name, err)
+		}
+	}
+	if _, err := terminal.reader.Read(make([]byte, 1)); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("terminal output pipe remains open: %v", err)
+	}
+	if _, err := session.Input().Write([]byte("x")); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("terminal input pipe remains open: %v", err)
 	}
 }

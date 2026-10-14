@@ -27,7 +27,7 @@ func setupTestUserDb(t *testing.T) *sql.DB {
 	return database
 }
 
-func TestSetUserRolesSucceedsAtomically(t *testing.T) {
+func TestSetUserRolesReplacesPermissionMapping(t *testing.T) {
 	database := setupTestUserDb(t)
 	defer func() { _ = database.Close() }()
 
@@ -80,7 +80,7 @@ func TestSetUserRolesSucceedsAtomically(t *testing.T) {
 	}
 }
 
-func TestSetUserRolesRollsBackOnError(t *testing.T) {
+func TestSetUserRolesParticipatesInCallerRollback(t *testing.T) {
 	database := setupTestUserDb(t)
 	defer func() { _ = database.Close() }()
 

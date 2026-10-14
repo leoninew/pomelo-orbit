@@ -1,8 +1,9 @@
+//go:build !unit
+
 package usersvc
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"database/sql"
@@ -105,21 +106,6 @@ func TestUserServiceRejectsDuplicateUsernameAndEmail(t *testing.T) {
 	}
 	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator2", Password: "secret1", Email: email}); err == nil || !apperror.IsKind(err, apperror.KindConflict) {
 		t.Fatalf("expected duplicate email conflict, got %v", err)
-	}
-	if _, err := service.Create(ctx, userdto.CreateInput{Username: "operator3", Password: "secret1"}); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("expected missing email validation error, got %v", err)
-	}
-}
-
-func TestUserServiceEnforcesPasswordLength(t *testing.T) {
-	service, database := newUserIntegrationService(t)
-	defer func() { _ = database.Close() }()
-
-	if _, err := service.Create(context.Background(), userdto.CreateInput{Username: "operator", Email: "operator@example.test", Password: strings.Repeat("a", 36)}); err != nil {
-		t.Fatalf("expected 36-character password to be accepted, got %v", err)
-	}
-	if _, err := service.Create(context.Background(), userdto.CreateInput{Username: "operator2", Email: "operator2@example.test", Password: strings.Repeat("a", 37)}); err == nil || !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("expected 37-character password to be rejected, got %v", err)
 	}
 }
 

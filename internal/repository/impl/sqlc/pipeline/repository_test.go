@@ -9,20 +9,14 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	"github.com/leoninew/pomelo-orbit/internal/config"
+	db "github.com/leoninew/pomelo-orbit/internal/infrastructure/database"
 	"github.com/leoninew/pomelo-orbit/internal/repository"
 )
 
 func TestLockApplicationPipelineReportsDeletedRow(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	database.SetMaxOpenConns(1)
-	if _, err := database.Exec(`CREATE TABLE pipeline (id TEXT PRIMARY KEY, project_id TEXT, kind TEXT, updated_at DATETIME)`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := database.Exec(`INSERT INTO pipeline (id, project_id, kind, updated_at) VALUES ('pipeline-1', 'project-1', 'application', CURRENT_TIMESTAMP)`); err != nil {
+	database := openRepositoryTestDatabase(t)
+	if _, err := database.Exec(`INSERT INTO pipeline (id, project_id, kind, name) VALUES ('pipeline-1', 'project-1', 'application', 'Build')`); err != nil {
 		t.Fatal(err)
 	}
 	store := NewRepository(database)
@@ -38,23 +32,7 @@ func TestLockApplicationPipelineReportsDeletedRow(t *testing.T) {
 }
 
 func TestListPipelinesBindsNamedFilterAndPaginationParameters(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	if _, err := database.Exec(`
-		CREATE TABLE pipeline (
-			id TEXT PRIMARY KEY, project_id TEXT, kind TEXT NOT NULL,
-			source_pipeline_id TEXT, source_template_name TEXT, source_template_version INTEGER,
-			application_id TEXT, application_name TEXT, repository_id TEXT, repository_name TEXT,
-			version_fork_strategy TEXT, fixed_version_id TEXT, fixed_version_label TEXT,
-			name TEXT NOT NULL, description TEXT NOT NULL, variable_declarations TEXT NOT NULL,
-			version INTEGER NOT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL
-		)
-	`); err != nil {
-		t.Fatal(err)
-	}
+	database := openRepositoryTestDatabase(t)
 	createdAt := time.Now().UTC()
 	if _, err := database.Exec(`
 		INSERT INTO pipeline (
@@ -74,23 +52,7 @@ func TestListPipelinesBindsNamedFilterAndPaginationParameters(t *testing.T) {
 }
 
 func TestListPipelinesScopesGlobalTemplatesAndApplicationPipelines(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	if _, err := database.Exec(`
-		CREATE TABLE pipeline (
-			id TEXT PRIMARY KEY, project_id TEXT, kind TEXT NOT NULL,
-			source_pipeline_id TEXT, source_template_name TEXT, source_template_version INTEGER,
-			application_id TEXT, application_name TEXT, repository_id TEXT, repository_name TEXT,
-			version_fork_strategy TEXT, fixed_version_id TEXT, fixed_version_label TEXT,
-			name TEXT NOT NULL, description TEXT NOT NULL, variable_declarations TEXT NOT NULL,
-			version INTEGER NOT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL
-		)
-	`); err != nil {
-		t.Fatal(err)
-	}
+	database := openRepositoryTestDatabase(t)
 	createdAt := time.Now().UTC()
 	for _, values := range [][]any{
 		{"template-1", nil, "template", "Shared build", "", "[]"},
@@ -134,21 +96,8 @@ func TestListPipelinesScopesGlobalTemplatesAndApplicationPipelines(t *testing.T)
 }
 
 func TestListPipelineStageTemplatesScopesGlobally(t *testing.T) {
-	database, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = database.Close() })
-	if _, err := database.Exec(`
-		CREATE TABLE pipeline_stage (
-			id TEXT PRIMARY KEY, project_id TEXT, kind TEXT NOT NULL, pipeline_id TEXT,
-			name TEXT NOT NULL, image TEXT NOT NULL, script TEXT NOT NULL,
-			description TEXT NOT NULL, version INTEGER, source_template_stage_id TEXT,
-			source_template_stage_name TEXT, source_template_stage_version INTEGER,
-			source_template_stage_description TEXT, artifacts TEXT, depends_on TEXT,
-			sort_order INTEGER, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL
-		)
-	`); err != nil {
+	database := openRepositoryTestDatabase(t)
+	if _, err := database.Exec(`INSERT INTO pipeline (id, project_id, kind, name) VALUES ('application-1', 'project-1', 'application', 'Build')`); err != nil {
 		t.Fatal(err)
 	}
 	createdAt := time.Now().UTC()
@@ -183,4 +132,21 @@ func TestListPipelineStageTemplatesScopesGlobally(t *testing.T) {
 	if stage.Id != "stage-template" || stage.ProjectId != "" {
 		t.Fatalf("global stage template = %+v", stage)
 	}
+}
+func openRepositoryTestDatabase(t *testing.T) *sql.DB {
+	t.Helper()
+	database, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.Close() })
+	database.SetMaxOpenConns(1)
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
+		t.Fatal(err)
+	}
+	// Keep list assertions independent of bundled seed templates in this isolated database.
+	if _, err := database.Exec(`DELETE FROM pipeline_stage; DELETE FROM pipeline`); err != nil {
+		t.Fatal(err)
+	}
+	return database
 }

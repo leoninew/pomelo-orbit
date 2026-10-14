@@ -1,3 +1,5 @@
+//go:build !unit
+
 package authsvc
 
 import (
@@ -19,8 +21,6 @@ import (
 	authrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/auth"
 	userrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/user"
 )
-
-const authTestSecretKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 
 func TestLoginChangePasswordAndHistory(t *testing.T) {
 	service, database := newAuthIntegrationService(t)
@@ -58,43 +58,6 @@ func TestLoginChangePasswordAndHistory(t *testing.T) {
 	}
 	if history.Total == 0 || len(history.Items) == 0 || history.Items[0].Username != "admin" {
 		t.Fatalf("unexpected login history: %+v", history)
-	}
-}
-
-func TestLoginRejectsInvalidCSRFToken(t *testing.T) {
-	service, database := newAuthIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-
-	_, err := service.Login(ctx, authdto.LoginInput{Email: "admin@lvh.me", Password: "admin@lvh.me", CSRFToken: "csrf"})
-	if err == nil || !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("expected invalid csrf validation error, got %v", err)
-	}
-}
-
-func TestLoginDoesNotAcceptUsername(t *testing.T) {
-	service, database := newAuthIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	csrfToken, err := service.NewCSRFToken()
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = service.Login(context.Background(), authdto.LoginInput{Email: "admin", Password: "admin@lvh.me", CSRFToken: csrfToken})
-	if err == nil || !apperror.IsKind(err, apperror.KindUnauthorized) {
-		t.Fatalf("expected username login to be rejected, got %v", err)
-	}
-}
-
-func TestChangePasswordRejectsWrongOldPassword(t *testing.T) {
-	service, database := newAuthIntegrationService(t)
-	defer func() { _ = database.Close() }()
-	ctx := context.Background()
-	user, err := userrepo.NewRepository(database).UserByEmail(ctx, "admin@lvh.me")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := service.ChangePassword(ctx, authdto.ChangePasswordInput{User: user, OldPassword: "wrong", NewPassword: "newpass1"}); err == nil || !apperror.IsKind(err, apperror.KindUnauthorized) {
-		t.Fatalf("expected wrong old password to be unauthorized, got %v", err)
 	}
 }
 

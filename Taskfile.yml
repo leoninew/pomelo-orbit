@@ -91,6 +91,16 @@ tasks:
       - ./bin/golangci-lint fmt {{.FIX_FORMAT_ARGS}} ./cmd/... ./internal/... ./sql
       - ./bin/golangci-lint run {{.FIX_LINT_ARGS}} ./cmd/... ./internal/... ./sql
 
+  test:go:unit:
+    desc: Run core Go rules and usecase unit tests without database migrations or external processes
+    cmds:
+      - go test -tags=unit {{.CLI_ARGS}} ./internal/application/... ./internal/model/... ./internal/common/... ./internal/queue/...
+
+  test:go:all:
+    desc: Run all Go tests including local persistence, protocol, and process verification
+    cmds:
+      - go test {{.CLI_ARGS}} ./cmd/... ./internal/... ./sql
+
   test:
     desc: Run web unit tests and Go tests; use -- --cov to collect Go coverage
     vars:

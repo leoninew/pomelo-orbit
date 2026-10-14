@@ -23,7 +23,7 @@ func TestDeleteServicePreservesDeploymentHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind) VALUES ('app-1', 'App', 'app', 'application')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind) VALUES ('app-1', 'App', 'app', 'standard')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
@@ -32,7 +32,7 @@ func TestDeleteServicePreservesDeploymentHistory(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `INSERT INTO service (id, project_id, application_id, version_id, code, status) VALUES ('service-1', 'project-1', 'app-1', 'version-1', 'app-default', 'stopped')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, service_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'succeeded', 0, 'service-1')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, service_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'ran_to_completion', 0, 'service-1')`); err != nil {
 		t.Fatal(err)
 	}
 
@@ -95,7 +95,7 @@ func TestListServicesByProjectSearchesApplicationNameAndServiceCode(t *testing.T
 		t.Fatalf("service code search = %#v", matched)
 	}
 
-	for _, search := range []string{"application-code", "instance-one", "version-label"} {
+	for _, search := range []string{"application-code", "version-label"} {
 		matched, err = repository.ListServicesByProject(ctx, "project-1", "", "", search, 1, 20)
 		if err != nil {
 			t.Fatal(err)

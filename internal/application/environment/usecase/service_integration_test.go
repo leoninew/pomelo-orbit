@@ -1,3 +1,5 @@
+//go:build !unit
+
 package environmentsvc
 
 import (
@@ -17,7 +19,7 @@ import (
 	projectrepo "github.com/leoninew/pomelo-orbit/internal/repository/impl/sqlc/project"
 )
 
-func TestEnvironmentForUserReturnsLocalSeed(t *testing.T) {
+func TestInitializedLocalEnvironmentCanBeReadWithoutSSHConfiguration(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)

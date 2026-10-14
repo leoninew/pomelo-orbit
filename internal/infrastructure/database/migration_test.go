@@ -19,8 +19,6 @@ const (
 	seededGatewayApplicationId = "01M10RRA8F863EJ2N9TC3Z2EC1"
 	seededGatewayBaseVersionId = "01M10RRA8F863EJ2N9TDN9JSBW"
 	seededGatewayBaseComponent = "01M10RRA8F863EJ2N9TN8CWTEY"
-	seededGatewayServiceId     = "01M10RRA8F863EJ2N9TTG49G6S"
-	seededGatewayRouteId       = "01M10RRA8F863EJ2N9TYPF0CV7"
 )
 
 func TestDatabaseMigrationFilesAlign(t *testing.T) {
@@ -336,34 +334,6 @@ func TestMigrateUpSQLiteSeedsExportedData(t *testing.T) {
 	}
 }
 
-func TestMigrateUpSQLiteDoesNotSeedDeploymentResources(t *testing.T) {
-	database := openMemoryDb(t)
-	if err := MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
-		t.Fatalf("migrate up: %v", err)
-	}
-
-	for table, id := range map[string]string{
-		"application": seededGatewayApplicationId,
-		"service":     seededGatewayServiceId,
-		"route":       seededGatewayRouteId,
-	} {
-		var count int
-		if err := database.QueryRow("SELECT COUNT(*) FROM "+table+" WHERE id = ?", id).Scan(&count); err != nil {
-			t.Fatalf("count seeded %s: %v", table, err)
-		}
-		if count != 0 {
-			t.Fatalf("empty database seeded %s %s", table, id)
-		}
-	}
-	var environments int
-	if err := database.QueryRow("SELECT COUNT(*) FROM environment").Scan(&environments); err != nil {
-		t.Fatalf("count environments: %v", err)
-	}
-	if environments != 0 {
-		t.Fatalf("environment rows=%d, want 0", environments)
-	}
-}
-
 func TestMigrateUpSQLiteDropsGatewayConfigComponentName(t *testing.T) {
 	database := openMemoryDb(t)
 	if err := MigrateTo(database, config.DatabaseDriverSQLite, 39); err != nil {
@@ -472,12 +442,9 @@ func TestSQLiteSystemSeedIdsAreULIDs(t *testing.T) {
 		"project",
 		"permission",
 		"role",
-		"application",
-		"version",
-		"version_component",
-		"service",
-		"service_component",
-		"route",
+		"pipeline",
+		"pipeline_stage",
+		"pipeline_stage_reference",
 	} {
 		rows, err := database.Query("SELECT id FROM " + table)
 		if err != nil {

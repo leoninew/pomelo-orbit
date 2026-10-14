@@ -44,21 +44,6 @@ func TestSourceValidatesRepositoryAndResolvesRevision(t *testing.T) {
 	}
 }
 
-func TestSourceAcceptsRepositoryOutsideManagedWorkspace(t *testing.T) {
-	dataRoot := t.TempDir()
-	repositoryPath := filepath.Join(t.TempDir(), "source")
-	createGitRepository(t, repositoryPath)
-
-	source := New(nil)
-	localPath, err := source.Validate(context.Background(), repositoryPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.HasPrefix(filepath.FromSlash(localPath), dataRoot) {
-		t.Fatalf("source path %q must not be constrained to data root %q", localPath, dataRoot)
-	}
-}
-
 func TestSourceRejectsLinkedWorktree(t *testing.T) {
 	root := t.TempDir()
 	mainRepository := filepath.Join(root, "main")

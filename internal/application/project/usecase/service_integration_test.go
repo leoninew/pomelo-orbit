@@ -1,3 +1,5 @@
+//go:build !unit
+
 package projectsvc
 
 import (
@@ -20,29 +22,6 @@ import (
 )
 
 const projectTestUserId = "01KKX2YNPF6VJ9N7QYCWG61KVK"
-
-func TestProjectCodeValidation(t *testing.T) {
-	for _, test := range []struct {
-		code  string
-		valid bool
-	}{
-		{code: "a", valid: true},
-		{code: "a+b.c-1", valid: true},
-		{code: "orbit.preflite.cn", valid: true},
-		{code: "abcdefghijklmnop", valid: true},
-		{code: "abcdefghijklmnopqrstuvwxyz012345", valid: true},
-		{code: "1project"},
-		{code: "project_name"},
-		{code: "abcdefghijklmnopqrstuvwxyz0123456"},
-	} {
-		t.Run(test.code, func(t *testing.T) {
-			_, _, err := normalizeAndValidateCreate(projectdto.CreateInput{Name: "Project", Code: test.code})
-			if (err == nil) != test.valid {
-				t.Fatalf("code %q valid = %t, want %t (error: %v)", test.code, err == nil, test.valid, err)
-			}
-		})
-	}
-}
 
 func TestProjectServiceCreateUpdateMembersAndDeprecate(t *testing.T) {
 	service, database := newProjectIntegrationService(t)

@@ -76,7 +76,7 @@ func TestDeleteApplicationRejectsServiceReference(t *testing.T) {
 	if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'standard', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
@@ -121,7 +121,7 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 	if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'standard', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {
@@ -133,7 +133,7 @@ func TestDeleteVersionClearsForkReferenceAndPreservesPipelineRunHistory(t *testi
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-3', 'app-1', 'v3', 'unpublished')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, version_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'succeeded', 0, 'version-1')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO deployment (id, application_name, operation_type, trigger_type, status, is_rollback, version_id) VALUES ('deployment-1', 'App', 'deploy', 'manual', 'ran_to_completion', 0, 'version-1')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO pipeline_run_version_binding (pipeline_run_id, application_id, application_name, source_version_id, source_version_label, generated_version_id, generated_version_label) VALUES ('run-1', 'app-1', 'App', 'version-1', 'v1', 'version-3', 'v3')`); err != nil {
@@ -184,14 +184,14 @@ func TestDeleteApplicationAllowsForkLineage(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = database.Close() }()
-	if err := db.MigrateTo(database, config.DatabaseDriverSQLite, 30); err != nil {
+	if err := db.MigrateUp(database, config.DatabaseDriverSQLite); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
 	if _, err := database.ExecContext(ctx, `INSERT INTO project (id, name, code) VALUES ('project-1', 'Project', 'project')`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'application', 'project-1')`); err != nil {
+	if _, err := database.ExecContext(ctx, `INSERT INTO application (id, name, code, kind, project_id) VALUES ('app-1', 'App', 'app', 'standard', 'project-1')`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := database.ExecContext(ctx, `INSERT INTO version (id, application_id, label, status) VALUES ('version-1', 'app-1', 'v1', 'unpublished')`); err != nil {

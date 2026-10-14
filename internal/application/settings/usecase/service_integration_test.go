@@ -1,3 +1,5 @@
+//go:build !unit
+
 package settingssvc
 
 import (
@@ -61,6 +63,10 @@ func TestActualValuesSaveRefreshRestartAndReset(t *testing.T) {
 	item := findItem(t, initial, "logging__level")
 	if item.Value != "warn" || item.Default != "warn" || item.ValueSource != "env" || initial.PendingRestart {
 		t.Fatalf("initial = %+v", item)
+	}
+	initial, err = service.Update(ctx, initial.Revision, []settingsdto.Update{{Key: item.Key, Value: "warn"}}, nil)
+	if err != nil || initial.PendingRestart || !findItem(t, initial, item.Key).IsOverridden {
+		t.Fatalf("same-value override = %+v, %v", initial, err)
 	}
 	updated, err := service.Update(ctx, initial.Revision, []settingsdto.Update{{Key: item.Key, Value: "debug"}}, nil)
 	if err != nil {
@@ -144,7 +150,7 @@ func TestBatchValidationAndResetAreAtomic(t *testing.T) {
 	}
 }
 
-func TestAllConfigurationTypesAndSecretsAreEditable(t *testing.T) {
+func TestConfigurationTypesAndSecretsSurviveReload(t *testing.T) {
 	_, service := settingsFixture(t)
 	ctx := context.Background()
 	initial, err := service.Config(ctx)
@@ -174,6 +180,27 @@ func TestAllConfigurationTypesAndSecretsAreEditable(t *testing.T) {
 	if !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("fractional integer = %v", err)
 	}
+	reloaded, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, err := New(reloaded.Runtime, envfile.NewStore(reloaded.Runtime.OverridePath())).Config(ctx)
+	if err != nil || current.PendingRestart {
+		t.Fatalf("reloaded configuration = %+v, %v", current, err)
+	}
+	for key, want := range map[string]any{
+		"database__url":                "postgres://user:password@localhost/orbit",
+		"jwt__secret_key":              secret,
+		"mcp__access_token":            "literal$token",
+		"app__debug":                   true,
+		"server__port":                 8081,
+		"server__cors_allowed_origins": []string{"https://example.com"},
+		"llm__timeout":                 "2m0s",
+	} {
+		if got := findItem(t, current, key).Value; !reflect.DeepEqual(got, want) {
+			t.Fatalf("reloaded %s = %v, want %v", key, got, want)
+		}
+	}
 }
 
 func TestStaleRevisionDoesNotOverwriteAnotherSave(t *testing.T) {
@@ -197,22 +224,6 @@ func TestStaleRevisionDoesNotOverwriteAnotherSave(t *testing.T) {
 	}
 	if findItem(t, current, "app__debug").IsOverridden {
 		t.Fatal("stale update was persisted")
-	}
-}
-
-func TestSameValueOverrideDoesNotRequireRestart(t *testing.T) {
-	_, service := settingsFixture(t)
-	ctx := context.Background()
-	initial, err := service.Config(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	updated, err := service.Update(ctx, initial.Revision, []settingsdto.Update{{Key: "logging__level", Value: "warn"}}, nil)
-	if err != nil || updated.PendingRestart {
-		t.Fatalf("same value = %+v, %v", updated, err)
-	}
-	if !findItem(t, updated, "logging__level").IsOverridden {
-		t.Fatal("explicit same-value override missing")
 	}
 }
 

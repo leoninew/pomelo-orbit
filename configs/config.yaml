@@ -21,7 +21,6 @@ logging:
     enabled: false
     request_body_limit: 4096
     response_body_limit: 4096
-    skip_asset_enabled: true
 
 database:
   url: sqlite:///data/db/pomelo-orbit.db

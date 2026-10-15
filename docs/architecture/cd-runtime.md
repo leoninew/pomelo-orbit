@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-14 11:12:46
+最后修改时间: 2026-10-16
 
 Doc role: living architecture
 
@@ -113,7 +113,7 @@ CI/CD 日志统一通过 Fetch + SSE 读取，所有入口沿用 Bearer 与 Proj
 
 Web 容器日志流可在操作进行中订阅；按 Service code 的 Compose project 标签和可选 Component 标签查询目标 Docker，容器尚未出现时保持 waiting。读取在 Environment 工作区根目录执行，使用显式 `docker compose -p <service-code> logs --follow --timestamps --no-color`，不加载 Compose 文件，也不依赖 Service 状态或已确认的运行目录，因此可读取目标环境上手动启动的同一 Compose project。以非 PTY 传递 stdout，命令 stderr 单独保留最多 32 KiB 诊断。两秒复核成员、资源、目标/凭据修订与 Docker 容器 ID；容器重建时刷新来源，取消旧读取命令后继续。部署结束不会结束容器日志；stop 操作继续不展示容器日志。
 
-文件日志采用精确字节游标；容器日志按时间戳重叠两秒补读，前端采用有界记录次数去重。来源变化和不能保证补齐的恢复显示缺口；Docker 删除的历史无法恢复。客户端断开仅取消读取命令/session，不停止部署任务或容器。SSE 心跳 15 秒，慢连接单次写入超时 10 秒；新增日志 SSE 路由关闭响应正文捕获，保留请求元信息。
+文件日志采用精确字节游标；容器日志按时间戳重叠两秒补读，前端采用有界记录次数去重。来源变化和不能保证补齐的恢复显示缺口；Docker 删除的历史无法恢复。客户端断开仅取消读取命令/session，不停止部署任务或容器。SSE 心跳 15 秒，慢连接单次写入超时 10 秒；HTTP 请求日志统一按全局开关、JSON 正文类型和字节上限处理。
 
 ## 部署目录与执行边界
 

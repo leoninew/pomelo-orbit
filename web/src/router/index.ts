@@ -4,6 +4,7 @@ import { getNavigationScope, getSecondaryNavigationTitle } from '@/navigation';
 import { useAuthStore } from '@/stores/auth';
 import { PERMISSIONS } from '@/constants/permissions';
 import { resolveLoginRedirect } from '@/utils/login-redirect';
+import { useToast } from '@/composables/useToast';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -298,6 +299,7 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   const authStore = useAuthStore();
+  authStore.syncToken();
   if (!authStore.isAuthenticated) {
     const redirect = resolveLoginRedirect(router, to.fullPath);
     next({ name: 'Login', query: redirect === '/' ? {} : { redirect } });
@@ -305,8 +307,21 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (!authStore.user) {
-    await authStore.fetchUser();
+    try {
+      await authStore.fetchUser();
+    } catch (error) {
+      if (authStore.isAuthenticated) {
+        useToast().error(error instanceof Error ? error.message : '获取用户信息失败，请重试');
+        next(false);
+        return;
+      }
+    }
     if (!authStore.user) {
+      if (authStore.isAuthenticated) {
+        useToast().error('登录状态已变更，请重试');
+        next(false);
+        return;
+      }
       const redirect = resolveLoginRedirect(router, to.fullPath);
       next({ name: 'Login', query: redirect === '/' ? {} : { redirect } });
       return;

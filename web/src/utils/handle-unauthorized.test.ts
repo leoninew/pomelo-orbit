@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { authStore, router } = vi.hoisted(() => ({
-  authStore: { clearToken: vi.fn() },
+  authStore: { clearToken: vi.fn(), syncToken: vi.fn() },
   router: {
     currentRoute: { value: {} },
     replace: vi.fn(() => Promise.resolve()),
@@ -36,6 +36,7 @@ import { handleUnauthorized } from './handle-unauthorized';
 describe('handleUnauthorized', () => {
   beforeEach(() => {
     authStore.clearToken.mockReset();
+    authStore.syncToken.mockReturnValue('current-token');
     router.replace.mockClear();
   });
 
@@ -46,7 +47,7 @@ describe('handleUnauthorized', () => {
       query: {},
     };
 
-    handleUnauthorized();
+    expect(handleUnauthorized('current-token')).toBe(true);
 
     expect(authStore.clearToken).toHaveBeenCalledTimes(1);
     expect(router.replace).toHaveBeenCalledWith({
@@ -62,7 +63,7 @@ describe('handleUnauthorized', () => {
       query: { redirect: '/login?redirect=/gateway' },
     };
 
-    handleUnauthorized();
+    handleUnauthorized('current-token');
 
     expect(authStore.clearToken).toHaveBeenCalledTimes(1);
     expect(router.replace).toHaveBeenCalledWith({
@@ -78,9 +79,18 @@ describe('handleUnauthorized', () => {
       query: { redirect: '/gateway' },
     };
 
-    handleUnauthorized();
+    handleUnauthorized('current-token');
 
     expect(authStore.clearToken).toHaveBeenCalledTimes(1);
     expect(router.replace).not.toHaveBeenCalled();
   });
+
+  it.each(['old-token', null])(
+    'preserves the current session for a rejected %s request',
+    (token) => {
+      expect(handleUnauthorized(token)).toBe(false);
+      expect(authStore.clearToken).not.toHaveBeenCalled();
+      expect(router.replace).not.toHaveBeenCalled();
+    }
+  );
 });

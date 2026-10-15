@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readLogStream } from './log';
 import type { LogStreamEvent } from '@/gen/proto/orbit/v1/common/log_stream';
 
-vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ token: 'test-token' }) }));
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ syncToken: () => 'test-token' }) }));
 const { unauthorized } = vi.hoisted(() => ({ unauthorized: vi.fn() }));
 vi.mock('@/utils/handle-unauthorized', () => ({ handleUnauthorized: unauthorized }));
 afterEach(() => {
@@ -65,6 +65,28 @@ describe('readLogStream', () => {
         vi.fn()
       )
     ).rejects.toMatchObject({ status: 401, code: 'unauthorized', requestId: 'request-1' });
-    expect(unauthorized).toHaveBeenCalledOnce();
+    expect(unauthorized).toHaveBeenCalledExactlyOnceWith('test-token');
+  });
+
+  it('associates an authorization error event with the stream token', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('data: {"type":"error","http_status":401,"message":"Expired"}\n\n', {
+          headers: { 'Content-Type': 'text/event-stream' },
+        })
+      )
+    );
+    const onEvent = vi.fn();
+    await readLogStream(
+      { projectId: 'project-1', path: '/log', kind: 'file' },
+      '',
+      new AbortController().signal,
+      onEvent
+    );
+    expect(unauthorized).toHaveBeenCalledExactlyOnceWith('test-token');
+    expect(onEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error', http_status: 401 })
+    );
   });
 });

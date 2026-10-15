@@ -13,7 +13,6 @@ import type { editor } from 'monaco-editor';
 import { logResourceKey, readLogStream } from '@/api/log/log';
 import type { LogResource } from '@/api/log/log';
 import type { LogStreamEvent } from '@/gen/proto/orbit/v1/common/log_stream';
-import { handleUnauthorized } from '@/utils/handle-unauthorized';
 import { LogBuffer, LogReplayWindow } from '@/utils/log-buffer';
 import type { LogPatch } from '@/utils/log-buffer';
 import { ApiError } from '@/utils/request';
@@ -168,9 +167,6 @@ class LogSession {
         this.complete = true;
         break;
       case 'error':
-        if (event.http_status === 401) {
-          handleUnauthorized();
-        }
         throw new ApiError(
           event.message,
           event.http_status,

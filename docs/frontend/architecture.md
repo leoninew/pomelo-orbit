@@ -1,5 +1,5 @@
 # 前端架构
-最后修改时间: 2026-10-14
+最后修改时间: 2026-10-15 23:34:57
 
 Doc role: living SoT（前端）。目录以仓库 **`web/`** 为准。与代码冲突时以代码为准。
 
@@ -110,35 +110,13 @@ web/
 ### 3. API 调用
 
 **统一封装**
-```typescript
-// utils/request.ts
-import axios from 'axios';
 
-const request = axios.create({
-  baseURL: config.apiBaseUrl,
-  timeout: 30000,
-});
+统一入口为 `web/src/utils/request.ts`，使用 `runtimeConfig.publicUrl` 与 30 秒默认超时。HTTP 错误按 `{code,error,requestId}` 校验并归一化为 `ApiError`；格式不符为 `contract_mismatch`，网络错误单独保留。
 
-// 请求拦截器：添加 token
-request.interceptors.request.use(config => {
-  const authStore = useAuthStore();
-  if (authStore.token) {
-    config.headers.Authorization = `Bearer ${authStore.token}`;
-  }
-  return config;
-});
-
-// 响应拦截器：统一错误处理
-request.interceptors.response.use(
-  response => response.data,
-  error => {
-    if (error.response?.status === 401) {
-      // 跳转登录
-    }
-    return Promise.reject(new Error(error.response?.data?.detail));
-  }
-);
-```
+- Auth Store 监听 localStorage 的跨标签页变更；请求发送和受保护页面导航前调用 `syncToken()` 读取最新令牌。令牌改变时清除旧用户信息及权限缓存，后续通过 `/api/auth/me` 重新加载。
+- 普通 API、对话流及日志流只在有效契约的 401 对应当前登录令牌时清除会话并跳转登录。响应处理必须传入原请求令牌，旧令牌请求不得清除更新后的会话；不自动重放失败请求。
+- 用户信息加载遇到网络、服务端或响应格式错误时，保留登录令牌并向调用方抛出错误。路由守卫提示错误并取消本次导航，不将临时失败当作退出登录。登录流程必须成功取得当前会话的用户信息后才报告成功。
+- JWT 真实到期后仍需重新登录；本次同步规则不增加 refresh token 或延长后端有效期。
 
 **API 模块**
 ```typescript

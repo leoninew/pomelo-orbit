@@ -59,7 +59,7 @@ export async function readLogStream(
     params.set('cursor', cursor);
   }
   const headers: Record<string, string> = { Accept: 'text/event-stream' };
-  const token = useAuthStore().token;
+  const token = useAuthStore().syncToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
@@ -78,7 +78,7 @@ export async function readLogStream(
       }
       const error = toApiError(response.status, body);
       if (response.status === 401 && error.kind !== 'contract_mismatch') {
-        handleUnauthorized();
+        handleUnauthorized(token);
       }
       throw error;
     }
@@ -118,6 +118,9 @@ export async function readLogStream(
           undefined,
           'contract_mismatch'
         );
+      }
+      if (event.type === 'error' && event.http_status === 401) {
+        handleUnauthorized(token);
       }
       onEvent(event);
     });

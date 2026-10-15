@@ -52,7 +52,7 @@ export const dialogueApi = {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), DIALOGUE_TIMEOUT);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    const token = useAuthStore().token;
+    const token = useAuthStore().syncToken();
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
@@ -68,7 +68,7 @@ export const dialogueApi = {
         }
       );
       if (!response.ok) {
-        await throwStreamResponseError(response);
+        await throwStreamResponseError(response, token);
       }
       if (!response.body || !response.headers.get('content-type')?.includes('text/event-stream')) {
         throw new ApiError(
@@ -106,7 +106,7 @@ export const dialogueApi = {
   },
 };
 
-async function throwStreamResponseError(response: Response): Promise<never> {
+async function throwStreamResponseError(response: Response, token: string | null): Promise<never> {
   let responseBody: unknown;
   try {
     responseBody = await response.json();
@@ -114,8 +114,11 @@ async function throwStreamResponseError(response: Response): Promise<never> {
     responseBody = undefined;
   }
   const apiError = toApiError(response.status, responseBody);
-  if (response.status === 401 && apiError.kind !== 'contract_mismatch') {
-    handleUnauthorized();
+  if (
+    response.status === 401 &&
+    apiError.kind !== 'contract_mismatch' &&
+    handleUnauthorized(token)
+  ) {
     throw new ApiError(
       '登录已过期，请重新登录',
       response.status,

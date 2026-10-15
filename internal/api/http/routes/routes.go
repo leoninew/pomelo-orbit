@@ -85,7 +85,6 @@ func (r Router) Handler() http.Handler {
 		Enabled:           r.cfg.Logging.HTTP.Enabled,
 		RequestBodyLimit:  r.cfg.Logging.HTTP.RequestBodyLimit,
 		ResponseBodyLimit: r.cfg.Logging.HTTP.ResponseBodyLimit,
-		SkipAssetEnabled:  r.cfg.Logging.HTTP.SkipAssetEnabled,
 	}))
 	engine.Use(transportmiddleware.Recovery(r.logger))
 	engine.Use(transportmiddleware.Cors(r.cfg.Server.CorsAllowedOrigins, r.cfg.Server.ApiPathPrefixes))

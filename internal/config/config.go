@@ -78,7 +78,6 @@ type LogHTTPConfig struct {
 	Enabled           bool `mapstructure:"enabled" yaml:"enabled"`
 	RequestBodyLimit  int  `mapstructure:"request_body_limit" yaml:"request_body_limit"`
 	ResponseBodyLimit int  `mapstructure:"response_body_limit" yaml:"response_body_limit"`
-	SkipAssetEnabled  bool `mapstructure:"skip_asset_enabled" yaml:"skip_asset_enabled"`
 }
 
 const (

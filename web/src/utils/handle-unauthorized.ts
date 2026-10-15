@@ -4,10 +4,13 @@ import { resolveLoginRedirect } from '@/utils/login-redirect';
 
 /**
  * 处理 401 未授权响应
- * 清除 token 并跳转到登录页
+ * 仅当前请求使用的 token 仍为当前会话时，清除登录状态并跳转。
  */
-export function handleUnauthorized(): void {
+export function handleUnauthorized(requestToken: string | null): boolean {
   const authStore = useAuthStore();
+  if (!requestToken || authStore.syncToken() !== requestToken) {
+    return false;
+  }
   authStore.clearToken();
 
   const currentRoute = router.currentRoute.value;
@@ -18,11 +21,12 @@ export function handleUnauthorized(): void {
     if (currentRoute.query.redirect !== query.redirect) {
       void router.replace({ name: 'Login', query });
     }
-    return;
+    return true;
   }
 
   void router.replace({
     name: 'Login',
     query,
   });
+  return true;
 }

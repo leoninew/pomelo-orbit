@@ -57,9 +57,6 @@ func TestLoadDefaultConfigFile(t *testing.T) {
 	if cfg.Logging.HTTP.ResponseBodyLimit != 4096 {
 		t.Fatalf("unexpected http response body limit: %d", cfg.Logging.HTTP.ResponseBodyLimit)
 	}
-	if !cfg.Logging.HTTP.SkipAssetEnabled {
-		t.Fatal("expected successful asset log skipping enabled")
-	}
 	if cfg.Jwt.SecretKey != testJwtSecret {
 		t.Fatalf("unexpected jwt secret key: %s", cfg.Jwt.SecretKey)
 	}
@@ -166,7 +163,6 @@ func TestLoadConfigMergesEnvConfig(t *testing.T) {
     enabled: true
     request_body_limit: 2048
     response_body_limit: 1024
-    skip_asset_enabled: false
 database:
   url: "sqlite:///data/test.db"
 orbit:
@@ -197,9 +193,6 @@ worker:
 	}
 	if cfg.Logging.HTTP.ResponseBodyLimit != 1024 {
 		t.Fatalf("unexpected http response body limit: %d", cfg.Logging.HTTP.ResponseBodyLimit)
-	}
-	if cfg.Logging.HTTP.SkipAssetEnabled {
-		t.Fatal("expected successful asset log skipping disabled")
 	}
 	if cfg.Worker.Id != "worker-1" {
 		t.Fatalf("unexpected worker id: %s", cfg.Worker.Id)
@@ -252,7 +245,6 @@ worker:
 	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__ENABLED", "true")
 	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__REQUEST_BODY_LIMIT", "8192")
 	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__RESPONSE_BODY_LIMIT", "2048")
-	t.Setenv("POMELO_ORBIT_LOGGING__HTTP__SKIP_ASSET_ENABLED", "false")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__ENABLED", "false")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SITE_KEY", "site-from-env")
 	t.Setenv("POMELO_ORBIT_TURNSTILE__SECRET_KEY", "secret-from-env")
@@ -307,9 +299,6 @@ worker:
 	}
 	if cfg.Logging.HTTP.ResponseBodyLimit != 2048 {
 		t.Fatalf("unexpected http response body limit: %d", cfg.Logging.HTTP.ResponseBodyLimit)
-	}
-	if cfg.Logging.HTTP.SkipAssetEnabled {
-		t.Fatal("expected successful asset log skipping disabled")
 	}
 	if cfg.Turnstile.Enabled {
 		t.Fatal("expected turnstile disabled")
@@ -959,7 +948,6 @@ logging:
     enabled: false
     request_body_limit: 4096
     response_body_limit: 4096
-    skip_asset_enabled: true
 database:
   url: sqlite:///data/db/pomelo-repository.db
 workspace:

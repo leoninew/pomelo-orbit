@@ -316,7 +316,11 @@
   }
 
   onMounted(async () => {
-    await authStore.fetchUser();
+    try {
+      await authStore.fetchUser();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '获取用户信息失败，请重试');
+    }
     refresh();
   });
 </script>

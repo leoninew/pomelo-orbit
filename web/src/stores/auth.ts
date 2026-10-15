@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, onScopeDispose, ref } from 'vue';
 import { authApi } from '@/api/auth/auth';
 import type { UserInfoResp } from '@/gen/proto/orbit/v1/auth/auth';
 
@@ -11,19 +11,33 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value);
 
+  // Read storage before requests as well: a suspended tab may not have handled
+  // the storage event yet when the user resumes it.
+  function syncToken() {
+    const storedToken = localStorage.getItem(TOKEN_KEY);
+    if (token.value !== storedToken) {
+      token.value = storedToken;
+      user.value = undefined;
+    }
+    return token.value;
+  }
+
+  function onStorage(event: StorageEvent) {
+    if (event.storageArea === localStorage && (event.key === TOKEN_KEY || event.key === null)) {
+      syncToken();
+    }
+  }
+  window.addEventListener('storage', onStorage);
+  onScopeDispose(() => window.removeEventListener('storage', onStorage));
+
   function hasPermission(permission: string) {
     return user.value?.permissions.includes(permission) ?? false;
   }
 
   // 设置 token
   function setToken(newToken: string) {
-    token.value = newToken;
     localStorage.setItem(TOKEN_KEY, newToken);
-  }
-
-  // 设置用户信息
-  function setUser(userInfo: UserInfoResp) {
-    user.value = userInfo;
+    syncToken();
   }
 
   // 清除 token
@@ -47,35 +61,40 @@ export const useAuthStore = defineStore('auth', () => {
       turnstile_token: turnstileToken ?? '',
     });
     setToken(response.access_token);
-    await fetchUser();
+    if (!(await fetchUser())) {
+      throw new Error('登录状态已变更，请重试');
+    }
     return response;
   }
 
   // 登出
   async function logout() {
+    const requestToken = syncToken();
     try {
       await authApi.logout({});
     } catch (error) {
       console.error('Failed to logout:', error);
     } finally {
-      clearToken();
+      if (syncToken() === requestToken) {
+        clearToken();
+      }
     }
   }
 
   // 获取当前用户信息
   async function fetchUser() {
-    if (!token.value) {
+    const requestToken = syncToken();
+    if (!requestToken) {
       return undefined;
     }
-    try {
-      const userInfo = await authApi.getCurrentUser();
+    // Authentication failures are handled by the request boundary. Network and
+    // server failures must propagate without deleting a valid session.
+    const userInfo = await authApi.getCurrentUser();
+    if (syncToken() === requestToken) {
       user.value = userInfo;
       return userInfo;
-    } catch (error) {
-      console.error('Failed to fetch user:', error);
-      clearToken();
-      return undefined;
     }
+    return undefined;
   }
 
   // 修改密码
@@ -92,7 +111,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     hasPermission,
     setToken,
-    setUser,
+    syncToken,
     clearToken,
     login,
     logout,

@@ -2,7 +2,7 @@ import { AxiosError, type AxiosResponse, type InternalAxiosRequestConfig } from 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { authStore, handleUnauthorized } = vi.hoisted(() => ({
-  authStore: { token: null as string | null },
+  authStore: { syncToken: vi.fn() },
   handleUnauthorized: vi.fn(),
 }));
 
@@ -23,8 +23,9 @@ afterEach(() => {
 
 describe('HTTP error contract', () => {
   beforeEach(() => {
-    authStore.token = null;
+    authStore.syncToken.mockReturnValue(null);
     handleUnauthorized.mockReset();
+    handleUnauthorized.mockReturnValue(true);
   });
 
   it('retains status, code, and request ID from a valid response', () => {
@@ -54,15 +55,15 @@ describe('HTTP error contract', () => {
   });
 
   it('preserves the 401 boundary while retaining structured metadata', async () => {
-    const config = { headers: {} } as InternalAxiosRequestConfig;
-    const response: AxiosResponse = {
-      data: { code: 'unauthorized', error: 'Expired session.', requestId: 'request-3' },
-      status: 401,
-      statusText: 'Unauthorized',
-      headers: {},
-      config,
-    };
-    request.defaults.adapter = async () => {
+    authStore.syncToken.mockReturnValue('current-token');
+    request.defaults.adapter = async (config) => {
+      const response: AxiosResponse = {
+        data: { code: 'unauthorized', error: 'Expired session.', requestId: 'request-3' },
+        status: 401,
+        statusText: 'Unauthorized',
+        headers: {},
+        config,
+      };
       throw new AxiosError('request failed', 'ERR_BAD_RESPONSE', config, {}, response);
     };
 
@@ -72,7 +73,36 @@ describe('HTTP error contract', () => {
       code: 'unauthorized',
       requestId: 'request-3',
     });
-    expect(handleUnauthorized).toHaveBeenCalledTimes(1);
+    expect(handleUnauthorized).toHaveBeenCalledExactlyOnceWith('current-token');
+  });
+
+  it('uses the synchronized session for outgoing requests', async () => {
+    authStore.syncToken.mockReturnValue('stored-token');
+    request.defaults.adapter = async (config) => {
+      expect(config.headers.Authorization).toBe('Bearer stored-token');
+      return { data: {}, status: 200, statusText: 'OK', headers: {}, config };
+    };
+    await request.get('/api/project');
+  });
+
+  it('does not treat a malformed 401 response as an authenticated session rejection', async () => {
+    request.defaults.adapter = async (config) => {
+      throw new AxiosError(
+        'request failed',
+        'ERR_BAD_RESPONSE',
+        config,
+        {},
+        {
+          data: '<html>proxy error</html>',
+          status: 401,
+          statusText: 'Unauthorized',
+          headers: {},
+          config,
+        }
+      );
+    };
+    await expect(request.get('/api/project')).rejects.toMatchObject({ kind: 'contract_mismatch' });
+    expect(handleUnauthorized).not.toHaveBeenCalled();
   });
 
   it('normalizes an Axios network failure without exposing its transport message', async () => {
@@ -86,5 +116,6 @@ describe('HTTP error contract', () => {
       code: 'network_error',
       kind: 'network',
     });
+    expect(handleUnauthorized).not.toHaveBeenCalled();
   });
 });

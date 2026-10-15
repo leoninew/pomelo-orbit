@@ -2,12 +2,12 @@ package middleware
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"mime"
 	"net/http"
-	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -26,16 +26,15 @@ const (
 	RequestIdKey        = requestid.ContextKey
 	RequestIdHeader     = requestid.HeaderName
 	TruncatedBodySuffix = "..."
-	redactedLogValue    = "[REDACTED]"
+	privateKeyMask      = "******"
 )
 
-var deploymentSSHSecretJSONField = regexp.MustCompile(`(?is)("(?:deployment_ssh_private_key|deployment_ssh_key_passphrase|private_key|private_key_passphrase)"\s*:\s*)"(?:\\.|[^"\\])*"?`)
+var privateKeyJSONField = regexp.MustCompile(`(?is)("(?:deployment_ssh_private_key|deployment_ssh_key_passphrase|private_key|private_key_passphrase)"\s*:\s*)("(?:\\.|[^"\\])*"?)`)
 
 type LogRequestConfig struct {
 	Enabled           bool
 	RequestBodyLimit  int
 	ResponseBodyLimit int
-	SkipAssetEnabled  bool
 }
 
 func RequestId() gin.HandlerFunc {
@@ -76,16 +75,9 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 		}
 	}
 	return func(c *gin.Context) {
-		requestBodyLimit, responseBodyLimit := cfg.RequestBodyLimit, cfg.ResponseBodyLimit
-		if strings.HasSuffix(c.FullPath(), "/log/stream") || strings.HasSuffix(c.FullPath(), "/container-log/stream") {
-			responseBodyLimit = 0
-		}
-		if c.Request.URL.Path == "/api/cli/environment/terminal" || c.Request.URL.Path == "/api/cli/environment/exec" || c.Request.URL.Path == "/api/environment/terminal" || c.Request.URL.Path == "/api/environment/terminal/ticket" {
-			requestBodyLimit, responseBodyLimit = 0, 0
-		}
 		startedAt := time.Now()
 		requestAttrs := requestLogAttrs(c)
-		requestBody, bodyErr := readRequestBodyForLog(c.Request, requestBodyLimit)
+		requestBody, bodyErr := readRequestBodyForLog(c.Request, cfg.RequestBodyLimit)
 
 		startedAttrs := append([]any{}, requestAttrs...)
 		if requestBody != "" {
@@ -94,12 +86,9 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 		if bodyErr != nil {
 			startedAttrs = append(startedAttrs, "body_read_error", bodyErr.Error())
 		}
-		delayStartedLog := cfg.SkipAssetEnabled && isSkippableAssetPath(c.Request.URL.Path)
-		if !delayStartedLog {
-			logger.Info("request started", startedAttrs...)
-		}
+		logger.Info("request started", startedAttrs...)
 
-		bodyWriter := &bodyLogWriter{ResponseWriter: c.Writer, responseBodyLimit: responseBodyLimit}
+		bodyWriter := &bodyLogWriter{ResponseWriter: c.Writer, responseBodyLimit: cfg.ResponseBodyLimit}
 		c.Writer = bodyWriter
 		c.Next()
 
@@ -115,13 +104,6 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 				logger.Log(c.Request.Context(), level, "request failed", failureAttrs...)
 			}
 		}
-		if shouldSkipRequestLog(c.Request, status, cfg) {
-			return
-		}
-		if delayStartedLog {
-			logger.Info("request started", startedAttrs...)
-		}
-
 		completedAttrs := append([]any{}, requestAttrs...)
 		completedAttrs = append(completedAttrs,
 			"status", status,
@@ -158,19 +140,6 @@ func requestLogAttrs(c *gin.Context) []any {
 	}
 }
 
-func shouldSkipRequestLog(r *http.Request, status int, cfg LogRequestConfig) bool {
-	return cfg.SkipAssetEnabled && isSkippableAssetPath(r.URL.Path) && isSuccessfulAssetStatus(status)
-}
-
-func isSkippableAssetPath(requestPath string) bool {
-	requestPath = path.Clean("/" + requestPath)
-	return strings.HasPrefix(requestPath, "/assets/")
-}
-
-func isSuccessfulAssetStatus(status int) bool {
-	return (status >= http.StatusOK && status < http.StatusMultipleChoices) || status == http.StatusNotModified
-}
-
 func readRequestBodyForLog(r *http.Request, limit int) (string, error) {
 	if limit <= 0 || !isJSONContentType(r.Header.Get("Content-Type")) || r.Body == nil {
 		return "", nil
@@ -184,11 +153,24 @@ func readRequestBodyForLog(r *http.Request, limit int) (string, error) {
 	if len(loggedBytes) == 0 {
 		return "", nil
 	}
-	return redactSensitiveJSONLogBody(truncateLogBody(loggedBytes, limit)), nil
+	return formatJSONLogBody(loggedBytes, limit), nil
 }
 
-func redactSensitiveJSONLogBody(value string) string {
-	return deploymentSSHSecretJSONField.ReplaceAllString(value, `${1}"`+redactedLogValue+`"`)
+func maskPrivateKeyJSONLogBody(value string) string {
+	return privateKeyJSONField.ReplaceAllStringFunc(value, func(field string) string {
+		matches := privateKeyJSONField.FindStringSubmatch(field)
+		masked := privateKeyMask
+		var secret string
+		// A truncated JSON string has no captured suffix to reveal.
+		if err := json.Unmarshal([]byte(matches[2]), &secret); err == nil {
+			characters := []rune(secret)
+			if len(characters) > 4 {
+				masked += string(characters[len(characters)-4:])
+			}
+		}
+		encoded, _ := json.Marshal(masked)
+		return matches[1] + string(encoded)
+	})
 }
 
 func isJSONContentType(contentType string) bool {
@@ -200,18 +182,19 @@ func isJSONContentType(contentType string) bool {
 	return mediaType == "application/json" || strings.HasSuffix(mediaType, "+json")
 }
 
-func truncateLogBody(value []byte, limit int) string {
+func formatJSONLogBody(value []byte, limit int) string {
 	if limit <= 0 {
 		return ""
 	}
-	if len(value) <= limit {
-		return string(value)
+	suffix := ""
+	if len(value) > limit {
+		value = value[:limit]
+		for len(value) > 0 && !utf8.Valid(value) {
+			value = value[:len(value)-1]
+		}
+		suffix = TruncatedBodySuffix
 	}
-	value = value[:limit]
-	for len(value) > 0 && !utf8.Valid(value) {
-		value = value[:len(value)-1]
-	}
-	return string(value) + TruncatedBodySuffix
+	return maskPrivateKeyJSONLogBody(string(value)) + suffix
 }
 
 type prefixReadCloser struct {
@@ -249,7 +232,7 @@ func (w *bodyLogWriter) Body() string {
 	if w.responseBodyLimit <= 0 || w.body.Len() == 0 {
 		return ""
 	}
-	return truncateLogBody(w.body.Bytes(), w.responseBodyLimit)
+	return formatJSONLogBody(w.body.Bytes(), w.responseBodyLimit)
 }
 
 func (w *bodyLogWriter) captureBody(data []byte) {

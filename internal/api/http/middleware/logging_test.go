@@ -24,17 +24,19 @@ import (
 
 const testBodyMaxBytes = 32
 
-func TestTerminalRoutesDoNotLogBodies(t *testing.T) {
+func TestLogRequestRecordsTerminalBodies(t *testing.T) {
 	for _, path := range []string{"/api/environment/terminal/ticket", "/api/environment/terminal", "/api/cli/environment/terminal", "/api/cli/environment/exec"} {
 		t.Run(path, func(t *testing.T) {
-			entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 1024, ResponseBodyLimit: 1024}, http.MethodPost, path, "application/json", `{"input":"terminal secret"}`, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			requestBody := `{"input":"terminal command"}`
+			responseBody := `{"ticket":"ticket-value"}`
+			entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 1024, ResponseBodyLimit: 1024}, http.MethodPost, path, "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"ticket":"one-time-secret"}`))
+				_, _ = w.Write([]byte(responseBody))
 			}))
 			started, completed := assertStartedAndCompleted(t, entries)
 			assertLogValue(t, started, "path", path)
-			assertLogMissing(t, started, "request_body")
-			assertLogMissing(t, completed, "response_body")
+			assertLogValue(t, started, "request_body", requestBody)
+			assertLogValue(t, completed, "response_body", responseBody)
 		})
 	}
 }
@@ -149,63 +151,12 @@ func transportError() error {
 	return errors.New("database password=secret")
 }
 
-func TestLogRequestSkipsSuccessfulAssetsWhenEnabled(t *testing.T) {
-	cfg := LogRequestConfig{Enabled: true, RequestBodyLimit: testBodyMaxBytes, ResponseBodyLimit: testBodyMaxBytes, SkipAssetEnabled: true}
-	cases := []struct {
-		target string
-		status int
-	}{
-		{target: "/assets/app.js", status: http.StatusOK},
-		{target: "/assets/app.css?v=1", status: http.StatusCreated},
-		{target: "/assets/page.html", status: http.StatusNoContent},
-		{target: "/assets/image.png", status: http.StatusOK},
-		{target: "/assets/fonts/app.woff2", status: http.StatusNotModified},
-		{target: "/assets/manifest", status: http.StatusOK},
-	}
-	for _, tc := range cases {
-		content, recorder := runLoggedRequestContentWithConfig(t, cfg, http.MethodGet, tc.target, "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(tc.status)
-			_, _ = w.Write([]byte("asset"))
-		}))
-		if content != "" {
-			t.Fatalf("expected no log entries for %s, got %s", tc.target, content)
-		}
-		if recorder.Code != tc.status {
-			t.Fatalf("expected status %d for %s, got %d", tc.status, tc.target, recorder.Code)
-		}
-	}
-}
-
-func TestLogRequestKeepsFailedAssetsAndNonAssets(t *testing.T) {
-	cfg := LogRequestConfig{Enabled: true, RequestBodyLimit: testBodyMaxBytes, ResponseBodyLimit: testBodyMaxBytes, SkipAssetEnabled: true}
-	cases := []struct {
-		name   string
-		target string
-		status int
-	}{
-		{name: "asset not found", target: "/assets/app.js", status: http.StatusNotFound},
-		{name: "asset redirect", target: "/assets/app.js", status: http.StatusFound},
-		{name: "non-asset ok", target: "/static/app.png", status: http.StatusOK},
-		{name: "asset prefix mismatch", target: "/assets-old/app.js", status: http.StatusOK},
-		{name: "asserts typo", target: "/asserts/app.js", status: http.StatusOK},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			entries, _ := runLoggedRequestWithConfig(t, cfg, http.MethodGet, tc.target, "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tc.status)
-			}))
-			_, completed := assertStartedAndCompleted(t, entries)
-			assertLogNumber(t, completed, "status", tc.status)
-		})
-	}
-}
-
-func TestLogRequestKeepsSuccessfulAssetsWhenSkipDisabled(t *testing.T) {
-	cfg := LogRequestConfig{Enabled: true, RequestBodyLimit: testBodyMaxBytes, ResponseBodyLimit: testBodyMaxBytes, SkipAssetEnabled: false}
-	entries, _ := runLoggedRequestWithConfig(t, cfg, http.MethodGet, "/assets/app.js", "", "", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestLogRequestRecordsAssets(t *testing.T) {
+	entries, _ := runLoggedRequest(t, http.MethodGet, "/assets/app.js", "", "", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
-	_, completed := assertStartedAndCompleted(t, entries)
+	started, completed := assertStartedAndCompleted(t, entries)
+	assertLogValue(t, started, "path", "/assets/app.js")
 	assertLogNumber(t, completed, "status", http.StatusOK)
 }
 
@@ -375,58 +326,41 @@ func TestLogRequestTruncatesResponseBodyByConfiguredBytes(t *testing.T) {
 	assertTruncatedBody(t, loggedBody)
 }
 
-func TestLogRequestRedactsDeploymentSSHSecrets(t *testing.T) {
-	privateKey := "private-key-material"
-	passphrase := "private-key-passphrase"
-	requestBody := `{"deployment_ssh_private_key":"` + privateKey + `","deployment_ssh_key_passphrase":"` + passphrase + `"}`
+func TestLogRequestMasksPrivateKeysAndPreservesBodies(t *testing.T) {
+	requestBody := `{"private_key":"private-material-1234","private_key_passphrase":"private-passphrase-5678","token":"visible-token"}`
+	responseBody := `{"deployment_ssh_private_key":"deployment-private-9012","deployment_ssh_key_passphrase":"deployment-passphrase-3456","token":"visible-token"}`
 	var handlerBody string
-	entries, recorder := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 48}, http.MethodPost, "/api/project", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		handlerBody = string(body)
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	started, _ := assertStartedAndCompleted(t, entries)
-	loggedBody, ok := started["request_body"].(string)
-	if !ok {
-		t.Fatalf("expected request_body string: %+v", started)
-	}
-	if !strings.Contains(loggedBody, redactedLogValue) {
-		t.Fatalf("expected a redacted deployment secret, got %q", loggedBody)
-	}
-	for _, secret := range []string{privateKey, passphrase} {
-		if strings.Contains(loggedBody, secret) {
-			t.Fatalf("deployment secret leaked into request log: %q", loggedBody)
+	entries, recorder := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 1024, ResponseBodyLimit: 1024}, http.MethodPost, "/api/environment/terminal/ticket", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
+		handlerBody = string(body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(responseBody))
+	}))
+	started, completed := assertStartedAndCompleted(t, entries)
+	assertLogValue(t, started, "request_body", `{"private_key":"******1234","private_key_passphrase":"******5678","token":"visible-token"}`)
+	assertLogValue(t, completed, "response_body", `{"deployment_ssh_private_key":"******9012","deployment_ssh_key_passphrase":"******3456","token":"visible-token"}`)
 	if handlerBody != requestBody {
 		t.Fatalf("expected handler body %q, got %q", requestBody, handlerBody)
 	}
-	if recorder.Code != http.StatusNoContent {
-		t.Fatalf("status=%d", recorder.Code)
+	if recorder.Body.String() != responseBody {
+		t.Fatalf("expected response body %q, got %q", responseBody, recorder.Body.String())
 	}
 }
 
-func TestLogRequestRedactsSSHSecrets(t *testing.T) {
-	privateKey := "private-key-material"
-	passphrase := "private-key-passphrase"
-	requestBody := `{"private_key":"` + privateKey + `","private_key_passphrase":"` + passphrase + `"}`
-	entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 256}, http.MethodPost, "/api/project-initialization/environment/ssh-command?project_id=p", "application/json", requestBody, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
+func TestLogRequestMasksTruncatedPrivateKeys(t *testing.T) {
+	body := `{"private_key":"` + strings.Repeat("key-material", 10) + `1234"}`
+	entries, _ := runLoggedRequest(t, http.MethodPost, "/api/test", "application/json", body, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(body))
 	}))
-	started, _ := assertStartedAndCompleted(t, entries)
-	loggedBody, ok := started["request_body"].(string)
-	if !ok {
-		t.Fatalf("expected request_body string: %+v", started)
-	}
-	if !strings.Contains(loggedBody, redactedLogValue) {
-		t.Fatalf("expected a redacted project initialization secret, got %q", loggedBody)
-	}
-	for _, secret := range []string{privateKey, passphrase} {
-		if strings.Contains(loggedBody, secret) {
-			t.Fatalf("project initialization secret leaked into request log: %q", loggedBody)
-		}
-	}
+	started, completed := assertStartedAndCompleted(t, entries)
+	assertLogValue(t, started, "request_body", `{"private_key":"******"...`)
+	assertLogValue(t, completed, "response_body", `{"private_key":"******"...`)
 }
+
 func TestLogRequestTruncatesRequestBodyByConfiguredBytesAndRestoresBody(t *testing.T) {
 	requestBody := `{"value":"` + strings.Repeat("好", testBodyMaxBytes) + `"}`
 	var handlerBody string

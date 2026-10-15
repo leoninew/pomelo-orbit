@@ -41,8 +41,9 @@
     try {
       const response = await authApi.googleCallback({ code });
       authStore.setToken(response.access_token);
-      const profile = await authApi.getCurrentUser();
-      authStore.setUser(profile);
+      if (!(await authStore.fetchUser())) {
+        throw new Error('登录状态已变更，请重试');
+      }
       toast.success(t('login.loginSuccess'));
       await router.push(redirectTarget());
     } catch (err: unknown) {

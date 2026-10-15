@@ -66,8 +66,11 @@ const request = axios.create({
 request.interceptors.request.use(
   (axiosConfig) => {
     const authStore = useAuthStore();
-    if (authStore.token) {
-      axiosConfig.headers.Authorization = `Bearer ${authStore.token}`;
+    const token = authStore.syncToken();
+    if (token) {
+      axiosConfig.headers.Authorization = `Bearer ${token}`;
+    } else {
+      axiosConfig.headers.delete('Authorization');
     }
     return axiosConfig;
   },
@@ -84,9 +87,16 @@ request.interceptors.response.use(
 
     // 401 - token 失效，清除登录状态并跳转登录页
     if (status === 401) {
-      handleUnauthorized();
       const apiError = toApiError(status, error.response?.data);
       if (apiError.kind === 'contract_mismatch') {
+        return Promise.reject(apiError);
+      }
+      const authorization = error.config?.headers.Authorization;
+      const requestToken =
+        typeof authorization === 'string' && authorization.startsWith('Bearer ')
+          ? authorization.slice(7)
+          : null;
+      if (!handleUnauthorized(requestToken)) {
         return Promise.reject(apiError);
       }
       return Promise.reject(

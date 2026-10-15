@@ -36,4 +36,4 @@ make test
 
 `cert` 首次使用前执行 `mkcert -install`；网关配置见[证书管理指南](../docs/guides/certificate-management.md)。`remote` 的 `SSH_HOST`、`SSH_USER` 配置在 `scripts/.env`，环境变量优先；隧道要求免交互密钥认证。
 
-`make run` 默认使用 `development` 环境，可通过 `POMELO_ORBIT_APP__ENV` 覆盖。参数含空格或 `=` 时使用 `make run ARGS='...'`。Plugin 安装仍使用独立的 `install.py`。
+`make run` 默认使用 `development` 环境，可通过 `POMELO_ORBIT_APP__ENV` 覆盖。参数含空格或 `=` 时使用 `make run ARGS='...'`。

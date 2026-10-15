@@ -127,9 +127,3 @@ tasks:
 
         docker build -f "$DOCKERFILE" -t "pomelo-orbit:$TAG" .
         printf "image built: pomelo-orbit:%s\n" "$TAG"
-
-  install:
-    desc: Install or refresh the local agent plugin
-    cmds:
-      - uv --directory scripts run install.py plugin check
-      - uv --directory scripts run install.py plugin apply

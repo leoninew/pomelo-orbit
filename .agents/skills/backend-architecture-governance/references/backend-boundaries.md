@@ -47,21 +47,21 @@
 
 | 案例 | 应证明的行为 | 测试边界 |
 | --- | --- | --- |
-| [service_code_test.go](../../../internal/application/service/usecase/service_code_test.go) | 用例使用提交的 Service code 和必要业务校验 | 真实用例 + Repository/应用替身；不需要 SQLite 或迁移。 |
-| [Route publication_test.go](../../../internal/application/route/usecase/publication_test.go) | 发布范围、修订、失败后继续、安全错误映射及 ACME 准入 | 真实用例 + 存储事实/发布端口替身；锁等待用虚拟时间。条件写入、实际保存与失败后的持久化状态继续在集成测试验证。 |
-| [model/component_identity_test.go](../../../internal/model/component_identity_test.go) | 组件身份规则 | 直接验证业务值与规则。 |
-| [environment/environment_test.go](../../../internal/api/http/handler/environment/environment_test.go) | 当前 DTO 与 Proto 的目标字段映射 | 直接调用 mapper，避免数据库和完整服务装配。 |
-| [MCP route_tools_test.go](../../../internal/api/mcp/delivery/route_tools_test.go) | 工具参数、actor/Project scope 与结果映射 | 内存 MCP 连接 + 应用替身，属于协议契约验证。 |
-| [MCP transaction_integration_test.go](../../../internal/api/mcp/delivery/transaction_integration_test.go) | MCP 组件集合更新失败不丢原值，成功提交后可见 | 内存 MCP + 真实用例/SQLC/临时 SQLite；一个必要的跨入口原子性验证，不能由应用替身证明回滚。 |
-| [user/service_test.go](../../../internal/application/user/usecase/service_test.go) | 密码长度、必填字段和真实密码处理 | 真实用例 + 存储事实替身，不需要迁移。 |
-| [deployment/service_status_check_test.go](../../../internal/application/deployment/usecase/service_status_check_test.go) | 预览、操作者隔离和确认时传播条件写入冲突 | 正常构造独立用例 + 结构化事实端口；不依赖 Docker 字符串或 SQLite。 |
-| [deployment/container_log_stream_test.go](../../../internal/application/deployment/usecase/container_log_stream_test.go) | 等待容器、重建后续读、权限撤销及目标变化后关闭 | 命令服务正常构造 + 容器 ID/日志请求替身；等待编排使用虚拟时间，不断言 CLI。Docker 参数及输出解码在适配器测试验证。 |
-| [deployment/runtime_tools_test.go](../../../internal/application/deployment/usecase/runtime_tools_test.go) | 容器/网络归属、组件身份、探测准入及重启计数增长 | 正常构造 + 结构化观察替身；稳定性窗口用虚拟时间。JSON 数组/记录流、命令参数和诊断数据契约在 Docker 适配器验证。 |
-| [service/status_check_test.go](../../../internal/repository/impl/sqlc/service/status_check_test.go) | 状态确认不能覆盖已变化基线或活动部署 | 真实 SQLite 条件 SQL，一次迁移、每个案例独立事务回滚；不重复测试外部观察。 |
-| [deployment/execution_control_test.go](../../../internal/application/deployment/usecase/execution_control_test.go) | 取消不等待无响应端口、新操作不等待旧运行退出、超时后忽略晚到结果 | 真实执行编排 + 事实/阻塞端口替身，`testing/synctest` 提供虚拟时间，不消耗真实 DB 清理预算。 |
-| [service/repository_test.go](../../../internal/repository/impl/sqlc/service/repository_test.go) | 删除保留 Deployment 历史、查询与隔离 | 临时 SQLite + 真实查询，属于本地持久化集成验证。 |
-| [deployment/operation_takeover_test.go](../../../internal/application/deployment/usecase/operation_takeover_test.go) | 新操作接管、旧结果不覆盖当前记录及失败准入回滚 | 正常构造命令服务 + 真实 DB/queue，直接验证 Repository 生命周期条件写入；取消、超时和晚退出的编排独立测试。 |
-| [worker/worker_test.go](../../../internal/queue/worker/worker_test.go) | 领取事实传递、成功/失败分派及结果保存错误传播 | 真实 Worker/Router + 任务存储记录替身，不依赖 SQL。领取与重试预算的 SQL 证据留在 Task Repository。 |
+| [service_code_test.go](../../../../internal/application/service/usecase/service_code_test.go) | 用例使用提交的 Service code 和必要业务校验 | 真实用例 + Repository/应用替身；不需要 SQLite 或迁移。 |
+| [Route publication_test.go](../../../../internal/application/route/usecase/publication_test.go) | 发布范围、修订、失败后继续、安全错误映射及 ACME 准入 | 真实用例 + 存储事实/发布端口替身；锁等待用虚拟时间。条件写入、实际保存与失败后的持久化状态继续在集成测试验证。 |
+| [model/component_identity_test.go](../../../../internal/model/component_identity_test.go) | 组件身份规则 | 直接验证业务值与规则。 |
+| [environment/environment_test.go](../../../../internal/api/http/handler/environment/environment_test.go) | 当前 DTO 与 Proto 的目标字段映射 | 直接调用 mapper，避免数据库和完整服务装配。 |
+| [MCP route_tools_test.go](../../../../internal/api/mcp/delivery/route_tools_test.go) | 工具参数、actor/Project scope 与结果映射 | 内存 MCP 连接 + 应用替身，属于协议契约验证。 |
+| [MCP transaction_integration_test.go](../../../../internal/api/mcp/delivery/transaction_integration_test.go) | MCP 组件集合更新失败不丢原值，成功提交后可见 | 内存 MCP + 真实用例/SQLC/临时 SQLite；一个必要的跨入口原子性验证，不能由应用替身证明回滚。 |
+| [user/service_test.go](../../../../internal/application/user/usecase/service_test.go) | 密码长度、必填字段和真实密码处理 | 真实用例 + 存储事实替身，不需要迁移。 |
+| [deployment/service_status_check_test.go](../../../../internal/application/deployment/usecase/service_status_check_test.go) | 预览、操作者隔离和确认时传播条件写入冲突 | 正常构造独立用例 + 结构化事实端口；不依赖 Docker 字符串或 SQLite。 |
+| [deployment/container_log_stream_test.go](../../../../internal/application/deployment/usecase/container_log_stream_test.go) | 等待容器、重建后续读、权限撤销及目标变化后关闭 | 命令服务正常构造 + 容器 ID/日志请求替身；等待编排使用虚拟时间，不断言 CLI。Docker 参数及输出解码在适配器测试验证。 |
+| [deployment/runtime_tools_test.go](../../../../internal/application/deployment/usecase/runtime_tools_test.go) | 容器/网络归属、组件身份、探测准入及重启计数增长 | 正常构造 + 结构化观察替身；稳定性窗口用虚拟时间。JSON 数组/记录流、命令参数和诊断数据契约在 Docker 适配器验证。 |
+| [service/status_check_test.go](../../../../internal/repository/impl/sqlc/service/status_check_test.go) | 状态确认不能覆盖已变化基线或活动部署 | 真实 SQLite 条件 SQL，一次迁移、每个案例独立事务回滚；不重复测试外部观察。 |
+| [deployment/execution_control_test.go](../../../../internal/application/deployment/usecase/execution_control_test.go) | 取消不等待无响应端口、新操作不等待旧运行退出、超时后忽略晚到结果 | 真实执行编排 + 事实/阻塞端口替身，`testing/synctest` 提供虚拟时间，不消耗真实 DB 清理预算。 |
+| [service/repository_test.go](../../../../internal/repository/impl/sqlc/service/repository_test.go) | 删除保留 Deployment 历史、查询与隔离 | 临时 SQLite + 真实查询，属于本地持久化集成验证。 |
+| [deployment/operation_takeover_test.go](../../../../internal/application/deployment/usecase/operation_takeover_test.go) | 新操作接管、旧结果不覆盖当前记录及失败准入回滚 | 正常构造命令服务 + 真实 DB/queue，直接验证 Repository 生命周期条件写入；取消、超时和晚退出的编排独立测试。 |
+| [worker/worker_test.go](../../../../internal/queue/worker/worker_test.go) | 领取事实传递、成功/失败分派及结果保存错误传播 | 真实 Worker/Router + 任务存储记录替身，不依赖 SQL。领取与重试预算的 SQL 证据留在 Task Repository。 |
 
 例如密码长度、名称校验等规则若通过完整迁移才能测试，优先直接调用真实用例并替换存储端口；唯一约束、事务回滚和历史保留则需另保留持久化证据。不要让假 Repository 自己实现权限、状态转换或回滚逻辑，再断言它做对了。
 

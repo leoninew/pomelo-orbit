@@ -344,7 +344,7 @@ const relativeTime = formatRelativeTime(utcTime);
 
 ## 测试策略
 
-编写、审查与清理测试的具体实践见项目内 [frontend-unit-testing skill](../../skills/frontend-unit-testing/SKILL.md)，包括警告排查和实现变更后的测试漂移检查。
+编写、审查与清理测试的具体实践见项目内 [frontend-unit-testing skill](../../.agents/skills/frontend-unit-testing/SKILL.md)，包括警告排查和实现变更后的测试漂移检查。
 
 前端只保留轻量单元测试，验证业务规则、数据转换、请求契约和简单组件的输入输出。优先主要正向流程与真实、高风险的失败边界，不追求覆盖率，不补齐每个组件的测试。
 
@@ -396,4 +396,4 @@ yarn typecheck
 
 - [Reka UI 使用指南](./reka-ui-guide.md)
 - [风格一致性规范](./style-guide.md)
-- [编码规范](../../CLAUDE.md)
+- [编码规范](../../AGENTS.md)

@@ -27,7 +27,7 @@
 - 当前 `AGENTS.md`、`Taskfile.yml`、[后端架构](../architecture/backend.md)、CD 产品模型与运行时约定。
 - 用户指定的 K12 Delivery OS `architecture-governance`：采用按职责追踪、通过端口直接测试、治理实现与测试依赖的原则。
 - `best-practices:backend-service-architecture`（0.1.0）：采用分层、依赖方向、生成代码隔离、组合根和适配器边界。
-- 项目内 [backend-architecture-governance](../../skills/backend-architecture-governance/SKILL.md) 及其[项目边界](../../skills/backend-architecture-governance/references/backend-boundaries.md)。该 skill 自包含，无须另一项目或插件存在。
+- 项目内 [backend-architecture-governance](../../.agents/skills/backend-architecture-governance/SKILL.md) 及其[项目边界](../../.agents/skills/backend-architecture-governance/references/backend-boundaries.md)。该 skill 自包含，无须另一项目或插件存在。
 
 应用用例与 model 保持依赖内层端口；Gin/HTTP、MCP、SQLC 及外部协议留在对应适配边界。检查覆盖代表调用链和依赖扫描，不声称逐行审计全仓或验证外部环境。前端测试限制不扩展为后端禁止必要的 SQLite、协议、取消和事务验证；不以覆盖率或测试数量作为治理目标。
 

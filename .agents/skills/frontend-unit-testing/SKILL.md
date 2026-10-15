@@ -5,7 +5,7 @@ description: 在 Pomelo Orbit 的 web 前端编写、审查或精简轻量单元
 
 # 前端单元测试实践
 
-以当前生产代码的业务承诺为依据，使用已有 Vitest 工具链完成最小有效验证。先阅读 [项目约束](../../AGENTS.md)、[前端架构的测试策略](../../docs/frontend/architecture.md#测试策略) 和相关实现、生产调用方；不要以历史测试反推已经移除的需求。
+以当前生产代码的业务承诺为依据，使用已有 Vitest 工具链完成最小有效验证。先阅读 [项目约束](../../../AGENTS.md)、[前端架构的测试策略](../../../docs/frontend/architecture.md#测试策略) 和相关实现、生产调用方；不要以历史测试反推已经移除的需求。
 
 ## 测试范围
 
@@ -24,9 +24,9 @@ description: 在 Pomelo Orbit 的 web 前端编写、审查或精简轻量单元
 
 按需参考现有例子，不机械复制用例数量或结构：
 
-- [componentForm.test.ts](../../web/src/views/application/componentForm.test.ts)：按当前独立表单卡片验证校验与请求转换。
-- [request.test.ts](../../web/src/utils/request.test.ts)：通过 Axios adapter 替身验证请求和错误契约。
-- [ComponentIdentityFields.test.ts](../../web/src/components/application/ComponentIdentityFields.test.ts)：验证单个组件的字段错误与编辑反馈。
+- [componentForm.test.ts](../../../web/src/views/application/componentForm.test.ts)：按当前独立表单卡片验证校验与请求转换。
+- [request.test.ts](../../../web/src/utils/request.test.ts)：通过 Axios adapter 替身验证请求和错误契约。
+- [ComponentIdentityFields.test.ts](../../../web/src/components/application/ComponentIdentityFields.test.ts)：验证单个组件的字段错误与编辑反馈。
 
 ## 警告排查
 
@@ -39,7 +39,7 @@ yarn --cwd web test --reporter=default --silent=false --no-color
 当前 Vitest 在 agent 环境可能默认使用隐藏已通过用例日志的 reporter；普通运行显示通过，不能证明没有警告。
 
 - 将每条警告定位到用例和实际来源。缺翻译、未匹配路由、缺注入或残留挂载等测试环境问题应修正环境；真实实现缺陷应修正实现。
-- 测试未匹配路由的回退行为时，提供局部 resolver 替身返回未匹配结果，保留回退断言；参考 [login-redirect.test.ts](../../web/src/utils/login-redirect.test.ts)。
+- 测试未匹配路由的回退行为时，提供局部 resolver 替身返回未匹配结果，保留回退断言；参考 [login-redirect.test.ts](../../../web/src/utils/login-redirect.test.ts)。
 - 只有当前行为明确承诺会产生日志时，才在单个用例内精确断言，并在结束后恢复替身。不全局静默 `console`、Vue 警告或 Vitest 日志，不将消音当作修复。
 
 ## 实现变更后的测试漂移

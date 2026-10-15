@@ -36,7 +36,7 @@
 | Orbit 作为普通应用的停机迁移 | [guides/orbit-self-migration.md](./guides/orbit-self-migration.md) |
 | CI Pipeline（模板、应用流水线、制品与运行） | [guides/ci-pipeline-design.md](./guides/ci-pipeline-design.md) |
 | CI Pipeline 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |
-| Agent Plugin 与 Skill 发布 | [guides/plugin-release.md](./guides/plugin-release.md) |
+| 项目内 Agent Skills | [guides/project-skills.md](./guides/project-skills.md) |
 | 权限 RBAC | [guides/permissions.md](./guides/permissions.md) |
 | MCP 直接操作 | [guides/mcp-direct-operations.md](./guides/mcp-direct-operations.md) |
 | Google OAuth（国内网络） | [guides/google-oauth-china-network.md](./guides/google-oauth-china-network.md) |

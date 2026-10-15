@@ -16,7 +16,7 @@
         wrap="soft"
       />
     </div>
-    <p v-else class="text-sm text-muted-foreground" aria-live="polite">
+    <p v-else-if="!error" class="text-sm text-muted-foreground" aria-live="polite">
       {{ t('project.initialization.sshCommandLoading') }}
     </p>
     <p v-if="error" class="app-field-error" role="alert">{{ error }}</p>

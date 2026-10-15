@@ -63,6 +63,8 @@ export interface EnvironmentLocalTargetReq {
 export interface ProjectEnvironmentSSHCommandResp {
   environment: EnvironmentResp | undefined;
   public_key: string;
+  key_created_at: string;
+  source_host: string;
 }
 
 export interface EnvironmentTerminalTicketResp {

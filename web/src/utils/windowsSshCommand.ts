@@ -4,6 +4,7 @@ export type WindowsSshCommandInput = {
   username: string;
   workspaceRoot: string;
   publicKey: string;
+  keyComment: string;
 };
 
 function powershellSingleQuote(value: string): string {
@@ -21,7 +22,8 @@ export function buildWindowsSshInitializationCommand(input: WindowsSshCommandInp
   const port = Number.isInteger(input.port) ? input.port : 22;
   const workspace = input.workspaceRoot.trim() || 'C:\\Users\\<user>\\.pomelo-orbit';
 
-  return `$ErrorActionPreference = 'Stop'
+  return `& {
+$ErrorActionPreference = 'Stop'
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($identity)
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -84,21 +86,42 @@ $sshKeygenExe = Join-Path $env:WINDIR 'System32\\OpenSSH\\ssh-keygen.exe'
 if ($LASTEXITCODE -ne 0) {
   throw 'OpenSSH Server host keys could not be generated.'
 }
+Get-ChildItem -LiteralPath $programDataSsh -Filter 'ssh_host_*_key' -File | ForEach-Object {
+  $hostKeyAcl = [System.Security.AccessControl.FileSecurity]::new()
+  $hostKeyAcl.SetSecurityDescriptorSddlForm('O:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)')
+  Set-Acl -LiteralPath $_.FullName -AclObject $hostKeyAcl
+}
 $sshdExe = Join-Path $env:WINDIR 'System32\\OpenSSH\\sshd.exe'
 & $sshdExe -t -f $sshdConfig
 if ($LASTEXITCODE -ne 0) {
   throw 'OpenSSH Server configuration is invalid after setting the configured port.'
 }
-Set-Service -Name sshd -StartupType Automatic
-$sshd = Get-Service -Name sshd
-if ($sshd.Status -eq 'Running') {
-  Restart-Service -Name sshd -Force
-} else {
-  Start-Service -Name sshd
-}
-$sshd = Get-Service -Name sshd
-if ($sshd.Status -ne 'Running') {
-  throw 'OpenSSH Server service failed to stay running. Check C:\\ProgramData\\ssh\\logs and the System event log.'
+$serviceStartTime = (Get-Date).AddSeconds(-5)
+try {
+  Set-Service -Name sshd -StartupType Automatic
+  $sshd = Get-Service -Name sshd
+  if ($sshd.Status -eq 'Running') {
+    Restart-Service -Name sshd -Force
+  } else {
+    Start-Service -Name sshd
+  }
+  $sshd = Get-Service -Name sshd
+  if ($sshd.Status -ne 'Running') {
+    throw 'OpenSSH Server service failed to stay running.'
+  }
+} catch {
+  $startupError = $_
+  & {
+    $ErrorActionPreference = 'Continue'
+    Get-CimInstance -ClassName Win32_Service -Filter "Name='sshd'" -ErrorAction SilentlyContinue |
+      Format-List Name,State,PathName,StartName,ExitCode,ServiceSpecificExitCode | Out-Host
+    Get-WinEvent -FilterHashtable @{ LogName = @('OpenSSH/Admin', 'OpenSSH/Operational'); StartTime = $serviceStartTime } -MaxEvents 10 -ErrorAction SilentlyContinue |
+      Format-List LogName,TimeCreated,Id,Message | Out-Host
+    Get-WinEvent -FilterHashtable @{ LogName = 'System'; ProviderName = 'Service Control Manager'; StartTime = $serviceStartTime } -MaxEvents 10 -ErrorAction SilentlyContinue |
+      Where-Object { $_.Message -match 'sshd|OpenSSH' } |
+      Format-List TimeCreated,Id,Message | Out-Host
+  }
+  throw "OpenSSH Server service failed to start: $($startupError.Exception.Message) See the diagnostics above."
 }
 $firewallRuleName = 'Pomelo-Orbit-OpenSSH-In-TCP'
 $firewallRule = Get-NetFirewallRule -Name $firewallRuleName -ErrorAction SilentlyContinue
@@ -128,6 +151,7 @@ if (-not (Test-OrbitSshListening ${port})) {
 }
 Write-Host '[0/3] Windows OpenSSH Server is installed, running, and reachable on the configured port.'
 $key = ${powershellSingleQuote(key)}
+$keyComment = ${powershellSingleQuote(input.keyComment)}
 $targetUsername = ${powershellSingleQuote(username)}
 $workspace = ${powershellSingleQuote(workspace)}
 try {
@@ -142,9 +166,24 @@ if (-not $targetProfile -or [string]::IsNullOrWhiteSpace($targetProfile.LocalPat
 }
 function Add-DeploymentKey([string]$path) {
   New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
-  if (-not (Test-Path -LiteralPath $path) -or -not (Select-String -LiteralPath $path -SimpleMatch -Quiet -Pattern $key)) {
-    Add-Content -LiteralPath $path -Value $key
+  $lines = if (Test-Path -LiteralPath $path) { @(Get-Content -LiteralPath $path -Encoding UTF8) } else { @() }
+  $updated = [System.Collections.Generic.List[string]]::new()
+  $found = $false
+  foreach ($line in $lines) {
+    if ($line -ceq $key) {
+      if ($updated.Count -gt 0 -and $updated[$updated.Count - 1].StartsWith('# Pomelo Orbit | ')) {
+        $updated.RemoveAt($updated.Count - 1)
+      }
+      $updated.Add($keyComment)
+      $found = $true
+    }
+    $updated.Add($line)
   }
+  if (-not $found) {
+    $updated.Add($keyComment)
+    $updated.Add($key)
+  }
+  [System.IO.File]::WriteAllLines($path, $updated, [System.Text.UTF8Encoding]::new($false))
 }
 $sshDir = Join-Path $targetProfile.LocalPath '.ssh'
 $authorizedKeys = Join-Path $sshDir 'authorized_keys'
@@ -174,5 +213,6 @@ if ($LASTEXITCODE -ne 0 -or $serverOS -ne 'linux') { throw 'Docker Desktop must 
 & docker.exe info | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Docker daemon is unavailable' }
 Write-Host '[3/3] Docker Desktop and Docker Compose are ready.'
+}
 `;
 }

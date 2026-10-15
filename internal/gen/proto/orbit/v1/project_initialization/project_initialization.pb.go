@@ -534,6 +534,8 @@ type ProjectInitializationSSHCommandResp struct {
 	state         protoimpl.MessageState           `protogen:"open.v1"`
 	Status        *ProjectInitializationStatusResp `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 	PublicKey     string                           `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	KeyCreatedAt  string                           `protobuf:"bytes,3,opt,name=key_created_at,json=keyCreatedAt,proto3" json:"key_created_at,omitempty"`
+	SourceHost    string                           `protobuf:"bytes,4,opt,name=source_host,json=sourceHost,proto3" json:"source_host,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -578,6 +580,20 @@ func (x *ProjectInitializationSSHCommandResp) GetStatus() *ProjectInitialization
 func (x *ProjectInitializationSSHCommandResp) GetPublicKey() string {
 	if x != nil {
 		return x.PublicKey
+	}
+	return ""
+}
+
+func (x *ProjectInitializationSSHCommandResp) GetKeyCreatedAt() string {
+	if x != nil {
+		return x.KeyCreatedAt
+	}
+	return ""
+}
+
+func (x *ProjectInitializationSSHCommandResp) GetSourceHost() string {
+	if x != nil {
+		return x.SourceHost
 	}
 	return ""
 }
@@ -770,11 +786,14 @@ const file_orbit_v1_project_initialization_project_initialization_proto_rawDesc 
 	"\x05local\x18\x02 \x01(\v2/.orbit.v1.environment.EnvironmentLocalTargetReqH\x00R\x05local\x88\x01\x01\x12D\n" +
 	"\x03ssh\x18\x03 \x01(\v2-.orbit.v1.environment.EnvironmentSSHTargetReqH\x01R\x03ssh\x88\x01\x01B\b\n" +
 	"\x06_localB\x06\n" +
-	"\x04_ssh\"\x9e\x01\n" +
+	"\x04_ssh\"\xe5\x01\n" +
 	"#ProjectInitializationSSHCommandResp\x12X\n" +
 	"\x06status\x18\x01 \x01(\v2@.orbit.v1.project_initialization.ProjectInitializationStatusRespR\x06status\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x02 \x01(\tR\tpublicKey\"\xc3\x03\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKey\x12$\n" +
+	"\x0ekey_created_at\x18\x03 \x01(\tR\fkeyCreatedAt\x12\x1f\n" +
+	"\vsource_host\x18\x04 \x01(\tR\n" +
+	"sourceHost\"\xc3\x03\n" +
 	"\x1fProjectInitializationGatewayReq\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12 \n" +
 	"\frest_api_url\x18\x02 \x01(\tR\n" +

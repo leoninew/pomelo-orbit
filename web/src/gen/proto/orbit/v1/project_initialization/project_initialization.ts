@@ -73,6 +73,8 @@ export interface ProjectInitializationEnvironmentReq {
 export interface ProjectInitializationSSHCommandResp {
   status: ProjectInitializationStatusResp | undefined;
   public_key: string;
+  key_created_at: string;
+  source_host: string;
 }
 
 export interface ProjectInitializationGatewayReq {

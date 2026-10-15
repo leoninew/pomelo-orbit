@@ -582,6 +582,7 @@
   import { ApiError } from '@/utils/request';
   import { formatTime } from '@/utils/time';
   import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
+  import { buildSshKeyComment } from '@/utils/sshKeyComment';
   import { buildWindowsSshInitializationCommand } from '@/utils/windowsSshCommand';
   import EnvironmentTargetFields from '@/components/environment/EnvironmentTargetFields.vue';
   import {
@@ -764,6 +765,7 @@
   async function openSshCommand() {
     sshCommandError.value = '';
     const projectId = projectStore.activeProjectId;
+    const projectName = projectStore.activeProjectName;
     if (!projectId || !isRemoteSSH.value) {
       return;
     }
@@ -778,7 +780,7 @@
         projectId,
         initializationEnvironmentRequestFromForm(environmentForm)
       );
-      if (!result.status || !result.public_key) {
+      if (!result.status?.environment || !result.public_key) {
         throw new Error(t('project.initialization.sshCommandFailed'));
       }
       hydrate(result.status);
@@ -786,6 +788,17 @@
         toast.warning(t('project.environment.targetMayBeSharedWarning'), 8000);
       }
       selectedStep.value = 1;
+      const keyComment = buildSshKeyComment({
+        keyCreatedAt: result.key_created_at,
+        site: window.location.origin,
+        sourceHost: result.source_host,
+        projectName,
+        projectId,
+        environmentId: result.status.environment.id,
+      });
+      if (!keyComment) {
+        throw new Error(t('project.initialization.sshCommandMetadataMissing'));
+      }
       sshCommand.value =
         environmentForm.platform === 'windows'
           ? buildWindowsSshInitializationCommand({
@@ -794,11 +807,13 @@
               username: environmentForm.username,
               workspaceRoot: environmentForm.workspaceRoot,
               publicKey: result.public_key,
+              keyComment,
             })
           : buildLinuxSshInitializationCommand({
               username: environmentForm.username,
               workspaceRoot: environmentForm.workspaceRoot,
               publicKey: result.public_key,
+              keyComment,
             });
     } catch (error: unknown) {
       sshCommandError.value =

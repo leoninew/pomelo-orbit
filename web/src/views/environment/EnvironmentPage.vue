@@ -227,6 +227,7 @@
   import type { EnvironmentResp } from '@/gen/proto/orbit/v1/environment/environment';
   import { formatTime } from '@/utils/time';
   import { buildLinuxSshInitializationCommand } from '@/utils/linuxSshCommand';
+  import { buildSshKeyComment } from '@/utils/sshKeyComment';
   import { buildWindowsSshInitializationCommand } from '@/utils/windowsSshCommand';
   import EnvironmentTargetFields from '@/components/environment/EnvironmentTargetFields.vue';
   import EnvironmentTerminalDrawer from '@/views/environment/components/EnvironmentTerminalDrawer.vue';
@@ -326,6 +327,7 @@
 
   async function openSshCommand() {
     const projectId = projectStore.activeProjectId;
+    const projectName = projectStore.activeProjectName;
     const editing = isEditDialogOpen.value;
     if (editing && !validate()) {
       return;
@@ -369,6 +371,17 @@
       if (editing) {
         isEditDialogOpen.value = false;
       }
+      const keyComment = buildSshKeyComment({
+        keyCreatedAt: result.key_created_at,
+        site: window.location.origin,
+        sourceHost: result.source_host,
+        projectName,
+        projectId,
+        environmentId: result.environment.id,
+      });
+      if (!keyComment) {
+        throw new Error(t('project.initialization.sshCommandMetadataMissing'));
+      }
       sshCommand.value =
         target.platform === 'windows'
           ? buildWindowsSshInitializationCommand({
@@ -377,11 +390,13 @@
               username: target.username,
               workspaceRoot: target.workspace_root,
               publicKey: result.public_key,
+              keyComment,
             })
           : buildLinuxSshInitializationCommand({
               username: target.username,
               workspaceRoot: target.workspace_root,
               publicKey: result.public_key,
+              keyComment,
             });
     } catch (error: unknown) {
       sshCommandError.value =

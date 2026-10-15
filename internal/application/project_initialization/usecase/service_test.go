@@ -130,6 +130,8 @@ func TestSaveEnvironmentPersistsSSHTarget(t *testing.T) {
 func TestPrepareSSHEnvironmentPersistsTargetBeforeProbe(t *testing.T) {
 	service, environments := newInitializationService(t)
 	environments.publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOrbitDeploymentKey"
+	environments.keyCreatedAt = time.Date(2026, time.October, 15, 1, 2, 3, 0, time.UTC)
+	environments.sourceHost = "orbit-control"
 	result, err := service.PrepareSSHEnvironment(context.Background(), "user-1", "project-1", initdto.SaveEnvironmentInput{
 		TargetType: model.EnvironmentTargetTypeSSH,
 		SSH: &environmentdto.SSHTargetInput{
@@ -140,7 +142,7 @@ func TestPrepareSSHEnvironmentPersistsTargetBeforeProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.PublicKey != environments.publicKey || result.Status.Status != initdto.StatusNeedsProbe {
+	if result.PublicKey != environments.publicKey || !result.KeyCreatedAt.Equal(environments.keyCreatedAt) || result.SourceHost != environments.sourceHost || result.Status.Status != initdto.StatusNeedsProbe {
 		t.Fatalf("prepare result = %#v", result)
 	}
 	if environments.item == nil || environments.item.SSH == nil || environments.item.SSH.Host != "192.0.2.10" {
@@ -194,6 +196,8 @@ type fakeInitEnvironment struct {
 	item          *environmentdto.View
 	failNextProbe bool
 	publicKey     string
+	keyCreatedAt  time.Time
+	sourceHost    string
 }
 
 func (f *fakeInitEnvironment) EnvironmentForUser(context.Context, string, string) (environmentdto.View, error) {
@@ -203,12 +207,12 @@ func (f *fakeInitEnvironment) EnvironmentForUser(context.Context, string, string
 	return *f.item, nil
 }
 
-func (f *fakeInitEnvironment) PrepareSSHEnvironment(_ context.Context, _ string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, string, error) {
+func (f *fakeInitEnvironment) PrepareSSHEnvironment(_ context.Context, _ string, projectId string, input environmentdto.UpdateInput) (environmentdto.SSHCommandView, error) {
 	view, err := f.SaveInitialization(context.Background(), "", projectId, input)
 	if err != nil {
-		return environmentdto.View{}, "", err
+		return environmentdto.SSHCommandView{}, err
 	}
-	return view, f.publicKey, nil
+	return environmentdto.SSHCommandView{Environment: view, PublicKey: f.publicKey, KeyCreatedAt: f.keyCreatedAt, SourceHost: f.sourceHost}, nil
 }
 
 func (f *fakeInitEnvironment) SaveInitialization(_ context.Context, _ string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error) {

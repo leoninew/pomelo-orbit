@@ -60,8 +60,10 @@ func (h Handler) PrepareSSHEnvironment(c *gin.Context) {
 		return
 	}
 	transport.WriteProtoJSON(c, http.StatusOK, &initv1.ProjectInitializationSSHCommandResp{
-		Status:    initializationResponse(result.Status),
-		PublicKey: result.PublicKey,
+		Status:       initializationResponse(result.Status),
+		PublicKey:    result.PublicKey,
+		KeyCreatedAt: transport.FormatTime(result.KeyCreatedAt),
+		SourceHost:   result.SourceHost,
 	})
 }
 

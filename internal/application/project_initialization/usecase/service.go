@@ -83,7 +83,7 @@ func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, proje
 		return initdto.SSHCommandView{}, apperror.New(apperror.KindValidation, "SSH initialization command requires an SSH target")
 	}
 	targetType := model.EnvironmentTargetTypeSSH
-	_, publicKey, err := s.environments.PrepareSSHEnvironment(ctx, userId, projectId, environmentdto.UpdateInput{TargetType: &targetType, SSH: input.SSH})
+	command, err := s.environments.PrepareSSHEnvironment(ctx, userId, projectId, environmentdto.UpdateInput{TargetType: &targetType, SSH: input.SSH})
 	if err != nil {
 		return initdto.SSHCommandView{}, err
 	}
@@ -91,7 +91,10 @@ func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, proje
 	if err != nil {
 		return initdto.SSHCommandView{}, err
 	}
-	return initdto.SSHCommandView{Status: status, PublicKey: publicKey}, nil
+	return initdto.SSHCommandView{
+		Status: status, PublicKey: command.PublicKey,
+		KeyCreatedAt: command.KeyCreatedAt, SourceHost: command.SourceHost,
+	}, nil
 }
 
 func (s Service) ProbeEnvironment(ctx context.Context, userId string, projectId string) (initdto.StatusView, error) {

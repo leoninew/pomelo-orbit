@@ -68,12 +68,15 @@ func (h Handler) PrepareProjectEnvironmentSSHCommand(c *gin.Context) {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	item, publicKey, err := h.service.PrepareSSHEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), projectEnvironmentUpdateInput(&req))
+	command, err := h.service.PrepareSSHEnvironment(c.Request.Context(), current.Id, strings.TrimSpace(c.Query("project_id")), projectEnvironmentUpdateInput(&req))
 	if err != nil {
 		transport.WriteError(c, err)
 		return
 	}
-	response := &environmentv1.ProjectEnvironmentSSHCommandResp{Environment: environmentResponse(item), PublicKey: publicKey}
+	response := &environmentv1.ProjectEnvironmentSSHCommandResp{
+		Environment: environmentResponse(command.Environment), PublicKey: command.PublicKey,
+		KeyCreatedAt: transport.FormatTime(command.KeyCreatedAt), SourceHost: command.SourceHost,
+	}
 	transport.WriteProtoJSON(c, http.StatusOK, response)
 }
 

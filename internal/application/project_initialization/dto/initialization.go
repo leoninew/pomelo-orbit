@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 )
@@ -44,8 +46,10 @@ type SaveEnvironmentInput struct {
 }
 
 type SSHCommandView struct {
-	Status    StatusView
-	PublicKey string
+	Status       StatusView
+	PublicKey    string
+	KeyCreatedAt time.Time
+	SourceHost   string
 }
 
 type CreateGatewayInput struct {

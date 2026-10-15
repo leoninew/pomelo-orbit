@@ -16,7 +16,7 @@ type ProjectService interface {
 type EnvironmentService interface {
 	EnvironmentForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error)
 	SaveInitialization(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, error)
-	PrepareSSHEnvironment(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.View, string, error)
+	PrepareSSHEnvironment(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.SSHCommandView, error)
 	ProbeForUser(ctx context.Context, userId string, projectId string) (environmentdto.View, error)
 }
 

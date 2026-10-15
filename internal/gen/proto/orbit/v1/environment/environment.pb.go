@@ -513,6 +513,8 @@ type ProjectEnvironmentSSHCommandResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Environment   *EnvironmentResp       `protobuf:"bytes,1,opt,name=environment,proto3" json:"environment,omitempty"`
 	PublicKey     string                 `protobuf:"bytes,2,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	KeyCreatedAt  string                 `protobuf:"bytes,3,opt,name=key_created_at,json=keyCreatedAt,proto3" json:"key_created_at,omitempty"`
+	SourceHost    string                 `protobuf:"bytes,4,opt,name=source_host,json=sourceHost,proto3" json:"source_host,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -557,6 +559,20 @@ func (x *ProjectEnvironmentSSHCommandResp) GetEnvironment() *EnvironmentResp {
 func (x *ProjectEnvironmentSSHCommandResp) GetPublicKey() string {
 	if x != nil {
 		return x.PublicKey
+	}
+	return ""
+}
+
+func (x *ProjectEnvironmentSSHCommandResp) GetKeyCreatedAt() string {
+	if x != nil {
+		return x.KeyCreatedAt
+	}
+	return ""
+}
+
+func (x *ProjectEnvironmentSSHCommandResp) GetSourceHost() string {
+	if x != nil {
+		return x.SourceHost
 	}
 	return ""
 }
@@ -663,11 +679,14 @@ const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"\x04_sshB\b\n" +
 	"\x06_local\"B\n" +
 	"\x19EnvironmentLocalTargetReq\x12%\n" +
-	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\"\x8a\x01\n" +
+	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\"\xd1\x01\n" +
 	" ProjectEnvironmentSSHCommandResp\x12G\n" +
 	"\venvironment\x18\x01 \x01(\v2%.orbit.v1.environment.EnvironmentRespR\venvironment\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x02 \x01(\tR\tpublicKey\"7\n" +
+	"public_key\x18\x02 \x01(\tR\tpublicKey\x12$\n" +
+	"\x0ekey_created_at\x18\x03 \x01(\tR\fkeyCreatedAt\x12\x1f\n" +
+	"\vsource_host\x18\x04 \x01(\tR\n" +
+	"sourceHost\"7\n" +
 	"\x1dEnvironmentTerminalTicketResp\x12\x16\n" +
 	"\x06ticket\x18\x01 \x01(\tR\x06ticketB\xe8\x01\n" +
 	"\x18com.orbit.v1.environmentB\x10EnvironmentProtoP\x01ZHgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment\xa2\x02\x03OVE\xaa\x02\x14Orbit.V1.Environment\xca\x02\x14Orbit\\V1\\Environment\xe2\x02 Orbit\\V1\\Environment\\GPBMetadata\xea\x02\x16Orbit::V1::Environmentb\x06proto3"

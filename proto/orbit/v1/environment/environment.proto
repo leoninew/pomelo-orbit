@@ -57,6 +57,8 @@ message EnvironmentLocalTargetReq {
 message ProjectEnvironmentSSHCommandResp {
   EnvironmentResp environment = 1;
   string public_key = 2;
+  string key_created_at = 3;
+  string source_host = 4;
 }
 
 message EnvironmentTerminalTicketResp {

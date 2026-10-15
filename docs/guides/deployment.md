@@ -1,5 +1,5 @@
 # CD 部署原理
-最后修改时间: 2026-10-10 22:14:41
+最后修改时间: 2026-10-15 15:26:00
 
 Doc role: living guide。权威模型见 [CD 领域模型](../product/cd-model.md) 与 [CD 运行时](../architecture/cd-runtime.md)。
 
@@ -36,6 +36,10 @@ Environment 的 target type 是显式 `local | ssh`：
 创建 Project 时只填写名称和编码。Environment 与 Gateway 只能由 Web Project Initialization Wizard 写入。local 不创建 `environment_credential`。SSH target 可以先保存为未初始化状态；用户在完整表单后点击“生成初始化命令”时，Orbit 在同一写事务中保存 target，并创建或复用该 Environment 的受管密钥。重复生成命令始终返回同一有效公钥，保存、编辑、状态读取和 Probe 都不会隐式创建或轮换密钥。
 
 Linux 和 Windows SSH target 都在 Wizard 与已保存的 Environment detail 中提供可复制的初始化命令。用户必须通过云控制台、已有 SSH 登录或其他带外方式在目标端执行命令，随后回到页面运行 Probe。Linux Bash 命令由所配置的 SSH 用户执行：幂等创建该用户的 `~/.ssh`、修正 `700`/`600` 权限并追加 Orbit 公钥；同时按所选 `workspace_root` 创建 `pipeline` 与 `deployment` 目录，将新建的工作区根目录及这两个子目录 `chown` 为该用户。非 root 用户执行目录准备时使用 `sudo`，不递归更改现有目录下的文件，不修改 `sshd`、Docker、Docker Compose、Docker 用户组或防火墙。Windows PowerShell 命令仍须在目标 Windows 主机的管理员 PowerShell 执行，用于准备 Windows OpenSSH、受管公钥、工作目录和 Docker Desktop 前置条件。
+
+初始化命令在公钥的前一行写入 `# Pomelo Orbit | ...` 归属注释，包含 `key_created_at`（受管密钥实际创建时间，UTC）、`site`（生成命令时浏览器访问的站点 origin）、`source_host`（Orbit 运行主机名）、`project`、`project_id` 与 `environment_id`。字段值使用 JSON 转义，项目名称中的换行不会拆分注释行。Orbit 运行在容器中时，`source_host` 为容器主机名。Linux 写入所配置 SSH 用户的 `~/.ssh/authorized_keys`；Windows 同时写入该用户的 `.ssh/authorized_keys` 和 `%ProgramData%\ssh\administrators_authorized_keys`。文件中已有同一公钥时补写注释；重复执行会更新该公钥紧邻的 Orbit 注释，不重复追加公钥，并保留其他公钥和注释。已有环境可重新生成并执行初始化命令补齐归属信息。
+
+后端必须返回密钥创建时间与运行主机名，否则页面提示更新并重启后端，不生成归属信息不完整的命令。Windows 初始化命令自动安装缺少的 OpenSSH Client/Server、准备 `sshd_config` 与主机密钥。运行 `ssh-keygen -A` 后，将 `%ProgramData%\ssh\ssh_host_*_key` 主机私钥的所有者设为内置 Administrators 组，关闭权限继承并将 ACL 限定为 SYSTEM 与 Administrators 完全控制；现有密钥内容与主机指纹保持不变，避免管理员前台自检通过、LocalSystem 服务却因主机私钥所有者不合法而退出。命令以单个 PowerShell 脚本块执行；PowerShell 报错时停止整个脚本，`sshd` 启动失败后不再继续防火墙、密钥或 Docker 配置。`sshd` 启动失败时输出服务状态、退出码及最近的 `OpenSSH/Admin`、`OpenSSH/Operational` 与 Service Control Manager 事件。OpenSSH 默认使用事件日志：错误与严重错误写入 Admin，信息写入 Operational；未启用文件日志时，不一定存在 `%ProgramData%\ssh\logs\sshd.log`。配置自检通过但服务仍退出时，可在目标机管理员 PowerShell 执行 `& "$env:WINDIR\System32\OpenSSH\sshd.exe" -D -e -ddd` 查看前台启动诊断；如正常开始监听，按 `Ctrl+C` 结束诊断进程。
 
 Docker Engine/Compose（Windows 上包括 Docker Desktop、WSL2 Linux engine）是 SSH target 的外部前置条件。Orbit 不接收、读取或持久化操作者个人私钥、密码或一次性 bootstrap 认证。未生成初始化命令时，SSH Probe 会写入明确的恢复诊断且不会尝试裸网络连接或生成密钥。
 

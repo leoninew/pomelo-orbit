@@ -264,6 +264,8 @@ export default {
       sshCommandCopyFailed: 'Could not copy the command; select it manually',
       sshCommandFailed:
         'Could not generate the initialization command. Check the environment configuration and try again.',
+      sshCommandMetadataMissing:
+        'The backend did not return the key creation time or runtime hostname. Update and restart the backend, then generate the command again.',
       probe: 'Check readiness',
       probing: 'Checking',
       probeChecklistTitle: 'Environment readiness checks',

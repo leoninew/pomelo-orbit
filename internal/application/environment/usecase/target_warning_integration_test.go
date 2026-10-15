@@ -86,9 +86,9 @@ func TestMatchingEnvironmentTargetsSaveWithWarning(t *testing.T) {
 				t.Fatalf("environment edit not persisted: %+v, %v", stored, err)
 			}
 			if targetType == model.EnvironmentTargetTypeSSH {
-				prepared, publicKey, err := service.PrepareSSHEnvironment(ctx, "user-1", "project-2", input)
-				if err != nil || publicKey == "" || !prepared.TargetMayBeShared {
-					t.Fatalf("SSH command with matching target = %+v, %q, %v", prepared, publicKey, err)
+				prepared, err := service.PrepareSSHEnvironment(ctx, "user-1", "project-2", input)
+				if err != nil || prepared.PublicKey == "" || !prepared.Environment.TargetMayBeShared {
+					t.Fatalf("SSH command with matching target = %+v, %q, %v", prepared, prepared.PublicKey, err)
 				}
 			}
 			first, err = service.EnvironmentForUser(ctx, "user-1", "project-1")

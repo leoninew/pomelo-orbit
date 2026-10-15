@@ -261,6 +261,8 @@ export default {
       sshCommandCopied: '命令已复制',
       sshCommandCopyFailed: '复制命令失败，请手动选择复制',
       sshCommandFailed: '无法生成初始化命令，请检查当前环境配置后重试',
+      sshCommandMetadataMissing:
+        '后端未返回密钥创建时间或运行主机名，请更新并重启后端后重新生成命令',
       probe: '检查就绪',
       probing: '检查中',
       probeChecklistTitle: '环境就绪检查',

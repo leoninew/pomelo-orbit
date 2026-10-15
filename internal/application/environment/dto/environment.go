@@ -41,6 +41,13 @@ type SSHCredentialDefinition struct {
 	Revision            int64  `json:"revision"`
 }
 
+type SSHCommandView struct {
+	Environment  View
+	PublicKey    string
+	KeyCreatedAt time.Time
+	SourceHost   string
+}
+
 type LocalTargetInput struct {
 	WorkspaceRoot string
 }

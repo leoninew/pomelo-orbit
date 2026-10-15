@@ -7,15 +7,21 @@ describe('linuxSshCommand', () => {
       username: 'deploy',
       workspaceRoot: '/srv/orbit work',
       publicKey: "ssh-ed25519 AAAAorbit's-key",
+      keyComment: "# Pomelo Orbit | project=Orbit's project",
     });
 
     expect(script).toContain('set -eu');
     expect(script).toContain('if [ "$(id -un)" != \'deploy\' ]; then');
     expect(script).toContain('mkdir -p "$HOME/.ssh"');
     expect(script).toContain('chmod 700 "$HOME/.ssh"');
+    expect(script).toContain("ORBIT_SSH_KEY='ssh-ed25519 AAAAorbit'\"'\"'s-key'");
+    expect(script).toContain(
+      "ORBIT_SSH_KEY_COMMENT='# Pomelo Orbit | project=Orbit'\"'\"'s project'"
+    );
+    expect(script).toContain('if ($0 == key)');
+    expect(script).toContain('print comment');
+    expect(script).toContain('index(previous, "# Pomelo Orbit | ") != 1');
     expect(script).toContain('chmod 600 "$HOME/.ssh/authorized_keys"');
-    expect(script).toContain("grep -qxF -- 'ssh-ed25519 AAAAorbit'\"'\"'s-key'");
-    expect(script).toContain("printf '%s\\n' 'ssh-ed25519 AAAAorbit'\"'\"'s-key'");
     expect(script).toContain("workspace_root='/srv/orbit work'");
     expect(script).toContain('if [ ! -d "$workspace_root" ]; then');
     expect(script).toContain('else');
@@ -36,6 +42,7 @@ describe('linuxSshCommand', () => {
       username: 'deploy',
       workspaceRoot: "~/orbit's workspace",
       publicKey: 'ssh-ed25519 AAAAorbit',
+      keyComment: "# Pomelo Orbit | project=Orbit's project",
     });
 
     expect(script).toContain("workspace_root=\"$HOME\"/'orbit'\"'\"'s workspace'");
@@ -44,6 +51,7 @@ describe('linuxSshCommand', () => {
         username: 'deploy',
         workspaceRoot: '~',
         publicKey: 'ssh-ed25519 AAAAorbit',
+        keyComment: "# Pomelo Orbit | project=Orbit's project",
       })
     ).toContain('workspace_root="$HOME"');
   });
@@ -54,6 +62,7 @@ describe('linuxSshCommand', () => {
         username: 'deploy',
         workspaceRoot: '/srv/orbit',
         publicKey: '  ',
+        keyComment: "# Pomelo Orbit | project=Orbit's project",
       })
     ).toBe('');
     expect(
@@ -61,6 +70,7 @@ describe('linuxSshCommand', () => {
         username: '',
         workspaceRoot: '/srv/orbit',
         publicKey: 'key',
+        keyComment: "# Pomelo Orbit | project=Orbit's project",
       })
     ).toBe('');
   });

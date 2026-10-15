@@ -39,8 +39,9 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
 	targetType := model.EnvironmentTargetTypeSSH
-	service := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil)
-	first, publicKey, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
+	service := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
+		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Host: "orbit-control"})
+	first, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 		TargetType: &targetType,
 		SSH: &environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
@@ -50,13 +51,16 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if publicKey == "" || len(credentials.items) != 1 || first.SSH == nil || first.SSH.Platform != model.EnvironmentPlatformLinux {
-		t.Fatalf("first SSH command = view=%#v key=%q credentials=%#v", first, publicKey, credentials.items)
+	if first.PublicKey == "" || len(credentials.items) != 1 || first.Environment.SSH == nil || first.Environment.SSH.Platform != model.EnvironmentPlatformLinux {
+		t.Fatalf("first SSH command = view=%#v key=%q credentials=%#v", first, first.PublicKey, credentials.items)
+	}
+	if first.KeyCreatedAt.IsZero() || !first.KeyCreatedAt.Equal(credentials.items[0].CreatedAt) || first.SourceHost != "orbit-control" {
+		t.Fatalf("SSH key attribution = %#v", first)
 	}
 	credentialId, revision := store.environment.SSH.CredentialId, store.environment.SSH.CredentialRevision
 	store.environment.SSH.HostKeyFingerprint = "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde="
 
-	second, repeatedKey, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
+	second, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 		TargetType: &targetType,
 		SSH: &environmentdto.SSHTargetInput{
 			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.20", Port: 22,
@@ -66,10 +70,13 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if repeatedKey != publicKey || len(credentials.items) != 1 || store.environment.SSH.CredentialId != credentialId || store.environment.SSH.CredentialRevision != revision {
+	if second.PublicKey != first.PublicKey || len(credentials.items) != 1 || store.environment.SSH.CredentialId != credentialId || store.environment.SSH.CredentialRevision != revision {
 		t.Fatalf("credential was not reused: environment=%#v credentials=%#v", store.environment, credentials.items)
 	}
-	if second.TargetRevision != first.TargetRevision+1 || store.environment.SSH.HostKeyFingerprint != "" {
+	if !second.KeyCreatedAt.Equal(first.KeyCreatedAt) || second.SourceHost != first.SourceHost {
+		t.Fatalf("reused key attribution changed: first=%#v second=%#v", first, second)
+	}
+	if second.Environment.TargetRevision != first.Environment.TargetRevision+1 || store.environment.SSH.HostKeyFingerprint != "" {
 		t.Fatalf("target change did not reset target state: %#v", store.environment)
 	}
 }
@@ -79,7 +86,7 @@ func TestPrepareSSHEnvironmentAcceptsWindowsTarget(t *testing.T) {
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
 	targetType := model.EnvironmentTargetTypeSSH
-	view, publicKey, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
+	command, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
 		PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
 			TargetType: &targetType,
 			SSH: &environmentdto.SSHTargetInput{
@@ -90,8 +97,8 @@ func TestPrepareSSHEnvironmentAcceptsWindowsTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if publicKey == "" || view.SSH == nil || view.SSH.Platform != model.EnvironmentPlatformWindows || view.SSH.Port != 2222 {
-		t.Fatalf("prepared Windows environment = %#v", view)
+	if command.PublicKey == "" || command.Environment.SSH == nil || command.Environment.SSH.Platform != model.EnvironmentPlatformWindows || command.Environment.SSH.Port != 2222 {
+		t.Fatalf("prepared Windows environment = %#v", command)
 	}
 }
 

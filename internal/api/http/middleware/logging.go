@@ -80,7 +80,7 @@ func LogRequest(logger *slog.Logger, cfg LogRequestConfig) gin.HandlerFunc {
 		if strings.HasSuffix(c.FullPath(), "/log/stream") || strings.HasSuffix(c.FullPath(), "/container-log/stream") {
 			responseBodyLimit = 0
 		}
-		if c.Request.URL.Path == "/api/environment/terminal" || c.Request.URL.Path == "/api/environment/terminal/ticket" {
+		if c.Request.URL.Path == "/api/cli/environment/terminal" || c.Request.URL.Path == "/api/cli/environment/exec" || c.Request.URL.Path == "/api/environment/terminal" || c.Request.URL.Path == "/api/environment/terminal/ticket" {
 			requestBodyLimit, responseBodyLimit = 0, 0
 		}
 		startedAt := time.Now()

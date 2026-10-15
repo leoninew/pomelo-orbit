@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
 	"sync"
 	"time"
 
@@ -59,7 +58,7 @@ func (s *TerminalService) IssueTicket(ctx context.Context, actorId, projectId st
 	if err := s.environments.ensureProjectMembership(ctx, projectId, actorId); err != nil {
 		return "", err
 	}
-	target, err := s.resolveTarget(ctx, projectId)
+	target, err := s.environments.resolveConnectionTarget(ctx, projectId)
 	if err != nil {
 		return "", err
 	}
@@ -100,20 +99,35 @@ func (s *TerminalService) RedeemTicket(ctx context.Context, projectId, token str
 	if err := s.environments.ensureProjectMembership(ctx, projectId, ticket.actorId); err != nil {
 		return TerminalGrant{}, nil, err
 	}
-	target, err := s.resolveTarget(ctx, projectId)
+	target, err := s.environments.resolveConnectionTarget(ctx, projectId)
 	if err != nil {
 		return TerminalGrant{}, nil, err
 	}
 	if !matchesTerminalTarget(ticket, target.Environment) {
 		return TerminalGrant{}, nil, apperror.New(apperror.KindConflict, "Environment changed after terminal ticket was issued")
 	}
+	return s.acquire(ticket.actorId, projectId, target)
+}
+
+func (s *TerminalService) Acquire(ctx context.Context, actorId, projectId string) (TerminalGrant, func(), error) {
+	if err := s.environments.ensureProjectMembership(ctx, projectId, actorId); err != nil {
+		return TerminalGrant{}, nil, err
+	}
+	target, err := s.environments.resolveConnectionTarget(ctx, projectId)
+	if err != nil {
+		return TerminalGrant{}, nil, err
+	}
+	return s.acquire(actorId, projectId, target)
+}
+
+func (s *TerminalService) acquire(actorId, projectId string, target environmentport.Target) (TerminalGrant, func(), error) {
 	s.mu.Lock()
-	if s.activeTotal >= maxTerminalSessions || s.active[ticket.actorId] >= maxUserTerminals {
+	if s.activeTotal >= maxTerminalSessions || s.active[actorId] >= maxUserTerminals {
 		s.mu.Unlock()
 		return TerminalGrant{}, nil, apperror.New(apperror.KindUnavailable, "Terminal session capacity reached")
 	}
 	s.activeTotal++
-	s.active[ticket.actorId]++
+	s.active[actorId]++
 	s.mu.Unlock()
 	var once sync.Once
 	release := func() {
@@ -121,35 +135,39 @@ func (s *TerminalService) RedeemTicket(ctx context.Context, projectId, token str
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.activeTotal--
-			s.active[ticket.actorId]--
-			if s.active[ticket.actorId] == 0 {
-				delete(s.active, ticket.actorId)
+			s.active[actorId]--
+			if s.active[actorId] == 0 {
+				delete(s.active, actorId)
 			}
 		})
 	}
-	return TerminalGrant{ActorId: ticket.actorId, ProjectId: projectId, Target: target}, release, nil
+	return TerminalGrant{ActorId: actorId, ProjectId: projectId, Target: target}, release, nil
 }
 
 func (s *TerminalService) ValidateSession(ctx context.Context, grant TerminalGrant) error {
-	if err := s.environments.ensureProjectMembership(ctx, grant.ProjectId, grant.ActorId); err != nil {
+	return s.environments.validateConnection(ctx, grant)
+}
+
+func (s Service) validateConnection(ctx context.Context, grant TerminalGrant) error {
+	if err := s.ensureProjectMembership(ctx, grant.ProjectId, grant.ActorId); err != nil {
 		return err
 	}
-	current, err := s.environments.environmentForProject(ctx, grant.ProjectId)
+	current, err := s.environmentForProject(ctx, grant.ProjectId)
 	if err != nil {
 		return err
 	}
 	if !matchesTerminalTarget(terminalTargetIdentity(grant.Target.Environment), current) {
-		return errors.New("project environment changed during terminal session")
+		return apperror.New(apperror.KindConflict, "Project environment changed during connection")
 	}
 	if current.IsLocal() {
 		return nil
 	}
 	if expected := grant.Target.Environment.SSH.HostKeyFingerprint; expected != "" && current.SSH.HostKeyFingerprint != expected {
-		return errors.New("project SSH host key changed during terminal session")
+		return apperror.New(apperror.KindConflict, "Project SSH host key changed during connection")
 	}
-	credential, err := s.environments.environmentCredential(ctx, current.SSH.CredentialId)
+	credential, err := s.environmentCredential(ctx, current.SSH.CredentialId)
 	if err != nil || !matchesEnvironmentCredential(current, credential) {
-		return errors.New("project SSH credential changed during terminal session")
+		return apperror.New(apperror.KindConflict, "Project SSH credential changed during connection")
 	}
 	return nil
 }
@@ -170,23 +188,23 @@ func terminalTargetIdentity(environment model.Environment) terminalTicket {
 	return ticket
 }
 
-func (s *TerminalService) resolveTarget(ctx context.Context, projectId string) (environmentport.Target, error) {
-	item, err := s.environments.environmentForProject(ctx, projectId)
+func (s Service) resolveConnectionTarget(ctx context.Context, projectId string) (environmentport.Target, error) {
+	item, err := s.environmentForProject(ctx, projectId)
 	if err != nil {
 		return environmentport.Target{}, err
 	}
-	if err := validateEnvironment(item, s.environments.localDisplay.Platform, false, false); err != nil {
+	if err := validateEnvironment(item, s.localDisplay.Platform, false, false); err != nil {
 		return environmentport.Target{}, err
 	}
 	target := environmentport.Target{Environment: item}
 	if item.IsLocal() {
 		return target, nil
 	}
-	credential, err := s.environments.environmentCredential(ctx, item.SSH.CredentialId)
+	credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
 	if err != nil || !matchesEnvironmentCredential(item, credential) {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Environment SSH credential binding is invalid")
 	}
-	privateKey, err := decryptEnvironmentPrivateKey(s.environments.secretKey, credential)
+	privateKey, err := decryptEnvironmentPrivateKey(s.secretKey, credential)
 	if err != nil {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Environment SSH credential binding is invalid")
 	}
@@ -197,19 +215,23 @@ func (s *TerminalService) resolveTarget(ctx context.Context, projectId string) (
 // ConfirmConnection pins the key observed on the authenticated terminal connection
 // before the handler exposes output or accepts browser input.
 func (s *TerminalService) ConfirmConnection(ctx context.Context, grant TerminalGrant, fingerprint string) (TerminalGrant, error) {
-	if err := s.ValidateSession(ctx, grant); err != nil {
+	return s.environments.confirmConnection(ctx, grant, fingerprint)
+}
+
+func (s Service) confirmConnection(ctx context.Context, grant TerminalGrant, fingerprint string) (TerminalGrant, error) {
+	if err := s.validateConnection(ctx, grant); err != nil {
 		return TerminalGrant{}, err
 	}
 	if grant.Target.Environment.IsLocal() {
 		return grant, nil
 	}
-	if err := s.environments.recordHostKey(ctx, grant.Target.Environment, fingerprint); err != nil {
+	if err := s.recordHostKey(ctx, grant.Target.Environment, fingerprint); err != nil {
 		return TerminalGrant{}, err
 	}
 	ssh := *grant.Target.Environment.SSH
 	ssh.HostKeyFingerprint = fingerprint
 	grant.Target.Environment.SSH = &ssh
-	if err := s.ValidateSession(ctx, grant); err != nil {
+	if err := s.validateConnection(ctx, grant); err != nil {
 		return TerminalGrant{}, err
 	}
 	return grant, nil

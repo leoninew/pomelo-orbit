@@ -47,6 +47,26 @@ func (a Authenticator) CurrentUser(c *gin.Context) (model.User, bool) {
 	return authenticated.User, true
 }
 
+// CurrentPATUser is intentionally separate from Web JWT authentication.
+func (a Authenticator) CurrentPATUser(c *gin.Context) (model.User, bool) {
+	value := c.GetHeader("Authorization")
+	if !strings.HasPrefix(value, "Bearer ") {
+		transport.WriteStatusError(c, http.StatusUnauthorized, "Not authenticated")
+		return model.User{}, false
+	}
+	authenticated, err := a.service.AuthenticateMCPAccessToken(c.Request.Context(), strings.TrimSpace(strings.TrimPrefix(value, "Bearer ")))
+	if err != nil {
+		if apperror.IsKind(err, apperror.KindUnauthorized) {
+			transport.WriteStatusError(c, http.StatusUnauthorized, "Invalid token")
+		} else {
+			a.logger.Error("PAT authentication failed", "error", err)
+			transport.WriteError(c, apperror.New(apperror.KindUnavailable, "Authentication unavailable"))
+		}
+		return model.User{}, false
+	}
+	return authenticated.User, true
+}
+
 func (a Authenticator) RequirePermission(c *gin.Context, permission string) (CurrentUserContext, bool) {
 	user, ok := a.CurrentUser(c)
 	if !ok {

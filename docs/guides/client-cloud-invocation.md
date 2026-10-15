@@ -1,6 +1,6 @@
 # 客户端与云端调用机制
 
-最后修改时间: 2026-09-17 11:01:29
+最后修改时间: 2026-10-15 21:18:08
 
 ## 业务定位
 
@@ -14,6 +14,7 @@ Pomelo Orbit 是一个自托管的 CI/CD 与平台管理控制面。用户通过
 flowchart LR
     A[浏览器 Web 客户端] -->|HTTPS REST API| B[Orbit 服务端]
     C[AI / MCP 客户端] -->|本地 stdio MCP| B
+    CLI[人 / AI 项目环境 CLI] -->|PAT HTTPS / WebSocket| B
 
     B --> D[认证与 RBAC]
     B --> E[业务服务层]
@@ -88,6 +89,10 @@ sequenceDiagram
 ```
 
 父进程更新 token 后必须重启 MCP session；运行中的 session 不热读环境、不续期，也不会自动撤销仍有效的旧 token。
+## 项目环境 CLI
+
+人和大模型可通过 `pomelo-orbit-cli environment` 以精确项目 code 连接已有 SSH 环境。该入口复用现有 PAT，调用专用 `/api/cli/...` HTTP / WebSocket 路由，在服务端读取 SSH 凭据，提供交互 shell 和非交互 argv 执行；客户端无需访问数据库或私钥。此能力不要求 Probe/Gateway 就绪，不增加远程 MCP。命令输出、退出状态、超时和结果未知边界见[项目环境 CLI 指南](project-environment-cli.md)。
+
 ## 对话式部署
 
 部署对话页面由 Orbit 服务端连接 LLM，并把受管 MCP 工具作为模型工具提供。浏览器只调用对话 API，不直接连接 LLM、MCP 或 Docker。HTTP 入站认证得到的当前用户会为每个 turn 创建固定 actor 的内存 MCP session；不会把浏览器 `Authorization` 转发给 `/mcp`，模型输入也无法覆盖该 actor。
@@ -111,4 +116,4 @@ flowchart LR
 
 ## 一句话总结
 
-客户端负责表达意图、发起调用和展示结果；Orbit 服务端负责认证、权限和业务编排；Worker 负责实际 Docker 执行。Web 和 MCP 是两种入口，但最终共享同一套业务模型、权限边界和部署流程。
+客户端负责表达意图、发起调用和展示结果；Orbit 服务端负责认证、权限和业务编排；Worker 负责实际 Docker 执行。Web、MCP 和项目环境 CLI 是不同入口，但最终共享同一套业务模型、权限边界和部署流程。

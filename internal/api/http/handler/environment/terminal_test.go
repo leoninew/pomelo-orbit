@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/leoninew/pomelo-orbit/internal/api/http/middleware"
+	"github.com/leoninew/pomelo-orbit/internal/api/http/terminal"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
@@ -186,13 +187,13 @@ func dialTestTerminal(t *testing.T, ctx context.Context, server *httptest.Server
 	})
 }
 
-func readTerminalControl(t *testing.T, ctx context.Context, conn *websocket.Conn) terminalControl {
+func readTerminalControl(t *testing.T, ctx context.Context, conn *websocket.Conn) terminal.Control {
 	t.Helper()
 	messageType, data, err := conn.Read(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var control terminalControl
+	var control terminal.Control
 	if messageType != websocket.MessageText || json.Unmarshal(data, &control) != nil {
 		t.Fatalf("expected terminal control, got type %v", messageType)
 	}

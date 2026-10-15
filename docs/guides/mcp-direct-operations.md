@@ -1,5 +1,5 @@
 # MCP 直接操作
-最后修改时间: 2026-10-09 17:03:08
+最后修改时间: 2026-10-15 21:18:08
 
 ## 命名与启动约定
 
@@ -62,3 +62,7 @@ Component 写操作已细分为 `orbit_update_version_component_basic`、`runtim
 `orbit_update_version_component_identity` 独立替换 `user` 和顶层 `group_add` 字符串列表；省略 `user` 并提交空列表恢复镜像身份。组件 basic 更新不改变身份。
 
 Service Component 的实例级运行配置通过 `orbit_update_service_component_overlay` 与其他稀疏覆盖一起完整替换。`entrypoint`、`command`、`pull_policy` 和 `restart_policy` 省略时会清除对应的 Service 覆盖并按 Version 声明生效；空的 `entrypoint` 或 `command` 字符串用于明确选择空 argv。调用方必须保留未修改的 env、mounts、resources 和 endpoints；挂载覆盖中的 `source_is_host_path` 会原样传递。
+
+## PAT 与项目环境 CLI
+
+同一 PAT 还可用于专用项目环境 CLI 路由，供人或大模型按项目 code 连接 SSH 与执行一次性命令，见[项目环境 CLI 指南](project-environment-cli.md)。这不改变 stdio MCP 的配置、工具或运行位置要求；PAT 仍不能作为普通 Web API 的 JWT。CLI 不读取 Go 服务端 overwrite.env。

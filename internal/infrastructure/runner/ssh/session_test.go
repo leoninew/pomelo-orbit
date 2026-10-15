@@ -24,6 +24,7 @@ import (
 )
 
 type sessionServer struct {
+	commands    chan string
 	connections atomic.Int32
 	active      atomic.Int32
 	sftpClients atomic.Int32
@@ -56,7 +57,7 @@ func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &sessionServer{blocked: make(chan struct{}, 4)}
+	server := &sessionServer{blocked: make(chan struct{}, 4), commands: make(chan string, 64)}
 	config := &ssh.ServerConfig{NoClientAuth: true}
 	config.AddHostKey(signer)
 	var connections sync.Map
@@ -112,6 +113,17 @@ func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 								_ = request.Reply(true, nil)
 								var command struct{ Command string }
 								_ = ssh.Unmarshal(request.Payload, &command)
+								server.commands <- command.Command
+								if strings.Contains(command.Command, "cli-io") {
+									data, _ := io.ReadAll(channel)
+									_, _ = channel.Write(data)
+									_, _ = channel.Stderr().Write([]byte("stderr-data"))
+									_, _ = channel.SendRequest("exit-status", false, ssh.Marshal(struct{ Code uint32 }{7}))
+									return
+								}
+								if strings.Contains(command.Command, "missing-status") {
+									return
+								}
 								if strings.Contains(command.Command, "block") {
 									server.blocked <- struct{}{}
 									_ = sshConn.Wait()

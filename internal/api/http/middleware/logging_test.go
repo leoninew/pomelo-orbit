@@ -25,7 +25,7 @@ import (
 const testBodyMaxBytes = 32
 
 func TestTerminalRoutesDoNotLogBodies(t *testing.T) {
-	for _, path := range []string{"/api/environment/terminal/ticket", "/api/environment/terminal"} {
+	for _, path := range []string{"/api/environment/terminal/ticket", "/api/environment/terminal", "/api/cli/environment/terminal", "/api/cli/environment/exec"} {
 		t.Run(path, func(t *testing.T) {
 			entries, _ := runLoggedRequestWithConfig(t, LogRequestConfig{Enabled: true, RequestBodyLimit: 1024, ResponseBodyLimit: 1024}, http.MethodPost, path, "application/json", `{"input":"terminal secret"}`, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")

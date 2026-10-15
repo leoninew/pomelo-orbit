@@ -72,8 +72,8 @@ func (s Service) Authenticate(ctx context.Context, rawJwt string) (authdto.Authe
 	return s.authenticateUser(ctx, claims.Sub)
 }
 
-// AuthenticateMCPAccessToken resolves a local stdio PAT and verifies that its
-// owner remains enabled before an MCP tool call can proceed.
+// AuthenticateMCPAccessToken resolves an Orbit PAT and verifies its owner
+// remains enabled for local stdio MCP and the dedicated CLI routes.
 func (s Service) AuthenticateMCPAccessToken(ctx context.Context, rawToken string) (authdto.AuthenticatedUser, error) {
 	tokenHash := hashMCPAccessToken(rawToken)
 	if tokenHash == "" {

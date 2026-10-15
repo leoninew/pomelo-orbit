@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import logging
 import os
+import base64
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import dotenv_values
 from dynaconf import Dynaconf
@@ -17,7 +20,39 @@ ENV_PREFIX = "POMELO_ORBIT"
 ENV_SELECTOR = "POMELO_ORBIT_APP__ENV"
 CONFIG_DIRECTORY = Path("configs")
 CONFIG_FILENAME = "config.yaml"
-ENVIRONMENT_KEYS = frozenset({"logging__level"})
+ENVIRONMENT_KEYS = frozenset({"logging__level", "cli__base_url", "mcp__access_token"})
+
+
+@dataclass(frozen=True)
+class ClientSettings:
+    base_url: str | None = None
+    access_token: str | None = None
+
+    def validated(self) -> ClientSettings:
+        if not self.base_url or not self.access_token:
+            raise ConfigurationError(
+                "Set POMELO_ORBIT_CLI__BASE_URL and POMELO_ORBIT_MCP__ACCESS_TOKEN"
+            )
+        try:
+            url = urlsplit(self.base_url)
+            port = url.port
+        except ValueError as error:
+            raise ConfigurationError("Invalid cli.base_url") from error
+        if (
+            url.scheme not in {"http", "https"}
+            or not url.hostname
+            or url.username is not None
+            or url.password is not None
+            or url.query
+            or url.fragment
+            or any(c.isspace() or ord(c) < 32 for c in self.base_url)
+            or (port is not None and port < 1)
+        ):
+            raise ConfigurationError("cli.base_url must be an HTTP(S) service root")
+        match = re.fullmatch(r"orbit_mcp_pat_([A-Za-z0-9_-]{43})", self.access_token)
+        if not match or len(base64.urlsafe_b64decode(match[1] + "=")) != 32:
+            raise ConfigurationError("mcp.access_token must be an Orbit PAT")
+        return self
 
 
 @dataclass(frozen=True)
@@ -28,6 +63,7 @@ class Settings:
     environment: str
     project_root: Path
     dotenv_path: Path | None
+    client: ClientSettings = ClientSettings()
 
 
 def selected_environment() -> str:
@@ -65,6 +101,14 @@ def load_settings(root: Path | None = None) -> Settings:
             environment=environment,
             project_root=resolved_root,
             dotenv_path=_existing_dotenv_path(resolved_root, environment),
+            client=ClientSettings(
+                base_url=_optional_string(
+                    _mapping(config.get("cli", {})).get("base_url")
+                ),
+                access_token=_optional_string(
+                    _mapping(config.get("mcp", {})).get("access_token")
+                ),
+            ),
         )
         validate_settings(settings)
         return settings

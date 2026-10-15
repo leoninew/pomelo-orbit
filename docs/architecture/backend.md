@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-10-14
+最后修改时间: 2026-10-15 21:18:08
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -120,3 +120,7 @@ Deployment 同样使用独立 `Service` 与 `ExecutionService`。HTTP/MCP 命令
 - [CD 运行时](./cd-runtime.md)  
 - [产品 CD 模型](../product/cd-model.md)  
 - [决策账本](../decisions/ledger.md)  
+
+## PAT 项目环境入口
+
+`/api/cli/project`、`/api/cli/environment/terminal` 和 `/api/cli/environment/exec` 使用独立 PAT 认证，与普通 Web JWT 分开。路由在请求级 UoW 中间件之前注册；SSH 网络调用不持有 SQL 长事务。Environment AccessService 负责成员可见库存和精确 code 定位；CommandService 拥有总超时、独立配额、每 2 秒资格复核与 1 MiB 有界输出，窄 CommandRunner 适配 SSH 并在同一连接确认主机指纹后发送 exec。共享 terminal HTTP 协议同时服务 Web 票据入口与 CLI PAT 入口，连接资格及配额复用 TerminalService。部署 TargetResolver 的 Probe 门槛不变。完整调用契约见[项目环境 CLI 指南](../guides/project-environment-cli.md)。

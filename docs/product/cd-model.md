@@ -1,5 +1,5 @@
 # Project 环境与 CD 产品模型
-最后修改时间: 2026-10-10 22:14:41
+最后修改时间: 2026-10-15 21:18:08
 
 Doc role: living product model
 
@@ -86,3 +86,7 @@ Service 的持久化状态是 Orbit 最近记录的执行结果或显式状态�
 CD 总执行时间由 `deployment.execution_timeout` 限制，基准为 `1h`；尽力取消与收尾使用 `deployment.cancel_timeout`，基准为 `5s`。总执行时间从 Worker 处理开始计算，包含准备、命令和 Gateway readiness，不含排队。超时后结束等待并记录失败，不要求不响应取消的执行先返回。
 
 接替粒度仅为 Service，不按 Environment、物理容器或跨 Project 宿主合并。已发出的 Docker daemon 操作、文件写入或 SFTP 动作无法保证撤销，取消状态不代表容器或远端进程已停止。CI、心跳、租约和重启恢复不在此机制范围内。
+
+## 项目环境 CLI
+
+项目 code 可作为 SSH alias，通过 PAT 与 Orbit 服务端连接成员可见的已配置 SSH 环境，支持交互终端和一次性无 PTY 命令。此访问不依赖成功 Docker Probe、Gateway 或 Service；部署仍保留既有就绪要求。凭据、连接用户及主机指纹复用 Environment 受管数据，客户端不导出私钥。local 和未配置环境不可执行 CLI 远程命令。调用及状态边界见[项目环境 CLI 指南](../guides/project-environment-cli.md)。

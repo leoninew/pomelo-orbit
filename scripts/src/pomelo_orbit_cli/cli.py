@@ -6,6 +6,7 @@ import click
 
 from pomelo_orbit_cli import __version__
 from pomelo_orbit_cli.commands.cert import cert
+from pomelo_orbit_cli.commands.environment import environment
 from pomelo_orbit_cli.commands.remote import remote
 from pomelo_orbit_cli.commands.release import release_command
 from pomelo_orbit_cli.commands.ulid import ulid_command
@@ -57,6 +58,7 @@ def cli(ctx: click.Context, verbose: bool) -> None:
 
 
 cli.add_command(cert)
+cli.add_command(environment)
 cli.add_command(remote)
 cli.add_command(release_command)
 cli.add_command(ulid_command)

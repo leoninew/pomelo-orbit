@@ -1164,6 +1164,8 @@ export default {
       domain: '域名',
       pathPrefix: '路径前缀',
       targetUrl: '目标地址',
+      targetService: '目标服务',
+      targetAddress: '目标端点/地址',
       protocol: '协议',
       listenPort: '监听端口',
       application: '应用',
@@ -1174,6 +1176,7 @@ export default {
       componentName: '组件名称',
       endpointName: '端点',
     },
+    targetServiceDeleted: '服务已删除',
     advancedCustomTarget: '高级：自定义下游地址',
     placeholders: {
       selectApplication: '选择应用',

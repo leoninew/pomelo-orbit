@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-10-16
+最后修改时间: 2026-10-16 17:40:29
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -52,7 +52,7 @@ gen/proto 由 API 映射；gen/sqlc 由持久化实现消费，不进入业务�
 
 架构治理应检查实际及传递依赖、装配和资源生命周期，不能仅因测试通过或包目录正确就认定职责归位。前端的测试限制不适用于后端真实的取消、租约、事务和资源释放承诺；外部数据库、Docker/Traefik 与远端 SSH 联调按既有显式条件启用。
 
-日常使用 `task test:go:unit -- -count=1` 验证 application/model/common/queue 核心规则和用例；已分类的集成/外部测试使用 `!unit` 约束，普通 `go test` 和 `task test:go:all -- -count=1` 仍包含全部本地验证。单测耗时应以独立运行的实际用例计时评估，区分编译、进程启动和外部资源成本。
+`task test` 默认运行前端单元测试，并复用 `test:go:unit` 验证 application/model/common/queue 核心规则和用例；`task test -- --cov` 只收集该 Go 单测范围的覆盖率。只运行 Go 单测时使用 `task test:go:unit -- -count=1`。已分类的集成/外部测试使用 `!unit` 约束，普通 `go test` 和 `task test:go:all -- -count=1` 仍包含全部本地验证。单测耗时应以独立运行的实际用例计时评估，区分编译、进程启动和外部资源成本。
 
 Service 状态检查由独立 `StatusCheckService` 承担，bootstrap 注入权限、状态存储、目标解析和容器清单端口。Docker 命令、JSON 与 Compose labels 在 `infrastructure/runner/docker` 适配器解析；业务层只接收结构化事实。状态确认的条件 SQL 在 Repository 验证，业务测试不依赖数据库迁移或完整部署服务。
 

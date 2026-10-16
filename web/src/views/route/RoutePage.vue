@@ -70,15 +70,16 @@
     <div v-else class="app-surface">
       <AppEmptyState v-if="routes.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table table-fixed min-w-[1200px]">
+        <table class="app-data-table table-fixed min-w-[1400px]">
           <colgroup>
             <col class="w-[10%]" />
             <col class="w-[16%]" />
-            <col class="w-[10%]" />
-            <col class="w-[24%]" />
-            <col class="w-[8%]" />
             <col class="w-[8%]" />
             <col class="w-[14%]" />
+            <col class="w-[16%]" />
+            <col class="w-[7%]" />
+            <col class="w-[7%]" />
+            <col class="w-[12%]" />
             <col class="w-[10%]" />
           </colgroup>
           <thead>
@@ -86,7 +87,8 @@
               <th>{{ t('route.fields.name') }}</th>
               <th>{{ t('route.fields.domain') }}</th>
               <th>{{ t('route.fields.pathPrefix') }}</th>
-              <th>{{ t('route.fields.targetUrl') }}</th>
+              <th>{{ t('route.fields.targetService') }}</th>
+              <th>{{ t('route.fields.targetAddress') }}</th>
               <th>{{ t('common.status') }}</th>
               <th>{{ t('route.fields.protocol') }}</th>
               <th>{{ t('common.createdAt') }}</th>
@@ -132,7 +134,10 @@
                 }}
               </td>
               <td class="max-w-0 text-foreground">
-                <AppTruncatedText :text="routeTarget(route)" />
+                <RouteTargetServiceLink :route="route" />
+              </td>
+              <td class="max-w-0 text-foreground">
+                <AppTruncatedText :text="routeTargetAddress(route)" />
               </td>
               <td>
                 <AppBadge variant="status" :tone="routeEnabled(route) ? 'success' : 'default'">
@@ -533,6 +538,8 @@
   import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
   import ListPagination from '@/components/ui/ListPagination.vue';
   import RouteManagedTargetSelect from '@/components/route/RouteManagedTargetSelect.vue';
+  import RouteTargetServiceLink from '@/components/route/RouteTargetServiceLink.vue';
+  import { routeTargetAddress } from '@/components/route/routeTarget';
   import RouteSyncDialog from '@/components/route/RouteSyncDialog.vue';
   import SearchControl from '@/components/ui/SearchControl.vue';
   import SelectControl from '@/components/ui/SelectControl.vue';
@@ -541,7 +548,7 @@
   import type { RouteResp, RouteSyncResultResp } from '@/gen/proto/orbit/v1/route/route';
   import { useProjectStore } from '@/stores/project';
   import { useToast } from '@/composables/useToast';
-  import { domainAfterCodeChange, isValidRouteCode } from './routeDomain';
+  import { domainAfterCodeChange, isValidRouteCode, routeDomainSuffix } from './routeDomain';
 
   const toast = useToast();
   const { t } = useI18n();
@@ -566,7 +573,7 @@
   const isEditDialogOpen = ref(false);
   const isSyncDialogOpen = ref(false);
   const editingRoute = ref<RouteResp>();
-  const externalDomain = ref('');
+  const domainSuffix = ref('');
   const createPreviousCode = ref('');
   const editPreviousCode = ref('');
   const pendingEnabled = reactive<Record<string, boolean>>({});
@@ -800,7 +807,7 @@
     try {
       const config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
-      externalDomain.value = config.external_domain;
+      domainSuffix.value = routeDomainSuffix(config.external_domain, config.internal_domain);
       createPreviousCode.value = '';
       Object.assign(form, {
         name: '',
@@ -874,7 +881,7 @@
       createPreviousCode.value,
       code,
       form.domain,
-      externalDomain.value
+      domainSuffix.value
     );
     createPreviousCode.value = code;
     errors.domain = '';
@@ -886,7 +893,7 @@
       editPreviousCode.value,
       code,
       editForm.domain,
-      externalDomain.value
+      domainSuffix.value
     );
     editPreviousCode.value = code;
     clearEditError('domain');
@@ -909,7 +916,7 @@
     try {
       const config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
-      externalDomain.value = config.external_domain;
+      domainSuffix.value = routeDomainSuffix(config.external_domain, config.internal_domain);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.loadFailed'));
       return;
@@ -1055,10 +1062,6 @@
       }
     }
     hasPendingRouteChanges.value = true;
-  }
-
-  function routeTarget(route: RouteResp): string {
-    return route.target_url;
   }
 
   async function loadProjectData(projectId: string | null) {

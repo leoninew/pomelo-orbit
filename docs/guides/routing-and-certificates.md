@@ -5,6 +5,8 @@ Doc role: living guide
 
 Orbit 通过 Gateway 的 Traefik File provider 管理自定义 Route，每条 Route 使用路由编码命名的独立 YAML，例如 `route-mineru.yaml`，router/service 名分别为 `route-mineru-route`、`route-mineru-service`。Route 创建、编辑、删除先写入业务数据；列表页和详情页的启停先保留在前端草稿中。详情页的证书弹窗只保存 HTTP/HTTPS、证书方式及验证方式，不触发发布。同步预览显示发布、撤销、跳过清单；确认前核对选定业务配置、受管文件和 Gateway/Environment 依赖修订，发布后查询 Traefik API 核对加载结果。
 
+列表和详情将目标拆分为「目标服务」与「目标端点/地址」。受管 HTTP/TCP 目标以服务编码链接到 Service 详情，端点显示 `组件/协议端口`，例如 `api/http8080`；链接不受 Route 启停状态影响。自定义 HTTP 目标的服务列显示 `—`，地址保留完整 URL。服务删除后，Route 仍可查看，服务列显示「服务已删除」且不提供链接。API/MCP 通过只读 `service_code` 返回当前 Project 内的服务编码；展示信息使用独立 RouteView，不进入 Route 发布修订。
+
 详情页仅同步当前 Route，列表页显式选择 Project 范围。Project 预览取业务 Route 与已知发布记录的并集，确认按冻结 ID 顺序逐条处理：启用的 Route 发布或覆盖自己的文件；禁用及已删除的已知 Route 撤销自己的文件；禁用且从未发布的 Route 直接跳过。范围外路由、未知文件、Docker label 与其他 provider 资源保留。预览不比较 Traefik 增删改，也不提交运行时 hash。
 
 自定义路由列表和详情页共用同步模态窗。编码、操作、协议三列统一为紧凑的 `7rem` 宽度，规则列使用剩余宽度，状态列维持原比例；两个入口采用相同的逐项失败 Toast、状态 tip 和重试行为。协议补充说明与失败状态旁均显示信息图标，悬停或键盘聚焦时通过共享 `AppTooltip` 展示原因；提示浮层通过 Portal 位于模态窗上方，不依赖浏览器原生 `title`。
@@ -68,7 +70,7 @@ Traefik 直接重启从持久化文件恢复，Orbit 可以离线。Service 部�
 
 前端 `/routes` 以自定义 Route 为主列表，提供创建、编辑、批量启停草稿和同步入口；Route 详情页提供单条启停草稿、独立证书配置和同步。已启用 Route 修改证书后先保存，页面提示待同步；预览同时展示协议与证书方式。未启用 Route 的证书配置同样直接保存，不提示待同步，启用并同步后才发布。未启用 Route 的创建、编辑和删除也不单独提示待同步。`/route/traefik` 单独展示 Traefik 当前路由，可从主列表进入并返回。
 
-Route 编码为最多 32 字符的小写 DNS 单标签，以字母开头，只允许 `a-z`、`0-9`、`-`，末尾不能是连字符。`external_domain` 可为 `sub.example.com` 等多级子域名，每级标签符合 ASCII 主机名规则，末级标签不能纯数字，最长 220 字符。Gateway 配置 `external_domain` 后，创建和编辑 Route 时修改编码会在现有域名控件中生成 `编码.external_domain`；手工填写的其他域名不会被后续编码修改覆盖。未配置外网域名时，创建表单域名控件留空。保存的是域名控件中的完整域名；外网域名配置本身不创建 DNS 记录或对外路由，也不批量修改已保存 Route。
+Route 编码为最多 32 字符的小写 DNS 单标签，以字母开头，只允许 `a-z`、`0-9`、`-`，末尾不能是连字符。`external_domain` 可为 `sub.example.com` 等多级子域名，每级标签符合 ASCII 主机名规则，末级标签不能纯数字，最长 220 字符。创建和编辑 Route 时修改编码，域名控件优先生成 `编码.external_domain`；未配置外网域名时生成 `编码.internal_domain`。手工填写的其他域名不会被后续编码修改覆盖。保存的是域名控件中的完整域名；Gateway 域名配置本身不创建 DNS 记录或对外路由，也不批量修改已保存 Route。
 
 Gateway 详情页在独立的「Traefik API」卡片中展示和编辑容器 API URL、宿主机 API URL 及就绪超时；基本信息单独编辑名称和域名。移除的是 REST provider 发布入口，管理 API 继续用于就绪检查、运行时列表和发布/恢复后的加载核验。本地容器中的 Orbit 使用容器地址；本机 Orbit 和 SSH 目标使用宿主机地址，SSH 请求在远端执行。
 

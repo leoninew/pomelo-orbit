@@ -197,14 +197,14 @@ func (c *core) gatewayInScope(ctx context.Context, gatewayId string) (gatewaydto
 	return gateway, nil
 }
 
-func (c *core) routeInScope(ctx context.Context, routeId string) (model.Route, error) {
+func (c *core) routeInScope(ctx context.Context, routeId string) (model.RouteView, error) {
 	projectId, _, err := c.requireReadyEnvironment(ctx)
 	if err != nil {
-		return model.Route{}, err
+		return model.RouteView{}, err
 	}
 	route, err := c.deps.Route.RouteForUser(ctx, c.deps.ActorUserId, projectId, routeId)
 	if err != nil {
-		return model.Route{}, err
+		return model.RouteView{}, err
 	}
 	return route, nil
 }

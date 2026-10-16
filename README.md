@@ -25,9 +25,11 @@ task webapi:dev
 
 ```bash
 task check   # 类型检查、格式化和 lint
-task test    # 前后端测试
+task test    # 前后端单元测试
 task build   # 构建 Docker 镜像
 ```
+
+完整 Go 测试（包含集成验证）使用 `task test:go:all -- -count=1`。
 
 更多产品、架构和操作文档见 [`docs`](./docs/)。
 

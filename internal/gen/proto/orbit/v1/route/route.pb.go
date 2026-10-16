@@ -44,8 +44,10 @@ type RouteResp struct {
 	Http01Available       bool                   `protobuf:"varint,19,opt,name=http01_available,json=http01Available,proto3" json:"http01_available,omitempty"`
 	Dns01Available        bool                   `protobuf:"varint,20,opt,name=dns01_available,json=dns01Available,proto3" json:"dns01_available,omitempty"`
 	AcmeChallengeHint     string                 `protobuf:"bytes,21,opt,name=acme_challenge_hint,json=acmeChallengeHint,proto3" json:"acme_challenge_hint,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Current service code; absent for custom targets or a deleted target service.
+	ServiceCode   *string `protobuf:"bytes,22,opt,name=service_code,json=serviceCode,proto3,oneof" json:"service_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RouteResp) Reset() {
@@ -221,6 +223,13 @@ func (x *RouteResp) GetDns01Available() bool {
 func (x *RouteResp) GetAcmeChallengeHint() string {
 	if x != nil {
 		return x.AcmeChallengeHint
+	}
+	return ""
+}
+
+func (x *RouteResp) GetServiceCode() string {
+	if x != nil && x.ServiceCode != nil {
+		return *x.ServiceCode
 	}
 	return ""
 }
@@ -1393,7 +1402,7 @@ var File_orbit_v1_route_route_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"\n" +
-	"\x1aorbit/v1/route/route.proto\x12\x0eorbit.v1.route\"\xe7\x06\n" +
+	"\x1aorbit/v1/route/route.proto\x12\x0eorbit.v1.route\"\xa0\a\n" +
 	"\tRouteResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -1422,12 +1431,14 @@ const file_orbit_v1_route_route_proto_rawDesc = "" +
 	"\x16gateway_application_id\x18\x12 \x01(\tR\x14gatewayApplicationId\x12)\n" +
 	"\x10http01_available\x18\x13 \x01(\bR\x0fhttp01Available\x12'\n" +
 	"\x0fdns01_available\x18\x14 \x01(\bR\x0edns01Available\x12.\n" +
-	"\x13acme_challenge_hint\x18\x15 \x01(\tR\x11acmeChallengeHintB\x0e\n" +
+	"\x13acme_challenge_hint\x18\x15 \x01(\tR\x11acmeChallengeHint\x12&\n" +
+	"\fservice_code\x18\x16 \x01(\tH\x05R\vserviceCode\x88\x01\x01B\x0e\n" +
 	"\f_listen_portB\r\n" +
 	"\v_service_idB\x11\n" +
 	"\x0f_component_nameB\x14\n" +
 	"\x12_endpoint_protocolB\x1a\n" +
-	"\x18_endpoint_container_port\"\xfb\x03\n" +
+	"\x18_endpoint_container_portB\x0f\n" +
+	"\r_service_code\"\xfb\x03\n" +
 	"\x0eRouteCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
 	"\x06domain\x18\x02 \x01(\tR\x06domain\x12\x1f\n" +

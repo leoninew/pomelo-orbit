@@ -8,15 +8,23 @@ WHERE project_id = sqlc.arg(project_id)
     OR target_url LIKE sqlc.narg(search_pattern));
 
 -- name: ListRoutes :many
-SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
+SELECT route.*, service.code AS service_code
 FROM route
-WHERE project_id = sqlc.arg(project_id)
+LEFT JOIN service ON service.id = route.service_id AND service.project_id = route.project_id
+WHERE route.project_id = sqlc.arg(project_id)
   AND (CAST(sqlc.narg(search_pattern) AS CHAR) IS NULL
-    OR name LIKE sqlc.narg(search_pattern)
-    OR domain LIKE sqlc.narg(search_pattern)
-    OR target_url LIKE sqlc.narg(search_pattern))
-ORDER BY id DESC
+    OR route.name LIKE sqlc.narg(search_pattern)
+    OR route.domain LIKE sqlc.narg(search_pattern)
+    OR route.target_url LIKE sqlc.narg(search_pattern))
+ORDER BY route.id DESC
 LIMIT ? OFFSET ?;
+
+-- name: RouteViewById :one
+SELECT route.*, service.code AS service_code
+FROM route
+LEFT JOIN service ON service.id = route.service_id AND service.project_id = route.project_id
+WHERE route.id = sqlc.arg(id)
+  AND route.project_id = sqlc.arg(project_id);
 
 -- name: ListAllRoutes :many
 SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at

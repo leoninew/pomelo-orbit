@@ -106,5 +106,5 @@ func createSyncTestRoute(t *testing.T, s Service, name string) model.Route {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return route
+	return route.Route
 }

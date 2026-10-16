@@ -25,6 +25,8 @@ message RouteResp {
   bool http01_available = 19;
   bool dns01_available = 20;
   string acme_challenge_hint = 21;
+  // Current service code; absent for custom targets or a deleted target service.
+  optional string service_code = 22;
 }
 
 message RouteCreateReq {

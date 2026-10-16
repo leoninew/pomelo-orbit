@@ -327,8 +327,22 @@ func TestRouteServiceCreatesAndSyncsManagedHTTPRouteWithoutServiceEnvironment(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if route.TargetUrl != "api-default/api/http8080" || route.ServiceId == nil || *route.ServiceId != target.Id {
+	if route.TargetUrl != "api-default/api/http8080" || route.ServiceId == nil || *route.ServiceId != target.Id || route.ServiceCode == nil || *route.ServiceCode != target.Code {
 		t.Fatalf("unexpected managed HTTP route: %+v", route)
+	}
+	detail, err := service.RouteForUser(ctx, routeTestUserId, routeTestProjectId, route.Id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if detail.ServiceCode == nil || *detail.ServiceCode != target.Code {
+		t.Fatalf("managed HTTP route detail = %+v", detail)
+	}
+	listed, err := service.ListRoutes(ctx, routeTestUserId, routeTestProjectId, 1, 10, route.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(listed.Items) != 1 || listed.Items[0].ServiceCode == nil || *listed.Items[0].ServiceCode != target.Code {
+		t.Fatalf("managed HTTP route list = %+v", listed)
 	}
 	if len(publisher.published) != 0 {
 		t.Fatalf("expected no HTTP snapshot before explicit sync, got %+v", publisher.published)
@@ -356,7 +370,7 @@ func TestRouteServiceCreatesAndSyncsManagedHTTPRouteWithoutServiceEnvironment(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.TargetUrl != "api-default/api/http8080" {
+	if updated.TargetUrl != "api-default/api/http8080" || updated.ServiceCode == nil || *updated.ServiceCode != target.Code {
 		t.Fatalf("managed HTTP target URL after update = %q, want service-code display address", updated.TargetUrl)
 	}
 

@@ -50,6 +50,11 @@ func (f *routeRuleFacts) Route(_ context.Context, _ string, id string) (model.Ro
 	return model.Route{}, repository.ErrNotFound
 }
 
+func (f *routeRuleFacts) RouteView(ctx context.Context, projectId, id string) (model.RouteView, error) {
+	route, err := f.Route(ctx, projectId, id)
+	return model.RouteView{Route: route}, err
+}
+
 func (f *routeRuleFacts) ListAllRoutes(context.Context, string) ([]model.Route, error) {
 	routes := make([]model.Route, 0, len(f.routes))
 	for _, route := range f.routes {

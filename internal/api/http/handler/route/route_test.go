@@ -1,11 +1,37 @@
 package routehandler
 
 import (
+	"encoding/json"
 	"testing"
+
+	"google.golang.org/protobuf/encoding/protojson"
 
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
+	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func TestRouteResponseIncludesTargetServiceCode(t *testing.T) {
+	serviceId, serviceCode := "service-1", "api-main"
+	view := model.RouteView{Route: model.Route{Id: "route-1", ServiceId: &serviceId}, ServiceCode: &serviceCode}
+	response := routeResponse(view)
+	encoded, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(&response)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(encoded, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["service_id"] != serviceId || payload["service_code"] != serviceCode {
+		t.Fatalf("route response = %s", encoded)
+	}
+	view.ServiceCode = nil
+	response = routeResponse(view)
+	if response.ServiceCode != nil || response.GetServiceId() != serviceId {
+		t.Fatalf("deleted service response = %+v", &response)
+	}
+}
 
 func TestRouteSyncPreviewResponseKeepsRulePartsSeparate(t *testing.T) {
 	response := routeSyncPreviewResponse(routedto.RouteSyncPreview{Items: []routedto.RouteSyncPlanItem{{

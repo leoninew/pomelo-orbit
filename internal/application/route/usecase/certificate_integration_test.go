@@ -39,7 +39,7 @@ func TestMkcertDoesNotSaveFailedOrStaleCertificate(t *testing.T) {
 				}
 				updated := route
 				updated.Domain = "new.example.test"
-				if err := service.route.UpdateRoute(ctx, routeTestProjectId, updated); err != nil {
+				if err := service.route.UpdateRoute(ctx, routeTestProjectId, updated.Route); err != nil {
 					t.Fatal(err)
 				}
 				return "certificate", "private-key", nil

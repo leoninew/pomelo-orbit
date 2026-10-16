@@ -30,6 +30,8 @@ export interface RouteResp {
   http01_available: boolean;
   dns01_available: boolean;
   acme_challenge_hint: string;
+  /** Current service code; absent for custom targets or a deleted target service. */
+  service_code?: string | undefined;
 }
 
 export interface RouteCreateReq {

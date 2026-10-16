@@ -13,7 +13,7 @@ Doc role: living SoT
 | C-03 | Deployment = 操作流水 + 任务状态 | worker 执行 Docker |
 | C-04 | Application.kind 明确区分 `standard` 与 `gateway` | Gateway 创建写入 `gateway`，已有类型按 `gateway_config` 真实关联纠正；服务入口依据应用类型禁用 Gateway 部署。GatewayConfig 保存配置，Environment binding 校验归属，Gateway 从专属入口部署 |
 | C-05 | 暴露 SoT = VersionExpose（protocol + access + ports） | 无域名列 |
-| C-06 | 域名 / REST 控制面在 GatewayConfig | `internal_domain` 用于 Docker labels 和 Gateway 派生地址；`external_domain` 仅辅助自定义 Route 表单拼接完整域名；另有 `rest_api_url` |
+| C-06 | 域名 / REST 控制面在 GatewayConfig | `internal_domain` 用于 Docker labels 和 Gateway 派生地址；自定义 Route 表单优先使用 `external_domain` 拼接完整域名，为空时使用 `internal_domain`；另有 `rest_api_url` |
 | C-07 | Environment = Project 下元数据 | 无域名 / ingress 用户 SoT |
 | C-08 | 平台 Route 与应用 Expose 分流 | Route → 独立 File provider 文件；Expose → Docker labels |
 | C-09 | 单节点 API+worker；挂 Docker socket | 无独立 worker 部署角色主路径 |

@@ -1197,6 +1197,8 @@ export default {
       domain: 'Domain',
       pathPrefix: 'Path Prefix',
       targetUrl: 'Target URL',
+      targetService: 'Target Service',
+      targetAddress: 'Target Endpoint / Address',
       protocol: 'Protocol',
       listenPort: 'Listen Port',
       application: 'Application',
@@ -1207,6 +1209,7 @@ export default {
       componentName: 'Component Name',
       endpointName: 'Endpoint',
     },
+    targetServiceDeleted: 'Service deleted',
     advancedCustomTarget: 'Advanced: custom target URL',
     placeholders: {
       selectApplication: 'Select application',

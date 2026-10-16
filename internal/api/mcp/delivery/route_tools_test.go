@@ -155,34 +155,34 @@ type routeToolService struct {
 	confirmInput     routedto.RouteSyncConfirmInput
 }
 
-func (s *routeToolService) ListRoutes(_ context.Context, _ string, projectId string, page, perPage int, _ string) (repository.Page[model.Route], error) {
+func (s *routeToolService) ListRoutes(_ context.Context, _ string, projectId string, page, perPage int, _ string) (repository.Page[model.RouteView], error) {
 	s.listProjectId, s.listPage, s.listPerPage = projectId, page, perPage
-	return repository.Page[model.Route]{Items: []model.Route{s.route("route-1", false)}, Total: 1, Page: page, PerPage: perPage}, nil
+	return repository.Page[model.RouteView]{Items: []model.RouteView{s.route("route-1", false)}, Total: 1, Page: page, PerPage: perPage}, nil
 }
 
-func (s *routeToolService) CreateRoute(_ context.Context, userId, projectId string, input routedto.RouteCreateInput) (model.Route, error) {
+func (s *routeToolService) CreateRoute(_ context.Context, userId, projectId string, input routedto.RouteCreateInput) (model.RouteView, error) {
 	s.createUserId, s.createProjectId, s.createInput = userId, projectId, input
 	route := s.route("route-1", input.Enabled)
 	route.Name, route.Protocol, route.Domain, route.PathPrefix, route.TargetUrl = input.Name, input.Protocol, input.Domain, input.PathPrefix, input.TargetUrl
 	return route, nil
 }
 
-func (s *routeToolService) RouteForUser(_ context.Context, _ string, _ string, routeId string) (model.Route, error) {
+func (s *routeToolService) RouteForUser(_ context.Context, _ string, _ string, routeId string) (model.RouteView, error) {
 	s.getRouteId = routeId
 	return s.route(routeId, false), nil
 }
 
-func (s *routeToolService) UpdateRoute(_ context.Context, _ string, _ string, _ string, input routedto.RouteUpdateInput) (model.Route, error) {
+func (s *routeToolService) UpdateRoute(_ context.Context, _ string, _ string, _ string, input routedto.RouteUpdateInput) (model.RouteView, error) {
 	s.updateInput = input
 	return s.route("route-1", input.Enabled != nil && *input.Enabled), nil
 }
 
-func (s *routeToolService) EnableRoute(_ context.Context, _ string, _ string, routeId string) (model.Route, error) {
+func (s *routeToolService) EnableRoute(_ context.Context, _ string, _ string, routeId string) (model.RouteView, error) {
 	s.enableRouteId = routeId
 	return s.route(routeId, true), nil
 }
 
-func (s *routeToolService) DisableRoute(_ context.Context, _ string, _ string, routeId string) (model.Route, error) {
+func (s *routeToolService) DisableRoute(_ context.Context, _ string, _ string, routeId string) (model.RouteView, error) {
 	s.disableRouteId = routeId
 	return s.route(routeId, false), nil
 }
@@ -209,7 +209,7 @@ func (s *routeToolService) ConfirmRouteSync(_ context.Context, userId, projectId
 	return routedto.RouteSyncConfirmResult{Code: "route_sync_incomplete", Results: []routedto.RouteSyncResult{{RouteId: "route-1", Code: "route_sync_publish_permission_denied", BusinessSave: "saved"}}}, nil
 }
 
-func (s *routeToolService) route(routeId string, enabled bool) model.Route {
+func (s *routeToolService) route(routeId string, enabled bool) model.RouteView {
 	projectId := "project-1"
-	return model.Route{Id: routeId, ProjectId: &projectId, Name: "api-route", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "https://origin.example.test:8443", Enabled: enabled, CertType: "manual"}
+	return model.RouteView{Route: model.Route{Id: routeId, ProjectId: &projectId, Name: "api-route", Protocol: "http", Domain: "api.example.test", PathPrefix: "/", TargetUrl: "https://origin.example.test:8443", Enabled: enabled, CertType: "manual"}}
 }

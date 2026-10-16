@@ -40,7 +40,7 @@ func routeUpdateInput(req *routev1.RouteUpdateReq) routedto.RouteUpdateInput {
 	}
 }
 
-func routeResponses(items []model.Route) []routev1.RouteResp {
+func routeResponses(items []model.RouteView) []routev1.RouteResp {
 	resp := make([]routev1.RouteResp, 0, len(items))
 	for _, item := range items {
 		resp = append(resp, routeResponse(item))
@@ -48,7 +48,7 @@ func routeResponses(items []model.Route) []routev1.RouteResp {
 	return resp
 }
 
-func routeResponse(route model.Route) routev1.RouteResp {
+func routeResponse(route model.RouteView) routev1.RouteResp {
 	return routev1.RouteResp{
 		Id:                    route.Id,
 		Name:                  route.Name,
@@ -58,6 +58,7 @@ func routeResponse(route model.Route) routev1.RouteResp {
 		TargetUrl:             route.TargetUrl,
 		ListenPort:            optionalInt32(route.ListenPort),
 		ServiceId:             route.ServiceId,
+		ServiceCode:           route.ServiceCode,
 		ComponentName:         route.ComponentName,
 		EndpointProtocol:      route.EndpointProtocol,
 		EndpointContainerPort: optionalInt32(route.EndpointContainerPort),

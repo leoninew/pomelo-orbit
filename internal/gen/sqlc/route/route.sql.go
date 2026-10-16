@@ -264,14 +264,15 @@ func (q *Queries) ListEnabledRoutesByProjectId(ctx context.Context, arg ListEnab
 }
 
 const listRoutes = `-- name: ListRoutes :many
-SELECT id, project_id, name, protocol, domain, path_prefix, target_url, listen_port, service_id, component_name, endpoint_protocol, endpoint_container_port, enabled, https_enabled, cert_pem, cert_key, cert_type, acme_challenge, created_at, updated_at
+SELECT route.id, route.name, route.protocol, route.domain, route.path_prefix, route.target_url, route.listen_port, route.service_id, route.component_name, route.endpoint_protocol, route.endpoint_container_port, route.enabled, route.https_enabled, route.cert_pem, route.cert_key, route.cert_type, route.acme_challenge, route.created_at, route.updated_at, route.project_id, service.code AS service_code
 FROM route
-WHERE project_id = ?
+LEFT JOIN service ON service.id = route.service_id AND service.project_id = route.project_id
+WHERE route.project_id = ?
   AND (CAST(? AS CHAR) IS NULL
-    OR name LIKE ?
-    OR domain LIKE ?
-    OR target_url LIKE ?)
-ORDER BY id DESC
+    OR route.name LIKE ?
+    OR route.domain LIKE ?
+    OR route.target_url LIKE ?)
+ORDER BY route.id DESC
 LIMIT ? OFFSET ?
 `
 
@@ -284,7 +285,6 @@ type ListRoutesParams struct {
 
 type ListRoutesRow struct {
 	Id                    string         `db:"id"`
-	ProjectId             sql.NullString `db:"project_id"`
 	Name                  string         `db:"name"`
 	Protocol              string         `db:"protocol"`
 	Domain                string         `db:"domain"`
@@ -303,6 +303,8 @@ type ListRoutesRow struct {
 	AcmeChallenge         string         `db:"acme_challenge"`
 	CreatedAt             time.Time      `db:"created_at"`
 	UpdatedAt             time.Time      `db:"updated_at"`
+	ProjectId             sql.NullString `db:"project_id"`
+	ServiceCode           sql.NullString `db:"service_code"`
 }
 
 func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListRoutesRow, error) {
@@ -324,7 +326,6 @@ func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListR
 		var i ListRoutesRow
 		if err := rows.Scan(
 			&i.Id,
-			&i.ProjectId,
 			&i.Name,
 			&i.Protocol,
 			&i.Domain,
@@ -343,6 +344,8 @@ func (q *Queries) ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListR
 			&i.AcmeChallenge,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ProjectId,
+			&i.ServiceCode,
 		); err != nil {
 			return nil, err
 		}
@@ -479,6 +482,72 @@ func (q *Queries) RouteByProjectIdAndDomain(ctx context.Context, arg RouteByProj
 		&i.AcmeChallenge,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const routeViewById = `-- name: RouteViewById :one
+SELECT route.id, route.name, route.protocol, route.domain, route.path_prefix, route.target_url, route.listen_port, route.service_id, route.component_name, route.endpoint_protocol, route.endpoint_container_port, route.enabled, route.https_enabled, route.cert_pem, route.cert_key, route.cert_type, route.acme_challenge, route.created_at, route.updated_at, route.project_id, service.code AS service_code
+FROM route
+LEFT JOIN service ON service.id = route.service_id AND service.project_id = route.project_id
+WHERE route.id = ?
+  AND route.project_id = ?
+`
+
+type RouteViewByIdParams struct {
+	Id        string         `db:"id"`
+	ProjectId sql.NullString `db:"project_id"`
+}
+
+type RouteViewByIdRow struct {
+	Id                    string         `db:"id"`
+	Name                  string         `db:"name"`
+	Protocol              string         `db:"protocol"`
+	Domain                string         `db:"domain"`
+	PathPrefix            string         `db:"path_prefix"`
+	TargetUrl             string         `db:"target_url"`
+	ListenPort            sql.NullInt64  `db:"listen_port"`
+	ServiceId             sql.NullString `db:"service_id"`
+	ComponentName         sql.NullString `db:"component_name"`
+	EndpointProtocol      sql.NullString `db:"endpoint_protocol"`
+	EndpointContainerPort sql.NullInt64  `db:"endpoint_container_port"`
+	Enabled               int64          `db:"enabled"`
+	HttpsEnabled          int64          `db:"https_enabled"`
+	CertPem               sql.NullString `db:"cert_pem"`
+	CertKey               sql.NullString `db:"cert_key"`
+	CertType              string         `db:"cert_type"`
+	AcmeChallenge         string         `db:"acme_challenge"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+	ProjectId             sql.NullString `db:"project_id"`
+	ServiceCode           sql.NullString `db:"service_code"`
+}
+
+func (q *Queries) RouteViewById(ctx context.Context, arg RouteViewByIdParams) (RouteViewByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, routeViewById, arg.Id, arg.ProjectId)
+	var i RouteViewByIdRow
+	err := row.Scan(
+		&i.Id,
+		&i.Name,
+		&i.Protocol,
+		&i.Domain,
+		&i.PathPrefix,
+		&i.TargetUrl,
+		&i.ListenPort,
+		&i.ServiceId,
+		&i.ComponentName,
+		&i.EndpointProtocol,
+		&i.EndpointContainerPort,
+		&i.Enabled,
+		&i.HttpsEnabled,
+		&i.CertPem,
+		&i.CertKey,
+		&i.CertType,
+		&i.AcmeChallenge,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ProjectId,
+		&i.ServiceCode,
 	)
 	return i, err
 }

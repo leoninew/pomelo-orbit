@@ -31,7 +31,7 @@ func (r Repository) q(ctx context.Context) *routesqlc.Queries {
 	})
 }
 
-func (r Repository) ListRoutes(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.Route], error) {
+func (r Repository) ListRoutes(ctx context.Context, projectId string, page int, perPage int, search string) (repository.Page[model.RouteView], error) {
 	page, perPage = repository.NormalizePage(page, perPage)
 	raw, pattern := dbmodel.SearchPattern(search)
 	searchPattern := sql.NullString{String: pattern, Valid: raw != ""}
@@ -42,7 +42,7 @@ func (r Repository) ListRoutes(ctx context.Context, projectId string, page int, 
 		SearchPattern: searchPattern,
 	})
 	if err != nil {
-		return repository.Page[model.Route]{}, fmt.Errorf("count routes: %w", err)
+		return repository.Page[model.RouteView]{}, fmt.Errorf("count routes: %w", err)
 	}
 	rows, err := q.ListRoutes(ctx, routesqlc.ListRoutesParams{
 		ProjectId:     sql.NullString{String: projectId, Valid: true},
@@ -50,13 +50,13 @@ func (r Repository) ListRoutes(ctx context.Context, projectId string, page int, 
 		Limit:         int32(perPage), Offset: int32((page - 1) * perPage),
 	})
 	if err != nil {
-		return repository.Page[model.Route]{}, fmt.Errorf("list routes: %w", err)
+		return repository.Page[model.RouteView]{}, fmt.Errorf("list routes: %w", err)
 	}
-	items := make([]model.Route, 0, len(rows))
+	items := make([]model.RouteView, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, routeFromRow(row))
 	}
-	return repository.Page[model.Route]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
+	return repository.Page[model.RouteView]{Items: items, Total: int(total), Page: page, PerPage: perPage}, nil
 }
 
 func (r Repository) ListAllRoutes(ctx context.Context, projectId string) ([]model.Route, error) {
@@ -95,6 +95,19 @@ func (r Repository) Route(ctx context.Context, projectId, id string) (model.Rout
 		return model.Route{}, fmt.Errorf("load route %s: %w", id, sqlcommon.TranslateError(err))
 	}
 	return routeFromById(row), nil
+}
+
+func (r Repository) RouteView(ctx context.Context, projectId, id string) (model.RouteView, error) {
+	row, err := r.q(ctx).RouteViewById(ctx, routesqlc.RouteViewByIdParams{
+		Id: id, ProjectId: sql.NullString{String: strings.TrimSpace(projectId), Valid: true},
+	})
+	if err != nil {
+		return model.RouteView{}, fmt.Errorf("load route view %s: %w", id, sqlcommon.TranslateError(err))
+	}
+	return model.RouteView{
+		Route:       routeCommon(row.Id, row.ProjectId, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceId, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.AcmeChallenge, row.CreatedAt, row.UpdatedAt),
+		ServiceCode: dbmodel.StringPtr(row.ServiceCode),
+	}, nil
 }
 
 func (r Repository) RouteByProjectAndDomain(ctx context.Context, projectId string, domain string) (model.Route, error) {
@@ -167,8 +180,8 @@ func routeCommon(id string, projectId sql.NullString, name, protocol, domain, pa
 	}
 }
 
-func routeFromRow(row routesqlc.ListRoutesRow) model.Route {
-	return routeCommon(row.Id, row.ProjectId, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceId, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.AcmeChallenge, row.CreatedAt, row.UpdatedAt)
+func routeFromRow(row routesqlc.ListRoutesRow) model.RouteView {
+	return model.RouteView{Route: routeCommon(row.Id, row.ProjectId, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceId, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.AcmeChallenge, row.CreatedAt, row.UpdatedAt), ServiceCode: dbmodel.StringPtr(row.ServiceCode)}
 }
 func routeFromAll(row routesqlc.ListAllRoutesRow) model.Route {
 	return routeCommon(row.Id, row.ProjectId, row.Name, row.Protocol, row.Domain, row.PathPrefix, row.TargetUrl, row.ListenPort, row.ServiceId, row.ComponentName, row.EndpointProtocol, row.EndpointContainerPort, row.Enabled, row.HttpsEnabled, row.CertPem, row.CertKey, row.CertType, row.AcmeChallenge, row.CreatedAt, row.UpdatedAt)

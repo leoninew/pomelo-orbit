@@ -101,9 +101,13 @@
             <dt>{{ t('route.fields.listenPort') }}</dt>
             <dd class="text-foreground">{{ routeData.listen_port }}</dd>
           </div>
-          <div v-if="routeData.target_url" class="flex gap-2">
-            <dt>{{ t('route.fields.targetUrl') }}</dt>
-            <dd class="text-foreground">{{ routeData.target_url }}</dd>
+          <div class="flex min-w-0 gap-2">
+            <dt>{{ t('route.fields.targetService') }}</dt>
+            <dd class="min-w-0"><RouteTargetServiceLink :route="routeData" /></dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('route.fields.targetAddress') }}</dt>
+            <dd class="text-foreground">{{ routeTargetAddress(routeData) }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('common.status') }}</dt>
@@ -366,6 +370,8 @@
   import { provideLogStreamCache } from '@/composables/useLogStream';
   import AppLoadingState from '@/components/ui/AppLoadingState.vue';
   import RouteManagedTargetSelect from '@/components/route/RouteManagedTargetSelect.vue';
+  import RouteTargetServiceLink from '@/components/route/RouteTargetServiceLink.vue';
+  import { routeTargetAddress } from '@/components/route/routeTarget';
   import RouteSyncDialog from '@/components/route/RouteSyncDialog.vue';
   import RouteCertificateDialog from '@/views/route/components/RouteCertificateDialog.vue';
   import SelectControl from '@/components/ui/SelectControl.vue';
@@ -376,7 +382,7 @@
   import { formatTime } from '@/utils/time';
   import { MANAGED_GATEWAY_COMPONENT_NAME } from '@/constants/gateway';
   import type { RuntimeContainerLogTarget } from '@/components/service/runtimeContainerLogs';
-  import { domainAfterCodeChange, isValidRouteCode } from './routeDomain';
+  import { domainAfterCodeChange, isValidRouteCode, routeDomainSuffix } from './routeDomain';
 
   const currentRoute = useRoute();
   const router = useRouter();
@@ -396,7 +402,7 @@
   ];
 
   const routeData = ref<RouteResp>();
-  const externalDomain = ref('');
+  const domainSuffix = ref('');
   const previousCode = ref('');
   const isEditDialogOpen = ref(false);
   const isDeleteDialogOpen = ref(false);
@@ -544,7 +550,7 @@
     try {
       const config = await traefikRouteApi.getConfig(projectId);
       await loadTargetServices(projectId);
-      externalDomain.value = config.external_domain;
+      domainSuffix.value = routeDomainSuffix(config.external_domain, config.internal_domain);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('route.toast.loadDetailFailed'));
       return;
@@ -584,12 +590,7 @@
 
   function handleCodeInput(code: string) {
     errors.name = '';
-    form.domain = domainAfterCodeChange(
-      previousCode.value,
-      code,
-      form.domain,
-      externalDomain.value
-    );
+    form.domain = domainAfterCodeChange(previousCode.value, code, form.domain, domainSuffix.value);
     previousCode.value = code;
     errors.domain = '';
   }

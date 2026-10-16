@@ -2,6 +2,13 @@ package model
 
 import "time"
 
+// RouteView adds current target service information to a stored Route.
+// Display metadata is kept outside Route and its publication revisions.
+type RouteView struct {
+	Route
+	ServiceCode *string
+}
+
 type Route struct {
 	Id                    string    `db:"id"`
 	ProjectId             *string   `db:"project_id"`

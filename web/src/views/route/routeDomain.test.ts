@@ -1,17 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { domainAfterCodeChange, isValidRouteCode } from './routeDomain';
+import { domainAfterCodeChange, isValidRouteCode, routeDomainSuffix } from './routeDomain';
 
 describe('route domain from code', () => {
-  it('fills and updates a generated domain while retaining a manual domain', () => {
-    expect(domainAfterCodeChange('', 'api', '', 'example.com')).toBe('api.example.com');
-    expect(domainAfterCodeChange('api', 'web', 'api.example.com', 'example.com')).toBe(
-      'web.example.com'
-    );
-    expect(domainAfterCodeChange('api', 'web', 'custom.example.net', 'example.com')).toBe(
+  it.each([
+    {
+      scenario: 'prefers the external domain when both domains are configured',
+      externalDomain: 'example.com',
+      internalDomain: 'internal.test',
+      createdDomain: 'api.example.com',
+      updatedDomain: 'web.example.com',
+    },
+    {
+      scenario: 'uses the internal domain when the external domain is empty',
+      externalDomain: '',
+      internalDomain: 'internal.test',
+      createdDomain: 'api.internal.test',
+      updatedDomain: 'web.internal.test',
+    },
+  ])('$scenario', ({ externalDomain, internalDomain, createdDomain, updatedDomain }) => {
+    const suffix = routeDomainSuffix(externalDomain, internalDomain);
+    expect(domainAfterCodeChange('', 'api', '', suffix)).toBe(createdDomain);
+    expect(domainAfterCodeChange('api', 'web', createdDomain, suffix)).toBe(updatedDomain);
+    expect(domainAfterCodeChange('api', 'web', 'custom.example.net', suffix)).toBe(
       'custom.example.net'
     );
-    expect(domainAfterCodeChange('api', 'web', 'api.internal.test', '')).toBe('api.internal.test');
-    expect(domainAfterCodeChange('', 'api', '', '')).toBe('');
+    expect(domainAfterCodeChange('api', '', createdDomain, suffix)).toBe('');
   });
 
   it('accepts only letter-leading DNS labels of up to 32 characters', () => {

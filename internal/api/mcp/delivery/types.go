@@ -119,12 +119,12 @@ type GatewayService interface {
 }
 
 type RouteService interface {
-	ListRoutes(context.Context, string, string, int, int, string) (repository.Page[model.Route], error)
-	CreateRoute(context.Context, string, string, routedto.RouteCreateInput) (model.Route, error)
-	RouteForUser(context.Context, string, string, string) (model.Route, error)
-	UpdateRoute(context.Context, string, string, string, routedto.RouteUpdateInput) (model.Route, error)
-	EnableRoute(context.Context, string, string, string) (model.Route, error)
-	DisableRoute(context.Context, string, string, string) (model.Route, error)
+	ListRoutes(context.Context, string, string, int, int, string) (repository.Page[model.RouteView], error)
+	CreateRoute(context.Context, string, string, routedto.RouteCreateInput) (model.RouteView, error)
+	RouteForUser(context.Context, string, string, string) (model.RouteView, error)
+	UpdateRoute(context.Context, string, string, string, routedto.RouteUpdateInput) (model.RouteView, error)
+	EnableRoute(context.Context, string, string, string) (model.RouteView, error)
+	DisableRoute(context.Context, string, string, string) (model.RouteView, error)
 	PreviewRouteSync(context.Context, string, string, routedto.RouteSyncPreviewInput) (routedto.RouteSyncPreview, error)
 	ConfirmRouteSync(context.Context, string, string, routedto.RouteSyncConfirmInput) (routedto.RouteSyncConfirmResult, error)
 }

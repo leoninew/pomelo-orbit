@@ -43,9 +43,9 @@ Environment 的 target type 是显式联合：
 
 Gateway 是一个绑定到 Project Environment、`kind=gateway` 的 Application。每个 Environment 仅允许一个 Gateway 和一个受管 Service。Application name/code 是 Project 内唯一的产品身份 `Traefik` / `traefik`，不把 Project code 拼进名称；受管 Service 的既有 code 为 Project 内唯一的 `traefik-default`，但该字面量只是一项稳定编码，不表示默认实例。Compose project 使用 Service code；工作目录使用 Service 保存的运行目录。普通 Application 可以拥有多条 Service；每条 Service 以 Project 内唯一 code 区分。创建时生成 `base`、`http`、`dns`、`http-dns` 四个普通 Version；它们与普通 Version/Component 一样可以查看、编辑和 fork；Gateway 从网关入口部署，服务入口禁用部署按钮。
 
-GatewayConfig 保存控制面 REST URL/readiness、`internal_domain`、可选的 `external_domain`、Component label 默认策略、ACME profile、email 和 DNS token。`internal_domain` 沿用原有域名机制，供 gateway mode 的 Docker labels 和 Gateway 派生地址使用；`external_domain` 只为创建、编辑自定义 Route 时拼接域名提供后缀，不管理 DNS 记录，也不改变已有 Route。未配置外网域名时，Route 创建表单的域名控件留空。它不保存 Component 名称、镜像、mount、endpoint、TCP listener 或 resolver 布局。profile 选择对应的绑定 Version；空 profile 使用 `base` Version。
+GatewayConfig 保存控制面 REST URL/readiness、`internal_domain`、可选的 `external_domain`、Component label 默认策略、ACME profile、email 和 DNS token。`internal_domain` 沿用原有域名机制，供 gateway mode 的 Docker labels 和 Gateway 派生地址使用；`external_domain` 只为创建、编辑自定义 Route 时拼接域名提供后缀，不管理 DNS 记录，也不改变已有 Route。未配置外网域名时，Route 创建、编辑表单使用内网域名作为编码联动后缀。它不保存 Component 名称、镜像、mount、endpoint、TCP listener 或 resolver 布局。profile 选择对应的绑定 Version；空 profile 使用 `base` Version。
 
-自定义 Route 的编码使用最多 32 字符的小写 DNS 单标签（以字母开头，仅含 `a-z`、`0-9`、`-`，末尾为字母或数字）。外网域名后缀支持多级子域名，各级标签遵循 ASCII 主机名规则，末级不能纯数字。配置外网域名后，在创建或编辑表单修改编码会将 `编码.external_domain` 填入域名控件；已手工填写的其他域名不会被覆盖。Route 仍持久化完整域名，修改 Gateway 的外网域名不会批量更新 Route。
+自定义 Route 的编码使用最多 32 字符的小写 DNS 单标签（以字母开头，仅含 `a-z`、`0-9`、`-`，末尾为字母或数字）。外网域名后缀支持多级子域名，各级标签遵循 ASCII 主机名规则，末级不能纯数字。在创建或编辑表单修改编码时，优先将 `编码.external_domain` 填入域名控件，外网域名为空时使用 `编码.internal_domain`；已手工填写的其他域名不会被覆盖。Route 仍持久化完整域名，修改 Gateway 的域名不会批量更新 Route。
 
 | 能力 | 来源 |
 | --- | --- |

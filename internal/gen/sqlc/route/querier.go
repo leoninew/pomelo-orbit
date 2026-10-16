@@ -18,6 +18,7 @@ type Querier interface {
 	ListRoutes(ctx context.Context, arg ListRoutesParams) ([]ListRoutesRow, error)
 	RouteById(ctx context.Context, arg RouteByIdParams) (RouteByIdRow, error)
 	RouteByProjectIdAndDomain(ctx context.Context, arg RouteByProjectIdAndDomainParams) (RouteByProjectIdAndDomainRow, error)
+	RouteViewById(ctx context.Context, arg RouteViewByIdParams) (RouteViewByIdRow, error)
 	UpdateRoute(ctx context.Context, arg UpdateRouteParams) error
 	UpdateRouteCertificate(ctx context.Context, arg UpdateRouteCertificateParams) (int64, error)
 }

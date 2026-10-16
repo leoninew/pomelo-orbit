@@ -387,7 +387,7 @@ func gatewayServiceOutput(value model.Service) map[string]any {
 	return map[string]any{"deployment_directory": value.DeploymentDirectory, "directory_target_revision": value.DirectoryTargetRevision, "runtime_directory": value.RuntimeDirectory, "runtime_target_revision": value.RuntimeTargetRevision, "id": value.Id, "application_id": value.ApplicationId, "code": value.Code, "version_id": value.VersionId, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
-func routeOutput(value model.Route) map[string]any {
+func routeOutput(value model.RouteView) map[string]any {
 	projectId := ""
 	if value.ProjectId != nil {
 		projectId = *value.ProjectId
@@ -395,7 +395,7 @@ func routeOutput(value model.Route) map[string]any {
 	return map[string]any{
 		"id": value.Id, "project_id": projectId, "name": value.Name, "protocol": value.Protocol,
 		"domain": value.Domain, "path_prefix": value.PathPrefix, "target_url": value.TargetUrl,
-		"listen_port": value.ListenPort, "service_id": value.ServiceId, "component_name": value.ComponentName,
+		"listen_port": value.ListenPort, "service_id": value.ServiceId, "service_code": value.ServiceCode, "component_name": value.ComponentName,
 		"endpoint_protocol": value.EndpointProtocol, "endpoint_container_port": value.EndpointContainerPort,
 		"enabled": value.Enabled, "https_enabled": value.HTTPSEnabled, "cert_type": value.CertType,
 		"created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt),

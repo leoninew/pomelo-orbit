@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shlex
 import socket
 import subprocess
@@ -14,39 +13,17 @@ from pathlib import Path
 
 import click
 import psutil
-from dotenv import dotenv_values
 
 from pomelo_orbit_cli.context import app_context
-
-
-@dataclass(frozen=True)
-class RemoteSettings:
-    ssh_host: str
-    ssh_user: str
-
-    @property
-    def ssh_target(self) -> str:
-        return f"{self.ssh_user}@{self.ssh_host}"
-
-    @classmethod
-    def load(cls, path: Path) -> RemoteSettings:
-        values = dotenv_values(path) if path.is_file() else {}
-        names = ("SSH_HOST", "SSH_USER")
-        settings = [
-            os.environ.get(name, values.get(name) or "").strip() for name in names
-        ]
-        missing = [name for name, value in zip(names, settings) if not value]
-        if missing:
-            raise click.ClickException(
-                f"Set {', '.join(missing)} in {path} or the process environment."
-            )
-        return cls(ssh_host=settings[0], ssh_user=settings[1])
+from pomelo_orbit_cli.errors import ConfigurationError
+from pomelo_orbit_cli.settings import RemoteSettings
 
 
 def _settings(ctx: click.Context) -> RemoteSettings:
-    return RemoteSettings.load(
-        app_context(ctx).settings.project_root / "scripts" / ".env"
-    )
+    try:
+        return app_context(ctx).settings.remote.validated()
+    except ConfigurationError as error:
+        raise click.ClickException(str(error)) from error
 
 
 def _run(command: list[str]) -> int:

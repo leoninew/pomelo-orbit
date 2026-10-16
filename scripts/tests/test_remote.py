@@ -13,20 +13,21 @@ from psutil import Process
 
 from pomelo_orbit_cli import cli as cli_module
 from pomelo_orbit_cli.commands import remote as remote_module
-from pomelo_orbit_cli.commands.remote import RemoteSettings, SSHTunnel, TunnelRecord
-from pomelo_orbit_cli.settings import Settings
+from pomelo_orbit_cli.commands.remote import SSHTunnel, TunnelRecord
+from pomelo_orbit_cli.settings import ENV_SELECTOR, RemoteSettings, load_settings
 
 
 @pytest.fixture(autouse=True)
 def configure_cli(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.delenv("SSH_HOST", raising=False)
-    monkeypatch.delenv("SSH_USER", raising=False)
-    settings = Settings("INFO", "development", tmp_path, None)
-    monkeypatch.setattr(cli_module, "load_settings", lambda: settings)
+    monkeypatch.delenv("POMELO_ORBIT_SSH__HOST", raising=False)
+    monkeypatch.delenv("POMELO_ORBIT_SSH__USER", raising=False)
+    monkeypatch.setenv(ENV_SELECTOR, "development")
+    monkeypatch.setattr(cli_module, "load_settings", lambda: load_settings(tmp_path))
     directory = tmp_path / "scripts"
     directory.mkdir()
-    (directory / ".env").write_text(
-        'SSH_HOST="example.test"\nSSH_USER=ubuntu\n', encoding="utf-8"
+    (directory / ".env.development").write_text(
+        'POMELO_ORBIT_SSH__HOST="example.test"\nPOMELO_ORBIT_SSH__USER=ubuntu\n',
+        encoding="utf-8",
     )
 
 
@@ -59,10 +60,23 @@ def ssh_process(record: TunnelRecord) -> Mock:
 def test_settings_need_only_ssh_connection_values_and_allow_environment_overrides(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    env_file = tmp_path / "scripts" / ".env"
-    assert RemoteSettings.load(env_file).ssh_target == "ubuntu@example.test"
-    monkeypatch.setenv("SSH_USER", "operator")
-    assert RemoteSettings.load(env_file).ssh_target == "operator@example.test"
+    assert (
+        load_settings(tmp_path).remote.validated().ssh_target == "ubuntu@example.test"
+    )
+    monkeypatch.setenv("POMELO_ORBIT_SSH__USER", "operator")
+    assert (
+        load_settings(tmp_path).remote.validated().ssh_target == "operator@example.test"
+    )
+
+
+def test_remote_requires_connection_configuration(tmp_path: Path) -> None:
+    (tmp_path / "scripts" / ".env.development").unlink()
+
+    result = CliRunner().invoke(cli_module.cli, ["remote", "ssh"])
+
+    assert result.exit_code == 1
+    assert "POMELO_ORBIT_SSH__HOST" in result.output
+    assert "POMELO_ORBIT_SSH__USER" in result.output
 
 
 @pytest.mark.parametrize(
@@ -292,7 +306,7 @@ def test_stop_terminates_owned_process_without_connection_configuration(
     state_file = tmp_path / "scripts" / ".remote-tunnels.json"
     record = tunnel_record()
     SSHTunnel(state_file)._save([record])
-    (tmp_path / "scripts" / ".env").unlink()
+    (tmp_path / "scripts" / ".env.development").unlink()
     process = ssh_process(record)
     monkeypatch.setattr(remote_module.psutil, "Process", lambda pid: process)
 
@@ -326,7 +340,7 @@ def test_status_discards_stale_records_without_connection_configuration(
     state_file = tmp_path / "scripts" / ".remote-tunnels.json"
     record = tunnel_record()
     SSHTunnel(state_file)._save([record])
-    (tmp_path / "scripts" / ".env").unlink()
+    (tmp_path / "scripts" / ".env.development").unlink()
     monkeypatch.setattr(
         remote_module.psutil,
         "Process",

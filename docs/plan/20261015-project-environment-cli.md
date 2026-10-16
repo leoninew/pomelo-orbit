@@ -1,5 +1,5 @@
 # Plan / 计划：通过项目别名连接环境并执行命令
-最后修改时间: 2026-10-15 23:00:14
+最后修改时间: 2026-10-16
 
 ## Review status / 审查状态
 
@@ -18,7 +18,7 @@ Accepted
 
 ### 1. 入口、配置与项目定位
 
-在已有 `pomelo-orbit-cli` 下新增 `environment` 命令组，与读取 `SSH_HOST/SSH_USER` 的独立 `remote` 工具分开。
+在已有 `pomelo-orbit-cli` 下新增 `environment` 命令组，与读取 `POMELO_ORBIT_SSH__HOST/POMELO_ORBIT_SSH__USER` 的独立 `remote` 工具分开。
 
 ```bash
 pomelo-orbit-cli environment list
@@ -37,7 +37,7 @@ pomelo-orbit-cli environment exec --project production -- sh -lc 'df -h; free -m
 - 新增客户端配置 `POMELO_ORBIT_CLI__BASE_URL`，表示 Orbit 服务根地址，例如 `https://orbit.example.com`，允许部署路径前缀；统一在此前缀后追加 `/api/cli/...`，不把它解释为 API endpoint。拒绝 userinfo、query、fragment 及非 HTTP(S) scheme。
 - PAT 继续使用 `POMELO_ORBIT_MCP__ACCESS_TOKEN`，不增加 token 别名或命令行 token 参数。
 - 扩展 scripts 的集中 typed settings，加入 `ClientSettings`，只在 `environment` 命令执行前集中校验两项必填值；其他已有命令不要求 PAT。PAT 按现有前缀及 32 字节 base64url 随机部分校验格式，实际有效性由服务端认证。
-- 配置沿用 scripts 的 `configs/config.yaml < configs/config.<env>.yaml < .env[.<env>] < OS env` 顺序，环境选择仍来自启动 OS env；只把所需字段纳入白名单。CLI 不读取服务端的 `overwrite.env`，文档明确与 Go 服务端配置的区别，不在命令模块直接读环境变量。
+- CLI 配置统一为内置默认值 < `scripts/.env[.<env>]` < OS env，环境选择来自启动进程的 `POMELO_ORBIT_APP__ENV`；`make run` 默认 `development`。所有配置使用 `POMELO_ORBIT_` 前缀，`remote` 共用集中 typed settings 与环境选择。日志默认 `INFO`，CLI 不读取后端 YAML、根目录 dotenv 或 `overwrite.env`，不在命令模块直接读环境变量。
 - 根命令及子命令 `--help`、`--version` 继续无需凭据；远端负载中包含 `--help` 时仍按现有延迟初始化机制正确加载配置并执行。
 
 ### 2. 专用 PAT HTTP 边界

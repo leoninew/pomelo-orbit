@@ -2,25 +2,19 @@
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
-import base64
 import re
-from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from dotenv import dotenv_values
-from dynaconf import Dynaconf
 
 from pomelo_orbit_cli.errors import ConfigurationError
 
-ENV_PREFIX = "POMELO_ORBIT"
 ENV_SELECTOR = "POMELO_ORBIT_APP__ENV"
-CONFIG_DIRECTORY = Path("configs")
-CONFIG_FILENAME = "config.yaml"
-ENVIRONMENT_KEYS = frozenset({"logging__level", "cli__base_url", "mcp__access_token"})
 
 
 @dataclass(frozen=True)
@@ -56,6 +50,29 @@ class ClientSettings:
 
 
 @dataclass(frozen=True)
+class RemoteSettings:
+    ssh_host: str | None = None
+    ssh_user: str | None = None
+
+    @property
+    def ssh_target(self) -> str:
+        return f"{self.ssh_user}@{self.ssh_host}"
+
+    def validated(self) -> RemoteSettings:
+        missing = [
+            name
+            for name, value in (
+                ("POMELO_ORBIT_SSH__HOST", self.ssh_host),
+                ("POMELO_ORBIT_SSH__USER", self.ssh_user),
+            )
+            if not value
+        ]
+        if missing:
+            raise ConfigurationError(f"Set {', '.join(missing)}")
+        return self
+
+
+@dataclass(frozen=True)
 class Settings:
     """Fully validated process configuration shared through the Click context."""
 
@@ -64,10 +81,11 @@ class Settings:
     project_root: Path
     dotenv_path: Path | None
     client: ClientSettings = ClientSettings()
+    remote: RemoteSettings = RemoteSettings()
 
 
 def selected_environment() -> str:
-    """Read the Go-compatible profile selector before loading dotenv values."""
+    """Read the process profile selector before loading scripts dotenv values."""
     value = os.environ.get(ENV_SELECTOR, "").strip()
     if any(separator in value for separator in ("/", "\\", "\x00")):
         raise ConfigurationError(f"{ENV_SELECTOR} must not contain a path separator")
@@ -92,22 +110,25 @@ def load_settings(root: Path | None = None) -> Settings:
     try:
         resolved_root = (root or project_root()).resolve()
         environment = selected_environment()
-        config = _load_dynaconf(resolved_root, environment)
-        logging_values = _mapping(config.get("logging", {}))
+        filename = f".env.{environment}" if environment else ".env"
+        dotenv_path = resolved_root / "scripts" / filename
+        values = dotenv_values(dotenv_path) if dotenv_path.is_file() else {}
+        values.update(os.environ)
         settings = Settings(
-            logging_level=_required_string(
-                logging_values.get("level"), "logging.level"
-            ),
+            logging_level=_optional_string(values.get("POMELO_ORBIT_LOGGING__LEVEL"))
+            or "INFO",
             environment=environment,
             project_root=resolved_root,
-            dotenv_path=_existing_dotenv_path(resolved_root, environment),
+            dotenv_path=dotenv_path if dotenv_path.is_file() else None,
             client=ClientSettings(
-                base_url=_optional_string(
-                    _mapping(config.get("cli", {})).get("base_url")
-                ),
+                base_url=_optional_string(values.get("POMELO_ORBIT_CLI__BASE_URL")),
                 access_token=_optional_string(
-                    _mapping(config.get("mcp", {})).get("access_token")
+                    values.get("POMELO_ORBIT_MCP__ACCESS_TOKEN")
                 ),
+            ),
+            remote=RemoteSettings(
+                ssh_host=_optional_string(values.get("POMELO_ORBIT_SSH__HOST")),
+                ssh_user=_optional_string(values.get("POMELO_ORBIT_SSH__USER")),
             ),
         )
         validate_settings(settings)
@@ -125,71 +146,9 @@ def validate_settings(settings: Settings) -> None:
 
 
 def _is_project_root(candidate: Path) -> bool:
-    return (
-        (candidate / "go.mod").is_file()
-        and (candidate / CONFIG_DIRECTORY / CONFIG_FILENAME).is_file()
-        and (candidate / "scripts" / "pyproject.toml").is_file()
-    )
-
-
-def _load_dynaconf(root: Path, environment: str) -> Dynaconf:
-    base_config = root / CONFIG_DIRECTORY / CONFIG_FILENAME
-    if not base_config.is_file():
-        raise ConfigurationError(f"config file not found: {base_config}")
-
-    settings_files = [str(base_config)]
-    if environment:
-        profile_config = root / CONFIG_DIRECTORY / f"config.{environment}.yaml"
-        if profile_config.is_file():
-            settings_files.append(str(profile_config))
-
-    config = Dynaconf(
-        settings_files=settings_files,
-        envvar_prefix=None,
-        load_dotenv=False,
-        environments=False,
-        merge_enabled=True,
-    )
-    dotenv_path = _dotenv_path(root, environment)
-    if dotenv_path.is_file():
-        _apply_environment_overrides(config, dotenv_values(dotenv_path))
-    _apply_environment_overrides(config, os.environ)
-    return config
-
-
-def _existing_dotenv_path(root: Path, environment: str) -> Path | None:
-    path = _dotenv_path(root, environment)
-    return path if path.is_file() else None
-
-
-def _dotenv_path(root: Path, environment: str) -> Path:
-    filename = f".env.{environment}" if environment else ".env"
-    return root / filename
-
-
-def _apply_environment_overrides(
-    config: Dynaconf, values: Mapping[str, str | None]
-) -> None:
-    prefix = f"{ENV_PREFIX}_"
-    for name, value in values.items():
-        key = name.removeprefix(prefix).lower()
-        if name.startswith(prefix) and key in ENVIRONMENT_KEYS and value is not None:
-            config.set(key, value, tomlfy=True)
-
-
-def _mapping(value: object) -> dict[str, object]:
-    if value is None:
-        return {}
-    if not isinstance(value, Mapping):
-        raise ConfigurationError("configuration sections must be mappings")
-    return {str(key): item for key, item in value.items()}
-
-
-def _required_string(value: object, field_name: str) -> str:
-    result = _optional_string(value)
-    if result is None:
-        raise ConfigurationError(f"{field_name} is required")
-    return result
+    return (candidate / "go.mod").is_file() and (
+        candidate / "scripts" / "pyproject.toml"
+    ).is_file()
 
 
 def _optional_string(value: object) -> str | None:

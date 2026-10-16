@@ -5,7 +5,7 @@
 
 ## 配置与启动
 
-在已登录的 Web 控制台“系统管理 / 访问令牌”创建 PAT，存入父进程环境或 gitignored 的项目根 `.env` / `.env.<env>`：
+在已登录的 Web 控制台“系统管理 / 访问令牌”创建 PAT，存入父进程环境或 gitignored 的 `scripts/.env` / `scripts/.env.<env>`：
 
 ```dotenv
 POMELO_ORBIT_CLI__BASE_URL=https://orbit.example.com
@@ -14,7 +14,7 @@ POMELO_ORBIT_MCP__ACCESS_TOKEN=orbit_mcp_pat_...
 
 `BASE_URL` 是服务根地址，可包含部署路径前缀，例如 `https://host/orbit`；客户端追加 `/api/cli/...`。使用标准 TLS 证书校验，直接连接该地址，不读取系统代理，不跟随重定向。不要把 PAT 写到命令参数、可提交文件或模型提示词。
 
-配置顺序为 `configs/config.yaml < configs/config.<env>.yaml < .env[.<env>] < OS env`；profile 由启动时 `POMELO_ORBIT_APP__ENV` 选择。CLI **不读取 Go 服务端的 `overwrite.env`**。其他 CLI 命令和 `--help` 不要求 PAT。
+配置顺序为内置默认值 < `scripts/.env[.<env>]` < OS env；profile 由启动进程中的 `POMELO_ORBIT_APP__ENV` 选择，指定环境时只读取对应 dotenv。`make run` 默认选择 `development`，读取 `scripts/.env.development`；直接 `uv run` 未指定环境时读取 `scripts/.env`。可从 `scripts/.env.example` 复制配置。CLI 不读取后端 YAML、仓库根 dotenv 或 `overwrite.env`；日志等级默认 `INFO`。其他 CLI 命令和 `--help` 不要求 PAT。全部配置项见 [CLI README](../../scripts/README.md#配置)。
 
 在仓库根目录运行（Python ≥3.12，uv）：
 

@@ -1,5 +1,5 @@
 # Verification / 验证：通过项目别名连接环境并执行命令
-最后修改时间: 2026-10-15 23:00:14
+最后修改时间: 2026-10-16
 
 ## Review status / 审查状态
 
@@ -52,7 +52,9 @@ Accepted
 
 ## Check results / 检查结果
 
-以下开发检查沿用同一会话 Implementation 的完成记录，本轮未重复运行，也不声称重新执行：
+2026-10-16 配置目录调整后，CLI 改为读取 `scripts/.env[.<env>]`，所有配置使用 `POMELO_ORBIT_` 前缀；`make run` 仍默认 `development`。当前配置约定见 [CLI README](../../scripts/README.md#配置)。本机无 `make`，在 `scripts/` 下执行 Makefile 中的等效检查：`uv run --locked --no-sync ruff format --check .`、`ruff check .`、`mypy` 和 `pytest`（后三项使用相同 uv 前缀）均通过，pytest 为 91 passed。测试覆盖目录定位、profile 选择、环境变量优先级及 remote 共用配置；未重复远程操作。
+
+以下表格及远程实测沿用 2026-10-15 Implementation 的完成记录，不作为本次重新执行的证据：
 
 | 命令 / 检查 | 实际结果 | 本轮未重跑原因 |
 | --- | --- | --- |

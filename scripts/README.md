@@ -37,8 +37,23 @@ make test
 | `version` | 按完整 Git 历史预览版本，`--apply` 同步版本文件 |
 | `release` | 按 `VERSION` 构建 Windows/Linux/macOS x64 ZIP，输出到 `dist/`，依赖 Go 和 Yarn |
 
-`cert` 首次使用前执行 `mkcert -install`；网关配置见[证书管理指南](../docs/guides/certificate-management.md)。`remote` 的 `SSH_HOST`、`SSH_USER` 配置在 `scripts/.env`，环境变量优先；隧道要求免交互密钥认证。
+`cert` 首次使用前执行 `mkcert -install`；网关配置见[证书管理指南](../docs/guides/certificate-management.md)。`remote` 使用系统 OpenSSH；隧道要求免交互密钥认证。
 
-`make run` 默认使用 `development` 环境，可通过 `POMELO_ORBIT_APP__ENV` 覆盖。参数含空格或 `=` 时使用 `make run ARGS='...'`。
+## 配置
+
+所有 CLI 配置从 `scripts/` 目录读取，优先级为内置默认值 < `scripts/.env[.<env>]` < 进程环境变量；不加载后端 YAML、仓库根 dotenv 或 `overwrite.env`。
+
+`make run` 默认设置 `POMELO_ORBIT_APP__ENV=development`，读取 `scripts/.env.development`；首次使用可将 `scripts/.env.example` 复制为该文件。启动前可通过进程环境中的 `POMELO_ORBIT_APP__ENV` 选择其他环境。未设置环境直接执行 `uv run` 时读取 `scripts/.env`；指定环境时只读取对应文件，不叠加 `.env`。环境选择变量应在启动进程中设置。
+
+| 环境变量 | 用途 | 默认 / 必填范围 |
+| --- | --- | --- |
+| `POMELO_ORBIT_APP__ENV` | 选择 dotenv 环境 | `make run` 默认 `development`；直接 `uv run` 未指定 |
+| `POMELO_ORBIT_LOGGING__LEVEL` | 日志等级 | 默认 `INFO`；`-v` 覆盖为 `DEBUG` |
+| `POMELO_ORBIT_CLI__BASE_URL` | Orbit 服务根地址 | `environment` 必填 |
+| `POMELO_ORBIT_MCP__ACCESS_TOKEN` | Orbit PAT | `environment` 必填 |
+| `POMELO_ORBIT_SSH__HOST` | OpenSSH 主机 | `remote ssh/exec/scp/tunnel start` 必填 |
+| `POMELO_ORBIT_SSH__USER` | OpenSSH 用户 | 同上 |
+
+参数含空格或 `=` 时使用 `make run ARGS='...'`。
 
 项目环境 CLI 使用 `POMELO_ORBIT_CLI__BASE_URL` 与现有 `POMELO_ORBIT_MCP__ACCESS_TOKEN`；服务端读取已保存 SSH 凭据。配置、交互终端及大模型调用契约见[项目环境 CLI 指南](../docs/guides/project-environment-cli.md)。

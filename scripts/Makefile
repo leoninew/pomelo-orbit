@@ -30,7 +30,7 @@ help: ## Show available targets.
 	@echo "  deps   Sync locked dependencies and install pomelo-orbit-cli"
 	@echo "  check  Run Ruff and Mypy quality checks (fix=1 enables fixes)"
 	@echo "  test   Run unit tests"
-	@echo "  run    Run pomelo-orbit-cli (default POMELO_ORBIT_APP__ENV=development); use make run -- <args> or ARGS='<args>'"
+	@echo "  run    Run pomelo-orbit-cli (default POMELO_ORBIT_APP__ENV=development, reads scripts/.env.development); use make run -- <args> or ARGS='<args>'"
 
 deps: ## Sync locked development dependencies and install the project.
 	$(UV) sync --all-groups --locked
@@ -45,5 +45,5 @@ test: ## Run unit tests.
 endif
 
 run: export POMELO_ORBIT_APP__ENV ?= development
-run: ## Run pomelo-orbit-cli; default POMELO_ORBIT_APP__ENV=development.
+run: ## Run pomelo-orbit-cli with scripts/.env.<env>; default: development.
 	$(UV_RUN) pomelo-orbit-cli $(ARGS) $(RUN_ARGS)

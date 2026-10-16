@@ -1,5 +1,5 @@
 # Intent / 意图：通过项目别名连接环境并执行命令
-最后修改时间: 2026-10-15 21:18:08
+最后修改时间: 2026-10-16
 
 ## Review status / 审查状态
 
@@ -14,7 +14,7 @@ Accepted
 - 每个 Project 对应一个 Environment；SSH Environment 保存目标地址、端口、平台、用户名、凭据绑定和主机指纹。部署密钥由 Orbit 加密保管，独立于全局仓库凭据。
 - Web 环境终端已使用受管密钥提供交互式 shell，并将终端连接与 Docker Probe 解耦，保留成员授权、目标与凭据修订校验及会话限制。
 - SSH runner 已支持 Linux/Windows 的非交互命令执行；现有 MCP 主要提供受管 Service 的 Docker/Compose 诊断，未开放通用 shell。
-- 现有 Python CLI 的 `remote ssh/exec/scp/tunnel` 使用 `scripts/.env` 中的 `SSH_HOST`、`SSH_USER` 和系统 SSH，不读取 Orbit 库存或受管密钥，不能直接满足本次目标。
+- Python CLI 的 `remote ssh/exec/scp/tunnel` 使用 scripts dotenv 中的 `POMELO_ORBIT_SSH__HOST`、`POMELO_ORBIT_SSH__USER` 和系统 SSH，不读取 Orbit 库存或受管密钥，不能直接满足本次目标。
 - 现有命名 PAT 用于 stdio MCP，每次工具调用校验有效性和用户状态；普通 HTTP API 当前使用 Web JWT，尚不能直接接受 PAT。
 
 本次目标：

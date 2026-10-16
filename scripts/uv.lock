@@ -209,15 +209,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dynaconf"
-version = "3.3.5"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/71/e4/723ba469856bb493c948985e5bd562c8a65f2b93e70c896e9764ab76de00/dynaconf-3.3.5.tar.gz", hash = "sha256:a08f6ab44025034ef3c9f86b32548ab01efd4039094a74bd9f028a43c63d016f", size = 333426, upload-time = "2026-08-05T19:50:25.16Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/95/41/b38501c34c40c3261868a2af8ed5fffe3e6d889c680638708de27eb57788/dynaconf-3.3.5-py3-none-any.whl", hash = "sha256:b3b4a753d5c866fc85466b65fc58d4954f6ed7dc8aa67f2b15bcbfd85d184687", size = 271426, upload-time = "2026-08-05T19:50:23.802Z" },
-]
-
-[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -424,7 +415,6 @@ source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "cryptography" },
-    { name = "dynaconf" },
     { name = "prompt-toolkit" },
     { name = "psutil" },
     { name = "python-dotenv" },
@@ -444,7 +434,6 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.1,<9" },
     { name = "cryptography", specifier = ">=44,<46" },
-    { name = "dynaconf", specifier = ">=3.3,<4" },
     { name = "prompt-toolkit", specifier = "==3.0.52" },
     { name = "psutil", specifier = ">=7,<8" },
     { name = "python-dotenv", specifier = ">=1.0,<2" },

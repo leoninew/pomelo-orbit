@@ -8,37 +8,39 @@ from pomelo_orbit_cli.settings import ENV_SELECTOR, load_settings
 
 
 @pytest.mark.parametrize(
-    ("profile_level", "dotenv_level", "environment_level", "expected"),
+    ("environment", "dotenv_level", "environment_level", "expected"),
     [
-        (None, None, None, "INFO"),
-        ("WARNING", None, None, "WARNING"),
-        ("WARNING", "ERROR", None, "ERROR"),
-        ("WARNING", "ERROR", "CRITICAL", "CRITICAL"),
+        ("", None, None, "INFO"),
+        ("development", None, None, "INFO"),
+        ("", "ERROR", None, "ERROR"),
+        ("development", "ERROR", None, "ERROR"),
+        ("development", "ERROR", "CRITICAL", "CRITICAL"),
     ],
 )
 def test_shared_settings_configuration_layers(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
-    profile_level: str | None,
+    environment: str,
     dotenv_level: str | None,
     environment_level: str | None,
     expected: str,
 ) -> None:
-    configuration_directory = tmp_path / "configs"
-    configuration_directory.mkdir()
-    (configuration_directory / "config.yaml").write_text(
-        "logging:\n  level: INFO\n", encoding="utf-8"
+    directory = tmp_path / "scripts"
+    directory.mkdir()
+    filename = f".env.{environment}" if environment else ".env"
+    (tmp_path / filename).write_text(
+        "POMELO_ORBIT_LOGGING__LEVEL=backend-only\n", encoding="utf-8"
     )
-    if profile_level is not None:
-        (configuration_directory / "config.development.yaml").write_text(
-            f"logging:\n  level: {profile_level}\n", encoding="utf-8"
+    if environment:
+        (directory / ".env").write_text(
+            "POMELO_ORBIT_LOGGING__LEVEL=DEBUG\n", encoding="utf-8"
         )
-    dotenv_path = tmp_path / ".env.development"
+    dotenv_path = directory / filename
     if dotenv_level is not None:
         dotenv_path.write_text(
             f"POMELO_ORBIT_LOGGING__LEVEL={dotenv_level}\n", encoding="utf-8"
         )
-    monkeypatch.setenv(ENV_SELECTOR, "development")
+    monkeypatch.setenv(ENV_SELECTOR, environment)
     if environment_level is None:
         monkeypatch.delenv("POMELO_ORBIT_LOGGING__LEVEL", raising=False)
     else:
@@ -47,6 +49,27 @@ def test_shared_settings_configuration_layers(
     settings = load_settings(tmp_path)
 
     assert settings.logging_level == expected
-    assert settings.environment == "development"
+    assert settings.environment == environment
     assert settings.project_root == tmp_path.resolve()
     assert settings.dotenv_path == (dotenv_path if dotenv_level is not None else None)
+
+
+@pytest.mark.parametrize("working_directory", [".", "scripts", "scripts/src"])
+def test_scripts_dotenv_is_independent_of_working_directory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, working_directory: str
+) -> None:
+    directory = tmp_path / "scripts"
+    (directory / "src").mkdir(parents=True)
+    (directory / "pyproject.toml").touch()
+    (tmp_path / "go.mod").touch()
+    dotenv_path = directory / ".env"
+    dotenv_path.write_text("POMELO_ORBIT_LOGGING__LEVEL=WARNING\n", encoding="utf-8")
+    monkeypatch.delenv(ENV_SELECTOR, raising=False)
+    monkeypatch.delenv("POMELO_ORBIT_LOGGING__LEVEL", raising=False)
+    monkeypatch.chdir(tmp_path / working_directory)
+
+    settings = load_settings()
+
+    assert settings.project_root == tmp_path.resolve()
+    assert settings.dotenv_path == dotenv_path
+    assert settings.logging_level == "WARNING"

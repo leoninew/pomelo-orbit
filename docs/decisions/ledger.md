@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-10-10 22:14:41
+最后修改时间: 2026-10-16
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -50,7 +50,7 @@ Doc role: living SoT
 | X-13 | Project 创建时自动预建 local Environment，空库预置 Gateway/Service | C-19；Project 与 membership 创建后由 Web Wizard 配置 Environment、Probe 与 Gateway |
 | X-14 | local Environment 工作目录来自 `workspace.deployment` 或运行时 YAML 回退 | `Environment.workspace_root` 为已保存的唯一工作区根；当前 CI 只在 local 执行，CD 按 local/ssh 目标执行 |
 | X-15 | Python 数据库重置、SQLite 复制、原生备份及 Service / Environment JSONL 传输命令 | 2026-10-08 移除 `database-ops`、`database-transfer` 与对应 skill、测试和 dbtalk 依赖；保留 `pomelo-orbit-cli` 框架供后续整合脚本。相关过程文档归档至 `docs/archive/specflow/`，[旧操作指南](../archive/guides/service-data-transfer.md)归档至 `docs/archive/guides/`；Project CD 接管 API / Web 继续使用现有业务实现 |
-| X-16 | `manage.py` 的手工升级、Docker 操作、旧目录备份和日志清理 | 2026-10-08 移除旧脚本，仅保留 CLI `remote ssh/exec/scp/tunnel`；连接配置只需 `SSH_HOST`、`SSH_USER`。已完成的[工作区改造过程文档](../archive/specflow/verification/20260818-configurable-ci-cd-workspaces.md)归档，当前受管部署见 [迁移指南](../guides/orbit-self-migration.md) |
+| X-16 | `manage.py` 的手工升级、Docker 操作、旧目录备份和日志清理 | 2026-10-08 移除旧脚本，仅保留 CLI `remote ssh/exec/scp/tunnel`；连接配置只需 `POMELO_ORBIT_SSH__HOST`、`POMELO_ORBIT_SSH__USER`，从 scripts dotenv 或进程环境读取。已完成的[工作区改造过程文档](../archive/specflow/verification/20260818-configurable-ci-cd-workspaces.md)归档，当前受管部署见 [迁移指南](../guides/orbit-self-migration.md) |
 
 ## Backlog（非本账本承诺交付）
 

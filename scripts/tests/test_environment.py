@@ -41,26 +41,26 @@ def test_help_needs_no_config(monkeypatch: pytest.MonkeyPatch, args: list[str]) 
     assert CliRunner().invoke(cli_module.cli, args).exit_code == 0
 
 
+@pytest.mark.parametrize("base_url", [None, "https://os.example/orbit"])
 def test_client_configuration_layers_and_environment_only_validation(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, base_url: str | None
 ) -> None:
-    (tmp_path / "configs").mkdir()
-    (tmp_path / "configs/config.yaml").write_text(
-        "logging:\n  level: INFO\ncli:\n  base_url: https://yaml.example\n"
-    )
-    (tmp_path / ".env").write_text(
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts/.env").write_text(
         f"POMELO_ORBIT_CLI__BASE_URL=https://dotenv.example/prefix\nPOMELO_ORBIT_MCP__ACCESS_TOKEN={PAT}\n"
     )
     monkeypatch.delenv("POMELO_ORBIT_APP__ENV", raising=False)
     monkeypatch.delenv("POMELO_ORBIT_MCP__ACCESS_TOKEN", raising=False)
-    monkeypatch.setenv("POMELO_ORBIT_CLI__BASE_URL", "https://os.example/orbit")
+    if base_url is None:
+        monkeypatch.delenv("POMELO_ORBIT_CLI__BASE_URL", raising=False)
+    else:
+        monkeypatch.setenv("POMELO_ORBIT_CLI__BASE_URL", base_url)
     settings = load_settings(tmp_path)
-    assert settings.client.validated() == ClientSettings(
-        "https://os.example/orbit", PAT
-    )
+    expected_url = base_url or "https://dotenv.example/prefix"
+    assert settings.client.validated() == ClientSettings(expected_url, PAT)
     assert (
         EnvironmentClient(settings.client).url("project")
-        == "https://os.example/orbit/api/cli/project"
+        == expected_url + "/api/cli/project"
     )
     monkeypatch.setattr(
         cli_module, "load_settings", lambda: Settings("INFO", "", tmp_path, None)

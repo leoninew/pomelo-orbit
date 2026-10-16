@@ -35,15 +35,11 @@ func (s ExecutionService) checkDirectoryOwnership(ctx context.Context, target en
 		if other.Id == service.Id {
 			continue
 		}
-		candidates := []struct {
-			directory string
-			revision  int64
-		}{{other.DeploymentDirectory, other.DirectoryTargetRevision}, {other.RuntimeDirectory, other.RuntimeTargetRevision}}
-		for _, candidate := range candidates {
-			if candidate.directory == "" || candidate.revision != target.Environment.TargetRevision {
+		for _, candidate := range []string{other.DeploymentDirectory, other.RuntimeDirectory} {
+			if candidate == "" {
 				continue
 			}
-			location := deploymentport.ServiceLocation{Code: other.Code, Directory: candidate.directory}
+			location := deploymentport.ServiceLocation{Code: other.Code, Directory: candidate}
 			logical, err := s.runtime.ResolveDirectory(ctx, target, location)
 			if err != nil {
 				return fmt.Errorf("resolve service %s directory: %w", other.Code, err)

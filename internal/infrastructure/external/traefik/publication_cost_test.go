@@ -243,7 +243,6 @@ func TestHistoricalTargetRevisionAllowsExplicitRepublish(t *testing.T) {
 	resolver.target.Environment.TargetType, resolver.target.Environment.SSH = model.EnvironmentTargetTypeLocal, nil
 	resolver.target.Environment.TargetRevision = 2
 	gateway := testGateway()
-	gateway.RuntimeTargetRevision = 2
 	runtime.writes = nil
 	ctx, closeSession, err := m.OpenSession(context.Background(), "project-1")
 	if err != nil {
@@ -263,6 +262,17 @@ func TestHistoricalTargetRevisionAllowsExplicitRepublish(t *testing.T) {
 	resolver.target.Environment.TargetRevision++
 	if _, err := m.InspectPublication(ctx, "project-1", testGateway(), route); apperror.Classify(err).Code != "route_sync_preview_expired" {
 		t.Fatalf("in-flight target change was accepted: %v", err)
+	}
+}
+
+func TestGatewayPublicationRequiresRuntimeDirectory(t *testing.T) {
+	runtime := newRouteRuntimeFake()
+	m := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
+	gateway := testGateway()
+	gateway.RuntimeDirectory = ""
+	_, _, _, err := m.publicationWorkspace(context.Background(), "project-1", gateway)
+	if !apperror.IsKind(err, apperror.KindConflict) || len(runtime.reads) != 0 || len(runtime.writes) != 0 {
+		t.Fatalf("missing runtime directory allowed file access: err=%v reads=%v writes=%v", err, runtime.reads, runtime.writes)
 	}
 }
 

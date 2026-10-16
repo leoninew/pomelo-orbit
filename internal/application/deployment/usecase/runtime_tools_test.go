@@ -78,7 +78,13 @@ func TestRuntimeInspectionRequiresManagedContainerAndNetwork(t *testing.T) {
 
 func TestRuntimeStatusAddsVersionIdentityToObservedContainers(t *testing.T) {
 	service, inspector, target := newRuntimeInspectionService()
+	store := service.service.(*runtimeQueryStore)
+	store.service.RuntimeTargetRevision = 7
 	ctx := context.Background()
+	resolved, err := service.ResolveRuntimeTarget(ctx, "user-1", "project-1", "service-1", false)
+	if err != nil || resolved.WorkingDirectory != target.WorkingDirectory {
+		t.Fatalf("historical runtime directory=%+v err=%v", resolved, err)
+	}
 	result, err := service.RuntimeComposePS(ctx, target)
 	if err != nil || len(result.Containers) != 1 || result.Containers[0].ComponentId != "component-1" || result.Containers[0].VersionId != "version-1" || result.Raw != "container diagnostics" {
 		t.Fatalf("result=%+v err=%v", result, err)

@@ -78,7 +78,7 @@ func (m *RouteManager) publicationWorkspace(ctx context.Context, projectId strin
 	if !ok {
 		return target, nil, "", errors.New("target workspace file operations are not configured")
 	}
-	if gateway.RuntimeDirectory == "" || gateway.RuntimeTargetRevision != target.Environment.TargetRevision {
+	if gateway.RuntimeDirectory == "" {
 		return target, nil, "", apperror.New(apperror.KindConflict, "Gateway runtime directory is unavailable for this Environment. Deploy Gateway again.")
 	}
 	base, err := m.runtime.ResolveDirectory(ctx, target, gatewayLocation(gateway))

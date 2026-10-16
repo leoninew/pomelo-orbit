@@ -1,5 +1,5 @@
 # Project 环境与 CD 产品模型
-最后修改时间: 2026-10-15 21:18:08
+最后修改时间: 2026-10-16 15:21:22
 
 Doc role: living product model
 
@@ -69,7 +69,7 @@ Version 的绝对 directory mount 可声明 `shared=true`，允许其他服务�
 
 ## 服务部署目录
 
-Service 保存确认目录 `deployment_directory` 和运行目录 `runtime_directory`，分别绑定 Environment target revision。首次根据环境根目录拼接，后续按当前修订回填；允许完整目录位于环境工作区之外。部署一次提交版本与目录，Deployment 冻结版本、工作目录和目标修订。重启和停止优先使用当前修订的运行目录；未绑定运行目录时，可使用当前修订已确认的部署目录。状态查询仍使用运行目录。Web 容器日志流按 Service code 与可选 Component 标签读取目标 Docker 上的实际容器，不依赖服务的持久化状态、运行目录记录或 Compose 文件。MCP 的 RuntimeComposeLogs 快照读取仍使用运行目录及 Compose 文件。
+Service 保存确认目录 `deployment_directory` 和运行目录 `runtime_directory`；对应的 Environment target revision 记录保存来源，不作为目录有效性的准入条件。首次根据环境根目录拼接，后续回填已保存的确认目录；允许完整目录位于环境工作区之外。部署一次提交版本与目录，Deployment 冻结版本、工作目录和当前目标修订。重启和停止优先使用运行目录；未绑定运行目录时，可使用已确认的部署目录。目录在当前选定 Environment 上解析，local/SSH 接入方式或历史修订号变化不强制重新部署，不自动寻找或迁移旧目标目录。任务排队后目标变化仍拒绝执行。状态查询仍使用运行目录。Web 容器日志流按 Service code 与可选 Component 标签读取目标 Docker 上的实际容器，不依赖服务的持久化状态、运行目录记录或 Compose 文件。MCP 的 RuntimeComposeLogs 快照读取仍使用运行目录及 Compose 文件。
 
 已部署服务（包括已停止的服务）改目录只警告：相对挂载位置改变、旧数据不会迁移，可能重建容器并中断服务。Gateway 还需注意路由、证书和 ACME 数据，并另行显式同步 Route。警告不阻止提交。
 

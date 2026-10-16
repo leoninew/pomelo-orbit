@@ -23,7 +23,7 @@ const environment = {
 } as EnvironmentResp;
 
 describe('deployment directory', () => {
-  it('builds a default from the target and restores only a matching confirmed revision', () => {
+  it('builds a target default and preserves a confirmed directory across revisions', () => {
     expect(initialDeploymentDirectory(environment, snapshot, 'api')).toBe(
       'D:/Orbit Workspace/deployment/api'
     );
@@ -35,7 +35,7 @@ describe('deployment directory', () => {
     expect(initialDeploymentDirectory(environment, configured, 'api')).toBe('D:/custom/api');
     expect(
       initialDeploymentDirectory({ ...environment, target_revision: 3 }, configured, 'api')
-    ).toBe('D:/Orbit Workspace/deployment/api');
+    ).toBe('D:/custom/api');
   });
   it('accepts target paths outside the workspace and rejects ambiguous relative paths', () => {
     expect(validDeploymentDirectory('/custom/api', 'linux')).toBe(true);
@@ -52,7 +52,14 @@ describe('deployment directory', () => {
       throw new Error('Deployment directory scope is inactive');
     }
     try {
-      expect(await form.load('project-1', snapshot, 'api')).toBe(true);
+      expect(
+        await form.load(
+          'project-1',
+          { ...snapshot, deployment_directory: 'D:/custom/api', directory_target_revision: 1 },
+          'api'
+        )
+      ).toBe(true);
+      expect(form.state.directory).toBe('D:/custom/api');
       form.state.directory = 'D:/new/api';
       expect(form.validate('invalid')).toBe(true);
       expect(form.payload()).toEqual({

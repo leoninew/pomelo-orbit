@@ -1,5 +1,5 @@
 # 路由与证书
-最后修改时间: 2026-10-03 12:59:03
+最后修改时间: 2026-10-16 15:21:22
 
 Doc role: living guide
 
@@ -60,7 +60,7 @@ API/MCP 在一个请求内显式批量确认时，整批共享一次状态准备
 
 一次请求中的 SSH/SFTP 操作复用相同连接与文件客户端，SSH exec 仍为每条命令开启独立通道及远端进程。阶段取消或连接失效会关闭并淘汰连接；恢复在自己的有限预算内建立新连接。正常退出关闭连接，不保留跨请求连接池。
 
-Environment 切换目标类型、工作目录、SSH 地址/平台/凭据后，当前工作区内的历史 `TargetRevision` 只表示发布来源，不阻断预览。切换或 Probe 成功不修改文件/记录，也不自动同步；显式确认重新发布所选路由并写入当前 revision，不使用旧 revision 的无变化捷径。预览与确认之间或请求执行期间目标变化仍使预览过期；Project/Gateway 归属、外部修改、当前 Route 证书完整性与恢复校验仍有效。旧目标文件不由新目标同步迁移或删除。
+Environment 切换目标类型、工作目录、SSH 地址/平台/凭据后，当前工作区内的历史 `TargetRevision` 只表示发布来源，不阻断预览；Gateway Service 的历史运行目录修订同样不阻断发布工作区访问，仍要求已记录运行目录，并在当前目标上解析该目录及限制文件范围。切换或 Probe 成功不修改文件/记录，也不自动同步；显式确认重新发布所选路由并写入当前 revision，不使用旧 revision 的无变化捷径。预览与确认之间或请求执行期间目标变化仍使预览过期；Project/Gateway 归属、外部修改、当前 Route 证书完整性与恢复校验仍有效。旧目标文件不由新目标同步迁移或删除。
 
 Traefik 直接重启从持久化文件恢复，Orbit 可以离线。Service 部署/重启与自定义 Route 同步独立：不检查发布记录、YAML/PEM 或已发布上游引用，不因 pending、发布失败或文件缺失阻止部署。Gateway 仅检查 Traefik 管理 API 就绪，不核验自定义 Route；业务 Service 不等待 Gateway API。移除或改名 Component/endpoint、改变网络或 Gateway entrypoint/resolver 后，若需要更新自定义路由，应另行显式同步。Component `endpoint.mode=gateway` 仍是随部署生效的 Docker label 路由，默认 entrypoint/TLS 由 GatewayConfig 控制。
 

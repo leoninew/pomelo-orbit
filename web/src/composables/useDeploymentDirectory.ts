@@ -53,10 +53,7 @@ export function initialDeploymentDirectory(
   snapshot: DeploymentDirectorySnapshot,
   code: string
 ) {
-  if (
-    snapshot.deployment_directory &&
-    snapshot.directory_target_revision === environment.target_revision
-  ) {
+  if (snapshot.deployment_directory) {
     return snapshot.deployment_directory;
   }
   const root =

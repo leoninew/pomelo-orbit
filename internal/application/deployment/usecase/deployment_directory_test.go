@@ -126,6 +126,49 @@ func TestRestartFreezesRuntimeDirectoryInsteadOfPendingDirectory(t *testing.T) {
 	}
 }
 
+func TestLifecycleOperationsUseHistoricalDirectoriesWithCurrentTarget(t *testing.T) {
+	for _, operation := range []string{"stop", "restart"} {
+		for _, directorySource := range []string{"runtime", "confirmed"} {
+			t.Run(operation+"/"+directorySource, func(t *testing.T) {
+				executor, store, runtime, _ := independentDeploymentTestService(t, false)
+				target := deploymentTestTarget(3)
+				executor.targetResolver = staticTargetResolver{target: target}
+				service := Service{commands: lifecycleCommandsFake{}, commandStore: store, dispatcher: directoryDispatcher{}, targetResolver: executor.targetResolver, transactionRunner: testDeploymentTransaction{}}
+				service.gatewayCoordinator = &gatewayDeploymentCoordinatorFake{gateway: &model.GatewayConfig{ApplicationId: "gateway-1", NetworkName: "traefik"}}
+				want := store.service.DeploymentDirectory
+				if directorySource == "runtime" {
+					store.service.RuntimeDirectory, store.service.RuntimeTargetRevision = "/running/api", 1
+					want = store.service.RuntimeDirectory
+				}
+				input := deploymentdto.ServiceTargetInput{ServiceId: store.service.Id}
+				var err error
+				if operation == "stop" {
+					_, err = service.StopApplication(context.Background(), "user-1", "project-1", "app-1", input)
+				} else {
+					_, err = service.RestartApplication(context.Background(), "user-1", "project-1", "app-1", input)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if *store.deployment.WorkingDirectory != want || *store.deployment.EnvironmentTargetRevision != 3 || store.service.DirectoryTargetRevision != 1 {
+					t.Fatalf("deployment=%+v service=%+v", store.deployment, store.service)
+				}
+				if operation == "stop" {
+					err = executor.ExecuteApplicationStop(context.Background(), "project-1", "app-1", store.deployment.Id, false)
+				} else {
+					err = executeIndependentDeployment(executor, operation)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if runtime.scope.Location.Directory != want || runtime.scope.Project != store.service.Code || runtime.scope.Target.Environment.TargetRevision != 3 {
+					t.Fatalf("operation used the wrong target or directory: %+v", runtime.scope)
+				}
+			})
+		}
+	}
+}
+
 func TestRuntimeOperationsRejectMissingServiceDirectoryWithActionableError(t *testing.T) {
 	for _, operation := range []string{"stop", "restart"} {
 		t.Run(operation, func(t *testing.T) {
@@ -281,7 +324,7 @@ func TestDirectoryOwnershipChecksNestedDockerMountSources(t *testing.T) {
 		Id: "other", Code: "other", DeploymentDirectory: "/other-owned", DirectoryTargetRevision: 1,
 	}}}
 	usecase := ExecutionService{executionStore: store, runtime: testWorkspace(t.TempDir()), mountInventory: &directoryMountRuntime{}}
-	target := deploymentTestTarget(1)
+	target := deploymentTestTarget(3)
 	if err := usecase.checkDirectoryOwnership(context.Background(), target, service, "/outside/workspace", nil); err != nil {
 		t.Fatal(err)
 	}

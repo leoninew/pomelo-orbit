@@ -63,6 +63,28 @@ func TestDirectoryOwnershipAllowsUnusedDataDirectories(t *testing.T) {
 		}
 	}
 }
+
+func TestDirectoryOwnershipProtectsHistoricalDirectories(t *testing.T) {
+	for _, source := range []string{"confirmed", "runtime"} {
+		t.Run(source, func(t *testing.T) {
+			service, _, current := directoryMountTestService(t)
+			other := &service.executionStore.(*directoryOwnershipStore).services[1]
+			other.DeploymentDirectory, other.RuntimeDirectory = "", ""
+			if source == "confirmed" {
+				other.DeploymentDirectory, other.DirectoryTargetRevision = "/app/occupied", 1
+			} else {
+				other.RuntimeDirectory, other.RuntimeTargetRevision = "/app/occupied", 1
+			}
+			target := deploymentTestTarget(3)
+			if err := service.checkDirectoryOwnership(context.Background(), target, current, "/app/occupied/child", nil); err == nil || !strings.Contains(err.Error(), "overlaps service a") {
+				t.Fatalf("historical directory ownership was ignored: %v", err)
+			}
+			if err := service.checkDirectoryOwnership(context.Background(), target, current, "/app/independent", nil); err != nil {
+				t.Fatalf("independent directory was rejected: %v", err)
+			}
+		})
+	}
+}
 func TestDirectoryOwnershipUsesTargetMountPaths(t *testing.T) {
 	for _, tc := range []struct{ name, platform, desired, actual string }{
 		{"local", "", "/host/shared", "/host/shared"},

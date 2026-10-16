@@ -1,5 +1,5 @@
 # CD 运行时与 Gateway
-最后修改时间: 2026-10-16
+最后修改时间: 2026-10-16 15:21:22
 
 Doc role: living architecture
 
@@ -123,12 +123,12 @@ Web 容器日志流可在操作进行中订阅；按 Service code 的 Compose pr
 
 部署请求在现有写事务中保存确认目录与 Deployment 的 `working_directory` 快照。Worker 在目标修订校验后展开目标主目录，检查目录归属、写入权限和挂载映射，准备 Compose 与受控文件；准备成功且即将执行 Compose 时用短数据库更新绑定运行目录。绑定前失败保留旧目录，命令执行中失败或取消保留新运行操作目录。状态更新不得覆盖目录绑定。部署不移动、复制或删除旧数据。
 
-重启和停止优先冻结当前修订的运行目录；运行目录为空时可以冻结同修订已确认的部署目录，库存运行状态不参与准入。有运行目录但修订已变化时仍拒绝猜测位置。缺失目录准确报告 `service_runtime_directory_missing` 及确认目录的安全摘要，日志保留 Service、Environment 与修订上下文，不归类为容器日志配置失败；实际 Compose 文件缺失由执行反馈。
+重启和停止优先冻结保存的运行目录；运行目录为空时可以冻结已确认的部署目录，库存运行状态和目录记录的历史修订均不参与准入。运行时查询同样使用当前目标解析保存的运行目录。目录修订记录来源，不证明物理位置不同；不自动查找旧目标、改写历史来源或新增目录身份库。任务受理冻结当前 Environment/凭据修订，Worker 仍拒绝排队后目标变化。缺失目录准确报告 `service_runtime_directory_missing` 及确认目录的安全摘要，日志保留 Service、Environment 与修订上下文，不归类为容器日志配置失败；实际 Compose 文件缺失由执行反馈。
 
 local 在 Orbit 可见路径写文件，DooD 将每个具体相对 bind source 映射到 Docker daemon 可见路径，按最长挂载前缀处理嵌套挂载；未映射路径在命令前失败。SSH 使用远端路径与 SFTP，Linux 沿用 shell 引号，Windows 沿用非交互 PowerShell 和 `Set-Location -LiteralPath`，不通过本地 DooD resolver。
 
-Gateway 路由、证书、ACME 及发布记录沿用运行目录；文件接口限制在显式服务范围。目录与目标修订属于 publication preview 依赖，目录变更使旧预览失效，不自动发布业务 Route。
+Gateway 路由、证书、ACME 及发布记录沿用运行目录；文件接口限制在显式服务范围。Gateway 历史运行目录修订与当前环境不同不阻断工作区访问，缺失运行目录仍拒绝发布。目录与目标修订属于 publication preview 依赖，目录变更使旧预览失效，不自动发布业务 Route。
 
-目录归属以当前目标修订下各 Service 的确认目录、运行目录及实际运行容器的 bind mount 为依据，拒绝其他服务的目录和运行挂载占用。通过检查后按本次确认目录准备文件，既有 Compose 按有效计划替换；运行目录为空不阻止部署。local 与 SSH 文件范围同时检查解析后的路径，防止符号链接越界；部署期间复用已有 target session。
+目录归属以当前目标解析的各 Service 确认目录、运行目录及实际运行容器的 bind mount 为依据，不按目录记录的历史修订跳过占用保护；比较解析后的逻辑路径与 Docker daemon 可见路径，拒绝其他服务的目录和运行挂载占用。通过检查后按本次确认目录准备文件，既有 Compose 按有效计划替换；运行目录为空不阻止部署。local 与 SSH 文件范围同时检查解析后的路径，防止符号链接越界；部署期间复用已有 target session。
 
 运行挂载观察由 Docker `Inventory` 实现应用层的 `MountInventory` 端口，返回 Source 与 Shared 事实。停止容器和 named volume 不计入运行 bind mount；观察或共享声明解析失败时停止部署。用例继续保护 Service 根目录，允许声明共享目录的子目录使用，但不允许覆盖其中未共享的私有挂载。

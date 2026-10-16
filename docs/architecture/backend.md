@@ -27,7 +27,7 @@ HTTP 请求日志统一使用全局开关、JSON 正文类型和字节上限，�
 
 ```text
 cmd/server, cmd/migrate
-  → bootstrap（组装 HTTP、MCP、worker、DB 与迁移）
+  → bootstrap（组装 HTTP、CLI、MCP、worker、DB 与迁移）
 
 api/http、api/mcp、queue/worker/handler  # 入站适配
   → application/*（usecase、dto、port）
@@ -123,6 +123,10 @@ Deployment 同样使用独立 `Service` 与 `ExecutionService`。HTTP/MCP 命令
 - [产品 CD 模型](../product/cd-model.md)  
 - [决策账本](../decisions/ledger.md)  
 
-## PAT 项目环境入口
+## Go CLI 项目环境入口
 
-`/api/cli/project`、`/api/cli/environment/terminal` 和 `/api/cli/environment/exec` 使用独立 PAT 认证，与普通 Web JWT 分开。路由在请求级 UoW 中间件之前注册；SSH 网络调用不持有 SQL 长事务。Environment AccessService 负责成员可见库存和精确 code 定位；CommandService 拥有总超时、独立配额、每 2 秒资格复核与 1 MiB 有界输出，窄 CommandRunner 适配 SSH 并在同一连接确认主机指纹后发送 exec。共享 terminal HTTP 协议同时服务 Web 票据入口与 CLI PAT 入口，连接资格及配额复用 TerminalService。部署 TargetResolver 的 Probe 门槛不变。完整调用契约见[项目环境 CLI 指南](../guides/project-environment-cli.md)。
+同一二进制通过 `cli env list/ssh/exec`、`cli env forward start/status/stop` 提供远程环境管理。`internal/api/cli` 只负责参数、交互、TTY 和输出；`internal/bootstrap/cli.go` 按需装配数据库、既有 PAT 认证和环境应用用例。直接调用共享 `config.Load()`，沿用 cwd、profile、相对路径、校验和失败行为，不启动 HTTP/worker 或迁移。CLI 在本地解析共享 MCP PAT 得到 actor，通过成员权限用例访问 SSH 环境；不支持 local 环境。
+
+AccessService 负责成员可见 SSH 库存和精确 code 定位。TerminalService 复用 Web 终端的目标、受管凭据、指纹、会话资格和期限；CommandService 拥有总超时、进程内配额、每 2 秒资格复核与 1 MiB 有界输出。ForwardService 复用同一连接资格业务，组织 SSH 建连、同连接指纹确认、监听就绪和持续复核，不套终端空闲/总期限。SSH 和 TCP 转发在 runner 中实现，不持有 SQL 长事务；部署 TargetResolver 的 Probe 门槛不变。
+
+后台 forward 一条映射一个子进程，进程适配器拥有文件锁、运行记录、本地控制连接和 OS 身份核验；bootstrap 向子入口注入应用回调，基础设施不组合业务。状态/停止只依赖共享配置和当前系统用户的本地运行记录，不打开数据库或验证 PAT。发布包服务停止脚本排除 CLI 子进程。旧 Python CLI 专属 HTTP 路由及协议已删除，浏览器终端继续使用原票据和 WebSocket 入口。完整契约见[项目环境 CLI 指南](../guides/project-environment-cli.md)。

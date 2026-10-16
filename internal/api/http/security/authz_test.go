@@ -2,14 +2,11 @@ package security
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -188,55 +185,4 @@ func authedRequest(token string) *http.Request {
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
 	request.Header.Set("Authorization", "Bearer "+token)
 	return request
-}
-
-type patAuthStore struct {
-	fakeAuthStore
-	token model.MCPAccessToken
-	hash  string
-}
-
-func (s patAuthStore) MCPAccessTokenByHash(_ context.Context, hash string) (model.MCPAccessToken, error) {
-	if hash != s.hash {
-		return model.MCPAccessToken{}, repository.ErrNotFound
-	}
-	return s.token, nil
-}
-func TestPATAndJWTAuthenticationAreSeparate(t *testing.T) {
-	raw := "orbit_mcp_pat_test-secret"
-	sum := sha256.Sum256([]byte(raw))
-	for _, scenario := range []string{"valid", "expired", "revoked", "disabled", "jwt", "missing"} {
-		t.Run(scenario, func(t *testing.T) {
-			store := patAuthStore{fakeAuthStore: fakeAuthStore{user: model.User{Id: "user-1", Status: "enabled"}}, hash: hex.EncodeToString(sum[:]), token: model.MCPAccessToken{UserId: "user-1"}}
-			token := raw
-			switch scenario {
-			case "expired":
-				past := time.Now().Add(-time.Hour)
-				store.token.ExpiresAt = &past
-			case "revoked":
-				store.hash = ""
-			case "disabled":
-				store.user.Status = "disabled"
-			case "jwt":
-				token = signedToken(t)
-			case "missing":
-				token = ""
-			}
-			authenticator := New(slog.Default(), authsvc.New(store, store, jwt.NewTokenService(testSecret), slog.Default(), testSecret))
-			recorder := httptest.NewRecorder()
-			user, ok := authenticator.CurrentPATUser(testContext(recorder, authedRequest(token)))
-			if scenario == "valid" {
-				if !ok || user.Id != "user-1" {
-					t.Fatal("valid PAT rejected")
-				}
-				web := httptest.NewRecorder()
-				authenticator.CurrentUser(testContext(web, authedRequest(raw)))
-				if web.Code != 401 {
-					t.Fatal("PAT accepted as Web JWT")
-				}
-			} else if ok || recorder.Code != 401 || recorder.Header().Get("WWW-Authenticate") != "Bearer" {
-				t.Fatalf("status=%d ok=%v", recorder.Code, ok)
-			}
-		})
-	}
 }

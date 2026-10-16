@@ -34,15 +34,11 @@ func (s *AccessService) List(ctx context.Context, actorId string) ([]environment
 		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return nil, apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
 		}
-		if err == nil {
+		if err == nil && e.IsSSH() {
 			item.EnvironmentId, item.TargetType = e.Id, e.TargetType
-			if e.IsSSH() {
-				item.Platform, item.Host, item.Port, item.Username = e.SSH.Platform, e.SSH.Host, e.SSH.Port, e.SSH.Username
-			}
-			if e.IsLocal() {
-				d := s.environments.localDisplay
-				item.Platform, item.Host, item.Username = d.Platform, d.Host, d.Username
-			}
+			item.Platform, item.Host, item.Port, item.Username = e.SSH.Platform, e.SSH.Host, e.SSH.Port, e.SSH.Username
+		} else {
+			continue
 		}
 		result = append(result, item)
 	}

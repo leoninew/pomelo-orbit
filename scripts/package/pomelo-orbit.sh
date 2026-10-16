@@ -22,7 +22,7 @@ fi
 find_running_pids() {
 	ps -eo pid=,args= | while IFS=' ' read -r pid command; do
 		case "$command" in
-			"$server_path"|"$server_path "*) printf '%s\n' "$pid" ;;
+			"$server_path"|"$server_path serve"|"$server_path worker") printf '%s\n' "$pid" ;;
 		esac
 	done
 }

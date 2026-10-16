@@ -70,11 +70,5 @@ exit /b 0
 
 :find_running_pids
 set "POMELO_ORBIT_PIDS="
-for /f %%P in ('powershell.exe -NoProfile -Command "$target = [System.IO.Path]::GetFullPath($env:POMELO_ORBIT_EXE); foreach ($process in Get-CimInstance Win32_Process) { if ($process.Name -ieq 'pomelo-orbit.exe' -and $process.ExecutablePath -and [System.IO.Path]::GetFullPath($process.ExecutablePath) -ieq $target) { $process.ProcessId } }"') do (
-    if defined POMELO_ORBIT_PIDS (
-        set "POMELO_ORBIT_PIDS=%POMELO_ORBIT_PIDS% %%P"
-    ) else (
-        set "POMELO_ORBIT_PIDS=%%P"
-    )
-)
+for /f "delims=" %%P in ('powershell.exe -NoProfile -Command "$target = [System.IO.Path]::GetFullPath($env:POMELO_ORBIT_EXE); $ids = foreach ($process in Get-CimInstance Win32_Process) { if ($process.Name -ieq 'pomelo-orbit.exe' -and $process.ExecutablePath -and [System.IO.Path]::GetFullPath($process.ExecutablePath) -ieq $target -and $process.CommandLine -match '^(?:\x22[^\x22]+\x22|\S+)\s*(?:serve|worker)?\s*$') { $process.ProcessId } }; $ids -join ' '"') do set "POMELO_ORBIT_PIDS=%%P"
 exit /b 0

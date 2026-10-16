@@ -159,7 +159,7 @@ func (s *CommandService) Execute(ctx context.Context, actorId string, input envi
 	}()
 	monitorCtx, stopMonitor := context.WithCancel(ctx)
 	defer stopMonitor()
-	go s.monitorCommand(monitorCtx, grant, cancel)
+	go s.access.environments.monitorConnection(monitorCtx, grant, cancel)
 	var completed completion
 	select {
 	case completed = <-done:
@@ -196,7 +196,7 @@ func (s *CommandService) Execute(ctx context.Context, actorId string, input envi
 	return result, nil
 }
 
-func (s *CommandService) monitorCommand(ctx context.Context, grant TerminalGrant, cancel context.CancelCauseFunc) {
+func (s Service) monitorConnection(ctx context.Context, grant TerminalGrant, cancel context.CancelCauseFunc) {
 	ticker := time.NewTicker(terminalCheckInterval)
 	defer ticker.Stop()
 	for {
@@ -205,7 +205,7 @@ func (s *CommandService) monitorCommand(ctx context.Context, grant TerminalGrant
 			return
 		case <-ticker.C:
 			checkCtx, stop := context.WithTimeout(ctx, 5*time.Second)
-			err := s.access.environments.validateConnection(checkCtx, grant)
+			err := s.validateConnection(checkCtx, grant)
 			stop()
 			if err != nil && ctx.Err() == nil {
 				cancel(errTargetChanged)

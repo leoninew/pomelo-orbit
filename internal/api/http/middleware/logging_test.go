@@ -25,7 +25,7 @@ import (
 const testBodyMaxBytes = 32
 
 func TestLogRequestRecordsTerminalBodies(t *testing.T) {
-	for _, path := range []string{"/api/environment/terminal/ticket", "/api/environment/terminal", "/api/cli/environment/terminal", "/api/cli/environment/exec"} {
+	for _, path := range []string{"/api/environment/terminal/ticket", "/api/environment/terminal"} {
 		t.Run(path, func(t *testing.T) {
 			requestBody := `{"input":"terminal command"}`
 			responseBody := `{"ticket":"ticket-value"}`

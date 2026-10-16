@@ -1,92 +1,94 @@
-# 通过项目别名连接远程环境
-最后修改时间: 2026-10-16
+# Go CLI 远程环境管理
+最后修改时间: 2026-10-16 13:53:25
 
-`pomelo-orbit-cli environment` 使用 Project **code** 作为 SSH alias。Orbit 服务端按当前用户的项目成员资格读取已保存的 SSH 目标与受管私钥，再代理交互终端或执行一次命令。客户端只需要 Orbit 地址与 PAT，无需私钥、Docker、数据库访问或 SCP。
+`pomelo-orbit cli env` 使用 Project **code** 定位已保存的 SSH 环境。本地 Go 进程与 WebAPI 共用配置、数据库和应用用例，复用项目成员权限、SSH 账号、受管密钥、主机指纹及目标修订规则，并直接建立 SSH 连接。
 
-## 配置与启动
+## 配置与开发启动
 
-在已登录的 Web 控制台“系统管理 / 访问令牌”创建 PAT，存入父进程环境或 gitignored 的 `scripts/.env` / `scripts/.env.<env>`：
+从 WebAPI 使用的同一工作目录和 profile 启动 CLI。直接调用 `config.Load()`，沿用默认 YAML、profile YAML、启动 dotenv、进程环境、`overwrite.env` 的覆盖顺序和 `POMELO_ORBIT_` 前缀；相对数据库和本地资源路径按现有规则解析。配置读取或校验失败即退出，不提供目录发现或 `--work-dir`。
 
-```dotenv
-POMELO_ORBIT_CLI__BASE_URL=https://orbit.example.com
-POMELO_ORBIT_MCP__ACCESS_TOKEN=orbit_mcp_pat_...
+Orbit 操作者使用共享 `mcp.access_token` / `POMELO_ORBIT_MCP__ACCESS_TOKEN`，通过现有 PAT 认证业务在本地解析；令牌必须有效且用户 enabled。SSH 认证使用环境绑定的账号、受管私钥和主机指纹。需要访问 WebAPI 所用数据库，并使用相同的加密配置。PAT 不替代 SSH 身份，不需要服务 URL。
+
+在仓库根目录的 PowerShell 中：
+
+```powershell
+$env:POMELO_ORBIT_APP__ENV = "development"
+go build -o ./bin/pomelo-orbit.exe ./cmd/server
+./bin/pomelo-orbit.exe cli env list
+./bin/pomelo-orbit.exe cli env list --json
 ```
 
-`BASE_URL` 是服务根地址，可包含部署路径前缀，例如 `https://host/orbit`；客户端追加 `/api/cli/...`。使用标准 TLS 证书校验，直接连接该地址，不读取系统代理，不跟随重定向。不要把 PAT 写到命令参数、可提交文件或模型提示词。
+以下示例使用已构建的 `pomelo-orbit`；Windows 开发时替换为 `./bin/pomelo-orbit.exe`。Linux/macOS 使用同一命令参数。CLI 不启动 HTTP、worker 或自动迁移数据库。`--help` 不加载配置。默认运行和 `serve/worker/mcp` 入口保留。
 
-配置顺序为内置默认值 < `scripts/.env[.<env>]` < OS env；profile 由启动进程中的 `POMELO_ORBIT_APP__ENV` 选择，指定环境时只读取对应 dotenv。`make run` 默认选择 `development`，读取 `scripts/.env.development`；直接 `uv run` 未指定环境时读取 `scripts/.env`。可从 `scripts/.env.example` 复制配置。CLI 不读取后端 YAML、仓库根 dotenv 或 `overwrite.env`；日志等级默认 `INFO`。其他 CLI 命令和 `--help` 不要求 PAT。全部配置项见 [CLI README](../../scripts/README.md#配置)。
+## 命令
 
-在仓库根目录运行（Python ≥3.12，uv）：
-
-```bash
-uv --directory scripts sync --locked
-uv --directory scripts run --locked pomelo-orbit-cli environment list --json
-```
-
-以下示例省略 `uv --directory scripts run --locked` 前缀；可在 scripts 虚拟环境中直接使用 `pomelo-orbit-cli`。
-
-## 人工交互
-
-```bash
-pomelo-orbit-cli environment list
-pomelo-orbit-cli environment ssh
-pomelo-orbit-cli environment ssh --project production
-```
-
-`list` 返回当前用户所有成员可见项目，包括 inactive、local 和未配置环境的项目，按 code 排序。摘要没有密钥。`ssh` 未指定项目时列出 SSH 目标并要求编号选择；指定项目则直接连接，不使用名称、id、模糊匹配或上次选择。
-
-`ssh` 要求 stdin/stdout 都是 TTY，Windows 需要支持 VT 的现代控制台。进入 SSH 用户默认 shell/home，不自动进入 workspace、容器或 WSL。Ctrl+C / Ctrl+D 发送到远端，Ctrl+] 本地断开；尺寸变化会同步。终端建连上限 15 秒、空闲 15 分钟、总时长 2 小时；每用户最多 2 个、每服务进程共 16 个。
-
-## 大模型与自动化调用
-
-模型先 `environment list --json` 获取精确 code，然后每次显式传入 `--project`。`exec` 永不提示选项目、密码或确认，不分配 PTY；只有 `--stdin` 才读取本地输入，缺省发送 EOF。
-
-```bash
-pomelo-orbit-cli environment exec --project production -- docker ps
-pomelo-orbit-cli environment exec --project production --timeout 30 --json -- df -h
-pomelo-orbit-cli environment exec --project production --workdir /var/log -- ls -lah
-pomelo-orbit-cli environment exec --project production -- sh -lc 'df -h; free -m'
-pomelo-orbit-cli environment exec --project windows-prod -- powershell.exe -NoProfile -NonInteractive -Command 'Get-Process | Select-Object -First 5'
-```
-
-`--` 后每项按字面 argv 发送，包括 `--help`、空格、空参数、`$HOME`、`~`、`*`、`|` 和 `>`。需要 shell 语法时显式调用 `sh -lc`、`powershell.exe -Command` 或其他解释器，遵循调用者本地 shell 的引号规则。Windows native 程序使用标准 Windows CRT 参数规则；程序自身若使用其他解析规则，按该程序要求传参。
-
-`--workdir` 缺省为环境保存的 workspace；显式值必须是目标平台绝对路径或 `~` / `~/...`，仅该目录展开 home。缺失目录不会被创建或替换为其他目录。它不限制命令访问 SSH 用户有权访问的其他位置。
-
-给模型的调用约定可直接引用本文：每次确认目标 code，使用非交互 `exec --json`，检查 `state` 与 `exit_code` 后解释结果；不要自动重试结果未知的请求。诊断授权不隐含修复、重启、删除或其他写操作授权，按用户明确范围执行。命令具有所配置 SSH 用户的实际权限。
-
-## 输出与状态
-
-默认模式将原始 stdout/stderr 字节分别写入本地对应流，远端非零退出如实传递。平台错误和未完成状态诊断写 stderr。
-
-`exec --json` 输出一个对象，包含 `project_id/project_code/environment_id/target_revision/state/exit_code`（仅已知时）、`stdout/stderr` 文本、`duration_ms/output_truncated/requestId`。文本按 UTF-8 解码；无效字节被替换时 `output_decoding_replaced=true`。平台错误也是单个对象，`state=platform_error` 并带 `code/error/status/requestId`；用法与配置错误仍走 CLI 用法提示。
-
-| state | 含义 | CLI 退出码 |
-| --- | --- | --- |
-| `exited` | 已确认远端退出，只有 exit_code=0 成功 | 真实 0–255；范围外映射 255，JSON 保留原值 |
-| `timed_out` | 已发出命令后超过总超时 | 124 |
-| `output_limit` | stdout+stderr 超过 1 MiB，保留各自前缀并关闭连接 | 125 |
-| `access_or_target_changed` | 执行期间成员资格、目标、凭据或指纹变化 | 125 |
-| `transport_lost` | 命令已发送，但未获得可靠退出状态 | 255 |
-| `platform_error` | 认证、目标解析、连接或协议失败 | 255 |
-| 本地用法/配置错误、本地中断 | 请求无效或用户中断 | 2、130 |
-
-远端也可使用 124/125/255；需要区分时读取 JSON state。命令一旦发出，超时、断线和取消均不能证明它未执行或远端派生进程已终止。连接关闭只结束本次等待和 SSH 连接，不管理远端进程树。客户端网络失败提示结果未知，禁止据此自动重试。
-
-## 服务端协议与限制
-
-PAT 仅用于本地 stdio MCP 和专用 CLI 路由，不能替代普通 Web API 的 JWT。每个请求 / WebSocket 升级均检查 PAT 未撤销、未过期且用户 enabled，随后检查 Project 成员资格。既有终端每 2 秒复核成员/目标/凭据；PAT 撤销阻止新请求，不承诺立即结束已建立终端。
-
-| 路由 | 契约 |
+| 命令 | 用途 |
 | --- | --- |
-| `GET /api/cli/project` | `{projects:[...]}`，项目及环境摘要 |
-| `GET /api/cli/environment/terminal?project_code=...` | PAT Authorization header，WebSocket 子协议仅 `orbit-terminal-v1`，无 Origin；共用 Web 终端二进制数据与 ready/resize/exit 协议 |
-| `POST /api/cli/environment/exec` | `project_code/argv/workdir/stdin/timeout_seconds`，protobuf JSON snake_case |
+| `cli env list [--json]` | 查询成员可见的 SSH 环境，按 code 排序 |
+| `cli env ssh [--project CODE]` | 交互 SSH；省略项目时选择编号 |
+| `cli env exec --project CODE [--workdir PATH] [--timeout SECONDS] [--stdin] [--json] -- PROGRAM ARG...` | 非交互、无 PTY 的字面 argv 执行 |
+| `cli env forward start --project CODE -p LOCAL:REMOTE` | 后台启动本地 TCP 转发 |
+| `cli env forward status [-p PORT] [--json]` | 核对一条或全部本机受管转发 |
+| `cli env forward stop -p PORT` | 停止一条受管转发 |
 
-命令请求只支持 SSH，未配置/local 返回 400；未知 code 404、非成员 403、无效 PAT 401、修订冲突 409、SSH 连接/认证/容量失败 503。错误契约为 `{code,error,requestId}`，401 带 `WWW-Authenticate: Bearer`。执行结果（包括远端非零、超时和连接丢失）以 HTTP 200 返回，通过 state 判定。
+仅支持 SSH 环境，过滤 local 和未配置环境。库存可包含 inactive、尚未 Probe 或缺少凭据的 SSH 环境；实际连接仍检查配置、成员资格、密钥和指纹。不要求 Docker Probe 或 Gateway 就绪。
 
-argv 最多 128 项、UTF-8 共 32 KiB、不含 NUL；stdin 最多 64 KiB，HTTP JSON 中为 base64；body 最多 128 KiB。总超时缺省 60 秒，显式 1–300 秒（包含查询和建连），连接另受 15 秒上限；清理最多等 5 秒。stdout/stderr 在 API 中为 base64 bytes，以保留原始字节；客户端 JSON 则面向模型输出文本。
+## 交互终端
 
-非交互配额每用户 2、每服务进程共 16，与终端分别计数；不排队、不重试。目标凭据与首次主机指纹复用现有存储，无需成功 Docker Probe、Gateway 或部署 Service。命令在当前连接的主机指纹确认并保存后才发出。
+```sh
+pomelo-orbit cli env ssh
+pomelo-orbit cli env ssh --project production
+```
 
-长请求的反向代理等待时间需覆盖执行超时与结果回传；客户端等待为指定超时加 20 秒。HTTP 请求与响应日志统一按全局开关、JSON 正文类型和字节上限处理；私钥及其口令字段使用掩码加末 4 位。应用日志记录执行元信息，命令输出内容自身不会自动脱敏。
+要求 stdin/stdout 为 TTY；Windows 需要支持 VT 的现代控制台。进入 SSH 用户默认 shell/home，不自动进入 workspace、容器或 WSL。Ctrl+C / Ctrl+D 发送到远端，Ctrl+] 本地断开；窗口尺寸变化会同步，退出恢复本地终端。
+
+沿用终端规则：建连上限 15 秒、空闲 15 分钟、总时长 2 小时；成员权限、目标和凭据每 2 秒复核。终端及 exec 的配额为进程内配额，不是多个 CLI 进程之间的全局限制。
+
+## 非交互执行
+
+```sh
+pomelo-orbit cli env exec --project production -- docker ps
+pomelo-orbit cli env exec --project production --timeout 30 --json -- df -h
+pomelo-orbit cli env exec --project production --workdir /var/log -- ls -lah
+pomelo-orbit cli env exec --project production -- sh -lc 'df -h; free -m'
+pomelo-orbit cli env exec --project windows-prod -- powershell.exe -NoProfile -NonInteractive -Command 'Get-Process | Select-Object -First 5'
+```
+
+`--` 后各项作为字面 argv，包括空格、空参数、`$HOME`、`~`、`*`、`|` 和 `>`。需要 shell 语法时显式调用解释器，并遵循本地 shell 的引号规则。Windows native 程序沿用标准 Windows CRT 参数编码。
+
+`--workdir` 缺省为环境保存的 workspace；显式值必须为目标平台绝对路径或 `~` / `~/...`。不存在的目录不会被创建或替换。仅传 `--stdin` 才读取本地输入，缺省发送 EOF。
+
+限制沿用共享命令业务：argv 最多 128 项/32 KiB、不含 NUL；stdin 最大 64 KiB；stdout/stderr 合计最多 1 MiB。执行超时默认 60 秒、允许 1–300 秒，连接另受 15 秒限制。超时从调用共享执行用例开始计算，本地读取 stdin 不计入其中，但可用 Ctrl+C 取消。
+
+默认模式将原始 stdout/stderr 字节分写本地对应流。`--json` 输出一个对象，包含 `project_id/project_code/environment_id/target_revision/state/exit_code`（已知时）、`stdout/stderr` 文本、`duration_ms/output_truncated`；非 UTF-8 字节替换为 U+FFFD，标记 `output_decoding_replaced=true`。应用错误输出 `state=platform_error` 和 `error`。参数解析错误输出到 stderr；日志不混入 stdout。
+
+| state / 情况 | 退出码 |
+| --- | --- |
+| `exited` | 远端真实 0–255，范围外映射 255 |
+| `timed_out` | 124 |
+| `output_limit` / `access_or_target_changed` | 125 |
+| `transport_lost` / 应用、连接失败 | 255 |
+| 本地用法错误 / 配置加载失败 / 本地中断 | 2 / 1 / 130 |
+
+自动化先用 `list --json` 确认精确 code，每次显式指定 `--project`，结合 JSON `state` 和 `exit_code` 判断结果。命令一旦发出，超时、断线或取消均不能证明它未执行或远端派生进程已停止；结果未知时不得自动重放。
+
+## 本地端口转发
+
+```sh
+pomelo-orbit cli env forward start --project production -p 15432:5432
+pomelo-orbit cli env forward status
+pomelo-orbit cli env forward status -p 15432 --json
+pomelo-orbit cli env forward stop -p 15432
+```
+
+`-p` 与 `--port` 等价。启动传入 `本地端口:远程端口`，状态和停止只传本地端口；`status` 不传端口则列出全部。`start` 仍需显式指定 `--project`。
+
+固定转发方向为本机 `127.0.0.1:15432` → 项目 SSH 主机 → 该主机自身 `127.0.0.1:5432`，相当于本地 `-L`。端口范围 1–65535；不在远端新增监听。需 SSH 可达、sshd 允许 TCP 转发、远端服务可在回环地址访问。
+
+`start` 完成 SSH 认证、同连接指纹确认及本地监听后返回，一条映射一个后台子进程。相同操作者、项目、映射和目标/凭据修订重复启动幂等；端口冲突报错。支持多个 TCP 连接及双向半关闭。连接丢失或每 2 秒的资格复核失败时关闭监听、活动流和 SSH 并退出，不自动重连；没有终端的空闲或 2 小时期限。
+
+运行记录及日志位于当前 cwd 的 `data/cli/forward/` 下，按系统用户隔离，不保存 PAT 或私钥。`status` 核对运行标识、PID、OS 进程创建信息和本地控制响应，区分 `starting/running/stopping/stopped/failed/stale/unresponsive`；`running` 不代表远端服务健康。`stop` 通过已核验的本地控制连接停止一条转发并清理记录，已退出或不存在时幂等成功，不终止非受管进程。
+
+`status/stop` 仍加载共享配置，但不打开业务数据库或验证 PAT。应从启动转发时相同的 cwd、同一二进制路径执行。不要用 `go run` 的临时文件或 Air 重启进程持有长期转发；Windows 重建前先停止该二进制持有的转发。
+
+旧 Python CLI、独立 remote 工具及其 HTTP 专属路由已移除；旧后台 SSH 进程不被接管或停止。开发打包由标准库单文件脚本承接，见 [scripts 说明](../../scripts/README.md)。

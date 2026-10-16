@@ -1,6 +1,6 @@
 # 客户端与云端调用机制
 
-最后修改时间: 2026-10-15 21:18:08
+最后修改时间: 2026-10-16 12:37:36
 
 ## 业务定位
 
@@ -14,7 +14,8 @@ Pomelo Orbit 是一个自托管的 CI/CD 与平台管理控制面。用户通过
 flowchart LR
     A[浏览器 Web 客户端] -->|HTTPS REST API| B[Orbit 服务端]
     C[AI / MCP 客户端] -->|本地 stdio MCP| B
-    CLI[人 / AI 项目环境 CLI] -->|PAT HTTPS / WebSocket| B
+    CLI[人 / AI 本地 Go CLI] --> E
+    CLI -->|直接 SSH| SSH[受管远程环境]
 
     B --> D[认证与 RBAC]
     B --> E[业务服务层]
@@ -91,7 +92,7 @@ sequenceDiagram
 父进程更新 token 后必须重启 MCP session；运行中的 session 不热读环境、不续期，也不会自动撤销仍有效的旧 token。
 ## 项目环境 CLI
 
-人和大模型可通过 `pomelo-orbit-cli environment` 以精确项目 code 连接已有 SSH 环境。该入口复用现有 PAT，调用专用 `/api/cli/...` HTTP / WebSocket 路由，在服务端读取 SSH 凭据，提供交互 shell 和非交互 argv 执行；客户端无需访问数据库或私钥。此能力不要求 Probe/Gateway 就绪，不增加远程 MCP。命令输出、退出状态、超时和结果未知边界见[项目环境 CLI 指南](project-environment-cli.md)。
+人和大模型通过同一 Go 二进制的 `pomelo-orbit cli env`，以精确项目 code 查询 SSH 环境、打开交互 shell、执行字面 argv 和管理本地端口转发。本地进程共用 WebAPI 的配置、数据库和应用用例，通过共享 MCP PAT 认证业务解析 Orbit 操作者，复用成员授权、受管 SSH 账号、密钥和主机指纹，直接建立 SSH 连接。该入口需要访问同一数据库并使用相同加密配置，不经过 HTTP/WebSocket，不启动服务或迁移，不要求 Probe/Gateway 就绪。配置、六个命令、输出和结果未知边界见[项目环境 CLI 指南](project-environment-cli.md)。
 
 ## 对话式部署
 

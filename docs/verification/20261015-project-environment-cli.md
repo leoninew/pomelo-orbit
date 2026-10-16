@@ -1,5 +1,7 @@
 # Verification / 验证：通过项目别名连接环境并执行命令
-最后修改时间: 2026-10-16
+最后修改时间: 2026-10-16 12:37:36
+
+历史记录：本文只证明当时的 Python/HTTP 实现，不替代 [Go CLI 共享业务任务](../plan/20261016-cli-command-consolidation.md)的开发检查和验收；现行用法见 [CLI 指南](../guides/project-environment-cli.md)。
 
 ## Review status / 审查状态
 

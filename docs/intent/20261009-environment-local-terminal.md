@@ -1,5 +1,5 @@
 # Environment 终端入口与本机交互终端
-最后修改时间: 2026-10-09 16:29:46
+最后修改时间: 2026-10-16 12:37:36
 
 Review status: Accepted
 
@@ -19,10 +19,10 @@ Mode: standard
 
 现状依据：
 
-- [Environment 页面](../../web/src/views/environment/EnvironmentPage.vue)与[入口测试](../../web/src/views/environment/EnvironmentPage.test.ts)。
+- [Environment 页面](../../web/src/views/environment/EnvironmentPage.vue)与当时的入口测试 `EnvironmentPage.test.ts`（现已移除）。
 - [终端用例](../../internal/application/environment/usecase/terminal.go)、[目标解析](../../internal/application/environment/usecase/target.go)与[终端端口](../../internal/application/environment/port/terminal.go)。
 - [HTTP/WebSocket handler](../../internal/api/http/handler/environment/terminal.go)、[组合入口](../../internal/bootstrap/http.go)与[SSH PTY runner](../../internal/infrastructure/runner/ssh/terminal.go)。
-- [本机展示信息](../../internal/bootstrap/environment_display.go)、[Docker 部署指南](../guides/docker-deployment.md)与[原生发布构建](../../scripts/src/pomelo_orbit_cli/commands/release.py)。
+- [本机展示信息](../../internal/bootstrap/environment_display.go)、[Docker 部署指南](../guides/docker-deployment.md)与[原生发布构建](../../scripts/release.py)。
 
 ## Goal
 

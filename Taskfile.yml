@@ -7,7 +7,7 @@ tasks:
       - task --list
 
   deps:
-    desc: Install locked web and script dependencies plus pinned Go tools
+    desc: Install locked web dependencies plus pinned Go tools
     env:
       CGO_ENABLED: '0'
       GOBIN: '{{.TASKFILE_DIR}}/bin'
@@ -16,7 +16,6 @@ tasks:
       PATH: '{{.TASKFILE_DIR}}/bin{{if eq OS "windows"}};{{else}}:{{end}}{{.PATH}}'
     cmds:
       - yarn --cwd web install --frozen-lockfile
-      - uv --directory scripts sync --locked
       - mkdir -p bin
       - |
         set -e

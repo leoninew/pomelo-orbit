@@ -22,7 +22,7 @@ func (s inventoryEnvironments) EnvironmentByProject(_ context.Context, id string
 	return item, nil
 }
 
-func TestAccessInventoryDoesNotRequireCredentialsProbeOrActiveProject(t *testing.T) {
+func TestAccessInventoryListsOnlySSHWithoutCredentialsProbeOrActiveProject(t *testing.T) {
 	projects := cliProjects{&terminalProjectReader{member: true}, []model.Project{{Id: "missing", Code: "z"}, {Id: "ssh", Code: "b", IsActive: false}, {Id: "local", Code: "a", IsActive: true}}}
 	remote := readyTargetEnvironment()
 	remote.SSH.CredentialId = ""
@@ -30,10 +30,10 @@ func TestAccessInventoryDoesNotRequireCredentialsProbeOrActiveProject(t *testing
 	service := New(inventoryEnvironments{items: map[string]model.Environment{"ssh": remote, "local": {Id: "local-env", TargetType: "local"}}}, projects, nil, "", nil, nil).WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: "linux", Host: "local-host", Username: "orbit"})
 	access := NewAccessService(service, projects, NewTerminalService(service))
 	items, err := access.List(context.Background(), "actor")
-	if err != nil || len(items) != 3 {
+	if err != nil || len(items) != 1 {
 		t.Fatalf("items=%+v err=%v", items, err)
 	}
-	if items[0].Code != "a" || items[0].TargetType != "local" || items[0].Host != "local-host" || items[1].IsActive || items[1].TargetType != "ssh" || items[2].TargetType != "unconfigured" || items[2].EnvironmentId != "" {
+	if items[0].Code != "b" || items[0].IsActive || items[0].TargetType != "ssh" || items[0].EnvironmentId == "" {
 		t.Fatalf("items=%+v", items)
 	}
 }

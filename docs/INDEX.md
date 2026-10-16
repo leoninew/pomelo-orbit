@@ -1,5 +1,5 @@
 # 文档主题索引
-最后修改时间: 2026-10-15 21:18:08
+最后修改时间: 2026-10-16 12:37:36
 
 独立索引文件（与 [README.md](./README.md) 分工：README 讲规则与阅读顺序，本页讲主题 → 路径）。
 
@@ -26,7 +26,7 @@
 | 主题 | 活文档 |
 |------|--------|
 | CD 部署概念 | [guides/deployment.md](./guides/deployment.md) |
-| 项目环境 SSH / 大模型非交互命令 | [guides/project-environment-cli.md](./guides/project-environment-cli.md) |
+| Go CLI 环境 SSH / 非交互命令 / 后台端口转发 | [guides/project-environment-cli.md](./guides/project-environment-cli.md) |
 | 客户端与云端调用机制 | [guides/client-cloud-invocation.md](./guides/client-cloud-invocation.md) |
 | Docker 与服务器首次部署 | [guides/docker-deployment.md](./guides/docker-deployment.md) |
 | 路由与证书 | [guides/routing-and-certificates.md](./guides/routing-and-certificates.md) |

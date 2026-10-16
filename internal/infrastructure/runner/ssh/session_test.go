@@ -30,6 +30,15 @@ type sessionServer struct {
 	sftpClients atomic.Int32
 	holdSFTP    atomic.Bool
 	blocked     chan struct{}
+	forwards    chan testForwardDestination
+	disconnect  func()
+}
+
+type testForwardDestination struct {
+	Host       string
+	Port       uint32
+	Origin     string
+	OriginPort uint32
 }
 
 func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
@@ -57,10 +66,11 @@ func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := &sessionServer{blocked: make(chan struct{}, 4), commands: make(chan string, 64)}
+	server := &sessionServer{blocked: make(chan struct{}, 4), commands: make(chan string, 64), forwards: make(chan testForwardDestination, 8)}
 	config := &ssh.ServerConfig{NoClientAuth: true}
 	config.AddHostKey(signer)
 	var connections sync.Map
+	server.disconnect = func() { connections.Range(func(conn, _ any) bool { _ = conn.(net.Conn).Close(); return true }) }
 	var workers sync.WaitGroup
 	accepted := make(chan struct{})
 	go func() {
@@ -85,6 +95,28 @@ func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 				defer server.active.Add(-1)
 				go ssh.DiscardRequests(requests)
 				for newChannel := range channels {
+					if newChannel.ChannelType() == "direct-tcpip" {
+						var destination testForwardDestination
+						if ssh.Unmarshal(newChannel.ExtraData(), &destination) != nil {
+							_ = newChannel.Reject(ssh.ConnectionFailed, "invalid destination")
+							continue
+						}
+						server.forwards <- destination
+						channel, requests, err := newChannel.Accept()
+						if err != nil {
+							return
+						}
+						workers.Add(1)
+						go func() {
+							defer workers.Done()
+							defer func() { _ = channel.Close() }()
+							go ssh.DiscardRequests(requests)
+							data, _ := io.ReadAll(channel)
+							_, _ = channel.Write(append([]byte("reply:"), data...))
+							_ = channel.CloseWrite()
+						}()
+						continue
+					}
 					channel, requests, err := newChannel.Accept()
 					if err != nil {
 						return
@@ -144,7 +176,7 @@ func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 	t.Cleanup(func() {
 		_ = listener.Close()
 		<-accepted
-		connections.Range(func(conn, _ any) bool { _ = conn.(net.Conn).Close(); return true })
+		server.disconnect()
 		workers.Wait()
 	})
 	host, port, _ := net.SplitHostPort(listener.Addr().String())

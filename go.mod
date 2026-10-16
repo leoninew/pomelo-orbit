@@ -18,11 +18,13 @@ require (
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/osteele/liquid v1.8.1
 	github.com/pkg/sftp v1.13.9
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.20.1
 	github.com/sqlc-dev/sqlc v1.30.0
 	golang.org/x/crypto v0.51.0
 	golang.org/x/net v0.53.0
 	golang.org/x/sys v0.44.0
+	golang.org/x/term v0.43.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -85,7 +87,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.14.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
-	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tetratelabs/wazero v1.11.0 // indirect

@@ -56,8 +56,6 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sql.DB, tas
 }
 
 type applicationServices struct {
-	EnvironmentAccessService     *environmentsvc.AccessService
-	EnvironmentCommandService    *environmentsvc.CommandService
 	TransactionRunner            databasetx.TransactionRunner
 	AuthService                  authsvc.Service
 	RoleService                  rolesvc.Service
@@ -188,10 +186,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	)
 
 	terminalService := environmentsvc.NewTerminalService(environmentService)
-	accessService := environmentsvc.NewAccessService(environmentService, stores.project, terminalService)
 	services := applicationServices{
-		EnvironmentAccessService:     accessService,
-		EnvironmentCommandService:    environmentsvc.NewCommandService(accessService, sshrunner.NewCommandRunner()),
 		TransactionRunner:            transactionRunner,
 		AuthService:                  authService,
 		RoleService:                  rolesvc.New(stores.role, stores.user),
@@ -237,8 +232,6 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database *sql.DB, taskRepo taskrepo.Repository) routes.Dependencies {
 	services := newApplicationServices(cfg, logger, database, taskRepo)
 	return routes.Dependencies{
-		EnvironmentAccessService:  services.EnvironmentAccessService,
-		EnvironmentCommandService: services.EnvironmentCommandService,
 		MutatingUnitOfWork: transportmiddleware.Transaction(
 			database,
 			transport.WriteError,

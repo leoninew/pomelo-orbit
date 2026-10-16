@@ -35,8 +35,6 @@ import (
 )
 
 type Dependencies struct {
-	EnvironmentAccessService     *environmentsvc.AccessService
-	EnvironmentCommandService    *environmentsvc.CommandService
 	MutatingUnitOfWork           gin.HandlerFunc
 	Authenticator                security.Authenticator
 	AuthService                  authsvc.Service
@@ -94,7 +92,6 @@ func (r Router) Handler() http.Handler {
 	// Dialogue requests can run external LLM and MCP calls. The MCP server owns
 	// transactions for its tool writes, so this route must not hold a request UoW.
 	r.registerDialogue(engine)
-	r.registerCLI(engine)
 	if r.deps.MutatingUnitOfWork != nil {
 		// Request-scoped UoW for mutating API routes (health is registered above).
 		engine.Use(r.deps.MutatingUnitOfWork)

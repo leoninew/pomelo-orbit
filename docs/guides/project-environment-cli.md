@@ -1,5 +1,5 @@
 # Go CLI 远程环境管理
-最后修改时间: 2026-10-16 13:53:25
+最后修改时间: 2026-10-19 11:09:44
 
 `pomelo-orbit cli env` 使用 Project **code** 定位已保存的 SSH 环境。本地 Go 进程与 WebAPI 共用配置、数据库和应用用例，复用项目成员权限、SSH 账号、受管密钥、主机指纹及目标修订规则，并直接建立 SSH 连接。
 
@@ -12,11 +12,14 @@ Orbit 操作者使用共享 `mcp.access_token` / `POMELO_ORBIT_MCP__ACCESS_TOKEN
 在仓库根目录的 PowerShell 中：
 
 ```powershell
-$env:POMELO_ORBIT_APP__ENV = "development"
 go build -o ./bin/pomelo-orbit.exe ./cmd/server
-./bin/pomelo-orbit.exe cli env list
-./bin/pomelo-orbit.exe cli env list --json
+task cli -- env list
+task cli -- env list --json
+task cli -- env ssh --project production
+task cli -- env exec --project production -- docker ps
 ```
+
+`task cli` 自动设置 `POMELO_ORBIT_APP__ENV=development`，调用已构建的 `./bin/pomelo-orbit.exe cli`。第一个 `--` 后的子命令和参数原样透传；执行远程命令时保留第二个 `--`，用于分隔 CLI 参数与远端程序。更新 Go 代码后需重新构建二进制。
 
 以下示例使用已构建的 `pomelo-orbit`；Windows 开发时替换为 `./bin/pomelo-orbit.exe`。Linux/macOS 使用同一命令参数。CLI 不启动 HTTP、worker 或自动迁移数据库。`--help` 不加载配置。默认运行和 `serve/worker/mcp` 入口保留。
 

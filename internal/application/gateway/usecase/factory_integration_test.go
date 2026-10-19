@@ -38,6 +38,9 @@ func TestCreateGatewayCreatesAtomicServiceBundle(t *testing.T) {
 	service, applications, services, database := newGatewayFactoryService(t, nil)
 	defer func() { _ = database.Close() }()
 
+	if _, err := database.Exec(`UPDATE environment SET last_probe_status = 'failed', last_probe_revision = target_revision - 1 WHERE project_id = ?`, gatewayFactoryProjectId); err != nil {
+		t.Fatal(err)
+	}
 	input := managedGatewayCreateInput()
 	input.ExternalDomain = "public.example.test"
 	created, err := service.CreateGateway(context.Background(), gatewayFactoryUserId, gatewayFactoryProjectId, input)

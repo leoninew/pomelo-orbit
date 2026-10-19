@@ -49,7 +49,7 @@ func TestInitializationResponseMapsLocalWorkspaceAndDefaults(t *testing.T) {
 
 func TestInitializationResponseMapsSSHTarget(t *testing.T) {
 	view := initdto.StatusView{
-		Status: initdto.StatusNeedsProbe,
+		Status: initdto.StatusNeedsGateway,
 		Environment: &environmentdto.View{
 			Id: "environment-1", TargetType: model.EnvironmentTargetTypeSSH,
 			TargetRevision: 1,

@@ -243,13 +243,13 @@ export default {
     initialization: {
       title: 'Initialize Project',
       description:
-        'Configure a deployment target, pass the environment check, and create the Gateway.',
+        'Configure a deployment target and create the Gateway. Run connection checks whenever you need to view environment status.',
       steps: {
         environment: 'Select environment',
         environmentHint: 'Choose a target and enter connection details',
         environmentNote: 'Save the target configuration.',
-        probe: 'Prepare environment',
-        probeHint: 'Check Docker and Compose',
+        probe: 'Connection check (optional)',
+        probeHint: 'View connection, Docker, and Compose status',
         probeNote: 'Run the environment check.',
         gateway: 'Prepare gateway',
         gatewayHint: 'Enter initial Gateway settings',
@@ -266,9 +266,9 @@ export default {
         'Could not generate the initialization command. Check the environment configuration and try again.',
       sshCommandMetadataMissing:
         'The backend did not return the key creation time or runtime hostname. Update and restart the backend, then generate the command again.',
-      probe: 'Check readiness',
+      probe: 'Check connection',
       probing: 'Checking',
-      probeChecklistTitle: 'Environment readiness checks',
+      probeChecklistTitle: 'Environment connection checks',
       probeChecks: {
         target: 'Target connection and authentication',
         workspace: 'Workspace',

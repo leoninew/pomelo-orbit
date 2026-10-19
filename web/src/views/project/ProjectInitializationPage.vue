@@ -20,7 +20,7 @@
         <StepperRoot
           :model-value="selectedStep"
           orientation="vertical"
-          :linear="true"
+          :linear="false"
           class="space-y-1"
           :aria-label="t('project.initialization.title')"
           @update:model-value="handleStepChange"
@@ -30,7 +30,9 @@
             :key="item.key"
             v-slot="{ state }"
             :step="item.step"
-            :completed="item.step < progressStep"
+            :completed="
+              item.key === 'probe' ? probeStatus === 'succeeded' : item.step < progressStep
+            "
             :disabled="
               item.step > progressStep || (item.step === 3 && environmentHasUnsavedChanges)
             "
@@ -756,10 +758,7 @@
   }
 
   const canContinueToGateway = computed(
-    () =>
-      status.value?.status === 'needs_gateway' &&
-      probeStatus.value === 'succeeded' &&
-      !environmentHasUnsavedChanges.value
+    () => status.value?.status === 'needs_gateway' && !environmentHasUnsavedChanges.value
   );
 
   async function openSshCommand() {
@@ -824,9 +823,6 @@
   }
 
   function stepFromStatus(value?: string): number {
-    if (value === 'needs_probe') {
-      return 2;
-    }
     if (value === 'needs_gateway' || value === READY_INITIALIZATION_STATUS) {
       return 3;
     }
@@ -984,11 +980,9 @@
       await executeOperation(async () => {
         const view = await initializationStore.probeEnvironment(id);
         hydrate(view);
-        if (view.status === 'needs_gateway' || view.status === READY_INITIALIZATION_STATUS) {
+        selectedStep.value = 2;
+        if (view.environment?.last_probe_status === 'succeeded') {
           toast.success(t('project.initialization.probeSucceeded'));
-          if (view.status === READY_INITIALIZATION_STATUS) {
-            await router.replace(resolveInitializationCompletionRedirect(route.query.returnTo));
-          }
         } else {
           toast.error(
             view.environment?.last_probe_diagnostic || t('project.initialization.probeFailed')

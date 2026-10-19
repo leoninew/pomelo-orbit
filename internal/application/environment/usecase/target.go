@@ -35,9 +35,6 @@ func (r TargetResolver) ResolveProjectTarget(ctx context.Context, projectId stri
 	if strings.TrimSpace(environment.WorkspaceRoot) == "" {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment workspace_root must be configured before deployment")
 	}
-	if !environment.HasFreshSuccessfulProbe() {
-		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment must pass probe after its latest configuration change")
-	}
 	if environment.IsLocal() {
 		if !validWorkspaceRoot(model.EnvironmentPlatformLinux, environment.WorkspaceRoot) && !validWorkspaceRoot(model.EnvironmentPlatformWindows, environment.WorkspaceRoot) {
 			return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment workspace_root is invalid")
@@ -49,6 +46,9 @@ func (r TargetResolver) ResolveProjectTarget(ctx context.Context, projectId stri
 	}
 	if !validWorkspaceRoot(environment.SSH.Platform, environment.WorkspaceRoot) {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment workspace_root is invalid")
+	}
+	if !environment.HasHostKeyFingerprint() {
+		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment SSH host key fingerprint is not pinned")
 	}
 	if r.environmentCredentials == nil {
 		return environmentport.Target{}, apperror.New(apperror.KindInternal, "environment credential store is not configured")

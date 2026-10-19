@@ -79,7 +79,7 @@ func (directTriggerWorkspace) WorkspaceForTarget(context.Context, model.Environm
 	return directTriggerWorkspace{}, nil
 }
 
-func TestTriggerAndRetryRequireFreshProjectProbe(t *testing.T) {
+func TestTriggerAndRetryUseCurrentEnvironmentWithoutRequiringProbe(t *testing.T) {
 	for _, action := range []string{"trigger", "retry"} {
 		for _, scenario := range []string{"stale local", "failed local", "unbound ssh"} {
 			t.Run(action+"/"+scenario, func(t *testing.T) {
@@ -105,7 +105,13 @@ func TestTriggerAndRetryRequireFreshProjectProbe(t *testing.T) {
 				} else {
 					_, err = service.TriggerPipeline(context.Background(), "user-1", "project-1", "pipeline-1", "")
 				}
-				if err == nil || !apperror.IsKind(err, apperror.KindValidation) || runStore.createdRun != nil {
+				if scenario == "unbound ssh" {
+					if err == nil || !apperror.IsKind(err, apperror.KindValidation) || runStore.createdRun != nil {
+						t.Fatalf("%s error=%v, created=%v", action, err, runStore.createdRun)
+					}
+					return
+				}
+				if err != nil || runStore.createdRun == nil || runStore.createdRun.EnvironmentTargetRevision == nil || *runStore.createdRun.EnvironmentTargetRevision != environment.TargetRevision {
 					t.Fatalf("%s error=%v, created=%v", action, err, runStore.createdRun)
 				}
 			})

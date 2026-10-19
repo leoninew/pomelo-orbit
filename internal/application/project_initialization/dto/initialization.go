@@ -9,7 +9,6 @@ import (
 
 const (
 	StatusNeedsEnvironment = "needs_environment"
-	StatusNeedsProbe       = "needs_probe"
 	StatusNeedsGateway     = "needs_gateway"
 	StatusReady            = "ready"
 )

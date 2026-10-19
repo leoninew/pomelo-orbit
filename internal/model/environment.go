@@ -61,10 +61,3 @@ func (e Environment) HasHostKeyFingerprint() bool {
 	fingerprint := strings.TrimSpace(e.SSH.HostKeyFingerprint)
 	return strings.HasPrefix(fingerprint, "SHA256:") && len(fingerprint) > len("SHA256:")
 }
-
-func (e Environment) HasFreshSuccessfulProbe() bool {
-	if e.LastProbeRevision == nil || *e.LastProbeRevision != e.TargetRevision || e.LastProbeStatus == nil || *e.LastProbeStatus != EnvironmentProbeStatusSucceeded {
-		return false
-	}
-	return e.IsLocal() || e.HasHostKeyFingerprint()
-}

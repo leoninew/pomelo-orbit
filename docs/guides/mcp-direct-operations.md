@@ -47,7 +47,7 @@ Grok 写入或修改 `.grok/config.toml` 后，在 `/mcps` 中刷新或新开会
 
 Gateway 只能由 Web Initialization Wizard 创建。`orbit_provision_gateway` 只解析当前已选 Project 中已经存在的 Gateway 及其受管 Service，不会创建缺失资源。它不会发布 Version、部署、等待或检查 Docker 网络。需要运行 Gateway 时，随后显式调用 `orbit_deploy(service_id)`，并按需调用 `orbit_wait_deployment`。
 
-每个 Project 只有一个 deployment Environment，target type 为 `local` 或 `ssh`。`orbit_get_project_environment`、`orbit_update_project_environment` 与 `orbit_probe_project_environment` 使用当前 connection 的 Project scope，不接受 `project_id` 或 `environment_id`。local 输出仅包含已保存的 `workspace_root`；SSH 输入/输出使用 nested `ssh` object 和主机指纹。MCP 不接受或输出部署私钥、bootstrap 密码、bootstrap 私钥或初始化命令。SSH 第一次探测成功后记下主机密钥指纹。`ssh` 到 `127.0.0.1` 仍按 SSH 执行。编辑 target 后必须显式 Probe 成功，才能部署。
+每个 Project 只有一个 deployment Environment，target type 为 `local` 或 `ssh`。`orbit_get_project_environment`、`orbit_update_project_environment` 与 `orbit_probe_project_environment` 使用当前 connection 的 Project scope，不接受 `project_id` 或 `environment_id`。local 输出仅包含已保存的 `workspace_root`；SSH 输入/输出使用 nested `ssh` object 和主机指纹。MCP 不接受或输出部署私钥、bootstrap 密码、bootstrap 私钥或初始化命令。SSH 第一次探测成功后记下主机密钥指纹。`ssh` 到 `127.0.0.1` 仍按 SSH 执行。Probe 只展示连接诊断，不阻止 Project 选择、资源读写或部署。编辑 target 后，实际操作使用当前工作区、凭据与指纹，并复核目标修订。
 
 通过 `orbit_create_version` 或 `orbit_create_version_component` 创建 Component 时，必须显式提交 `pull_policy` 和 `restart_policy`；策略分别只能是 `missing`、`always`、`never` 和 `no`、`on-failure`、`always`、`unless-stopped`。
 

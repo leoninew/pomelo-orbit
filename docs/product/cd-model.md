@@ -16,9 +16,9 @@ Doc role: living product model
 | GatewayConfig | Gateway Application 的业务属性和 ACME profile 选择 |
 | Route | 自定义 HTTP/TCP 入口和受管 target |
 
-`Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 通过 Web Project Initialization 和项目环境编辑模态窗维护，Gateway 在初始化向导中创建。切换当前 Project 就是切换该 Project 已保存的共用环境及关联的 CD Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
+`Project 1:1 Environment 1:1 Gateway` 是就绪后的运行时关系，不是 Project 创建时的预置数据。已有 Environment、Gateway 和受管 Service 的 Project 不因工作区迁移、配置修订或 Probe 失败退回初始化；首次创建 Gateway 只要求已保存环境配置；Probe 仅展示连接诊断，初始化前后均可执行，不决定业务资格。空库 identity seed 和新创建的 Project 都只有 Project 与 membership；Environment 通过 Web Project Initialization 和项目环境编辑模态窗维护，Gateway 在初始化向导中创建。切换当前 Project 就是切换该 Project 已保存的共用环境及关联的 CD Gateway。关联采用逻辑外键：Environment 的 `project_id`、`gateway_application_id`，以及仅 SSH Environment 对 `environment_credential` 的 binding 均不使用数据库物理外键。
 
-Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD 首次部署默认使用 `<workspace_root>/deployment/<service-code>`，用户可确认或修改完整部署目录，Gateway certificates、独立 Route 文件及发布记录也位于对应 Service 目录下。当前 CI 执行器支持通过最新 Probe 的 `local` Environment，以及受管密钥和 host-key pinning 就绪的 Windows/Linux SSH Environment；分别在本机或远端 `<workspace_root>/pipeline` 中执行。SSH 登录用户还须能写入目标的 `pipeline` 目录，且目标 Docker daemon 能挂载相应宿主路径；Environment Probe 成功不保证已存在的 `pipeline` 子目录可写。SSH 目标绝不能作为控制面 Docker 的本地挂载源，也不在 SSH 失败时回退本地。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
+Environment 保存的 `workspace_root` 是该 Project 的工作区根目录；CD 首次部署默认使用 `<workspace_root>/deployment/<service-code>`，用户可确认或修改完整部署目录，Gateway certificates、独立 Route 文件及发布记录也位于对应 Service 目录下。当前 CI 执行器支持配置有效工作区的 `local` Environment，以及受管密钥和 host-key pinning 就绪的 Windows/Linux SSH Environment；分别在本机或远端 `<workspace_root>/pipeline` 中执行。SSH 登录用户还须能写入目标的 `pipeline` 目录，且目标 Docker daemon 能挂载相应宿主路径；Environment Probe 成功不保证已存在的 `pipeline` 子目录可写。SSH 目标绝不能作为控制面 Docker 的本地挂载源，也不在 SSH 失败时回退本地。值可以是平台绝对路径或 `~` / `~/...`，配置、界面和库存都原样保存，只在使用时展开 `~`。控制面仅保留 `workspace.root` 作为无 Project 的启动配置基准；`logging.deployment_root` 仅用于控制面部署日志。Environment 与已绑定的 Gateway 不提供删除能力。Project code 同时是 Environment code。Gateway 和声明加入 Traefik 的 Service 共享部署宿主上的 Docker bridge network `traefik`；网络名不由 Environment code 派生。Gateway Component 名称固定为 `traefik`，初始 pull policy 固定 `missing`，二者都不是 GatewayConfig 字段。
 
 ## Environment
 
@@ -33,7 +33,7 @@ Environment 的 target type 是显式联合：
 
 所有已配置 Environment 均显示终端入口，与浏览器访问 localhost、127.0.0.1 或远程站点无关。当前 Project 成员打开 `local` 终端时，以 Orbit 进程用户在 Orbit 所在环境执行 shell：原生部署是本机 shell，容器 / DooD 部署是 Orbit 容器内 shell。local 进入保存的工作区，使用时展开 `~`，根目录不存在时创建；工作区仅是启动目录，不提供文件系统或用户权限隔离。Unix 使用 `/bin/sh -i`，Windows 使用系统 Windows PowerShell。SSH 终端使用保存的 SSH 用户与受管密钥，进入目标宿主机默认 shell，不自动进入应用容器或 WSL2。
 
-打开终端与 Docker 检查独立：local/ssh 的票据、连接及会话复核均不要求 Probe 成功或 Docker/Compose 可用。SSH 首次连接在同一次受管密钥认证的连接中观察并固定指纹，固定完成后才提供交互；后续严格比较已有指纹。部署、CI、Route 的最新成功 Probe 要求继续保留。
+打开终端与 Docker 检查独立：local/ssh 的票据、连接及会话复核均不要求 Probe 成功或 Docker/Compose 可用。SSH 首次连接在同一次受管密钥认证的连接中观察并固定指纹，固定完成后才提供交互；后续严格比较已有指纹。部署、CI、Route 与服务状态检查不以 Probe 历史作为执行前提，仍校验工作区、SSH 受管凭据、主机指纹和目标修订；实际不可用由对应操作返回错误。
 
 终端抽屉支持通过标题栏按钮切换为铺满浏览器页面的全屏显示，再次点击恢复抽屉宽度；切换时沿用同一终端实例与会话，并自动同步终端尺寸。抽屉关闭后保留当前环境页内的终端实例、输出与会话，重新打开继续同一会话；离开环境页、切换 Project、目标或凭据变更、主动断开以及服务端会话限制会终止连接。Probe 状态变化不会重建或终止终端。断线后仅手动重连。
 
@@ -77,7 +77,7 @@ Service 保存确认目录 `deployment_directory` 和运行目录 `runtime_direc
 
 Service 的持久化状态是 Orbit 最近记录的执行结果或显式状态检查结果，可能与用户带外操作后的实际容器状态不同。部署、停止和重启不因该状态或已有活动任务而拒绝受理；权限、资源归属、目标修订和所需输入仍须有效。前端只在请求提交期间禁用操作，受理后允许再次提交；Gateway 继续从专属入口部署。
 
-服务列表的「状态检查」覆盖当前 Project 环境中的全部受管 Service，不受分页或筛选影响。打开弹窗时一次批量读取 Docker 的全部 Compose 容器，按精确 Service code 归属，忽略 one-off 容器；全部运行且无 unhealthy 为 running，无容器或全部退出/创建为 stopped，混合或异常为 faulted。确认后顺序更新有变化的服务，每条显示处理结果与失败原因，失败继续，结束刷新列表；一致项无需写入。Docker 不可用时不修改记录。活动部署、服务或目标变化会阻止旧检查结果写入，需要操作结束后重新检查。检查只刷新 Service 状态，不修改版本、目录、组件声明或部署记录，不启停容器。
+服务列表的「状态检查」覆盖当前 Project 环境中的全部受管 Service，不受分页或筛选影响。检查不要求 Probe 成功或重新 Probe，使用当前配置的环境连接和工作区直接读取 Docker 状态。打开弹窗时一次批量读取 Docker 的全部 Compose 容器，按精确 Service code 归属，忽略 one-off 容器；全部运行且无 unhealthy 为 running，无容器或全部退出/创建为 stopped，混合或异常为 faulted。确认后顺序更新有变化的服务，每条显示处理结果与失败原因，失败继续，结束刷新列表；一致项无需写入。Docker 不可用时不修改记录。活动部署、服务或目标变化会阻止旧检查结果写入，需要操作结束后重新检查。检查只刷新 Service 状态，不修改版本、目录、组件声明或部署记录，不启停容器。
 
 同一 Service 以后成功受理的操作为准。新操作在同一事务中创建 Deployment、设置内部 `current_deployment_id` 并入队；失败回滚，前一个操作继续有效。当前任务结束或历史被清理后保留该指针，旧任务不会重新取得资格。活动任务展示只计算当前指针对应的非终态 Deployment。
 

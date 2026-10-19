@@ -36,7 +36,7 @@ SSH 初始化命令是普通 HTTP 写事务内的无远端 I/O 动作：它以�
 
 local 通过 `github.com/aymanbagabas/go-pty` 创建 Unix PTY 或 Windows ConPTY，以 Orbit 用户进入展开后的工作区。Unix 启动 `/bin/sh -i` 并释放父进程 slave；Windows 启动系统 PowerShell，平台适配器持有进程/线程句柄，挂入 kill-on-close Job 后恢复执行，以避免库 v0.2.3 的原始进程句柄遗漏。输出泵保留尾输出，断开时解除消费者背压并清理进程；Unix 清理 shell/前台进程组，Windows 清理 Job。容器部署的 local shell 位于 Orbit 容器内，不使用 Docker 路径映射或宿主命名空间切换。
 
-Bearer 认证的短请求签发一次性、短时效票据；WebSocket 通过子协议传票据，服务器仅协商固定协议名，不把票据放入 URL 或常规 HTTP 正文日志。会话在请求事务外运行，周期性复核 Project 成员、目标类型/修订以及 SSH 凭据与指纹，且在输入前复核；有连接数、空闲和最长时长限制。Probe、部署与 CI 仍运行预定的非交互命令，不共享终端输入输出，部署 resolver 继续要求最新成功 Probe。
+Bearer 认证的短请求签发一次性、短时效票据；WebSocket 通过子协议传票据，服务器仅协商固定协议名，不把票据放入 URL 或常规 HTTP 正文日志。会话在请求事务外运行，周期性复核 Project 成员、目标类型/修订以及 SSH 凭据与指纹，且在输入前复核；有连接数、空闲和最长时长限制。Probe、部署与 CI 仍运行预定的非交互命令，不共享终端输入输出，目标 resolver 校验当前目录、受管凭据与主机指纹，不读取 Probe 状态；目标修订仍用于防止排队任务或旧观测落到新目标。
 
 ## Service 操作控制
 
@@ -50,7 +50,7 @@ Worker 只启动当前 waiting 任务。执行 Context 在每秒以内轮询任�
 
 Service 目录绑定、状态/版本回写以及 Deployment 启动/完成均使用当前指针和任务状态的 SQL 条件。Service 执行结果与 Deployment 完成在同一短事务提交，零行时回滚并退出；手动取消后的运行观测使用单独条件写入，被接替任务不观测回写。历史删除不清空指针，不恢复旧资格；`active_deployment` 只投影当前非终态任务。
 
-服务列表状态检查使用 deployment usecase 的独立 `StatusCheckService`，通过目标 resolver 与结构化 `ContainerInventory` 端口读取事实。`infrastructure/runner/docker` 适配器复用 Runtime，在 HTTP 写事务外以用例提供的 15 秒预算执行一次环境根目录的 `docker ps --all --format '{{json .}}'`，读取 Compose project/oneoff 标签与容器状态，不要求 Service 运行目录或 Compose 文件。使用标准 JSON 格式避免 Windows PowerShell 5 原生命令参数传递丢失模板内层引号；命令失败将 Runtime 返回的诊断输出（最多 8 KiB）连同原始错误保留在 HTTP 错误日志中。`/api/service/status-check/preview` 返回全量受管 Service 的记录/观测状态。服务端为操作者与 Project 保存最新观测快照，随机 token 关联目标 ID/修订及 Service 数据库基线，15 分钟过期，重启后需要重新检查；快照不包含 SSH 凭据。`/api/service/status-check/confirm` 每次确认一个 service_id，只从服务端快照取观测状态，不再调用 Docker。短请求事务内的条件 SQL 匹配 Service code、版本、目录及其修订、原状态、当前任务指针和目标 ID/修订，并拒绝当前 waiting_to_run/running 任务，零行返回冲突。Web 弹窗顺序更新变化项并逐行反馈，失败继续，关闭或 Project 切换后停止后续请求，整轮结束刷新对应列表；没有后台续跑。
+服务列表状态检查使用 deployment usecase 的独立 `StatusCheckService`，通过目标 resolver 与结构化 `ContainerInventory` 端口读取事实。目标解析校验当前工作区与受管凭据，不读取 Probe 状态；Probe 未执行、失败或过期均不阻止查询。SSH 查询仍校验保存的主机指纹，实际连接、目录或 Docker 错误直接返回。`infrastructure/runner/docker` 适配器复用 Runtime，在 HTTP 写事务外以用例提供的 15 秒预算执行一次环境根目录的 `docker ps --all --format '{{json .}}'`，读取 Compose project/oneoff 标签与容器状态，不要求 Service 运行目录或 Compose 文件。使用标准 JSON 格式避免 Windows PowerShell 5 原生命令参数传递丢失模板内层引号；命令失败将 Runtime 返回的诊断输出（最多 8 KiB）连同原始错误保留在 HTTP 错误日志中。`/api/service/status-check/preview` 返回全量受管 Service 的记录/观测状态。服务端为操作者与 Project 保存最新观测快照，随机 token 关联目标 ID/修订及 Service 数据库基线，15 分钟过期，重启后需要重新检查；快照不包含 SSH 凭据。`/api/service/status-check/confirm` 每次确认一个 service_id，只从服务端快照取观测状态，不再调用 Docker。短请求事务内的条件 SQL 匹配 Service code、版本、目录及其修订、原状态、当前任务指针和目标 ID/修订，并拒绝当前 waiting_to_run/running 任务，零行返回冲突。Web 弹窗顺序更新变化项并逐行反馈，失败继续，关闭或 Project 切换后停止后续请求，整轮结束刷新对应列表；没有后台续跑。
 
 local/SSH 仅在既有文件准备范围使用短锁，锁等待和文件准备响应 Context，最终文件发布前再次检查取消；Compose 和镜像拉取不持有该锁。已经进入系统调用的写入或 Docker daemon 动作仍可能继续，外层不能强杀任意 Go goroutine，也不承诺物理操作绝对有序。机制只按 Service 协调，不扩展到 Environment、跨 Project 宿主、CI 或存活恢复。
 

@@ -225,8 +225,8 @@ func TestUpdateForUserChangesLocalWorkspaceAndInvalidatesProbeFreshness(t *testi
 	if !store.updated || store.environment.WorkspaceRoot != "/srv/orbit/next" || store.environment.TargetRevision != revision+1 {
 		t.Fatalf("stored environment = %#v", store.environment)
 	}
-	if store.environment.HasFreshSuccessfulProbe() {
-		t.Fatalf("workspace update retained fresh probe: %#v", store.environment)
+	if store.environment.LastProbeRevision == nil || *store.environment.LastProbeRevision != revision || store.environment.LastProbeStatus == nil || *store.environment.LastProbeStatus != probeStatus {
+		t.Fatalf("workspace update rewrote probe history: %#v", store.environment)
 	}
 	if updated.Local == nil || updated.Local.WorkspaceRoot != "/srv/orbit/next" {
 		t.Fatalf("updated view = %#v", updated)

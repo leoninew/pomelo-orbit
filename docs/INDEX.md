@@ -34,6 +34,7 @@
 | Docker labels 路由 | [guides/docker-label-routing.md](./guides/docker-label-routing.md) |
 | RAGFlow 部署 | [guides/ragflow-deployment.md](./guides/ragflow-deployment.md) |
 | 卷挂载 | [guides/volume-mounting.md](./guides/volume-mounting.md) |
+| CI/CD 工作区评估与迁移脚本 | [guides/workspace-migration.md](./guides/workspace-migration.md) |
 | Orbit 作为普通应用的停机迁移 | [guides/orbit-self-migration.md](./guides/orbit-self-migration.md) |
 | CI Pipeline（模板、应用流水线、制品与运行） | [guides/ci-pipeline-design.md](./guides/ci-pipeline-design.md) |
 | CI Pipeline 变量 | [guides/ci-pipeline-vars-design.md](./guides/ci-pipeline-vars-design.md) |

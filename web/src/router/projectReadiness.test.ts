@@ -26,15 +26,16 @@ describe('project readiness routing', () => {
     expect(resolveInitializationCompletionRedirect()).toBe(DEFAULT_READY_REDIRECT);
   });
 
-  it('only requires a fresh environment probe for CI, but also requires a gateway for CD', () => {
-    for (const status of ['needs_environment', 'needs_probe']) {
-      const view = { status } as ProjectInitializationStatusResp;
-      expect(isExecutionEnvironmentReady(view, 'ci')).toBe(false);
-      expect(isExecutionEnvironmentReady(view, 'cd')).toBe(false);
-    }
-    const probed = { status: 'needs_gateway' } as ProjectInitializationStatusResp;
-    expect(isExecutionEnvironmentReady(probed, 'ci')).toBe(true);
-    expect(isExecutionEnvironmentReady(probed, 'cd')).toBe(false);
+  it('requires an environment for CI and also a gateway for CD, regardless of probe history', () => {
+    const unconfigured = { status: 'needs_environment' } as ProjectInitializationStatusResp;
+    expect(isExecutionEnvironmentReady(unconfigured, 'ci')).toBe(false);
+    expect(isExecutionEnvironmentReady(unconfigured, 'cd')).toBe(false);
+    const configured = {
+      status: 'needs_gateway',
+      environment: { last_probe_status: 'failed' },
+    } as ProjectInitializationStatusResp;
+    expect(isExecutionEnvironmentReady(configured, 'ci')).toBe(true);
+    expect(isExecutionEnvironmentReady(configured, 'cd')).toBe(false);
     const ready = { status: 'ready' } as ProjectInitializationStatusResp;
     expect(isExecutionEnvironmentReady(ready, 'ci')).toBe(true);
     expect(isExecutionEnvironmentReady(ready, 'cd')).toBe(true);
@@ -46,7 +47,7 @@ describe('project readiness routing', () => {
       push: vi.fn().mockResolvedValue(undefined),
     } as unknown as Router;
     vi.mocked(projectInitializationApi.getStatus)
-      .mockResolvedValueOnce({ status: 'needs_probe' } as ProjectInitializationStatusResp)
+      .mockResolvedValueOnce({ status: 'needs_environment' } as ProjectInitializationStatusResp)
       .mockResolvedValueOnce({ status: 'needs_gateway' } as ProjectInitializationStatusResp);
 
     expect(await ensureProjectExecutionReady('project-a', router, 'ci')).toBe(false);
@@ -60,7 +61,7 @@ describe('project readiness routing', () => {
     expect(router.push).toHaveBeenCalledOnce();
   });
 
-  it('redirects CD to initialization when the environment probe passed but gateway is missing', async () => {
+  it('redirects CD to initialization when the gateway is missing', async () => {
     const router = {
       currentRoute: { value: { fullPath: '/service/42' } },
       push: vi.fn().mockResolvedValue(undefined),

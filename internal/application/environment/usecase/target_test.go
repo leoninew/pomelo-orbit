@@ -27,8 +27,7 @@ func TestTargetResolverRejectsUnavailableTargets(t *testing.T) {
 		environment model.Environment
 		want        string
 	}{
-		{name: "stale probe", environment: withProbeRevision(base, 1), want: "must pass probe"},
-		{name: "missing host key fingerprint", environment: withHostKeyFingerprint(base, ""), want: "must pass probe"},
+		{name: "missing host key fingerprint", environment: withHostKeyFingerprint(base, ""), want: "fingerprint is not pinned"},
 		{name: "credential revision mismatch", environment: withCredentialRevisionOnEnv(base, base.SSH.CredentialRevision+1), want: "credential binding is invalid"},
 	}
 	for _, tt := range cases {
@@ -81,6 +80,42 @@ func TestTargetResolverMapsMissingEnvironmentToValidation(t *testing.T) {
 	}
 }
 
+func TestTargetResolverUsesCurrentEnvironmentRegardlessOfProbeHistory(t *testing.T) {
+	failed, succeeded := model.EnvironmentProbeStatusFailed, model.EnvironmentProbeStatusSucceeded
+	staleRevision := int64(1)
+	for _, targetType := range []string{model.EnvironmentTargetTypeLocal, model.EnvironmentTargetTypeSSH} {
+		for _, test := range []struct {
+			name   string
+			status *string
+		}{
+			{name: "never probed"},
+			{name: "failed probe", status: &failed},
+			{name: "stale successful probe", status: &succeeded},
+		} {
+			t.Run(targetType+"/"+test.name, func(t *testing.T) {
+				environment := readyTargetEnvironment()
+				environment.LastProbeStatus, environment.LastProbeRevision = test.status, &staleRevision
+				if test.status == nil {
+					environment.LastProbeRevision = nil
+				}
+				credentials := credentialsForEnvironment(t, environment, "secret-key")
+				environment.TargetType = targetType
+				if targetType == model.EnvironmentTargetTypeLocal {
+					environment.SSH = nil
+				}
+				resolver := NewTargetResolver(targetEnvironmentStore{environment: environment}, credentials, testCredentialSecret)
+				target, err := resolver.ResolveProjectTarget(context.Background(), environment.ProjectId)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if target.Environment != environment || (targetType == model.EnvironmentTargetTypeSSH && target.PrivateKey == nil) {
+					t.Fatalf("resolved target = %#v", target.Environment)
+				}
+			})
+		}
+	}
+}
+
 func readyTargetEnvironment() model.Environment {
 	revision := int64(2)
 	status := model.EnvironmentProbeStatusSucceeded
@@ -94,11 +129,6 @@ func readyTargetEnvironment() model.Environment {
 			CredentialId: "credential-1", CredentialRevision: revision, HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
 		},
 	}
-}
-
-func withProbeRevision(environment model.Environment, revision int64) model.Environment {
-	environment.LastProbeRevision = &revision
-	return environment
 }
 
 func withCredentialRevisionOnEnv(environment model.Environment, revision int64) model.Environment {

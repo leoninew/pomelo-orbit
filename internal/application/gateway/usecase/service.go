@@ -388,9 +388,6 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 			}
 			return apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
 		}
-		if !environment.HasFreshSuccessfulProbe() {
-			return apperror.New(apperror.KindValidation, "Project environment must pass probe before provisioning a gateway")
-		}
 		if environment.GatewayApplicationId != nil {
 			return apperror.New(apperror.KindConflict, "Project environment already has a gateway")
 		}

@@ -8,6 +8,7 @@ import (
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
+	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	status "github.com/leoninew/pomelo-orbit/internal/common/constant"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -15,6 +16,24 @@ import (
 )
 
 type statusCheckProject struct{ repository.ProjectReader }
+
+type statusCheckEnvironmentStore struct {
+	repository.EnvironmentStore
+	environment model.Environment
+}
+
+func (s statusCheckEnvironmentStore) EnvironmentByProject(context.Context, string) (model.Environment, error) {
+	return s.environment, nil
+}
+
+func statusCheckResolver(environment model.Environment) environmentsvc.TargetResolver {
+	return environmentsvc.NewTargetResolver(statusCheckEnvironmentStore{environment: environment}, nil, "")
+}
+
+func statusCheckEnvironment() model.Environment {
+	return model.Environment{Id: "environment-1", ProjectId: "project-1", Code: "example", TargetRevision: 1,
+		TargetType: model.EnvironmentTargetTypeLocal, WorkspaceRoot: "/srv/orbit"}
+}
 
 func (statusCheckProject) Project(context.Context, string) (model.Project, error) {
 	return model.Project{Id: "project-1"}, nil
@@ -59,8 +78,36 @@ func newStatusCheckTestService() (*StatusCheckService, *statusCheckStore, *statu
 		{Id: "service-2", ProjectId: "project-1", Code: "other", Status: status.ServiceStatusRunning, VersionId: "version-1"},
 	}}
 	inventory := &statusCheckInventory{containers: map[string][]deploymentport.ContainerState{"example": {{State: "running"}}, "other": {{State: "exited"}}}}
-	resolver := staticTargetResolver{target: environmentport.Target{Environment: model.Environment{Id: "environment-1", ProjectId: "project-1", TargetRevision: 1}}}
+	resolver := statusCheckResolver(statusCheckEnvironment())
 	return NewStatusCheckService(statusCheckProject{}, store, resolver, inventory), store, inventory
+}
+
+func TestServiceStatusCheckReadsContainersRegardlessOfProbeHistory(t *testing.T) {
+	failed, succeeded := model.EnvironmentProbeStatusFailed, model.EnvironmentProbeStatusSucceeded
+	staleRevision, currentRevision := int64(1), int64(2)
+	for _, test := range []struct {
+		name     string
+		status   *string
+		revision *int64
+	}{
+		{name: "never probed"},
+		{name: "failed probe", status: &failed, revision: &currentRevision},
+		{name: "stale successful probe", status: &succeeded, revision: &staleRevision},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service, store, inventory := newStatusCheckTestService()
+			environment := statusCheckEnvironment()
+			environment.TargetRevision, environment.LastProbeStatus, environment.LastProbeRevision = currentRevision, test.status, test.revision
+			service.targetResolver = statusCheckResolver(environment)
+			preview, err := service.PreviewServiceStatusCheck(context.Background(), "user-1", "project-1")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if inventory.calls != 1 || len(preview.Items) != 2 || preview.Items[0].ObservedStatus != status.ServiceStatusRunning || len(store.saved) != 0 {
+				t.Fatalf("preview=%+v calls=%d writes=%v", preview, inventory.calls, store.saved)
+			}
+		})
+	}
 }
 
 func TestServiceStatusCheckObservesBatchAndConfirmsEachService(t *testing.T) {

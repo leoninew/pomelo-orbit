@@ -81,6 +81,25 @@ func TestSelectProjectConfirmsReadyScope(t *testing.T) {
 	}
 }
 
+func TestProjectScopeDoesNotRequireSuccessfulProbe(t *testing.T) {
+	failed := model.EnvironmentProbeStatusFailed
+	for _, probeStatus := range []*string{nil, &failed} {
+		environment := readyEnvironmentView("project-1")
+		environment.TargetRevision++
+		environment.LastProbeStatus = probeStatus
+		c := core{deps: Dependencies{
+			ActorUserId: "actor", Project: &readyProjectService{},
+			Environment: &environmentToolService{environment: environment}, Gateway: &readyGatewayService{},
+		}}
+		if _, err := c.bindReadyProject(context.Background(), "project-1"); err != nil {
+			t.Fatal(err)
+		}
+		if projectId, _, err := c.requireReadyEnvironment(context.Background()); err != nil || projectId != "project-1" {
+			t.Fatalf("project scope = %q, %v", projectId, err)
+		}
+	}
+}
+
 func TestSelectProjectRejectsUnreadyProject(t *testing.T) {
 	server := newReadyServer(t, Dependencies{
 		SelectedProjectId: "",

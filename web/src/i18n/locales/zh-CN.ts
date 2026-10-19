@@ -241,13 +241,13 @@ export default {
     handoverOverrideEnvironment: '覆盖当前环境和凭据',
     initialization: {
       title: '初始化项目',
-      description: '配置部署目标，完成环境检查后创建网关。',
+      description: '配置部署目标并创建网关，连接检查用于查看环境状态，可随时执行。',
       steps: {
         environment: '选择环境',
         environmentHint: '选择目标并填写连接信息',
         environmentNote: '保存目标配置。',
-        probe: '准备环境',
-        probeHint: '检查 Docker 与 Compose',
+        probe: '连接检查（可选）',
+        probeHint: '查看连接、Docker 与 Compose 状态',
         probeNote: '运行环境检查。',
         gateway: '准备网关',
         gatewayHint: '填写网关初始配置',
@@ -263,9 +263,9 @@ export default {
       sshCommandFailed: '无法生成初始化命令，请检查当前环境配置后重试',
       sshCommandMetadataMissing:
         '后端未返回密钥创建时间或运行主机名，请更新并重启后端后重新生成命令',
-      probe: '检查就绪',
+      probe: '检查连接',
       probing: '检查中',
-      probeChecklistTitle: '环境就绪检查',
+      probeChecklistTitle: '环境连接检查',
       probeChecks: {
         target: '目标连接与认证',
         workspace: '工作目录',

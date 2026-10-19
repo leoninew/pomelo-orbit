@@ -32,13 +32,13 @@ func TestStatusStartsAtNeedsEnvironment(t *testing.T) {
 	}
 }
 
-func TestSaveEnvironmentAndFailedProbeStayAtNeedsProbe(t *testing.T) {
+func TestProbeResultsDoNotChangeInitializationProgress(t *testing.T) {
 	service, environments := newInitializationService(t)
 	view, err := service.SaveEnvironment(context.Background(), "user-1", "project-1", localSaveInput("/srv/orbit"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Status != initdto.StatusNeedsProbe || view.Environment == nil || view.Environment.Local.WorkspaceRoot != "/srv/orbit" {
+	if view.Status != initdto.StatusNeedsGateway || view.Environment == nil || view.Environment.Local.WorkspaceRoot != "/srv/orbit" {
 		t.Fatalf("after save = %#v", view)
 	}
 
@@ -47,7 +47,7 @@ func TestSaveEnvironmentAndFailedProbeStayAtNeedsProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Status != initdto.StatusNeedsProbe || view.Environment == nil || view.Environment.LastProbeStatus == nil || *view.Environment.LastProbeStatus != model.EnvironmentProbeStatusFailed {
+	if view.Status != initdto.StatusNeedsGateway || view.Environment == nil || view.Environment.LastProbeStatus == nil || *view.Environment.LastProbeStatus != model.EnvironmentProbeStatusFailed {
 		t.Fatalf("after failed probe = %#v", view)
 	}
 
@@ -60,18 +60,12 @@ func TestSaveEnvironmentAndFailedProbeStayAtNeedsProbe(t *testing.T) {
 	}
 }
 
-func TestCreateGatewayRequiresSuccessfulProbeAndReachesReady(t *testing.T) {
+func TestCreateGatewayRequiresEnvironmentAndReachesReadyWithoutProbe(t *testing.T) {
 	service, _ := newInitializationService(t)
 	if _, err := service.CreateGateway(context.Background(), "user-1", "project-1", testGatewayInput()); !apperror.IsKind(err, apperror.KindValidation) {
 		t.Fatalf("create before environment error = %v", err)
 	}
 	if _, err := service.SaveEnvironment(context.Background(), "user-1", "project-1", localSaveInput("/srv/orbit")); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.CreateGateway(context.Background(), "user-1", "project-1", testGatewayInput()); !apperror.IsKind(err, apperror.KindValidation) {
-		t.Fatalf("create before probe error = %v", err)
-	}
-	if _, err := service.ProbeEnvironment(context.Background(), "user-1", "project-1"); err != nil {
 		t.Fatal(err)
 	}
 	view, err := service.CreateGateway(context.Background(), "user-1", "project-1", testGatewayInput())
@@ -89,6 +83,42 @@ func TestCreateGatewayRequiresSuccessfulProbeAndReachesReady(t *testing.T) {
 	}
 }
 
+func TestInitializedProjectStaysReadyAfterWorkspaceMigrationOrFailedProbe(t *testing.T) {
+	service, environments := newInitializationService(t)
+	ctx := context.Background()
+	if _, err := service.SaveEnvironment(ctx, "user-1", "project-1", localSaveInput("D:/old")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.ProbeEnvironment(ctx, "user-1", "project-1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CreateGateway(ctx, "user-1", "project-1", testGatewayInput()); err != nil {
+		t.Fatal(err)
+	}
+	environments.item.Local.WorkspaceRoot = "D:/Documents/orbit"
+	environments.item.TargetRevision++
+	failed, succeeded := model.EnvironmentProbeStatusFailed, model.EnvironmentProbeStatusSucceeded
+	for _, test := range []struct {
+		name   string
+		status *string
+	}{
+		{name: "stale successful probe", status: &succeeded},
+		{name: "failed probe", status: &failed},
+		{name: "no probe history"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			environments.item.LastProbeStatus = test.status
+			view, err := service.Status(ctx, "user-1", "project-1")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if view.Status != initdto.StatusReady || view.Gateway == nil || view.Gateway.Service == nil || view.Environment.Local.WorkspaceRoot != "D:/Documents/orbit" || view.Environment.LastProbeStatus != test.status {
+				t.Fatalf("initialized status = %#v", view)
+			}
+		})
+	}
+}
+
 func TestSaveEnvironmentAfterSuccessfulProbeAllowsWizardRollback(t *testing.T) {
 	service, _ := newInitializationService(t)
 	if _, err := service.SaveEnvironment(context.Background(), "user-1", "project-1", localSaveInput("/srv/orbit")); err != nil {
@@ -102,7 +132,7 @@ func TestSaveEnvironmentAfterSuccessfulProbeAllowsWizardRollback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Status != initdto.StatusNeedsProbe || view.Environment == nil || view.Environment.Local.WorkspaceRoot != "/srv/orbit-next" {
+	if view.Status != initdto.StatusNeedsGateway || view.Environment == nil || view.Environment.Local.WorkspaceRoot != "/srv/orbit-next" {
 		t.Fatalf("rollback save = %#v", view)
 	}
 }
@@ -119,7 +149,7 @@ func TestSaveEnvironmentPersistsSSHTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if view.Status != initdto.StatusNeedsProbe || view.Environment == nil || view.Environment.TargetType != model.EnvironmentTargetTypeSSH {
+	if view.Status != initdto.StatusNeedsGateway || view.Environment == nil || view.Environment.TargetType != model.EnvironmentTargetTypeSSH {
 		t.Fatalf("after ssh save = %#v", view)
 	}
 	if view.Environment.SSH == nil || view.Environment.SSH.Host != "192.0.2.10" || view.Environment.SSH.WorkspaceRoot != "/srv/orbit" {
@@ -142,7 +172,7 @@ func TestPrepareSSHEnvironmentPersistsTargetBeforeProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.PublicKey != environments.publicKey || !result.KeyCreatedAt.Equal(environments.keyCreatedAt) || result.SourceHost != environments.sourceHost || result.Status.Status != initdto.StatusNeedsProbe {
+	if result.PublicKey != environments.publicKey || !result.KeyCreatedAt.Equal(environments.keyCreatedAt) || result.SourceHost != environments.sourceHost || result.Status.Status != initdto.StatusNeedsGateway {
 		t.Fatalf("prepare result = %#v", result)
 	}
 	if environments.item == nil || environments.item.SSH == nil || environments.item.SSH.Host != "192.0.2.10" {

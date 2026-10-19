@@ -33,7 +33,7 @@ func (c *core) currentProjectId() (string, error) {
 	return c.scope.id, nil
 }
 
-func (c *core) requireEnvironment(ctx context.Context) (string, environmentdto.View, error) {
+func (c *core) requireReadyEnvironment(ctx context.Context) (string, environmentdto.View, error) {
 	projectId, err := c.currentProjectId()
 	if err != nil {
 		return "", environmentdto.View{}, err
@@ -44,17 +44,6 @@ func (c *core) requireEnvironment(ctx context.Context) (string, environmentdto.V
 			return "", environmentdto.View{}, apperror.NewWithCode(apperror.KindValidation, codeProjectNotReady, "Project environment is not ready")
 		}
 		return "", environmentdto.View{}, err
-	}
-	return projectId, environment, nil
-}
-
-func (c *core) requireReadyEnvironment(ctx context.Context) (string, environmentdto.View, error) {
-	projectId, environment, err := c.requireEnvironment(ctx)
-	if err != nil {
-		return "", environmentdto.View{}, err
-	}
-	if !environmentProbeSucceeded(environment) {
-		return "", environmentdto.View{}, apperror.NewWithCode(apperror.KindValidation, codeProjectNotReady, "Project environment is not ready")
 	}
 	return projectId, environment, nil
 }
@@ -114,9 +103,6 @@ func (c *core) bindReadyProject(ctx context.Context, projectId string) (map[stri
 			return nil, apperror.NewWithCode(apperror.KindValidation, codeProjectNotReady, "Project environment is not ready")
 		}
 		return nil, err
-	}
-	if !environmentProbeSucceeded(environment) {
-		return nil, apperror.NewWithCode(apperror.KindValidation, codeProjectNotReady, "Project environment is not ready")
 	}
 	gateway, err := c.readyGateway(ctx, projectId)
 	if err != nil {
@@ -215,20 +201,6 @@ func (c *core) deploymentInScope(ctx context.Context, deploymentId string) (mode
 		return model.Deployment{}, err
 	}
 	return c.deps.Deployment.DeploymentForUser(ctx, c.deps.ActorUserId, projectId, deploymentId)
-}
-
-func environmentProbeSucceeded(view environmentdto.View) bool {
-	if view.LastProbeRevision == nil || *view.LastProbeRevision != view.TargetRevision || view.LastProbeStatus == nil || *view.LastProbeStatus != model.EnvironmentProbeStatusSucceeded {
-		return false
-	}
-	if view.TargetType == model.EnvironmentTargetTypeLocal {
-		return true
-	}
-	if view.SSH == nil {
-		return false
-	}
-	fingerprint := strings.TrimSpace(view.SSH.HostKeyFingerprint)
-	return strings.HasPrefix(fingerprint, "SHA256:") && len(fingerprint) > len("SHA256:")
 }
 
 func currentProjectOutput(project model.Project, environment environmentdto.View, gateway gatewaydto.GatewayView) map[string]any {

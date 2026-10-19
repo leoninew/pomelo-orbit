@@ -40,10 +40,6 @@ func (s Service) Status(ctx context.Context, userId string, projectId string) (i
 		return initdto.StatusView{}, err
 	}
 	view.Environment = &environment
-	if !hasFreshSuccessfulProbe(environment) {
-		view.Status = initdto.StatusNeedsProbe
-		return view, nil
-	}
 	gateways, err := s.gateways.ListGateways(ctx, userId, projectId, 1, 1, "")
 	if err != nil {
 		return initdto.StatusView{}, err
@@ -113,7 +109,7 @@ func (s Service) CreateGateway(ctx context.Context, userId string, projectId str
 		return initdto.StatusView{}, err
 	}
 	if status.Status != initdto.StatusNeedsGateway {
-		return initdto.StatusView{}, apperror.New(apperror.KindValidation, "Project environment must pass probe before creating a gateway")
+		return initdto.StatusView{}, apperror.New(apperror.KindValidation, "Project environment must be configured before creating a gateway")
 	}
 	_, err = s.projects.LoadForUser(ctx, projectId, userId)
 	if err != nil {
@@ -164,18 +160,4 @@ func (s Service) defaultValues() initdto.Defaults {
 		LocalHost:               s.localDisplay.Host,
 		LocalUsername:           s.localDisplay.Username,
 	}
-}
-
-func hasFreshSuccessfulProbe(view environmentdto.View) bool {
-	if view.LastProbeRevision == nil || *view.LastProbeRevision != view.TargetRevision || view.LastProbeStatus == nil || *view.LastProbeStatus != model.EnvironmentProbeStatusSucceeded {
-		return false
-	}
-	if view.TargetType == model.EnvironmentTargetTypeLocal {
-		return true
-	}
-	if view.SSH == nil {
-		return false
-	}
-	fingerprint := strings.TrimSpace(view.SSH.HostKeyFingerprint)
-	return strings.HasPrefix(fingerprint, "SHA256:") && len(fingerprint) > len("SHA256:")
 }

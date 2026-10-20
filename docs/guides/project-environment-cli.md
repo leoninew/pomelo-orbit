@@ -1,5 +1,5 @@
 # Go CLI 远程环境管理
-最后修改时间: 2026-10-19 11:09:44
+最后修改时间: 2026-10-21 11:09:42
 
 `pomelo-orbit cli env` 使用 Project **code** 定位已保存的 SSH 环境。本地 Go 进程与 WebAPI 共用配置、数据库和应用用例，复用项目成员权限、SSH 账号、受管密钥、主机指纹及目标修订规则，并直接建立 SSH 连接。
 
@@ -12,14 +12,14 @@ Orbit 操作者使用共享 `mcp.access_token` / `POMELO_ORBIT_MCP__ACCESS_TOKEN
 在仓库根目录的 PowerShell 中：
 
 ```powershell
-go build -o ./bin/pomelo-orbit.exe ./cmd/server
+go build -o ./bin/air-api/pomelo-orbit.exe ./cmd/server
 task cli -- env list
 task cli -- env list --json
 task cli -- env ssh --project production
 task cli -- env exec --project production -- docker ps
 ```
 
-`task cli` 自动设置 `POMELO_ORBIT_APP__ENV=development`，调用已构建的 `./bin/pomelo-orbit.exe cli`。第一个 `--` 后的子命令和参数原样透传；执行远程命令时保留第二个 `--`，用于分隔 CLI 参数与远端程序。更新 Go 代码后需重新构建二进制。
+`task cli` 自动设置 `POMELO_ORBIT_APP__ENV=development`，调用已构建的 `./bin/air-api/pomelo-orbit.exe cli`，与 Air 共用开发产物。第一个 `--` 后的子命令和参数原样透传；执行远程命令时保留第二个 `--`，用于分隔 CLI 参数与远端程序。更新 Go 代码后需重新构建二进制。
 
 以下示例使用已构建的 `pomelo-orbit`；Windows 开发时替换为 `./bin/pomelo-orbit.exe`。Linux/macOS 使用同一命令参数。CLI 不启动 HTTP、worker 或自动迁移数据库。`--help` 不加载配置。默认运行和 `serve/worker/mcp` 入口保留。
 
@@ -91,6 +91,8 @@ pomelo-orbit cli env forward stop -p 15432
 `start` 完成 SSH 认证、同连接指纹确认及本地监听后返回，一条映射一个后台子进程。相同操作者、项目、映射和目标/凭据修订重复启动幂等；端口冲突报错。支持多个 TCP 连接及双向半关闭。连接丢失或每 2 秒的资格复核失败时关闭监听、活动流和 SSH 并退出，不自动重连；没有终端的空闲或 2 小时期限。
 
 运行记录及日志位于当前 cwd 的 `data/cli/forward/` 下，按系统用户隔离，不保存 PAT 或私钥。`status` 核对运行标识、PID、OS 进程创建信息和本地控制响应，区分 `starting/running/stopping/stopped/failed/stale/unresponsive`；`running` 不代表远端服务健康。`stop` 通过已核验的本地控制连接停止一条转发并清理记录，已退出或不存在时幂等成功，不终止非受管进程。
+
+文本模式下，无记录的 `status/stop` 输出 `No managed forward(s) found`，停止完成输出 `Stopped managed forward on local port PORT.`；`status --json` 无记录时仍返回 `{"forwards":[]}`。无记录只表示当前 cwd、当前系统用户下没有受管记录，不代表端口空闲。如果端口仍被占用，应核对监听 PID、可执行路径及命令行；运行记录丢失的后台进程无法通过 `stop` 的控制协议停止，需确认身份后手动结束该进程。不要在转发运行期间删除记录。
 
 `status/stop` 仍加载共享配置，但不打开业务数据库或验证 PAT。应从启动转发时相同的 cwd、同一二进制路径执行。不要用 `go run` 的临时文件或 Air 重启进程持有长期转发；Windows 重建前先停止该二进制持有的转发。
 

@@ -260,6 +260,9 @@ func forwardCommand(deps Dependencies) *cobra.Command {
 		if asJSON {
 			return json.NewEncoder(command.OutOrStdout()).Encode(map[string]any{"forwards": items})
 		}
+		if len(items) == 0 {
+			return writeMissingForward(command.OutOrStdout(), statusPort)
+		}
 		for _, item := range items {
 			if err := writeForward(command.OutOrStdout(), item); err != nil {
 				return err
@@ -278,10 +281,15 @@ func forwardCommand(deps Dependencies) *cobra.Command {
 		if err != nil {
 			return failure(command, err, false)
 		}
-		if err := processes.Stop(command.Context(), stopPort); err != nil {
+		found, err := processes.Stop(command.Context(), stopPort)
+		if err != nil {
 			return failure(command, err, false)
 		}
-		return nil
+		if !found {
+			return writeMissingForward(command.OutOrStdout(), stopPort)
+		}
+		_, err = fmt.Fprintf(command.OutOrStdout(), "Stopped managed forward on local port %d.\n", stopPort)
+		return err
 	}
 	var runId string
 	worker := &cobra.Command{Use: "__run", Hidden: true, Args: cobra.NoArgs}
@@ -294,6 +302,15 @@ func forwardCommand(deps Dependencies) *cobra.Command {
 	}
 	command.AddCommand(start, status, stop, worker)
 	return command
+}
+
+func writeMissingForward(output io.Writer, port int) error {
+	if port != 0 {
+		_, err := fmt.Fprintf(output, "No managed forward found for local port %d in the current working directory for this OS user.\n", port)
+		return err
+	}
+	_, err := fmt.Fprintln(output, "No managed forwards found in the current working directory for this OS user.")
+	return err
 }
 
 func writeForward(output io.Writer, state environmentdto.ForwardStatus) error {

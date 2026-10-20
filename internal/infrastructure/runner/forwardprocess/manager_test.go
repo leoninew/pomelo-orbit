@@ -77,7 +77,7 @@ func TestManagedForwardProcessLifecycleAndConcurrentStart(t *testing.T) {
 	_ = reservation.Close()
 	spec := environmentdto.ForwardSpec{ForwardInput: environmentdto.ForwardInput{ProjectCode: "prod", LocalPort: port, RemotePort: 5432}, ActorId: "actor", EnvironmentId: "environment", TargetRevision: 4, CredentialRevision: 2}
 	t.Cleanup(func() {
-		if err := manager.Stop(context.Background(), port); err != nil {
+		if _, err := manager.Stop(context.Background(), port); err != nil {
 			t.Error(err)
 		}
 	})
@@ -113,11 +113,11 @@ func TestManagedForwardProcessLifecycleAndConcurrentStart(t *testing.T) {
 	if _, err := manager.Start(t.Context(), conflict); err == nil {
 		t.Fatal("replaced a conflicting active mapping")
 	}
-	if err := manager.Stop(t.Context(), port); err != nil {
-		t.Fatal(err)
+	if found, err := manager.Stop(t.Context(), port); err != nil || !found {
+		t.Fatalf("stop found=%v err=%v", found, err)
 	}
-	if err := manager.Stop(t.Context(), port); err != nil {
-		t.Fatal("stop was not idempotent:", err)
+	if found, err := manager.Stop(t.Context(), port); err != nil || found {
+		t.Fatalf("repeated stop found=%v err=%v", found, err)
 	}
 	if statuses, err := manager.Status(t.Context(), port); err != nil || len(statuses) != 0 {
 		t.Fatalf("stopped state not removed: %+v %v", statuses, err)
@@ -139,8 +139,8 @@ func TestStartFailureReapsChildAndPreservesForeignListener(t *testing.T) {
 	if _, err := os.Stat(manager.path(port)); !os.IsNotExist(err) {
 		t.Fatalf("failed startup left a record: %v", err)
 	}
-	if err := manager.Stop(t.Context(), port); err != nil {
-		t.Fatal(err)
+	if found, err := manager.Stop(t.Context(), port); err != nil || found {
+		t.Fatalf("stop without record found=%v err=%v", found, err)
 	}
 	connection, err := net.DialTimeout("tcp4", listener.Addr().String(), time.Second)
 	if err != nil {
@@ -161,8 +161,8 @@ func TestStatusAndStopDoNotTrustReusedPid(t *testing.T) {
 	if err != nil || len(statuses) != 1 || statuses[0].State != "stale" {
 		t.Fatalf("stale PID accepted: %+v %v", statuses, err)
 	}
-	if err := manager.Stop(t.Context(), port); err != nil {
-		t.Fatal(err)
+	if found, err := manager.Stop(t.Context(), port); err != nil || !found {
+		t.Fatalf("stale record cleanup found=%v err=%v", found, err)
 	}
 	connection, err := net.DialTimeout("tcp4", listener.Addr().String(), time.Second)
 	if err != nil {

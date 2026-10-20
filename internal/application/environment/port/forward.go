@@ -24,5 +24,7 @@ type ForwardSession interface {
 type ForwardProcesses interface {
 	Start(context.Context, environmentdto.ForwardSpec) (environmentdto.ForwardStatus, error)
 	Status(context.Context, int) ([]environmentdto.ForwardStatus, error)
-	Stop(context.Context, int) error
+	// Stop reports whether a managed record was found and cleaned up.
+	// An absent record returns false, nil; repeated stops remain successful.
+	Stop(context.Context, int) (bool, error)
 }

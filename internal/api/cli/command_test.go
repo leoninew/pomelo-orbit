@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -148,6 +149,8 @@ func TestForwardStartRequiresPairedPortsBeforeOpeningServices(t *testing.T) {
 type localProcessesFake struct {
 	stopped   int
 	inspected []int
+	statuses  []environmentdto.ForwardStatus
+	stopErr   error
 }
 
 func (*localProcessesFake) Start(context.Context, environmentdto.ForwardSpec) (environmentdto.ForwardStatus, error) {
@@ -155,12 +158,15 @@ func (*localProcessesFake) Start(context.Context, environmentdto.ForwardSpec) (e
 }
 func (f *localProcessesFake) Status(_ context.Context, port int) ([]environmentdto.ForwardStatus, error) {
 	f.inspected = append(f.inspected, port)
-	return []environmentdto.ForwardStatus{{ForwardSpec: environmentdto.ForwardSpec{ForwardInput: environmentdto.ForwardInput{ProjectCode: "prod", LocalPort: 15432, RemotePort: 5432}}, State: "running", Pid: 123}}, nil
+	return f.statuses, nil
 }
-func (f *localProcessesFake) Stop(_ context.Context, port int) error { f.stopped = port; return nil }
+func (f *localProcessesFake) Stop(_ context.Context, port int) (bool, error) {
+	f.stopped = port
+	return len(f.statuses) != 0, f.stopErr
+}
 
 func TestForwardStatusAndStopDoNotOpenBusinessServices(t *testing.T) {
-	local := &localProcessesFake{}
+	local := &localProcessesFake{statuses: []environmentdto.ForwardStatus{{ForwardSpec: environmentdto.ForwardSpec{ForwardInput: environmentdto.ForwardInput{ProjectCode: "prod", LocalPort: 15432, RemotePort: 5432}}, State: "running", Pid: 123}}}
 	deps := Dependencies{
 		Open: func(context.Context) (Services, func(), error) {
 			t.Fatal("opened business database/identity for local control")
@@ -176,14 +182,59 @@ func TestForwardStatusAndStopDoNotOpenBusinessServices(t *testing.T) {
 		{"env", "forward", "stop", "--port", "15432"},
 	} {
 		command := NewCommand(deps)
-		command.SetOut(io.Discard)
+		var output bytes.Buffer
+		command.SetOut(&output)
 		command.SetErr(io.Discard)
 		command.SetArgs(args)
 		if err := command.Execute(); err != nil {
 			t.Fatal(err)
 		}
+		if args[2] == "stop" && output.String() != "Stopped managed forward on local port 15432.\n" {
+			t.Fatalf("missing stop confirmation: %q", output.String())
+		}
 	}
 	if local.stopped != 15432 || !reflect.DeepEqual(local.inspected, []int{0, 15432, 15432}) {
 		t.Fatalf("wrong local port: stopped=%d inspected=%v", local.stopped, local.inspected)
+	}
+}
+
+func TestForwardMissingRecordFeedback(t *testing.T) {
+	for _, test := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"status"}, "No managed forwards found"},
+		{[]string{"status", "-p", "15432"}, "No managed forward found for local port 15432"},
+		{[]string{"stop", "-p", "15432"}, "No managed forward found for local port 15432"},
+		{[]string{"status", "--json"}, "{\"forwards\":[]}\n"},
+	} {
+		t.Run(strings.Join(test.args, " "), func(t *testing.T) {
+			local := &localProcessesFake{statuses: []environmentdto.ForwardStatus{}}
+			command := NewCommand(Dependencies{Processes: func(context.Context) (environmentport.ForwardProcesses, error) { return local, nil }})
+			var output bytes.Buffer
+			command.SetOut(&output)
+			command.SetArgs(append([]string{"env", "forward"}, test.args...))
+			if err := command.Execute(); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.HasPrefix(output.String(), test.want) {
+				t.Fatalf("output=%q stopped=%d", output.String(), local.stopped)
+			}
+		})
+	}
+}
+
+func TestForwardStopFailureDoesNotReportSuccess(t *testing.T) {
+	local := &localProcessesFake{statuses: []environmentdto.ForwardStatus{{State: "unresponsive"}}, stopErr: errors.New("cannot verify/stop managed forward")}
+	command := NewCommand(Dependencies{Processes: func(context.Context) (environmentport.ForwardProcesses, error) { return local, nil }})
+	var output bytes.Buffer
+	command.SetOut(&output)
+	command.SetErr(io.Discard)
+	command.SetArgs([]string{"env", "forward", "stop", "-p", "15432"})
+	if err := command.Execute(); !errors.Is(err, local.stopErr) {
+		t.Fatalf("wrong stop error: %v", err)
+	}
+	if output.Len() != 0 {
+		t.Fatalf("reported success after failed stop: %q", output.String())
 	}
 }

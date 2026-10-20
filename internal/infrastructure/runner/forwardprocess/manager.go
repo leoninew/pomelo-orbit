@@ -338,31 +338,31 @@ func (m *Manager) Start(ctx context.Context, spec environmentdto.ForwardSpec) (e
 	}
 }
 
-func (m *Manager) Stop(ctx context.Context, port int) error {
+func (m *Manager) Stop(ctx context.Context, port int) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	unlock, err := m.lock(ctx, port)
 	if err != nil {
-		return err
+		return false, err
 	}
 	defer unlock()
 	state, err := m.read(port)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil
+		return false, nil
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	matches, err := processMatches(state)
 	if err != nil {
-		return fmt.Errorf("cannot inspect forward process: %w", err)
+		return false, fmt.Errorf("cannot inspect forward process: %w", err)
 	}
 	if !matches {
-		return os.Remove(m.path(port))
+		return true, os.Remove(m.path(port))
 	}
 	if state.State != "stopped" && state.State != "failed" {
 		if _, err := m.control(ctx, state, "stop"); err != nil {
-			return fmt.Errorf("cannot verify/stop managed forward: %w", err)
+			return false, fmt.Errorf("cannot verify/stop managed forward: %w", err)
 		}
 	}
 	ticker := time.NewTicker(25 * time.Millisecond)
@@ -370,14 +370,14 @@ func (m *Manager) Stop(ctx context.Context, port int) error {
 	for {
 		matches, err := processMatches(state)
 		if err != nil {
-			return fmt.Errorf("cannot inspect forward process: %w", err)
+			return false, fmt.Errorf("cannot inspect forward process: %w", err)
 		}
 		if !matches {
-			return os.Remove(m.path(port))
+			return true, os.Remove(m.path(port))
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("forward has not stopped: %w", ctx.Err())
+			return false, fmt.Errorf("forward has not stopped: %w", ctx.Err())
 		case <-ticker.C:
 		}
 	}

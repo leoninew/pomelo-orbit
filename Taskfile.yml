@@ -80,7 +80,7 @@ tasks:
     env:
       POMELO_ORBIT_APP__ENV: development
     cmds:
-      - ./bin/pomelo-orbit.exe cli {{.CLI_ARGS}}
+      - ./bin/air-api/pomelo-orbit.exe cli {{.CLI_ARGS}}
 
   check:
     desc: Check web and Go formatting, lint, and types; use -- --fix to apply fixes

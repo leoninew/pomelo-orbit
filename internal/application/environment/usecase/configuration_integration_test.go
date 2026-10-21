@@ -68,7 +68,7 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 		t.Fatalf("saved probe state = %+v", saved)
 	}
 	var encrypted string
-	if err := database.QueryRowContext(ctx, `SELECT encrypted_private_key FROM environment_credential WHERE project_id = 'project-1'`).Scan(&encrypted); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT encrypted_private_key FROM environment_credential WHERE environment_id IN (SELECT id FROM environment WHERE project_id = 'project-1')`).Scan(&encrypted); err != nil {
 		t.Fatal(err)
 	}
 	if encrypted == "PRIVATE KEY" || encrypted == "" {
@@ -172,7 +172,7 @@ func TestSaveTargetDefinitionForUserPersistsLocalEnvironmentWithoutCredential(t 
 		t.Fatalf("saved local configuration = %+v", saved)
 	}
 	var credentialCount int
-	if err := database.QueryRowContext(ctx, `SELECT COUNT(*) FROM environment_credential WHERE project_id = 'project-1'`).Scan(&credentialCount); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT COUNT(*) FROM environment_credential WHERE environment_id IN (SELECT id FROM environment WHERE project_id = 'project-1')`).Scan(&credentialCount); err != nil {
 		t.Fatal(err)
 	}
 	if credentialCount != 0 {
@@ -180,7 +180,7 @@ func TestSaveTargetDefinitionForUserPersistsLocalEnvironmentWithoutCredential(t 
 	}
 }
 
-func TestUpdateForUserPersistsUninitializedSSHCredentialAsNull(t *testing.T) {
+func TestUpdateForUserPersistsUninitializedSSHWithoutCredential(t *testing.T) {
 	database, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -220,7 +220,7 @@ func TestUpdateForUserPersistsUninitializedSSHCredentialAsNull(t *testing.T) {
 	}
 	var credentialId sql.NullString
 	var credentialRevision sql.NullInt64
-	if err := database.QueryRowContext(ctx, `SELECT ssh_credential_id, ssh_credential_revision FROM environment WHERE id = 'environment-1'`).Scan(&credentialId, &credentialRevision); err != nil {
+	if err := database.QueryRowContext(ctx, `SELECT c.id, c.revision FROM environment e LEFT JOIN environment_credential c ON c.environment_id = e.id WHERE e.id = 'environment-1'`).Scan(&credentialId, &credentialRevision); err != nil {
 		t.Fatal(err)
 	}
 	if credentialId.Valid || credentialRevision.Valid {

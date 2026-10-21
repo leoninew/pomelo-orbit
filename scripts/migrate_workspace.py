@@ -264,7 +264,7 @@ def migration_sql(operations: list[dict[str, Any]]) -> str:
 
 def inventory(db: Database, environment: str) -> dict[str, Any]:
     environments = db.query(
-        "SELECT e.*,p.name AS project_name FROM environment e JOIN project p ON p.id=e.project_id "
+        "SELECT e.*,c.id AS ssh_credential_id,c.revision AS ssh_credential_revision,p.name AS project_name FROM environment e JOIN project p ON p.id=e.project_id LEFT JOIN environment_credential c ON c.environment_id=e.id AND e.target_type='ssh' "
         f"WHERE e.id={sql_value(environment)} OR e.code={sql_value(environment)}"
     )
     if len(environments) != 1:
@@ -741,7 +741,7 @@ class Host:
 
 
 def select_environment(db: Database, config: dict[str, Any], requested: str | None) -> dict[str, Any]:
-    rows = db.query("SELECT e.*,p.name AS project_name FROM environment e JOIN project p ON p.id=e.project_id WHERE p.is_active=TRUE ORDER BY e.code")
+    rows = db.query("SELECT e.*,c.id AS ssh_credential_id,c.revision AS ssh_credential_revision,p.name AS project_name FROM environment e JOIN project p ON p.id=e.project_id LEFT JOIN environment_credential c ON c.environment_id=e.id AND e.target_type='ssh' WHERE p.is_active=TRUE ORDER BY e.code")
     if requested:
         matches = [row for row in rows if requested in {row["id"], row["code"]}]
     else:
@@ -758,7 +758,7 @@ def select_environment(db: Database, config: dict[str, Any], requested: str | No
 def connection_for(db: Database, environment: dict[str, Any]) -> dict[str, Any]:
     result = {"environment": copy.deepcopy(environment)}
     if environment["target_type"] == "ssh":
-        credentials = db.query("SELECT id,project_id,revision,public_key,encrypted_private_key FROM environment_credential WHERE id=" + sql_value(environment["ssh_credential_id"]))
+        credentials = db.query("SELECT id,environment_id,revision,public_key,encrypted_private_key FROM environment_credential WHERE environment_id=" + sql_value(environment["id"]))
         if len(credentials) != 1:
             raise MigrationError("The Environment's existing managed SSH credential could not be read")
         result["credential"] = credentials[0]

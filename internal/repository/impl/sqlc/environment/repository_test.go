@@ -33,6 +33,9 @@ func TestRecordHostKeyBindsTargetAndLeavesProbeAndGatewayUntouched(t *testing.T)
 	if err := repo.CreateEnvironment(ctx, environment); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := database.Exec(`INSERT INTO environment_credential (id, environment_id, public_key, encrypted_private_key, revision) VALUES ('credential', 'environment', 'public', 'encrypted', 2)`); err != nil {
+		t.Fatal(err)
+	}
 	before, err := repo.Environment(ctx, environment.Id)
 	if err != nil {
 		t.Fatal(err)

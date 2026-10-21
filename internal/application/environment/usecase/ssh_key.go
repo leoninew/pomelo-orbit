@@ -34,7 +34,7 @@ func generateSSHKeypair() (publicKey string, privateKey string, err error) {
 	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey()))), string(pem.EncodeToMemory(block)), nil
 }
 
-func (s Service) createEnvironmentCredential(ctx context.Context, projectId string) (model.EnvironmentCredential, error) {
+func (s Service) createEnvironmentCredential(ctx context.Context, environmentId string) (model.EnvironmentCredential, error) {
 	if s.environmentCredentials == nil {
 		return model.EnvironmentCredential{}, apperror.New(apperror.KindInternal, "environment credential store is not configured")
 	}
@@ -51,7 +51,7 @@ func (s Service) createEnvironmentCredential(ctx context.Context, projectId stri
 	}
 	item := model.EnvironmentCredential{
 		Id:                  idutil.NewId(),
-		ProjectId:           projectId,
+		EnvironmentId:       environmentId,
 		PublicKey:           publicKey,
 		EncryptedPrivateKey: encrypted,
 		Revision:            1,
@@ -63,11 +63,11 @@ func (s Service) createEnvironmentCredential(ctx context.Context, projectId stri
 	return item, nil
 }
 
-func (s Service) environmentCredential(ctx context.Context, id string) (model.EnvironmentCredential, error) {
+func (s Service) environmentCredential(ctx context.Context, environmentId string) (model.EnvironmentCredential, error) {
 	if s.environmentCredentials == nil {
 		return model.EnvironmentCredential{}, apperror.New(apperror.KindInternal, "environment credential store is not configured")
 	}
-	item, err := s.environmentCredentials.EnvironmentCredential(ctx, id)
+	item, err := s.environmentCredentials.EnvironmentCredentialByEnvironment(ctx, environmentId)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return model.EnvironmentCredential{}, apperror.New(apperror.KindNotFound, "Environment credential not found")
@@ -80,16 +80,20 @@ func (s Service) environmentCredential(ctx context.Context, id string) (model.En
 // ensureEnvironmentCredential only serves the explicit SSH initialization
 // command. It never selects an unbound credential from the Project history.
 func (s Service) ensureEnvironmentCredential(ctx context.Context, environment model.Environment) (model.EnvironmentCredential, error) {
-	if hasSSHCredentialBinding(environment) {
-		credential, err := s.environmentCredential(ctx, environment.SSH.CredentialId)
-		if err == nil && matchesEnvironmentCredential(environment, credential) {
-			return credential, nil
+	credential, err := s.environmentCredential(ctx, environment.Id)
+	if err == nil {
+		if !matchesEnvironmentCredential(environment, credential) {
+			return model.EnvironmentCredential{}, apperror.New(apperror.KindConflict, "Environment SSH credential changed during initialization")
 		}
-		if err != nil && !apperror.IsKind(err, apperror.KindNotFound) {
-			return model.EnvironmentCredential{}, err
-		}
+		return credential, nil
 	}
-	return s.createEnvironmentCredential(ctx, environment.ProjectId)
+	if !apperror.IsKind(err, apperror.KindNotFound) {
+		return model.EnvironmentCredential{}, err
+	}
+	if hasSSHCredentialBinding(environment) {
+		return model.EnvironmentCredential{}, apperror.New(apperror.KindConflict, "Environment SSH credential changed during initialization")
+	}
+	return s.createEnvironmentCredential(ctx, environment.Id)
 }
 
 func decryptEnvironmentPrivateKey(secretKey string, item model.EnvironmentCredential) (environmentdto.DeploymentSSHPrivateKey, error) {
@@ -106,6 +110,16 @@ func decryptEnvironmentPrivateKey(secretKey string, item model.EnvironmentCreden
 func matchesEnvironmentCredential(environment model.Environment, credential model.EnvironmentCredential) bool {
 	return environment.IsSSH() &&
 		credential.Id == environment.SSH.CredentialId &&
-		credential.ProjectId == environment.ProjectId &&
+		credential.EnvironmentId == environment.Id &&
 		credential.Revision == environment.SSH.CredentialRevision
+}
+
+func (s Service) deleteEnvironmentCredential(ctx context.Context, environmentId string) error {
+	if s.environmentCredentials == nil {
+		return apperror.New(apperror.KindInternal, "environment credential store is not configured")
+	}
+	if err := s.environmentCredentials.DeleteEnvironmentCredential(ctx, environmentId); err != nil {
+		return apperror.Wrap(apperror.KindInternal, "Failed to remove environment SSH credential", err)
+	}
+	return nil
 }

@@ -124,16 +124,6 @@ CREATE TABLE IF NOT EXISTS repository_credential (
     CONSTRAINT uq_repository_credential_name UNIQUE (name)
 );
 
-CREATE TABLE IF NOT EXISTS environment_credential (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES project(id),
-    public_key TEXT NOT NULL,
-    encrypted_private_key TEXT NOT NULL,
-    revision BIGINT NOT NULL DEFAULT 1,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_environment_credential_project ON environment_credential(project_id);
 
 
 CREATE TABLE IF NOT EXISTS pipeline (
@@ -701,8 +691,6 @@ CREATE TABLE IF NOT EXISTS environment (
     port BIGINT,
     username TEXT,
     workspace_root TEXT,
-    ssh_credential_id TEXT,
-    ssh_credential_revision BIGINT,
     host_key_fingerprint TEXT,
     target_revision BIGINT NOT NULL,
     last_probe_revision BIGINT,
@@ -715,5 +703,13 @@ CREATE TABLE IF NOT EXISTS environment (
     CONSTRAINT chk_environment_target_type CHECK (target_type IN ('local', 'ssh')),
     CONSTRAINT chk_environment_platform CHECK (platform IS NULL OR platform IN ('linux', 'windows')),
     CONSTRAINT chk_environment_port CHECK (port IS NULL OR port BETWEEN 1 AND 65535),
-    CONSTRAINT chk_environment_revision CHECK ((ssh_credential_revision IS NULL OR ssh_credential_revision >= 1) AND target_revision >= 1)
+    CONSTRAINT chk_environment_revision CHECK (target_revision >= 1)
+);
+CREATE TABLE IF NOT EXISTS environment_credential (
+    id TEXT PRIMARY KEY,
+    environment_id TEXT NOT NULL UNIQUE REFERENCES environment(id) ON DELETE RESTRICT,
+    public_key TEXT NOT NULL,
+    encrypted_private_key TEXT NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 1 CHECK (revision >= 1),
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

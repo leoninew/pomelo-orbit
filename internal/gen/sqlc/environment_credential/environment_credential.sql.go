@@ -12,13 +12,13 @@ import (
 
 const createEnvironmentCredential = `-- name: CreateEnvironmentCredential :exec
 INSERT INTO environment_credential (
-  id, project_id, public_key, encrypted_private_key, revision, created_at
+  id, environment_id, public_key, encrypted_private_key, revision, created_at
 ) VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateEnvironmentCredentialParams struct {
 	Id                  string    `db:"id"`
-	ProjectId           string    `db:"project_id"`
+	EnvironmentId       string    `db:"environment_id"`
 	PublicKey           string    `db:"public_key"`
 	EncryptedPrivateKey string    `db:"encrypted_private_key"`
 	Revision            int64     `db:"revision"`
@@ -28,7 +28,7 @@ type CreateEnvironmentCredentialParams struct {
 func (q *Queries) CreateEnvironmentCredential(ctx context.Context, arg CreateEnvironmentCredentialParams) error {
 	_, err := q.db.ExecContext(ctx, createEnvironmentCredential,
 		arg.Id,
-		arg.ProjectId,
+		arg.EnvironmentId,
 		arg.PublicKey,
 		arg.EncryptedPrivateKey,
 		arg.Revision,
@@ -39,75 +39,30 @@ func (q *Queries) CreateEnvironmentCredential(ctx context.Context, arg CreateEnv
 
 const deleteEnvironmentCredential = `-- name: DeleteEnvironmentCredential :exec
 DELETE FROM environment_credential
-WHERE id = ?
+WHERE environment_id = ?
 `
 
-func (q *Queries) DeleteEnvironmentCredential(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteEnvironmentCredential, id)
+func (q *Queries) DeleteEnvironmentCredential(ctx context.Context, environmentID string) error {
+	_, err := q.db.ExecContext(ctx, deleteEnvironmentCredential, environmentID)
 	return err
 }
 
-const environmentCredentialById = `-- name: EnvironmentCredentialById :one
-SELECT id, project_id, public_key, encrypted_private_key, revision, created_at
+const environmentCredentialByEnvironment = `-- name: EnvironmentCredentialByEnvironment :one
+SELECT id, environment_id, public_key, encrypted_private_key, revision, created_at
 FROM environment_credential
-WHERE id = ?
+WHERE environment_id = ?
 `
 
-func (q *Queries) EnvironmentCredentialById(ctx context.Context, id string) (EnvironmentCredential, error) {
-	row := q.db.QueryRowContext(ctx, environmentCredentialById, id)
+func (q *Queries) EnvironmentCredentialByEnvironment(ctx context.Context, environmentID string) (EnvironmentCredential, error) {
+	row := q.db.QueryRowContext(ctx, environmentCredentialByEnvironment, environmentID)
 	var i EnvironmentCredential
 	err := row.Scan(
 		&i.Id,
-		&i.ProjectId,
+		&i.EnvironmentId,
 		&i.PublicKey,
 		&i.EncryptedPrivateKey,
 		&i.Revision,
 		&i.CreatedAt,
 	)
 	return i, err
-}
-
-const environmentCredentialByProjectLatest = `-- name: EnvironmentCredentialByProjectLatest :one
-SELECT id, project_id, public_key, encrypted_private_key, revision, created_at
-FROM environment_credential
-WHERE project_id = ?
-ORDER BY created_at DESC, id DESC
-LIMIT 1
-`
-
-func (q *Queries) EnvironmentCredentialByProjectLatest(ctx context.Context, projectID string) (EnvironmentCredential, error) {
-	row := q.db.QueryRowContext(ctx, environmentCredentialByProjectLatest, projectID)
-	var i EnvironmentCredential
-	err := row.Scan(
-		&i.Id,
-		&i.ProjectId,
-		&i.PublicKey,
-		&i.EncryptedPrivateKey,
-		&i.Revision,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const updateEnvironmentCredential = `-- name: UpdateEnvironmentCredential :exec
-UPDATE environment_credential
-SET public_key = ?, encrypted_private_key = ?, revision = ?
-WHERE id = ?
-`
-
-type UpdateEnvironmentCredentialParams struct {
-	PublicKey           string `db:"public_key"`
-	EncryptedPrivateKey string `db:"encrypted_private_key"`
-	Revision            int64  `db:"revision"`
-	Id                  string `db:"id"`
-}
-
-func (q *Queries) UpdateEnvironmentCredential(ctx context.Context, arg UpdateEnvironmentCredentialParams) error {
-	_, err := q.db.ExecContext(ctx, updateEnvironmentCredential,
-		arg.PublicKey,
-		arg.EncryptedPrivateKey,
-		arg.Revision,
-		arg.Id,
-	)
-	return err
 }

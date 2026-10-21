@@ -1,4 +1,5 @@
-# CI/CD 工作区迁移
+
+最后修改时间: 2026-10-21 13:48:17
 
 在仓库根目录运行：
 
@@ -10,6 +11,8 @@ sh scripts/migrate_workspace.sh apply --target 'D:/Documents/orbit' --no-dry-run
 `apply --target <目录>` 只评估；加 `--no-dry-run` 自动评估并执行，有未完成的执行记录时自动继续。`--target` 必填，缺失或为空时直接报错，不读取应用配置或写入迁移记录。无需指定计划文件、登录 token、数据库连接或控制面启停命令。PowerShell 可以使用 `python scripts/migrate_workspace.py` 加相同参数。
 
 执行前自行停止 Orbit API 和 worker，迁移期间保持停止。迁移完成后，日志提示使用原来的启动方式自行启动 Orbit，并输出 profile、启动工作目录及迁移目标目录。脚本负责业务数据与容器迁移，Orbit 进程由用户管理。
+
+工具要求使用当前 schema：环境库存左连接 `environment_credential.environment_id` 派生凭据 ID/修订，连接按环境读取并复核归属。升级 000054 前应完成旧 schema 下未结束的搬迁批次，或按本指南恢复后撤销批次；升级后重新预演，不能复用旧库存。升级步骤见[环境凭据迁移指南](./environment-credential-migration.md)。
 
 ## 自动发现
 

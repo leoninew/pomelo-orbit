@@ -53,7 +53,7 @@ func (r TargetResolver) ResolveProjectTarget(ctx context.Context, projectId stri
 	if r.environmentCredentials == nil {
 		return environmentport.Target{}, apperror.New(apperror.KindInternal, "environment credential store is not configured")
 	}
-	credential, err := r.environmentCredentials.EnvironmentCredential(ctx, environment.SSH.CredentialId)
+	credential, err := r.environmentCredentials.EnvironmentCredentialByEnvironment(ctx, environment.Id)
 	if err != nil || !matchesEnvironmentCredential(environment, credential) {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Project environment deployment SSH credential binding is invalid")
 	}

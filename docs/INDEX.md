@@ -1,5 +1,5 @@
 # 文档主题索引
-最后修改时间: 2026-10-16 12:37:36
+最后修改时间: 2026-10-21 13:48:17
 
 独立索引文件（与 [README.md](./README.md) 分工：README 讲规则与阅读顺序，本页讲主题 → 路径）。
 
@@ -25,6 +25,7 @@
 
 | 主题 | 活文档 |
 |------|--------|
+| 环境凭据归属迁移 / 000054 预检查与回退 | [guides/environment-credential-migration.md](./guides/environment-credential-migration.md) |
 | CD 部署概念 | [guides/deployment.md](./guides/deployment.md) |
 | Go CLI 环境 SSH / 非交互命令 / 后台端口转发 | [guides/project-environment-cli.md](./guides/project-environment-cli.md) |
 | 客户端与云端调用机制 | [guides/client-cloud-invocation.md](./guides/client-cloud-invocation.md) |

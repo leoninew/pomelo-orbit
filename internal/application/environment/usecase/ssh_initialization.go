@@ -14,8 +14,8 @@ import (
 )
 
 // PrepareSSHEnvironment persists the submitted SSH target and creates an
-// Environment-specific deployment key only when its current binding is absent
-// or invalid. This contains no remote I/O and runs in the HTTP write UoW.
+// Environment-specific deployment key only when none exists. This contains no
+// remote I/O and runs in the HTTP write UoW.
 func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, projectId string, input environmentdto.UpdateInput) (environmentdto.SSHCommandView, error) {
 	if err := s.ensureProjectMembership(ctx, projectId, userId); err != nil {
 		return environmentdto.SSHCommandView{}, err
@@ -48,14 +48,9 @@ func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, proje
 	if err := validateEnvironment(item, s.localDisplay.Platform, false, false); err != nil {
 		return environmentdto.SSHCommandView{}, err
 	}
-	credential, err := s.ensureEnvironmentCredential(ctx, item)
-	if err != nil {
-		return environmentdto.SSHCommandView{}, err
-	}
-	item.SSH.CredentialId = credential.Id
-	item.SSH.CredentialRevision = credential.Revision
-	if environmentTargetChanged(previous, item) {
-		if environmentIdentityChanged(previous, item) {
+	creatingCredential := !hasSSHCredentialBinding(item)
+	if environmentTargetChanged(previous, item) || creatingCredential {
+		if environmentIdentityChanged(previous, item) || creatingCredential {
 			item.SSH.HostKeyFingerprint = ""
 		}
 		if !creating {
@@ -68,6 +63,14 @@ func (s Service) PrepareSSHEnvironment(ctx context.Context, userId string, proje
 		}
 	} else if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 		return environmentdto.SSHCommandView{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
+	}
+	credential, err := s.ensureEnvironmentCredential(ctx, item)
+	if err != nil {
+		return environmentdto.SSHCommandView{}, err
+	}
+	item, err = s.environmentForProject(ctx, project.Id)
+	if err != nil {
+		return environmentdto.SSHCommandView{}, err
 	}
 	view, err := s.viewWithTargetWarning(ctx, item)
 	if err != nil {

@@ -1,5 +1,5 @@
 # 后端架构（现行）
-最后修改时间: 2026-10-16 17:40:29
+最后修改时间: 2026-10-21 13:48:17
 
 Doc role: living SoT  
 权威：与代码冲突时以代码为准。  
@@ -104,6 +104,8 @@ Deployment 同样使用独立 `Service` 与 `ExecutionService`。HTTP/MCP 命令
 - Schema 与 seed 均为普通编号迁移，统一位于 `sql/migration/{sqlite,mysql,postgres}/`，由 `MigrateUp` 按版本顺序执行和跟踪；不设独立 data migration 加载流程。
 - 默认**不修改已执行的迁移文件**（项目约束）。Repository/Repository Credential 全局共享任务按用户明确要求就地修订了既有迁移，这仅定义新库从头运行的终态；已执行这些版本的数据库不会自动变化，须另行审计并转换，或确认后重建。
 - 终态 CD 表见 `*_cd_schema*` 类迁移（application/version/component/expose/environment/gateway_config/service/deployment/route 等）；**无** 旧表 `application_config_file`、`application_service`、`application_route`、`environment_binding` 作为现行 schema。
+
+环境凭据属于环境聚合：`environment_credential.environment_id` 为非空唯一外键，引用 `environment(id) ON DELETE RESTRICT`。Environment 仓储左连接子表，只投影凭据 ID/修订；环境写入不接受这两个字段。密钥仓储按环境读取、创建、删除；密钥替换使用新 ID，不提供无调用方的原地更新接口。应用用例在既有 HTTP/MCP 或调用方 UoW 内先写主表再写子表，失败整体回滚。指纹条件 UPDATE 使用子查询核对当前凭据身份。000054 升级、预检查与回退限制见[环境凭据迁移指南](../guides/environment-credential-migration.md)。
 
 ## 运行形态
 

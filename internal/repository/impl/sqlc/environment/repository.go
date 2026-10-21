@@ -43,17 +43,17 @@ func (r Repository) EnvironmentByProject(ctx context.Context, projectId string) 
 	if err != nil {
 		return model.Environment{}, fmt.Errorf("load environment for project %s: %w", projectId, sqlcommon.TranslateError(err))
 	}
-	return environmentFrom(row), nil
+	return environmentFrom(environmentsqlc.EnvironmentByIdRow(row)), nil
 }
 
 // EnvironmentByTarget finds another active Project with matching target
 // configuration. This does not establish Docker daemon identity.
 func (r Repository) EnvironmentByTarget(ctx context.Context, projectId, targetType, host string, port int) (model.Environment, error) {
-	row, err := r.q(ctx).EnvironmentByTarget(ctx, environmentsqlc.EnvironmentByTargetParams{ProjectId: projectId, TargetType: targetType, Column3: targetType, Host: sql.NullString{String: host, Valid: host != ""}, Port: sql.NullInt64{Int64: int64(port), Valid: port > 0}})
+	row, err := r.q(ctx).EnvironmentByTarget(ctx, environmentsqlc.EnvironmentByTargetParams{ProjectId: projectId, TargetType: targetType, Host: sql.NullString{String: host, Valid: host != ""}, Port: sql.NullInt64{Int64: int64(port), Valid: port > 0}})
 	if err != nil {
 		return model.Environment{}, fmt.Errorf("load environment by target: %w", sqlcommon.TranslateError(err))
 	}
-	return environmentFrom(row), nil
+	return environmentFrom(environmentsqlc.EnvironmentByIdRow(row)), nil
 }
 
 func (r Repository) CreateEnvironment(ctx context.Context, environment model.Environment) error {
@@ -66,26 +66,24 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 		updatedAt = now
 	}
 	if err := r.q(ctx).CreateEnvironment(ctx, environmentsqlc.CreateEnvironmentParams{
-		Id:                    environment.Id,
-		ProjectId:             environment.ProjectId,
-		Code:                  environment.Code,
-		TargetType:            environment.TargetType,
-		Platform:              environmentSSHPlatform(environment),
-		Host:                  environmentSSHHost(environment),
-		Port:                  environmentSSHPort(environment),
-		Username:              environmentSSHUsername(environment),
-		WorkspaceRoot:         environmentWorkspaceRoot(environment),
-		SSHCredentialId:       environmentSSHCredentialId(environment),
-		SshCredentialRevision: environmentSSHCredentialRevision(environment),
-		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
-		TargetRevision:        environment.TargetRevision,
-		LastProbeRevision:     nullableInt64(environment.LastProbeRevision),
-		LastProbeStatus:       dbmodel.NullString(environment.LastProbeStatus),
-		LastProbeAt:           dbmodel.NullTime(environment.LastProbeAt),
-		LastProbeDiagnostic:   dbmodel.NullString(environment.LastProbeDiagnostic),
-		GatewayApplicationId:  dbmodel.NullString(environment.GatewayApplicationId),
-		CreatedAt:             createdAt,
-		UpdatedAt:             updatedAt,
+		Id:                   environment.Id,
+		ProjectId:            environment.ProjectId,
+		Code:                 environment.Code,
+		TargetType:           environment.TargetType,
+		Platform:             environmentSSHPlatform(environment),
+		Host:                 environmentSSHHost(environment),
+		Port:                 environmentSSHPort(environment),
+		Username:             environmentSSHUsername(environment),
+		WorkspaceRoot:        environmentWorkspaceRoot(environment),
+		HostKeyFingerprint:   environmentSSHHostKeyFingerprint(environment),
+		TargetRevision:       environment.TargetRevision,
+		LastProbeRevision:    nullableInt64(environment.LastProbeRevision),
+		LastProbeStatus:      dbmodel.NullString(environment.LastProbeStatus),
+		LastProbeAt:          dbmodel.NullTime(environment.LastProbeAt),
+		LastProbeDiagnostic:  dbmodel.NullString(environment.LastProbeDiagnostic),
+		GatewayApplicationId: dbmodel.NullString(environment.GatewayApplicationId),
+		CreatedAt:            createdAt,
+		UpdatedAt:            updatedAt,
 	}); err != nil {
 		return fmt.Errorf("create environment for project %s: %w", environment.ProjectId, err)
 	}
@@ -94,24 +92,22 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 
 func (r Repository) UpdateEnvironment(ctx context.Context, environment model.Environment) error {
 	if err := r.q(ctx).UpdateEnvironment(ctx, environmentsqlc.UpdateEnvironmentParams{
-		Code:                  environment.Code,
-		TargetType:            environment.TargetType,
-		Platform:              environmentSSHPlatform(environment),
-		Host:                  environmentSSHHost(environment),
-		Port:                  environmentSSHPort(environment),
-		Username:              environmentSSHUsername(environment),
-		WorkspaceRoot:         environmentWorkspaceRoot(environment),
-		SSHCredentialId:       environmentSSHCredentialId(environment),
-		SshCredentialRevision: environmentSSHCredentialRevision(environment),
-		HostKeyFingerprint:    environmentSSHHostKeyFingerprint(environment),
-		TargetRevision:        environment.TargetRevision,
-		LastProbeRevision:     nullableInt64(environment.LastProbeRevision),
-		LastProbeStatus:       dbmodel.NullString(environment.LastProbeStatus),
-		LastProbeAt:           dbmodel.NullTime(environment.LastProbeAt),
-		LastProbeDiagnostic:   dbmodel.NullString(environment.LastProbeDiagnostic),
-		GatewayApplicationId:  dbmodel.NullString(environment.GatewayApplicationId),
-		UpdatedAt:             time.Now().UTC(),
-		Id:                    environment.Id,
+		Code:                 environment.Code,
+		TargetType:           environment.TargetType,
+		Platform:             environmentSSHPlatform(environment),
+		Host:                 environmentSSHHost(environment),
+		Port:                 environmentSSHPort(environment),
+		Username:             environmentSSHUsername(environment),
+		WorkspaceRoot:        environmentWorkspaceRoot(environment),
+		HostKeyFingerprint:   environmentSSHHostKeyFingerprint(environment),
+		TargetRevision:       environment.TargetRevision,
+		LastProbeRevision:    nullableInt64(environment.LastProbeRevision),
+		LastProbeStatus:      dbmodel.NullString(environment.LastProbeStatus),
+		LastProbeAt:          dbmodel.NullTime(environment.LastProbeAt),
+		LastProbeDiagnostic:  dbmodel.NullString(environment.LastProbeDiagnostic),
+		GatewayApplicationId: dbmodel.NullString(environment.GatewayApplicationId),
+		UpdatedAt:            time.Now().UTC(),
+		Id:                   environment.Id,
 	}); err != nil {
 		return fmt.Errorf("update environment %s: %w", environment.Id, err)
 	}
@@ -140,7 +136,7 @@ func (r Repository) RecordHostKey(ctx context.Context, environment model.Environ
 	}
 	rows, err := r.q(ctx).RecordEnvironmentHostKey(ctx, environmentsqlc.RecordEnvironmentHostKeyParams{
 		Id: environment.Id, TargetRevision: environment.TargetRevision,
-		SSHCredentialId: environmentSSHCredentialId(environment), SshCredentialRevision: environmentSSHCredentialRevision(environment),
+		SSHCredentialId: environment.SSH.CredentialId, SshCredentialRevision: environment.SSH.CredentialRevision,
 		Fingerprint: sql.NullString{String: fingerprint, Valid: true}, UpdatedAt: time.Now().UTC(),
 	})
 	if err != nil {
@@ -182,7 +178,7 @@ func (r Repository) UnbindGatewayApplication(ctx context.Context, environmentId 
 	return rows == 1, nil
 }
 
-func environmentFrom(row environmentsqlc.Environment) model.Environment {
+func environmentFrom(row environmentsqlc.EnvironmentByIdRow) model.Environment {
 	item := model.Environment{
 		Id: row.Id, ProjectId: row.ProjectId, Code: row.Code, TargetType: row.TargetType,
 		WorkspaceRoot: row.WorkspaceRoot.String, TargetRevision: row.TargetRevision, LastProbeRevision: int64Ptr(row.LastProbeRevision),
@@ -234,20 +230,6 @@ func environmentWorkspaceRoot(value model.Environment) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: value.WorkspaceRoot, Valid: true}
-}
-
-func environmentSSHCredentialId(value model.Environment) sql.NullString {
-	if value.SSH == nil || value.SSH.CredentialId == "" {
-		return sql.NullString{}
-	}
-	return sql.NullString{String: value.SSH.CredentialId, Valid: true}
-}
-
-func environmentSSHCredentialRevision(value model.Environment) sql.NullInt64 {
-	if value.SSH == nil || value.SSH.CredentialRevision < 1 {
-		return sql.NullInt64{}
-	}
-	return sql.NullInt64{Int64: value.SSH.CredentialRevision, Valid: true}
 }
 
 func environmentSSHHostKeyFingerprint(value model.Environment) sql.NullString {

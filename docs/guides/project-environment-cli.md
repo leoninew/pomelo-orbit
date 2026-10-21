@@ -1,7 +1,9 @@
 # Go CLI 远程环境管理
-最后修改时间: 2026-10-21 11:09:42
+最后修改时间: 2026-10-21 13:48:17
 
 `pomelo-orbit cli env` 使用 Project **code** 定位已保存的 SSH 环境。本地 Go 进程与 WebAPI 共用配置、数据库和应用用例，复用项目成员权限、SSH 账号、受管密钥、主机指纹及目标修订规则，并直接建立 SSH 连接。
+
+CLI 按 Environment ID 读取唯一的当前凭据，并复核凭据 ID/修订。SSH→local 或交接替换凭据后，旧连接与 forward 记录失效；切回 SSH 必须在 Web 显式生成新初始化命令。CLI 与服务端必须使用同一 schema 版本，000054 升级前按[环境凭据迁移指南](./environment-credential-migration.md)结束连接并备份。
 
 ## 配置与开发启动
 

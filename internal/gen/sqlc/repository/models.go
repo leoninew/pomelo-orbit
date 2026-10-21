@@ -104,31 +104,29 @@ type DeploymentDialogueMessage struct {
 }
 
 type Environment struct {
-	Id                    string         `db:"id"`
-	ProjectId             string         `db:"project_id"`
-	Code                  string         `db:"code"`
-	TargetType            string         `db:"target_type"`
-	Platform              sql.NullString `db:"platform"`
-	Host                  sql.NullString `db:"host"`
-	Port                  sql.NullInt64  `db:"port"`
-	Username              sql.NullString `db:"username"`
-	WorkspaceRoot         sql.NullString `db:"workspace_root"`
-	SSHCredentialId       sql.NullString `db:"ssh_credential_id"`
-	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
-	HostKeyFingerprint    sql.NullString `db:"host_key_fingerprint"`
-	TargetRevision        int64          `db:"target_revision"`
-	LastProbeRevision     sql.NullInt64  `db:"last_probe_revision"`
-	LastProbeStatus       sql.NullString `db:"last_probe_status"`
-	LastProbeAt           sql.NullTime   `db:"last_probe_at"`
-	LastProbeDiagnostic   sql.NullString `db:"last_probe_diagnostic"`
-	GatewayApplicationId  sql.NullString `db:"gateway_application_id"`
-	CreatedAt             time.Time      `db:"created_at"`
-	UpdatedAt             time.Time      `db:"updated_at"`
+	Id                   string         `db:"id"`
+	ProjectId            string         `db:"project_id"`
+	Code                 string         `db:"code"`
+	TargetType           string         `db:"target_type"`
+	Platform             sql.NullString `db:"platform"`
+	Host                 sql.NullString `db:"host"`
+	Port                 sql.NullInt64  `db:"port"`
+	Username             sql.NullString `db:"username"`
+	WorkspaceRoot        sql.NullString `db:"workspace_root"`
+	HostKeyFingerprint   sql.NullString `db:"host_key_fingerprint"`
+	TargetRevision       int64          `db:"target_revision"`
+	LastProbeRevision    sql.NullInt64  `db:"last_probe_revision"`
+	LastProbeStatus      sql.NullString `db:"last_probe_status"`
+	LastProbeAt          sql.NullTime   `db:"last_probe_at"`
+	LastProbeDiagnostic  sql.NullString `db:"last_probe_diagnostic"`
+	GatewayApplicationId sql.NullString `db:"gateway_application_id"`
+	CreatedAt            time.Time      `db:"created_at"`
+	UpdatedAt            time.Time      `db:"updated_at"`
 }
 
 type EnvironmentCredential struct {
 	Id                  string    `db:"id"`
-	ProjectId           string    `db:"project_id"`
+	EnvironmentId       string    `db:"environment_id"`
 	PublicKey           string    `db:"public_key"`
 	EncryptedPrivateKey string    `db:"encrypted_private_key"`
 	Revision            int64     `db:"revision"`

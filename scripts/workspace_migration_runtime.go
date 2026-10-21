@@ -38,7 +38,7 @@ type connection struct {
 	} `json:"environment"`
 	Credential struct {
 		Id                  string `json:"id"`
-		ProjectId           string `json:"project_id"`
+		EnvironmentId       string `json:"environment_id"`
 		Revision            int64  `json:"revision"`
 		PublicKey           string `json:"public_key"`
 		EncryptedPrivateKey string `json:"encrypted_private_key"`
@@ -53,7 +53,7 @@ func (c connection) target(secret string) (environmentport.Target, error) {
 		return target, nil
 	}
 	if e.TargetType != model.EnvironmentTargetTypeSSH || c.Credential.Id != e.CredentialId ||
-		c.Credential.ProjectId != e.ProjectId || c.Credential.Revision != e.CredentialRevision {
+		c.Credential.EnvironmentId != e.Id || c.Credential.Revision != e.CredentialRevision {
 		return target, errors.New("saved SSH credential does not match the environment binding")
 	}
 	key, err := security.DecryptString(secret, c.Credential.EncryptedPrivateKey)

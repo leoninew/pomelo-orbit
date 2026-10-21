@@ -1,5 +1,5 @@
 # 决策账本（现行）
-最后修改时间: 2026-10-16
+最后修改时间: 2026-10-21 13:48:17
 
 Doc role: living SoT
 说明：只记录**仍然有效**或**明确废止**的产品/技术结论。完整推导过程在 `docs/archive/specflow/`，**归档无须采信**。与代码冲突时以代码为准。
@@ -31,6 +31,7 @@ Doc role: living SoT
 | C-21 | Web CI/CD 日志统一组件、功能与样式，采用 Fetch + SSE | 全部来源运行中持续读取；文件按字节续读，容器跟随并按时间重叠恢复；关闭停止订阅并保留页面缓存；不提供复制/导出，部署终态不结束容器日志，stop 仍不展示容器日志 |
 | C-22 | Service 生命周期以后成功受理操作为准 | 创建 Deployment、设置当前指针和入队同事务；取消旧操作尽力且异常最多 warning，不等待物理退出；SQL 条件防止迟到回写，任务终态与历史删除不恢复旧资格。CD 使用独立 execution/cancel timeout（1h/5s），仅 Service 粒度，不处理 CI、心跳、租约、重启恢复或跨 Project 宿主协调 |
 | C-23 | 环境管理使用同一 Go 二进制的 `cli env`，本地直接 SSH | 与 WebAPI 共用配置、数据和业务，复用 MCP PAT 操作者及环境 SSH 身份；仅 SSH，首版 list/ssh/exec 和 forward start/status/stop。本地 TCP 转发固定到 SSH 主机自身回环端口；无自动重连。Python CLI/uv 项目及专属 HTTP 路由移除，仅标准库单文件 `scripts/release.py` 接续打包，见 [CLI 指南](../guides/project-environment-cli.md) |
+| C-24 | Environment Credential 是 Environment 的可选子记录 | `environment_id` 非空唯一外键；先环境后凭据，环境只读取派生身份。local 删除子行，显式初始化才生成密钥；交接替换使用新凭据 ID。000054 只迁移有效当前绑定，未绑定历史密钥的恢复依赖备份 |
 
 ## 废止（Superseded）
 

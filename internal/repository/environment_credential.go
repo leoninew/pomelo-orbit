@@ -7,9 +7,7 @@ import (
 )
 
 type EnvironmentCredentialStore interface {
-	EnvironmentCredential(ctx context.Context, id string) (model.EnvironmentCredential, error)
-	LatestEnvironmentCredentialByProject(ctx context.Context, projectId string) (model.EnvironmentCredential, error)
+	EnvironmentCredentialByEnvironment(ctx context.Context, environmentId string) (model.EnvironmentCredential, error)
 	CreateEnvironmentCredential(ctx context.Context, credential model.EnvironmentCredential) error
-	UpdateEnvironmentCredential(ctx context.Context, credential model.EnvironmentCredential) error
-	DeleteEnvironmentCredential(ctx context.Context, id string) error
+	DeleteEnvironmentCredential(ctx context.Context, environmentId string) error
 }

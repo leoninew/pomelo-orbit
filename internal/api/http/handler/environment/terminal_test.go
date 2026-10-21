@@ -54,7 +54,7 @@ func (s *terminalTestStore) EnvironmentByProject(context.Context, string) (model
 	return item, nil
 }
 
-func (s *terminalTestStore) EnvironmentCredential(context.Context, string) (model.EnvironmentCredential, error) {
+func (s *terminalTestStore) EnvironmentCredentialByEnvironment(context.Context, string) (model.EnvironmentCredential, error) {
 	return s.credential, nil
 }
 
@@ -150,7 +150,7 @@ func terminalHTTPFixture(t *testing.T, origins []string, monitorReason <-chan st
 	if err != nil {
 		t.Fatal(err)
 	}
-	store.credential = model.EnvironmentCredential{Id: "credential", ProjectId: "project", Revision: 1, EncryptedPrivateKey: encrypted}
+	store.credential = model.EnvironmentCredential{Id: "credential", EnvironmentId: "environment", Revision: 1, EncryptedPrivateKey: encrypted}
 	service := environmentsvc.New(store, store, store, secret, nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Platform: model.EnvironmentPlatformLinux, Username: "orbit"})
 	terminal := environmentsvc.NewTerminalService(service)

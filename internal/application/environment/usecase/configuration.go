@@ -56,11 +56,7 @@ func (s Service) saveTargetDefinitionForUser(ctx context.Context, userId string,
 	if err != nil && !creating {
 		return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to load project environment", err)
 	}
-	previousCredentialId := ""
-	if !creating && existing.IsSSH() {
-		previousCredentialId = existing.SSH.CredentialId
-	}
-	credential, credentialCreating, err := s.configurationCredential(ctx, project.Id, existing, creating, input)
+	credential, err := s.configurationCredential(input)
 	if err != nil {
 		return environmentdto.TargetDefinition{}, err
 	}
@@ -71,15 +67,6 @@ func (s Service) saveTargetDefinitionForUser(ctx context.Context, userId string,
 	if err := validateEnvironment(environment, s.localDisplay.Platform, false, allowLocalWorkspacePlatformMismatch); err != nil {
 		return environmentdto.TargetDefinition{}, err
 	}
-	if credential != nil {
-		if credentialCreating {
-			if err := s.environmentCredentials.CreateEnvironmentCredential(ctx, *credential); err != nil {
-				return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to create environment credential", err)
-			}
-		} else if err := s.environmentCredentials.UpdateEnvironmentCredential(ctx, *credential); err != nil {
-			return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to update environment credential", err)
-		}
-	}
 	if creating {
 		if err := s.environments.CreateEnvironment(ctx, environment); err != nil {
 			return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to create project environment", err)
@@ -87,9 +74,15 @@ func (s Service) saveTargetDefinitionForUser(ctx context.Context, userId string,
 	} else if err := s.environments.UpdateEnvironment(ctx, environment); err != nil {
 		return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 	}
-	if previousCredentialId != "" && (credential == nil || credential.Id != previousCredentialId) {
-		if err := s.environmentCredentials.DeleteEnvironmentCredential(ctx, previousCredentialId); err != nil {
-			return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to remove replaced environment SSH credential", err)
+	if hasSSHCredentialBinding(existing) {
+		if err := s.deleteEnvironmentCredential(ctx, environment.Id); err != nil {
+			return environmentdto.TargetDefinition{}, err
+		}
+	}
+	if credential != nil {
+		credential.EnvironmentId = environment.Id
+		if err := s.environmentCredentials.CreateEnvironmentCredential(ctx, *credential); err != nil {
+			return environmentdto.TargetDefinition{}, apperror.Wrap(apperror.KindInternal, "Failed to create environment credential", err)
 		}
 	}
 	return s.TargetDefinitionForUser(ctx, userId, project.Id)
@@ -113,7 +106,7 @@ func (s Service) configurationFromEnvironment(ctx context.Context, environment m
 		Username: environment.SSH.Username, CredentialRevision: environment.SSH.CredentialRevision,
 		HostKeyFingerprint: environment.SSH.HostKeyFingerprint,
 	}
-	credential, err := s.environmentCredential(ctx, environment.SSH.CredentialId)
+	credential, err := s.environmentCredential(ctx, environment.Id)
 	if err != nil {
 		return environmentdto.TargetDefinition{}, err
 	}
@@ -130,49 +123,37 @@ func (s Service) configurationFromEnvironment(ctx context.Context, environment m
 	return configuration, nil
 }
 
-func (s Service) configurationCredential(ctx context.Context, projectId string, existing model.Environment, creating bool, input environmentdto.TargetDefinition) (*model.EnvironmentCredential, bool, error) {
+func (s Service) configurationCredential(input environmentdto.TargetDefinition) (*model.EnvironmentCredential, error) {
 	if input.TargetType != model.EnvironmentTargetTypeSSH {
 		if input.Credential != nil {
-			return nil, false, apperror.New(apperror.KindValidation, "Local environment must not include an SSH credential")
+			return nil, apperror.New(apperror.KindValidation, "Local environment must not include an SSH credential")
 		}
-		return nil, false, nil
+		return nil, nil
 	}
 	if input.SSH == nil || input.Credential == nil {
-		return nil, false, apperror.New(apperror.KindValidation, "SSH environment credential is required")
+		return nil, apperror.New(apperror.KindValidation, "SSH environment credential is required")
 	}
 	if s.environmentCredentials == nil {
-		return nil, false, apperror.New(apperror.KindInternal, "environment credential store is not configured")
+		return nil, apperror.New(apperror.KindInternal, "environment credential store is not configured")
 	}
 	if input.Credential.Revision < 1 || strings.TrimSpace(input.Credential.PublicKey) == "" || strings.TrimSpace(input.Credential.PrivateKey) == "" {
-		return nil, false, apperror.New(apperror.KindValidation, "Environment SSH credential is invalid")
+		return nil, apperror.New(apperror.KindValidation, "Environment SSH credential is invalid")
 	}
 	if input.SSH.CredentialRevision != input.Credential.Revision {
-		return nil, false, apperror.New(apperror.KindValidation, "Environment SSH credential revision does not match its target binding")
+		return nil, apperror.New(apperror.KindValidation, "Environment SSH credential revision does not match its target binding")
 	}
 	if strings.TrimSpace(s.secretKey) == "" {
-		return nil, false, apperror.New(apperror.KindInternal, "credential encryption key is not configured")
+		return nil, apperror.New(apperror.KindInternal, "credential encryption key is not configured")
 	}
-	item := model.EnvironmentCredential{Id: idutil.NewId(), ProjectId: projectId, CreatedAt: time.Now().UTC()}
-	credentialCreating := true
-	if !creating && existing.IsSSH() && existing.SSH.CredentialId != "" {
-		loaded, err := s.environmentCredential(ctx, existing.SSH.CredentialId)
-		if err != nil {
-			return nil, false, err
-		}
-		if loaded.ProjectId != projectId {
-			return nil, false, apperror.New(apperror.KindValidation, "Environment SSH credential does not belong to the project")
-		}
-		item = loaded
-		credentialCreating = false
-	}
+	item := model.EnvironmentCredential{Id: idutil.NewId(), CreatedAt: time.Now().UTC()}
 	encrypted, err := security.EncryptString(s.secretKey, input.Credential.PrivateKey)
 	if err != nil {
-		return nil, false, apperror.Wrap(apperror.KindInternal, "Failed to encrypt deployment SSH private key", err)
+		return nil, apperror.Wrap(apperror.KindInternal, "Failed to encrypt deployment SSH private key", err)
 	}
 	item.PublicKey = input.Credential.PublicKey
 	item.EncryptedPrivateKey = encrypted
 	item.Revision = input.Credential.Revision
-	return &item, credentialCreating, nil
+	return &item, nil
 }
 
 func environmentFromConfiguration(project model.Project, existing model.Environment, creating bool, input environmentdto.TargetDefinition, credential *model.EnvironmentCredential) (model.Environment, error) {

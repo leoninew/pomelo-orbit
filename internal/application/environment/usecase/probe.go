@@ -100,7 +100,7 @@ func (s Service) probeOutcome(ctx context.Context, item model.Environment) (stri
 	if !item.IsSSH() {
 		return model.EnvironmentProbeStatusFailed, probeUnavailableDiagnostic, ""
 	}
-	credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
+	credential, err := s.environmentCredential(ctx, item.Id)
 	if err != nil || !matchesEnvironmentCredential(item, credential) {
 		return model.EnvironmentProbeStatusFailed, probeCredentialFailureDiagnostic, ""
 	}

@@ -13,6 +13,7 @@ func TestSaveInitializationPersistsSSHWithoutCreatingCredential(t *testing.T) {
 	projectId := "project-1"
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
+	store.credentials = credentials
 	targetType := model.EnvironmentTargetTypeSSH
 
 	view, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
@@ -38,6 +39,7 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	projectId := "project-1"
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
+	store.credentials = credentials
 	targetType := model.EnvironmentTargetTypeSSH
 	service := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
 		WithLocalDisplay(environmentdto.LocalDisplaySnapshot{Host: "orbit-control"})
@@ -57,7 +59,7 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	if first.KeyCreatedAt.IsZero() || !first.KeyCreatedAt.Equal(credentials.items[0].CreatedAt) || first.SourceHost != "orbit-control" {
 		t.Fatalf("SSH key attribution = %#v", first)
 	}
-	credentialId, revision := store.environment.SSH.CredentialId, store.environment.SSH.CredentialRevision
+	credentialId, revision := credentials.items[0].Id, credentials.items[0].Revision
 	store.environment.SSH.HostKeyFingerprint = "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde="
 
 	second, err := service.PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
@@ -70,7 +72,7 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.PublicKey != first.PublicKey || len(credentials.items) != 1 || store.environment.SSH.CredentialId != credentialId || store.environment.SSH.CredentialRevision != revision {
+	if second.PublicKey != first.PublicKey || len(credentials.items) != 1 || credentials.items[0].Id != credentialId || credentials.items[0].Revision != revision {
 		t.Fatalf("credential was not reused: environment=%#v credentials=%#v", store.environment, credentials.items)
 	}
 	if !second.KeyCreatedAt.Equal(first.KeyCreatedAt) || second.SourceHost != first.SourceHost {
@@ -85,6 +87,7 @@ func TestPrepareSSHEnvironmentAcceptsWindowsTarget(t *testing.T) {
 	projectId := "project-1"
 	store := &initializationEnvironmentStore{}
 	credentials := &memoryEnvironmentCredentials{}
+	store.credentials = credentials
 	targetType := model.EnvironmentTargetTypeSSH
 	command, err := New(store, initializationProjectReader{}, credentials, testCredentialSecret, nil, nil).
 		PrepareSSHEnvironment(context.Background(), "user-1", projectId, environmentdto.UpdateInput{
@@ -111,6 +114,7 @@ func (initializationProjectReader) Project(_ context.Context, projectId string) 
 type initializationEnvironmentStore struct {
 	repository.EnvironmentStore
 	environment model.Environment
+	credentials *memoryEnvironmentCredentials
 	found       bool
 	created     bool
 	updated     bool
@@ -120,7 +124,18 @@ func (s *initializationEnvironmentStore) EnvironmentByProject(context.Context, s
 	if !s.found {
 		return model.Environment{}, repository.ErrNotFound
 	}
-	return s.environment, nil
+	item := s.environment
+	if item.SSH != nil {
+		ssh := *item.SSH
+		item.SSH = &ssh
+		item.SSH.CredentialId, item.SSH.CredentialRevision = "", 0
+		for _, credential := range s.credentials.items {
+			if credential.EnvironmentId == item.Id {
+				item.SSH.CredentialId, item.SSH.CredentialRevision = credential.Id, credential.Revision
+			}
+		}
+	}
+	return item, nil
 }
 
 func (s *initializationEnvironmentStore) CreateEnvironment(_ context.Context, environment model.Environment) error {

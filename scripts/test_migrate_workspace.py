@@ -42,6 +42,23 @@ def snapshot() -> dict:
 
 
 class CommandTests(unittest.TestCase):
+    def test_ssh_connection_loads_credential_for_selected_environment(self):
+        environment = snapshot()["environment"]
+        credential = {"id": "key-1", "environment_id": "env-1", "revision": 2,
+                      "public_key": "public", "encrypted_private_key": "encrypted"}
+        db = Mock()
+        db.query.return_value = [credential]
+        connection = migration.connection_for(db, environment)
+        self.assertEqual(connection["credential"], credential)
+        self.assertEqual(connection["environment"], environment)
+        self.assertIn("WHERE environment_id='env-1'", db.query.call_args.args[0])
+        db.query.return_value = []
+        with self.assertRaises(migration.MigrationError):
+            migration.connection_for(db, environment)
+        db.query.reset_mock()
+        self.assertNotIn("credential", migration.connection_for(db, {**environment, "target_type": "local"}))
+        db.query.assert_not_called()
+
     def test_apply_previews_and_no_dry_run_executes_with_an_explicit_target(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

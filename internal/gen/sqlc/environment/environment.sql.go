@@ -35,13 +35,68 @@ func (q *Queries) BindGatewayApplication(ctx context.Context, arg BindGatewayApp
 const createEnvironment = `-- name: CreateEnvironment :exec
 INSERT INTO environment (
   id, project_id, code, target_type, platform, host, port, username, workspace_root,
-  ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
+  host_key_fingerprint, target_revision,
   last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
   gateway_application_id, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateEnvironmentParams struct {
+	Id                   string         `db:"id"`
+	ProjectId            string         `db:"project_id"`
+	Code                 string         `db:"code"`
+	TargetType           string         `db:"target_type"`
+	Platform             sql.NullString `db:"platform"`
+	Host                 sql.NullString `db:"host"`
+	Port                 sql.NullInt64  `db:"port"`
+	Username             sql.NullString `db:"username"`
+	WorkspaceRoot        sql.NullString `db:"workspace_root"`
+	HostKeyFingerprint   sql.NullString `db:"host_key_fingerprint"`
+	TargetRevision       int64          `db:"target_revision"`
+	LastProbeRevision    sql.NullInt64  `db:"last_probe_revision"`
+	LastProbeStatus      sql.NullString `db:"last_probe_status"`
+	LastProbeAt          sql.NullTime   `db:"last_probe_at"`
+	LastProbeDiagnostic  sql.NullString `db:"last_probe_diagnostic"`
+	GatewayApplicationId sql.NullString `db:"gateway_application_id"`
+	CreatedAt            time.Time      `db:"created_at"`
+	UpdatedAt            time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) error {
+	_, err := q.db.ExecContext(ctx, createEnvironment,
+		arg.Id,
+		arg.ProjectId,
+		arg.Code,
+		arg.TargetType,
+		arg.Platform,
+		arg.Host,
+		arg.Port,
+		arg.Username,
+		arg.WorkspaceRoot,
+		arg.HostKeyFingerprint,
+		arg.TargetRevision,
+		arg.LastProbeRevision,
+		arg.LastProbeStatus,
+		arg.LastProbeAt,
+		arg.LastProbeDiagnostic,
+		arg.GatewayApplicationId,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const environmentById = `-- name: EnvironmentById :one
+SELECT e.id, e.project_id, e.code, e.target_type, e.platform, e.host, e.port, e.username, e.workspace_root,
+       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.target_revision,
+       e.last_probe_revision, e.last_probe_status, e.last_probe_at, e.last_probe_diagnostic,
+       e.gateway_application_id, e.created_at, e.updated_at
+FROM environment e
+LEFT JOIN environment_credential c ON c.environment_id = e.id AND e.target_type = 'ssh'
+WHERE e.id = ?
+`
+
+type EnvironmentByIdRow struct {
 	Id                    string         `db:"id"`
 	ProjectId             string         `db:"project_id"`
 	Code                  string         `db:"code"`
@@ -64,44 +119,9 @@ type CreateEnvironmentParams struct {
 	UpdatedAt             time.Time      `db:"updated_at"`
 }
 
-func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) error {
-	_, err := q.db.ExecContext(ctx, createEnvironment,
-		arg.Id,
-		arg.ProjectId,
-		arg.Code,
-		arg.TargetType,
-		arg.Platform,
-		arg.Host,
-		arg.Port,
-		arg.Username,
-		arg.WorkspaceRoot,
-		arg.SSHCredentialId,
-		arg.SshCredentialRevision,
-		arg.HostKeyFingerprint,
-		arg.TargetRevision,
-		arg.LastProbeRevision,
-		arg.LastProbeStatus,
-		arg.LastProbeAt,
-		arg.LastProbeDiagnostic,
-		arg.GatewayApplicationId,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const environmentById = `-- name: EnvironmentById :one
-SELECT id, project_id, code, target_type, platform, host, port, username, workspace_root,
-       ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
-       last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
-       gateway_application_id, created_at, updated_at
-FROM environment
-WHERE id = ?
-`
-
-func (q *Queries) EnvironmentById(ctx context.Context, id string) (Environment, error) {
+func (q *Queries) EnvironmentById(ctx context.Context, id string) (EnvironmentByIdRow, error) {
 	row := q.db.QueryRowContext(ctx, environmentById, id)
-	var i Environment
+	var i EnvironmentByIdRow
 	err := row.Scan(
 		&i.Id,
 		&i.ProjectId,
@@ -128,17 +148,41 @@ func (q *Queries) EnvironmentById(ctx context.Context, id string) (Environment, 
 }
 
 const environmentByProjectId = `-- name: EnvironmentByProjectId :one
-SELECT id, project_id, code, target_type, platform, host, port, username, workspace_root,
-       ssh_credential_id, ssh_credential_revision, host_key_fingerprint, target_revision,
-       last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
-       gateway_application_id, created_at, updated_at
-FROM environment
-WHERE project_id = ?
+SELECT e.id, e.project_id, e.code, e.target_type, e.platform, e.host, e.port, e.username, e.workspace_root,
+       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.target_revision,
+       e.last_probe_revision, e.last_probe_status, e.last_probe_at, e.last_probe_diagnostic,
+       e.gateway_application_id, e.created_at, e.updated_at
+FROM environment e
+LEFT JOIN environment_credential c ON c.environment_id = e.id AND e.target_type = 'ssh'
+WHERE e.project_id = ?
 `
 
-func (q *Queries) EnvironmentByProjectId(ctx context.Context, projectID string) (Environment, error) {
+type EnvironmentByProjectIdRow struct {
+	Id                    string         `db:"id"`
+	ProjectId             string         `db:"project_id"`
+	Code                  string         `db:"code"`
+	TargetType            string         `db:"target_type"`
+	Platform              sql.NullString `db:"platform"`
+	Host                  sql.NullString `db:"host"`
+	Port                  sql.NullInt64  `db:"port"`
+	Username              sql.NullString `db:"username"`
+	WorkspaceRoot         sql.NullString `db:"workspace_root"`
+	SSHCredentialId       sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
+	HostKeyFingerprint    sql.NullString `db:"host_key_fingerprint"`
+	TargetRevision        int64          `db:"target_revision"`
+	LastProbeRevision     sql.NullInt64  `db:"last_probe_revision"`
+	LastProbeStatus       sql.NullString `db:"last_probe_status"`
+	LastProbeAt           sql.NullTime   `db:"last_probe_at"`
+	LastProbeDiagnostic   sql.NullString `db:"last_probe_diagnostic"`
+	GatewayApplicationId  sql.NullString `db:"gateway_application_id"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) EnvironmentByProjectId(ctx context.Context, projectID string) (EnvironmentByProjectIdRow, error) {
 	row := q.db.QueryRowContext(ctx, environmentByProjectId, projectID)
-	var i Environment
+	var i EnvironmentByProjectIdRow
 	err := row.Scan(
 		&i.Id,
 		&i.ProjectId,
@@ -165,39 +209,58 @@ func (q *Queries) EnvironmentByProjectId(ctx context.Context, projectID string) 
 }
 
 const environmentByTarget = `-- name: EnvironmentByTarget :one
-SELECT environment.id, environment.project_id, environment.code, environment.target_type,
-       environment.platform, environment.host, environment.port, environment.username,
-       environment.workspace_root, environment.ssh_credential_id,
-       environment.ssh_credential_revision, environment.host_key_fingerprint,
-       environment.target_revision, environment.last_probe_revision,
-       environment.last_probe_status, environment.last_probe_at,
-       environment.last_probe_diagnostic, environment.gateway_application_id,
-       environment.created_at, environment.updated_at
-FROM environment
-JOIN project ON project.id = environment.project_id
-WHERE environment.project_id <> ?
-  AND project.is_active = TRUE
-  AND environment.target_type = ?
-  AND (? = 'local' OR (host = ? AND port = ?))
+SELECT e.id, e.project_id, e.code, e.target_type, e.platform, e.host, e.port, e.username, e.workspace_root,
+       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.target_revision,
+       e.last_probe_revision, e.last_probe_status, e.last_probe_at, e.last_probe_diagnostic,
+       e.gateway_application_id, e.created_at, e.updated_at
+FROM environment e
+LEFT JOIN environment_credential c ON c.environment_id = e.id AND e.target_type = 'ssh'
+JOIN project p ON p.id = e.project_id
+WHERE e.project_id <> ?
+  AND p.is_active = TRUE
+  AND e.target_type = ?
+  AND (? = 'local' OR (e.host = ? AND e.port = ?))
 `
 
 type EnvironmentByTargetParams struct {
 	ProjectId  string         `db:"project_id"`
 	TargetType string         `db:"target_type"`
-	Column3    interface{}    `db:"column_3"`
 	Host       sql.NullString `db:"host"`
 	Port       sql.NullInt64  `db:"port"`
 }
 
-func (q *Queries) EnvironmentByTarget(ctx context.Context, arg EnvironmentByTargetParams) (Environment, error) {
+type EnvironmentByTargetRow struct {
+	Id                    string         `db:"id"`
+	ProjectId             string         `db:"project_id"`
+	Code                  string         `db:"code"`
+	TargetType            string         `db:"target_type"`
+	Platform              sql.NullString `db:"platform"`
+	Host                  sql.NullString `db:"host"`
+	Port                  sql.NullInt64  `db:"port"`
+	Username              sql.NullString `db:"username"`
+	WorkspaceRoot         sql.NullString `db:"workspace_root"`
+	SSHCredentialId       sql.NullString `db:"ssh_credential_id"`
+	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
+	HostKeyFingerprint    sql.NullString `db:"host_key_fingerprint"`
+	TargetRevision        int64          `db:"target_revision"`
+	LastProbeRevision     sql.NullInt64  `db:"last_probe_revision"`
+	LastProbeStatus       sql.NullString `db:"last_probe_status"`
+	LastProbeAt           sql.NullTime   `db:"last_probe_at"`
+	LastProbeDiagnostic   sql.NullString `db:"last_probe_diagnostic"`
+	GatewayApplicationId  sql.NullString `db:"gateway_application_id"`
+	CreatedAt             time.Time      `db:"created_at"`
+	UpdatedAt             time.Time      `db:"updated_at"`
+}
+
+func (q *Queries) EnvironmentByTarget(ctx context.Context, arg EnvironmentByTargetParams) (EnvironmentByTargetRow, error) {
 	row := q.db.QueryRowContext(ctx, environmentByTarget,
 		arg.ProjectId,
 		arg.TargetType,
-		arg.Column3,
+		arg.TargetType,
 		arg.Host,
 		arg.Port,
 	)
-	var i Environment
+	var i EnvironmentByTargetRow
 	err := row.Scan(
 		&i.Id,
 		&i.ProjectId,
@@ -226,11 +289,15 @@ func (q *Queries) EnvironmentByTarget(ctx context.Context, arg EnvironmentByTarg
 const recordEnvironmentHostKey = `-- name: RecordEnvironmentHostKey :execrows
 UPDATE environment
 SET host_key_fingerprint = ?, updated_at = ?
-WHERE id = ?
+WHERE environment.id = ?
   AND target_type = 'ssh'
   AND target_revision = ?
-  AND ssh_credential_id = ?
-  AND ssh_credential_revision = ?
+  AND EXISTS (
+      SELECT 1 FROM environment_credential c
+      WHERE c.environment_id = environment.id
+        AND c.id = ?
+        AND c.revision = ?
+  )
   AND (host_key_fingerprint IS NULL OR host_key_fingerprint = '' OR host_key_fingerprint = ?)
 `
 
@@ -239,8 +306,8 @@ type RecordEnvironmentHostKeyParams struct {
 	UpdatedAt             time.Time      `db:"updated_at"`
 	Id                    string         `db:"id"`
 	TargetRevision        int64          `db:"target_revision"`
-	SSHCredentialId       sql.NullString `db:"ssh_credential_id"`
-	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
+	SSHCredentialId       string         `db:"ssh_credential_id"`
+	SshCredentialRevision int64          `db:"ssh_credential_revision"`
 }
 
 func (q *Queries) RecordEnvironmentHostKey(ctx context.Context, arg RecordEnvironmentHostKeyParams) (int64, error) {
@@ -317,31 +384,29 @@ func (q *Queries) UnbindGatewayApplication(ctx context.Context, arg UnbindGatewa
 const updateEnvironment = `-- name: UpdateEnvironment :exec
 UPDATE environment
 SET code = ?, target_type = ?, platform = ?, host = ?, port = ?, username = ?, workspace_root = ?,
-    ssh_credential_id = ?, ssh_credential_revision = ?, host_key_fingerprint = ?,
+    host_key_fingerprint = ?,
     target_revision = ?, last_probe_revision = ?, last_probe_status = ?, last_probe_at = ?, last_probe_diagnostic = ?,
     gateway_application_id = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateEnvironmentParams struct {
-	Code                  string         `db:"code"`
-	TargetType            string         `db:"target_type"`
-	Platform              sql.NullString `db:"platform"`
-	Host                  sql.NullString `db:"host"`
-	Port                  sql.NullInt64  `db:"port"`
-	Username              sql.NullString `db:"username"`
-	WorkspaceRoot         sql.NullString `db:"workspace_root"`
-	SSHCredentialId       sql.NullString `db:"ssh_credential_id"`
-	SshCredentialRevision sql.NullInt64  `db:"ssh_credential_revision"`
-	HostKeyFingerprint    sql.NullString `db:"host_key_fingerprint"`
-	TargetRevision        int64          `db:"target_revision"`
-	LastProbeRevision     sql.NullInt64  `db:"last_probe_revision"`
-	LastProbeStatus       sql.NullString `db:"last_probe_status"`
-	LastProbeAt           sql.NullTime   `db:"last_probe_at"`
-	LastProbeDiagnostic   sql.NullString `db:"last_probe_diagnostic"`
-	GatewayApplicationId  sql.NullString `db:"gateway_application_id"`
-	UpdatedAt             time.Time      `db:"updated_at"`
-	Id                    string         `db:"id"`
+	Code                 string         `db:"code"`
+	TargetType           string         `db:"target_type"`
+	Platform             sql.NullString `db:"platform"`
+	Host                 sql.NullString `db:"host"`
+	Port                 sql.NullInt64  `db:"port"`
+	Username             sql.NullString `db:"username"`
+	WorkspaceRoot        sql.NullString `db:"workspace_root"`
+	HostKeyFingerprint   sql.NullString `db:"host_key_fingerprint"`
+	TargetRevision       int64          `db:"target_revision"`
+	LastProbeRevision    sql.NullInt64  `db:"last_probe_revision"`
+	LastProbeStatus      sql.NullString `db:"last_probe_status"`
+	LastProbeAt          sql.NullTime   `db:"last_probe_at"`
+	LastProbeDiagnostic  sql.NullString `db:"last_probe_diagnostic"`
+	GatewayApplicationId sql.NullString `db:"gateway_application_id"`
+	UpdatedAt            time.Time      `db:"updated_at"`
+	Id                   string         `db:"id"`
 }
 
 func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) error {
@@ -353,8 +418,6 @@ func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentPa
 		arg.Port,
 		arg.Username,
 		arg.WorkspaceRoot,
-		arg.SSHCredentialId,
-		arg.SshCredentialRevision,
 		arg.HostKeyFingerprint,
 		arg.TargetRevision,
 		arg.LastProbeRevision,

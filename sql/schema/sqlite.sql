@@ -145,14 +145,12 @@ CREATE TABLE IF NOT EXISTS repository_credential (
 
 CREATE TABLE IF NOT EXISTS environment_credential (
     id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES project(id),
+    environment_id TEXT NOT NULL UNIQUE REFERENCES environment(id) ON DELETE RESTRICT,
     public_key TEXT NOT NULL,
     encrypted_private_key TEXT NOT NULL,
-    revision INTEGER NOT NULL DEFAULT 1,
+    revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
     created_at DATETIME NOT NULL DEFAULT (datetime('now'))
 );
-
-CREATE INDEX IF NOT EXISTS idx_environment_credential_project ON environment_credential(project_id);
 
 CREATE TABLE IF NOT EXISTS pipeline (
     id TEXT PRIMARY KEY,
@@ -761,8 +759,6 @@ CREATE TABLE IF NOT EXISTS environment (
     port INTEGER CHECK (port IS NULL OR port BETWEEN 1 AND 65535),
     username TEXT,
     workspace_root TEXT,
-    ssh_credential_id TEXT,
-    ssh_credential_revision INTEGER CHECK (ssh_credential_revision IS NULL OR ssh_credential_revision >= 1),
     host_key_fingerprint TEXT,
     target_revision INTEGER NOT NULL CHECK (target_revision >= 1),
     last_probe_revision INTEGER,

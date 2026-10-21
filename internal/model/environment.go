@@ -37,10 +37,11 @@ type Environment struct {
 
 // EnvironmentSSHTarget contains data that only exists when target_type is ssh.
 type EnvironmentSSHTarget struct {
-	Platform           string
-	Host               string
-	Port               int
-	Username           string
+	Platform string
+	Host     string
+	Port     int
+	Username string
+	// Credential identity is projected from the child record, never stored on Environment.
 	CredentialId       string
 	CredentialRevision int64
 	HostKeyFingerprint string

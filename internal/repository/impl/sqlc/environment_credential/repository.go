@@ -30,18 +30,10 @@ func (r Repository) q(ctx context.Context) *environmentcredentialsqlc.Queries {
 	})
 }
 
-func (r Repository) EnvironmentCredential(ctx context.Context, id string) (model.EnvironmentCredential, error) {
-	row, err := r.q(ctx).EnvironmentCredentialById(ctx, strings.TrimSpace(id))
+func (r Repository) EnvironmentCredentialByEnvironment(ctx context.Context, environmentId string) (model.EnvironmentCredential, error) {
+	row, err := r.q(ctx).EnvironmentCredentialByEnvironment(ctx, strings.TrimSpace(environmentId))
 	if err != nil {
-		return model.EnvironmentCredential{}, fmt.Errorf("load environment credential %s: %w", id, sqlcommon.TranslateError(err))
-	}
-	return environmentCredentialFrom(row), nil
-}
-
-func (r Repository) LatestEnvironmentCredentialByProject(ctx context.Context, projectId string) (model.EnvironmentCredential, error) {
-	row, err := r.q(ctx).EnvironmentCredentialByProjectLatest(ctx, strings.TrimSpace(projectId))
-	if err != nil {
-		return model.EnvironmentCredential{}, fmt.Errorf("load latest environment credential for project %s: %w", projectId, sqlcommon.TranslateError(err))
+		return model.EnvironmentCredential{}, fmt.Errorf("load environment credential for %s: %w", environmentId, sqlcommon.TranslateError(err))
 	}
 	return environmentCredentialFrom(row), nil
 }
@@ -49,7 +41,7 @@ func (r Repository) LatestEnvironmentCredentialByProject(ctx context.Context, pr
 func (r Repository) CreateEnvironmentCredential(ctx context.Context, credential model.EnvironmentCredential) error {
 	err := r.q(ctx).CreateEnvironmentCredential(ctx, environmentcredentialsqlc.CreateEnvironmentCredentialParams{
 		Id:                  credential.Id,
-		ProjectId:           credential.ProjectId,
+		EnvironmentId:       credential.EnvironmentId,
 		PublicKey:           credential.PublicKey,
 		EncryptedPrivateKey: credential.EncryptedPrivateKey,
 		Revision:            credential.Revision,
@@ -61,22 +53,9 @@ func (r Repository) CreateEnvironmentCredential(ctx context.Context, credential 
 	return nil
 }
 
-func (r Repository) UpdateEnvironmentCredential(ctx context.Context, credential model.EnvironmentCredential) error {
-	err := r.q(ctx).UpdateEnvironmentCredential(ctx, environmentcredentialsqlc.UpdateEnvironmentCredentialParams{
-		PublicKey:           credential.PublicKey,
-		EncryptedPrivateKey: credential.EncryptedPrivateKey,
-		Revision:            credential.Revision,
-		Id:                  credential.Id,
-	})
-	if err != nil {
-		return fmt.Errorf("update environment credential %s: %w", credential.Id, err)
-	}
-	return nil
-}
-
-func (r Repository) DeleteEnvironmentCredential(ctx context.Context, id string) error {
-	if err := r.q(ctx).DeleteEnvironmentCredential(ctx, strings.TrimSpace(id)); err != nil {
-		return fmt.Errorf("delete environment credential %s: %w", id, err)
+func (r Repository) DeleteEnvironmentCredential(ctx context.Context, environmentId string) error {
+	if err := r.q(ctx).DeleteEnvironmentCredential(ctx, strings.TrimSpace(environmentId)); err != nil {
+		return fmt.Errorf("delete environment credential for %s: %w", environmentId, err)
 	}
 	return nil
 }
@@ -84,7 +63,7 @@ func (r Repository) DeleteEnvironmentCredential(ctx context.Context, id string) 
 func environmentCredentialFrom(row environmentcredentialsqlc.EnvironmentCredential) model.EnvironmentCredential {
 	return model.EnvironmentCredential{
 		Id:                  row.Id,
-		ProjectId:           row.ProjectId,
+		EnvironmentId:       row.EnvironmentId,
 		PublicKey:           row.PublicKey,
 		EncryptedPrivateKey: row.EncryptedPrivateKey,
 		Revision:            row.Revision,

@@ -165,7 +165,7 @@ func (s Service) validateConnection(ctx context.Context, grant TerminalGrant) er
 	if expected := grant.Target.Environment.SSH.HostKeyFingerprint; expected != "" && current.SSH.HostKeyFingerprint != expected {
 		return apperror.New(apperror.KindConflict, "Project SSH host key changed during connection")
 	}
-	credential, err := s.environmentCredential(ctx, current.SSH.CredentialId)
+	credential, err := s.environmentCredential(ctx, current.Id)
 	if err != nil || !matchesEnvironmentCredential(current, credential) {
 		return apperror.New(apperror.KindConflict, "Project SSH credential changed during connection")
 	}
@@ -200,7 +200,7 @@ func (s Service) resolveConnectionTarget(ctx context.Context, projectId string) 
 	if item.IsLocal() {
 		return target, nil
 	}
-	credential, err := s.environmentCredential(ctx, item.SSH.CredentialId)
+	credential, err := s.environmentCredential(ctx, item.Id)
 	if err != nil || !matchesEnvironmentCredential(item, credential) {
 		return environmentport.Target{}, apperror.New(apperror.KindValidation, "Environment SSH credential binding is invalid")
 	}

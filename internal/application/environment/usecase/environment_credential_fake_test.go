@@ -16,31 +16,13 @@ type memoryEnvironmentCredentials struct {
 	items []model.EnvironmentCredential
 }
 
-func (m *memoryEnvironmentCredentials) EnvironmentCredential(_ context.Context, id string) (model.EnvironmentCredential, error) {
+func (m *memoryEnvironmentCredentials) EnvironmentCredentialByEnvironment(_ context.Context, environmentId string) (model.EnvironmentCredential, error) {
 	for _, item := range m.items {
-		if item.Id == id {
+		if item.EnvironmentId == environmentId {
 			return item, nil
 		}
 	}
 	return model.EnvironmentCredential{}, repository.ErrNotFound
-}
-
-func (m *memoryEnvironmentCredentials) LatestEnvironmentCredentialByProject(_ context.Context, projectId string) (model.EnvironmentCredential, error) {
-	var found *model.EnvironmentCredential
-	for i := range m.items {
-		if m.items[i].ProjectId != projectId {
-			continue
-		}
-		item := m.items[i]
-		if found == nil || item.CreatedAt.After(found.CreatedAt) || (item.CreatedAt.Equal(found.CreatedAt) && item.Id > found.Id) {
-			copyItem := item
-			found = &copyItem
-		}
-	}
-	if found == nil {
-		return model.EnvironmentCredential{}, repository.ErrNotFound
-	}
-	return *found, nil
 }
 
 func credentialsForEnvironment(t *testing.T, environment model.Environment, privateKey string) *memoryEnvironmentCredentials {
@@ -51,13 +33,13 @@ func credentialsForEnvironment(t *testing.T, environment model.Environment, priv
 	}
 	revision := int64(1)
 	id := "credential-1"
-	projectId := environment.ProjectId
+	environmentId := environment.Id
 	if environment.SSH != nil {
 		id = environment.SSH.CredentialId
 		revision = environment.SSH.CredentialRevision
 	}
 	return &memoryEnvironmentCredentials{items: []model.EnvironmentCredential{{
-		Id: id, ProjectId: projectId, PublicKey: "ssh-ed25519 test",
+		Id: id, EnvironmentId: environmentId, PublicKey: "ssh-ed25519 test",
 		EncryptedPrivateKey: encrypted, Revision: revision,
 	}}}
 }
@@ -70,23 +52,13 @@ func (m *memoryEnvironmentCredentials) CreateEnvironmentCredential(_ context.Con
 	return nil
 }
 
-func (m *memoryEnvironmentCredentials) UpdateEnvironmentCredential(_ context.Context, credential model.EnvironmentCredential) error {
+func (m *memoryEnvironmentCredentials) DeleteEnvironmentCredential(_ context.Context, environmentId string) error {
 	for index := range m.items {
-		if m.items[index].Id == credential.Id {
-			m.items[index] = credential
-			return nil
-		}
-	}
-	return repository.ErrNotFound
-}
-
-func (m *memoryEnvironmentCredentials) DeleteEnvironmentCredential(_ context.Context, id string) error {
-	for index := range m.items {
-		if m.items[index].Id != id {
+		if m.items[index].EnvironmentId != environmentId {
 			continue
 		}
 		m.items = append(m.items[:index], m.items[index+1:]...)
 		return nil
 	}
-	return repository.ErrNotFound
+	return nil
 }

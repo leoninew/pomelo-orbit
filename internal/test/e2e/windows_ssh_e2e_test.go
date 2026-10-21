@@ -454,7 +454,7 @@ func updateE2EWindowsSSHEnvironment(t *testing.T, handler http.Handler, token, p
 func assertEnvironmentCredentialEncrypted(t *testing.T, database *sql.DB, projectId string) {
 	t.Helper()
 	var credentialId, publicKey, encryptedPrivateKey string
-	if err := database.QueryRowContext(context.Background(), `SELECT id, public_key, encrypted_private_key FROM environment_credential WHERE project_id = ?`, projectId).Scan(&credentialId, &publicKey, &encryptedPrivateKey); err != nil {
+	if err := database.QueryRowContext(context.Background(), `SELECT id, public_key, encrypted_private_key FROM environment_credential WHERE environment_id IN (SELECT id FROM environment WHERE project_id = ?)`, projectId).Scan(&credentialId, &publicKey, &encryptedPrivateKey); err != nil {
 		t.Fatalf("load environment credential: %v", err)
 	}
 	if credentialId == "" || publicKey == "" || encryptedPrivateKey == "" || strings.Contains(encryptedPrivateKey, "PRIVATE KEY") {

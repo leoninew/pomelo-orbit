@@ -93,6 +93,11 @@ func (s Service) SaveInitialization(ctx context.Context, userId string, projectI
 	if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
 	}
+	if item.IsLocal() && hasSSHCredentialBinding(previous) {
+		if err := s.deleteEnvironmentCredential(ctx, item.Id); err != nil {
+			return environmentdto.View{}, err
+		}
+	}
 	item, err = s.environmentForProject(ctx, project.Id)
 	if err != nil {
 		return environmentdto.View{}, err
@@ -134,6 +139,11 @@ func (s Service) UpdateForUser(ctx context.Context, userId string, projectId str
 	}
 	if err := s.environments.UpdateEnvironment(ctx, item); err != nil {
 		return environmentdto.View{}, apperror.Wrap(apperror.KindInternal, "Failed to update project environment", err)
+	}
+	if item.IsLocal() && hasSSHCredentialBinding(previous) {
+		if err := s.deleteEnvironmentCredential(ctx, item.Id); err != nil {
+			return environmentdto.View{}, err
+		}
 	}
 	item, err = s.environmentForProject(ctx, projectId)
 	if err != nil {

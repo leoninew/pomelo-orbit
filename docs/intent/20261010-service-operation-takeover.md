@@ -19,7 +19,7 @@ Mode: standard
 
 现状依据：
 
-- [CD 产品模型](../product/cd-model.md)、[CD 运行时](../architecture/cd-runtime.md)、[后端架构](../architecture/backend.md)、[部署指南](../guides/deployment.md)。
+- [CD 产品模型](../archive/cd-model.md)、[CD 运行时](../archive/architecture/cd-runtime.md)、[后端架构](../archive/architecture/backend.md)、[部署指南](../archive/guides/deployment.md)。
 - `internal/application/deployment/usecase/command.go`、`service_location.go`：请求准入及目录依赖。
 - `internal/application/deployment/usecase/service.go`、`deployment_execution.go`：取消、执行监控与结果回写。
 - `internal/infrastructure/runner/{local,ssh}/runtime.go`：命令执行与共享文件准备。

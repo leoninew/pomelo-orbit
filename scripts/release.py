@@ -55,13 +55,13 @@ def build_release(root: Path) -> list[Path]:
     ):
         if not path.is_file():
             raise RuntimeError(f"Release input is missing: {path}")
-    yarn = shutil.which("yarn")
+    corepack = shutil.which("corepack")
     go = shutil.which("go")
-    if not yarn or not go:
-        raise RuntimeError("Release builds require Go and Yarn on PATH")
+    if not corepack or not go:
+        raise RuntimeError("Release builds require Go and Corepack on PATH")
 
     logger.info("Building the frontend")
-    _run([yarn, "--cwd", "web", "build"], root)
+    _run([corepack, "yarn", "build"], root / "web")
     frontend = root / "web" / "dist"
     if not (frontend / "index.html").is_file():
         raise RuntimeError("The frontend build did not produce web/dist/index.html")

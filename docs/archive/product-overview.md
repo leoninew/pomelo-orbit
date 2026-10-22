@@ -1,7 +1,7 @@
 # 产品概览
 最后修改时间: 2026-09-26
 
-Doc role: living SoT  
+历史产品说明；当前概览见 [文档入口](../README.md)。  
 权威：与代码冲突时以代码为准。
 
 ## 产品是什么
@@ -21,17 +21,15 @@ Environment 是 Project 级共用执行目标：CI 支持 local、Windows SSH（
 ## 阅读顺序
 
 1. 本页（边界）
-2. [Project 环境与 CD 领域模型](./cd-model.md)
-3. [后端架构](../architecture/backend.md) / [CD 运行时](../architecture/cd-runtime.md)
-4. [决策账本](../decisions/ledger.md)
-5. 需要操作步骤时再看 `docs/guides/`
+2. [Project 环境与 CD 领域模型](cd-model.md)
+3. [开发约定](../../AGENTS.md) 与相关实现
 
 ## 非目标（产品层）
 
 - 不做多集群 / 完整 K8s 编排产品化（代码中无对应主路径）。
 - 不做「用户自管 external Traefik」为主线必做能力。
 - 不做已执行迁移的历史兼容；开发期允许重建库。
-- 活跃开发期：**无兼容层、别名、默认值兜底、新旧逻辑并存**（见根目录 `CLAUDE.md`）。
+- 活跃开发期：不引入兼容层、别名、默认值兜底或新旧逻辑并存（见 [开发约定](../../AGENTS.md)）。
 
 ## CI 模型
 
@@ -50,12 +48,12 @@ CI 的可复用性与可运行性分为两个显式对象：
 - Template 和 Application 共用 `PipelineSnapshot` 保存不可变定义；普通编辑和预览不自动创建快照。Run、Artifact、Version Component 保存必要的显示快照，因而不依赖 Template、Application、Repository、Version 或 Pipeline 的物理存在。
 - 删除 Repository 前检查所有 Project 中现存 Application Pipeline 的绑定。删除 Application Pipeline 前检查其未结束 Run；`waiting_to_run`、`running` 阻止删除，终态 Run 不阻止。Run、Snapshot 和 Artifact 对 Repository 的历史引用不直接阻止仓库删除；被任何 Repository 引用的仓库凭据不可删除。
 
-CI 的详细模型、API 与变量语义见 [CI 流水线设计](../guides/ci-pipeline-design.md) 和 [CI 变量](../guides/ci-pipeline-vars-design.md)。
+CI 的实现位于 `internal/application/pipeline/` 和 `internal/application/pipeline_run/`。
 
 ## 文档分层
 
 | 类型 | 路径 | 用途 |
 |------|------|------|
-| 活 SoT | `docs/product`、`architecture`、`decisions`、校准后的 `guides`/`frontend` | 实现与评审默认依据 |
+| 产品文档 | `docs/product/` | 产品边界与领域模型 |
 | 过程文档 | `docs/intent\|spec\|plan\|verification` | **仅进行中** SpecFlow 任务 |
 | 归档 | `docs/archive/**` | 历史；**无须采信** |

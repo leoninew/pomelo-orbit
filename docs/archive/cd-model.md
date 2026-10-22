@@ -1,7 +1,7 @@
 # Project 环境与 CD 产品模型
 最后修改时间: 2026-10-21 13:48:17
 
-Doc role: living product model
+历史模型记录；当前概览见 [文档入口](../README.md)。
 
 ## 核心对象
 
@@ -91,4 +91,4 @@ CD 总执行时间由 `deployment.execution_timeout` 限制，基准为 `1h`；�
 
 ## 项目环境 CLI
 
-项目 code 可作为 SSH alias，通过 PAT 与 Orbit 服务端连接成员可见的已配置 SSH 环境，支持交互终端和一次性无 PTY 命令。此访问不依赖成功 Docker Probe、Gateway 或 Service；部署仍保留既有就绪要求。凭据、连接用户及主机指纹复用 Environment 受管数据，客户端不导出私钥。local 和未配置环境不可执行 CLI 远程命令。调用及状态边界见[项目环境 CLI 指南](../guides/project-environment-cli.md)。
+CLI 通过项目 code 定位成员可见的 SSH 环境，支持交互终端、一次性无 PTY 命令和端口转发。本地 CLI 共用服务端配置与数据库，以 PAT 识别操作者并直接连接目标 SSH。此访问不依赖成功 Docker Probe、Gateway 或 Service；部署仍保留既有就绪要求。凭据、连接用户及主机指纹复用 Environment 受管数据，客户端不导出私钥。local 和未配置环境不可执行 CLI 远程命令。命令见 `task cli -- env --help`。

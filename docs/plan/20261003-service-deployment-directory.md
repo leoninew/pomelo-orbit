@@ -11,7 +11,7 @@ Mode: standard
 
 ## Current findings
 
-- `internal/application/gateway/usecase/service.go` 的创建逻辑明确使用 `ApplicationKindStandard`；[决策 C-04](../decisions/ledger.md) 目前指定 Gateway 身份由 `gateway_config` 关联表达。用户已明确要求改变这一设计：纠正创建逻辑及已有真实 Gateway 类型，并让服务入口直接依据 `application_kind=gateway` 禁用部署；实现时同步改写 C-04，不保留类型与额外识别字段并行的方案。
+- `internal/application/gateway/usecase/service.go` 的创建逻辑明确使用 `ApplicationKindStandard`；[决策 C-04](../archive/decision-ledger.md) 目前指定 Gateway 身份由 `gateway_config` 关联表达。用户已明确要求改变这一设计：纠正创建逻辑及已有真实 Gateway 类型，并让服务入口直接依据 `application_kind=gateway` 禁用部署；实现时同步改写 C-04，不保留类型与额外识别字段并行的方案。
 - Application 和 Service 的响应已经提供 `kind` / `application_kind`，不需要新增 `is_gateway`。普通应用编辑只更新名称和编码，不会把 Gateway 改回 `standard`；需保留此类型行为。
 - `SelectGatewayDeploymentVersion` 按已保存的 ACME profile 选择绑定版本。普通服务弹窗允许自由选择版本，但该选择随后可能被网关流程重新选择；应禁用错误入口，而非让其模拟普通服务部署。
 - Gateway 页面目前也调用 `serviceApi.deploy`。按钮限制属于 Web 入口规则，不能在共享服务部署 API 中一概拒绝 Gateway，否则正确入口也无法工作。

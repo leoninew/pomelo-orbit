@@ -8,7 +8,7 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 ## 基础原则
 
 - 范围限定为 `web/`（历史文案中的 `frontend` 指同一前端工程）。
-- 遵从 [编码规范](../../CLAUDE.md)；开发服务器由用户管理，不主动启动、停止或重启。
+- 遵从 [编码规范](../../../AGENTS.md)；开发服务器由用户管理，不主动启动、停止或重启。
 - 优先使用 Reka UI、共享组件和共享样式类，不复刻旧实现。
 - 页面层避免直接使用 Reka primitives 组合业务外壳；优先使用项目内共享组件。
 - 字段差异是业务差异，不为统一风格强行补齐或删除字段。
@@ -17,9 +17,9 @@ Doc role: living guide。范围：`web/`。与代码冲突时以代码为准。
 
 ## 相关文档
 
-- [前端架构](./architecture.md)
-- [Reka UI 使用指南](./reka-ui-guide.md)
-- [编码规范](../../CLAUDE.md)
+- [前端架构](architecture.md)
+- [Reka UI 使用指南](reka-ui-guide.md)
+- [编码规范](../../../AGENTS.md)
 
 ## 表格
 

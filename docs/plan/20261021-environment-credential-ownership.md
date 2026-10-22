@@ -10,7 +10,7 @@ Accepted
 - [同名意图](../intent/20261021-environment-credential-ownership.md)已因用户于 2026-10-21 要求“开始计划”而接受。本计划覆盖 A01–A08。
 - 用户于 2026-10-21 要求“开始实现”，本计划据此接受；随后要求“完成 SpecFlow 验证”，授权已覆盖实现、必要开发检查和整体验证，业务数据库迁移不在本次执行范围。
 - 调查基线：`ef610ac4`。工作树包含本任务意图文档；以实施开始时的最新迁移序号和实际代码再次核对基线。
-- 遵循 [AGENTS.md](../../AGENTS.md)、[后端架构治理 skill](../../.agents/skills/backend-architecture-governance/SKILL.md)、[产品模型](../product/cd-model.md)和[CD 运行时](../architecture/cd-runtime.md)。
+- 遵循 [AGENTS.md](../../AGENTS.md)、[后端架构治理 skill](../../.agents/skills/backend-architecture-governance/SKILL.md)、[产品模型](../archive/cd-model.md)和[CD 运行时](../archive/architecture/cd-runtime.md)。
 
 ## Technical decisions / 技术设计与决策
 
@@ -205,7 +205,7 @@ MySQL/PostgreSQL 按既有 `internal/test/e2e` 显式配置在隔离库验证升
 
 - 存储：新增 SQLite/MySQL/PostgreSQL 的 000054 up/down，约束为 `environment_id NOT NULL UNIQUE` + `ON DELETE RESTRICT`；有效旧绑定保留原密钥 ID、密文、修订、时间以及环境状态和任务快照。异常绑定提前拒绝，未绑定旧密钥不进入当前表。PostgreSQL 显式区分升级/回退主键约束名，避免重命名表后索引名冲突。
 - 仓储与用例：Environment 左连接派生凭据身份，写入移除凭据字段；密钥按环境读取。初始化先写环境后写凭据并重读；SSH→local 删除子行，切回 SSH 需显式生成新密钥。交接恢复使用新凭据 ID，保持包内密钥/revision，旧会话不再有效；指纹写入通过 EXISTS 校验当前子表身份。
-- 工具与文档：工作区 Python/Go helper 使用新的环境归属；同步当前测试夹具、SQLC、MySQL/SQLite schema 快照及活文档，新增[迁移指南](../guides/environment-credential-migration.md)并登记索引。公开 API、交接格式、前端及历史迁移不变。
+- 工具与文档：工作区 Python/Go helper 使用新的环境归属；同步当前测试夹具、SQLC、MySQL/SQLite schema 快照及活文档，新增[迁移指南](../archive/guides/environment-credential-migration.md)并登记索引。公开 API、交接格式、前端及历史迁移不变。
 - 最小持久化证据：真实 SQLite 外键/唯一约束、无父环境插入拒绝、环境写入不能覆盖凭据、按环境隔离读取；首次创建与重复复用、类型切换、相同 revision 的交接替换使旧会话失效；新建、已有未初始化环境及交接替换三种凭据写失败均由调用方事务恢复原数据。
 - 迁移 SQL 已完成映射、异常检查及回退规则审查。初次实施曾运行版本 53→54→53→54 的测试；用户随后明确单元测试不覆盖数据迁移，已移除本次新增的迁移测试及旧数据夹具，不再将其作为持续测试交付。实际升级验证按迁移指南执行。
 

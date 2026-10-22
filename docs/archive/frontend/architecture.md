@@ -194,7 +194,7 @@ const routes = [
 
 ### 共享样式类
 
-详见 [风格一致性规范](./style-guide.md)
+详见 [风格一致性规范](style-guide.md)
 
 ## 性能优化
 
@@ -322,7 +322,7 @@ const relativeTime = formatRelativeTime(utcTime);
 
 ## 测试策略
 
-编写、审查与清理测试的具体实践见项目内 [frontend-unit-testing skill](../../.agents/skills/frontend-unit-testing/SKILL.md)，包括警告排查和实现变更后的测试漂移检查。
+编写、审查与清理测试的具体实践见项目内 [frontend-unit-testing skill](../../../.agents/skills/frontend-unit-testing/SKILL.md)，包括警告排查和实现变更后的测试漂移检查。
 
 前端只保留轻量单元测试，验证业务规则、数据转换、请求契约和简单组件的输入输出。优先主要正向流程与真实、高风险的失败边界，不追求覆盖率，不补齐每个组件的测试。
 
@@ -349,29 +349,35 @@ it('emits search when clicked', () => {
 });
 ```
 
-运行 `yarn --cwd web test`。根目录 `task test -- --cov` 仅收集 Go 覆盖率，前端仍运行普通单元测试。
+在 `web/` 运行 `corepack yarn test`。根目录 `task test -- --cov` 仅收集 Go 覆盖率，前端仍运行普通单元测试。
 
 ## 构建和部署
 
+使用 Node.js 22 和 Corepack，在 `web/` 执行以下命令。`package.json` 固定 Yarn Modern 版本；`.yarnrc.yml` 使用 `nodeLinker: node-modules`，沿用现有工具对 `node_modules` 的访问方式。
+
+首次安装执行 `corepack yarn install --immutable`，由 Corepack 下载固定版本的 Yarn。锁文件使用 npm 包标识与版本，下载源由 `npmRegistryServer` 配置，默认官方源；国内环境可通过 `YARN_NPM_REGISTRY_SERVER=https://registry.npmmirror.com` 覆盖。需要经镜像下载 Yarn 本身时，另设 `COREPACK_NPM_REGISTRY=https://registry.npmmirror.com`。切换源不修改锁文件，CI 和 Docker 均使用 immutable 安装。
+
+Yarn Modern 不自动运行自定义 `predev` / `prebuild`，因此 `dev` / `build` 脚本显式先执行 `monaco:assets`，再启动 Vite 或运行类型检查及生产构建。
+
 ### 开发环境
 ```bash
-yarn dev
+corepack yarn dev
 ```
 
 ### 生产构建
 ```bash
-yarn build
+corepack yarn build
 ```
 
 ### 代码检查
 ```bash
-yarn lint
-yarn lint:fix
-yarn typecheck
+corepack yarn lint
+corepack yarn lint:fix
+corepack yarn typecheck
 ```
 
 ## 相关文档
 
-- [Reka UI 使用指南](./reka-ui-guide.md)
-- [风格一致性规范](./style-guide.md)
-- [编码规范](../../AGENTS.md)
+- [Reka UI 使用指南](reka-ui-guide.md)
+- [风格一致性规范](style-guide.md)
+- [编码规范](../../../AGENTS.md)

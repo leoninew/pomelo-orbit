@@ -3,11 +3,11 @@
 
 Doc role: living guide。与代码冲突时以代码为准。
 
-> **For LLM Readers**: This document describes integration patterns and practices specific to this project. For Reka UI component API reference, see [reka-llms.txt](./reka-llms.txt).
+> **For LLM Readers**: This document describes integration patterns and practices specific to this project. For Reka UI component API reference, see [reka-llms.txt](reka-llms.txt).
 
 ## Quick Reference
 
-- **Reka UI Docs**: See [reka-llms.txt](./reka-llms.txt) for complete component catalog
+- **Reka UI Docs**: See [reka-llms.txt](reka-llms.txt) for complete component catalog
 - **Official Site**: https://reka-ui.com/
 - **Key Concept**: Reka UI provides unstyled, accessible primitives. We style them with Tailwind CSS v4.
 
@@ -693,10 +693,10 @@ Components({
 
 ## Additional Resources
 
-- **Reka UI Component Catalog**: [archived documentation](../archive/reka-ui-llms.txt)
+- **Reka UI Component Catalog**: [archived documentation](reka-llms.txt)
 - **Official Documentation**: https://reka-ui.com/
 - **Styling Guide**: https://reka-ui.com/docs/guides/styling.html
 - **Composition Guide**: https://reka-ui.com/docs/guides/composition.html
 - **Accessibility**: https://reka-ui.com/docs/overview/accessibility.html
-- **Project Style Guide**: [style-guide.md](./style-guide.md)
-- **Frontend Architecture**: [architecture.md](./architecture.md)
+- **Project Style Guide**: [style-guide.md](style-guide.md)
+- **Frontend Architecture**: [architecture.md](architecture.md)

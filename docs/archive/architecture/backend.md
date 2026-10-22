@@ -48,7 +48,7 @@ gen/proto 由 API 映射；gen/sqlc 由持久化实现消费，不进入业务�
 
 ## 测试与架构治理
 
-具体实践见项目内 [backend-architecture-governance skill](../../.agents/skills/backend-architecture-governance/SKILL.md)。单元测试执行真实规则和用例，只替换明确端口；临时 SQLite 的查询、约束、回滚和历史保留测试属于本地持久化集成验证，Gin/MCP 的内存协议验证及真实本地进程验证也按实际边界分类。默认 Go 测试包含这些验证，不等于全部是纯单测。
+具体实践见项目内 [backend-architecture-governance skill](../../../.agents/skills/backend-architecture-governance/SKILL.md)。单元测试执行真实规则和用例，只替换明确端口；临时 SQLite 的查询、约束、回滚和历史保留测试属于本地持久化集成验证，Gin/MCP 的内存协议验证及真实本地进程验证也按实际边界分类。默认 Go 测试包含这些验证，不等于全部是纯单测。
 
 架构治理应检查实际及传递依赖、装配和资源生命周期，不能仅因测试通过或包目录正确就认定职责归位。前端的测试限制不适用于后端真实的取消、租约、事务和资源释放承诺；外部数据库、Docker/Traefik 与远端 SSH 联调按既有显式条件启用。
 
@@ -121,9 +121,9 @@ Deployment 同样使用独立 `Service` 与 `ExecutionService`。HTTP/MCP 命令
 
 ## 相关
 
-- [CD 运行时](./cd-runtime.md)  
-- [产品 CD 模型](../product/cd-model.md)  
-- [决策账本](../decisions/ledger.md)  
+- [CD 运行时](cd-runtime.md)  
+- [产品 CD 模型](../cd-model.md)
+- [决策账本](../decision-ledger.md)  
 
 ## Go CLI 项目环境入口
 

@@ -1,16 +1,17 @@
 # Pomelo Orbit - Multi-stage Dockerfile (CN mirror accelerated)
 
 # Stage 1: Build web
-FROM node:20-alpine AS web-builder
+FROM node:22-alpine AS web-builder
 
 WORKDIR /app/web
 
 # Copy web package files
-COPY web/package.json web/yarn.lock ./
+COPY web/package.json web/yarn.lock web/.yarnrc.yml ./
 
-# Install dependencies (Taobao mirror)
-RUN yarn config set registry https://registry.npmmirror.com \
-    && yarn install --frozen-lockfile
+# Use the mirror for both the pinned Yarn release and dependency downloads.
+ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com \
+    YARN_NPM_REGISTRY_SERVER=https://registry.npmmirror.com
+RUN corepack enable && yarn install --immutable
 
 # Copy web source
 COPY web/ ./

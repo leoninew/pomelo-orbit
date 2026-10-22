@@ -17,12 +17,12 @@ Gateway 创建用例明确将 Application 的 `kind` 写为 `standard`，与当�
 
 现状依据：
 
-- [CD 产品模型](../product/cd-model.md)、[CD 运行时](../architecture/cd-runtime.md)、[工作目录与挂载](../guides/volume-mounting.md)。
+- [CD 产品模型](../archive/cd-model.md)、[CD 运行时](../archive/architecture/cd-runtime.md)、[工作目录与挂载](../archive/guides/volume-mounting.md)。
 - `web/src/views/service/ServicePage.vue`、`web/src/views/service/ServiceDetail.vue`：部署弹窗与版本选择。
 - `internal/application/deployment/usecase/deployment_execution.go`：目录解析、渲染、文件准备与执行。
 - `internal/infrastructure/runner/local/runtime.go`、`internal/infrastructure/runner/ssh/runtime.go`：目标运行时。
 - `internal/infrastructure/storage/local/physical_data_root.go`：Orbit 容器路径到 Docker daemon 路径的映射。
-- [决策账本 C-04](../decisions/ledger.md)、`internal/application/gateway/usecase/service.go`、`deployment.go`：Gateway 身份与 profile 版本选择。
+- [决策账本 C-04](../archive/decision-ledger.md)、`internal/application/gateway/usecase/service.go`、`deployment.go`：Gateway 身份与 profile 版本选择。
 - `web/src/views/gateway/GatewayDetail.vue`：Gateway 专属部署入口；目前仍调用共享服务部署 API。
 
 ## Goal

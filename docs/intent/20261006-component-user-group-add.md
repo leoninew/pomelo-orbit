@@ -33,7 +33,7 @@ Mode: standard
 
 现状依据：
 
-- [CD 产品模型](../product/cd-model.md)、[CD 运行时](../architecture/cd-runtime.md)、[工作目录与挂载](../guides/volume-mounting.md)、[Docker 部署指南](../guides/docker-deployment.md)。
+- [CD 产品模型](../archive/cd-model.md)、[CD 运行时](../archive/architecture/cd-runtime.md)、[工作目录与挂载](../archive/guides/volume-mounting.md)、[Docker 部署指南](../archive/guides/docker-deployment.md)。
 - `internal/model/application.go`、`internal/model/service.go`：Version 声明与 Service 覆盖模型。
 - `internal/application/deployment/usecase/effective_service_plan.go`、`runtime_fields.go`、`compose_renderer.go`：有效计划与 Compose 渲染。
 - `internal/application/deployment/usecase/compose_command.go`、`deployment_execution.go`、`directory_ownership.go`：Compose 身份、目录绑定与归属保护。

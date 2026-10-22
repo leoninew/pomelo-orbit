@@ -11,7 +11,7 @@ description: 治理 Pomelo Orbit 的 Go 后端职责分层、Gin/MCP/worker 入�
 
 ## 工作区与依据
 
-先确认工作区为 Pomelo Orbit。本文中的 `cmd/`、`internal/`、`sql/` 等路径相对项目根目录。读取当前 [AGENTS.md](../../../AGENTS.md)、[后端架构](../../../docs/architecture/backend.md) 和目标实现；涉及 CD 行为时读取 [产品模型](../../../docs/product/cd-model.md) 与 [运行时约定](../../../docs/architecture/cd-runtime.md)。具体落点与代表测试按需查阅 [项目边界](references/backend-boundaries.md)。本 skill 自包含，不要求检出其他仓库或安装通用架构 skill。
+先确认工作区为 Pomelo Orbit。本文路径相对项目根目录。读取 [AGENTS.md](../../../AGENTS.md)、[核心模型](../../../docs/README.md#核心模型) 和目标实现。具体落点与代表测试见 [项目边界](references/backend-boundaries.md)，归档文档不作为现行约定。
 
 用户指令和项目约束优先。架构或测试检查请求给出发现与证据；实施治理请求则完成授权范围内的代码、测试和验证。历史报告中的测试数量、授权和完成状态只属于当时，先核对当前代码与工作树。
 

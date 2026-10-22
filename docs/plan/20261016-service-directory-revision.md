@@ -10,7 +10,7 @@ Accepted
 - [意图](../intent/20261016-service-directory-revision.md) A01—A06。
 - 用户已确认物理目录原则并要求“记录问题并实施”，授权补齐前置记录、实现和必要开发检查。
 - 实施基线：HEAD `e8511cf8d786df17e1c9fcfa065f011b2add3dd6`，工作区已有 Route 相关实现/生成文件修改，不属于本次改动。
-- [后端架构](../architecture/backend.md)、[CD 产品模型](../product/cd-model.md)、[CD 运行时](../architecture/cd-runtime.md)、项目后端治理及前端单测 skill。
+- [后端架构](../archive/architecture/backend.md)、[CD 产品模型](../archive/cd-model.md)、[CD 运行时](../archive/architecture/cd-runtime.md)、项目后端治理及前端单测 skill。
 
 ## Technical decisions / 技术设计与决策
 

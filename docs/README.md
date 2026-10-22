@@ -1,40 +1,26 @@
-# Pomelo Orbit 文档中心
-最后修改时间: 2026-09-23 11:38:19
+# 文档
 
-## 阅读顺序（实现 / Agent 默认）
+Pomelo Orbit 管理 CI 流水线、Docker Compose 应用部署与 Traefik 网关，支持本机和 SSH 执行环境。
 
-1. **[INDEX.md](./INDEX.md)** — 主题 → 文件导航  
-2. **活 SoT**  
-   - [产品概览](./product/overview.md)  
-   - [Project 环境与 CD 领域模型](./product/cd-model.md)
-   - [后端架构](./architecture/backend.md)  
-   - [CD 运行时](./architecture/cd-runtime.md)  
-   - [决策账本](./decisions/ledger.md)  
-3. **How-to**：[`guides/`](./guides/)、[`frontend/`](./frontend/)  
-4. **进行中过程文档**：`requirement/` / `spec/` / `plan/` / `verification/`（仅未归档任务）  
-5. **归档** [`archive/`](./archive/) — **无须采信，不得作为实现或验收依据**
+## 核心模型
 
-与代码冲突时 **以代码为准**，并回写活文档。
+| 对象 | 职责与关系 |
+| --- | --- |
+| Project / Environment | Project 隔离成员和业务资源；初始化后拥有一个 CI/CD 共用环境，保存执行目标与工作区。 |
+| Environment Credential | SSH 环境的当前受管凭据，通过唯一的 `environment_id` 归属环境；先保存环境，再显式初始化凭据。 |
+| Repository / Credential | 所有 Project 共用的仓库与仓库凭据，与环境 SSH 凭据分开管理。 |
+| Pipeline / Stage | 全局模板与阶段用于复用；Project 内的应用流水线绑定仓库，通过快照固定执行定义。 |
+| Run / Artifact | 流水线执行及其产物；已映射组件的镜像可汇入一个新的应用版本。 |
+| Application / Version / Component | Project 内的应用及其版本化 Compose 拓扑声明。 |
+| Service / Deployment | Service 绑定版本、运行覆盖和部署目录；Deployment 冻结一次异步操作的输入。 |
+| Gateway / Route | 环境绑定一个 Traefik Gateway；自定义 Route 管理 HTTP/TCP 入口及目标。 |
 
-## 目录职责
+环境 Probe 仅用于诊断；执行操作校验当前目标、工作区、凭据与主机指纹。SSH 失败不回退本机。Service 以最新受理的操作为准，旧任务结果不能覆盖新状态。
 
-| 路径 | 职责 |
-|------|------|
-| `product/` | 产品真相：领域、术语、能力边界 |
-| `architecture/` | 技术/设计真相：栈、分层、运行时 |
-| `decisions/` | 有效 / 废止 / backlog 账本 |
-| `guides/` | 运维与操作 How-to（须对齐活 SoT） |
-| `frontend/` | 前端规范与架构 |
-| `requirement` 等 | SpecFlow **进行中** 过程文档 |
-| `archive/` | 历史过程库与过时文；见 [archive/README](./archive/README.md) |
+开发与常用命令见 [项目 README](../README.md)，工程约定见 [AGENTS.md](../AGENTS.md)。具体业务规则以对应实现、测试及进行中的变更规格为准。
 
-## 项目工程约束
+## 变更记录
 
-见仓库根目录 [`CLAUDE.md`](../CLAUDE.md)（API 单数、迁移不可改已执行文件、检查命令等）。
+进行中的 SpecFlow 文档位于 `intent/`、`spec/`、`plan/`、`verification/`。
 
-## 维护原则
-
-1. 活文档保持短、可导航；细节以代码为准。  
-2. SpecFlow 闭环后的过程文档应迁入 `archive/specflow/`。  
-3. 不在归档正文上「改写历史」；废止关系写入 `decisions/ledger.md`。  
-4. 新增文档放对目录；不要把过程草稿当 SoT。  
+[archive/](archive/README.md) 保存历史材料，不作为当前实现或验收依据。

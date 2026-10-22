@@ -1,21 +1,11 @@
 # Pomelo Orbit
 
-Pomelo Orbit 是一个面向本地容器环境的轻量级 CI/CD 平台，提供流水线、应用部署和 Traefik 网关管理。
+自托管 CI/CD 平台，管理流水线、应用部署和 Traefik 网关。后端使用 Go，前端使用 Vue 3，支持本机和 SSH 环境中的 Docker Compose。
 
-## 技术栈
+需要 Go、Node.js 22（含 Corepack）和 Task 3。前端在 `web/package.json` 固定 Yarn Modern 版本，使用 `node_modules`。
 
-- 后端：Go、Gin、sqlc、SQLite/MySQL/PostgreSQL
-- 前端：Vue 3、TypeScript、Vite、Tailwind CSS
-- 运行环境：Docker、Traefik
-
-## 快速开始
-
-先安装 Go、Node.js 22、Yarn 1、uv 和 Task 3。Task CLI 可通过 Go 安装：
-
-```bash
+```sh
 go install github.com/go-task/task/v3/cmd/task@v3.45.4
-export PATH="$(go env GOPATH)/bin:$PATH"
-
 task deps
 task web:dev
 task webapi:dev
@@ -23,16 +13,17 @@ task webapi:dev
 
 常用命令：
 
-```bash
-task check   # 类型检查、格式化和 lint
-task test    # 前后端单元测试
-task build   # 构建 Docker 镜像
-```
+| 命令 | 用途 |
+| --- | --- |
+| `task check` | 类型、格式和 lint 检查 |
+| `task test` | 前端与 Go 核心单测 |
+| `task test:go:all -- -count=1` | 完整 Go 测试 |
+| `task build` | 构建 Docker 镜像 |
+| `task build cn=1` | 使用国内镜像源构建 |
+| `task cli -- env --help` | 环境 SSH 与远程命令 |
 
-完整 Go 测试（包含集成验证）使用 `task test:go:all -- -count=1`。
+单独安装前端依赖：在 `web/` 执行 `corepack yarn install --immutable`。默认使用 npm 官方源；本地需使用国内源时，设置 `COREPACK_NPM_REGISTRY` 和 `YARN_NPM_REGISTRY_SERVER` 为 `https://registry.npmmirror.com`。两套 Docker 构建共用同一份锁文件。
 
-更多产品、架构和操作文档见 [`docs`](./docs/)。
+[开发约定](AGENTS.md) · [业务模型与文档](docs/README.md) · [打包与迁移脚本](scripts/README.md)
 
-## 许可证
-
-MIT License
+许可证：MIT。

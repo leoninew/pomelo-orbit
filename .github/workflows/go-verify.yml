@@ -21,14 +21,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
-          cache-dependency-path: web/yarn.lock
 
       - name: Enable Corepack
         run: corepack enable
 
+      - name: Locate Yarn cache
+        id: yarn-cache
+        working-directory: web
+        run: echo "path=$(corepack yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Yarn cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.yarn-cache.outputs.path }}
+          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('web/yarn.lock') }}
+          restore-keys: ${{ runner.os }}-node22-yarn-
+
       - name: Install locked web dependencies
-        run: yarn --cwd web install --frozen-lockfile
+        working-directory: web
+        run: corepack yarn install --immutable
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -67,7 +78,7 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn --cwd web test
+          (cd web && corepack yarn test)
           go test ./cmd/... ./internal/... ./sql
 
       - name: Set up Python

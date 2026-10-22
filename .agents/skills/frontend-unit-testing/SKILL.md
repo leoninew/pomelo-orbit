@@ -5,7 +5,7 @@ description: 在 Pomelo Orbit 的 web 前端编写、审查或精简轻量单元
 
 # 前端单元测试实践
 
-以当前生产代码的业务承诺为依据，使用已有 Vitest 工具链完成最小有效验证。先阅读 [项目约束](../../../AGENTS.md)、[前端架构的测试策略](../../../docs/frontend/architecture.md#测试策略) 和相关实现、生产调用方；不要以历史测试反推已经移除的需求。
+以当前生产代码的业务承诺为依据，使用已有 Vitest 工具链完成最小有效验证。先阅读 [项目约束](../../../AGENTS.md) 和相关实现、生产调用方；不要以历史测试反推已经移除的需求。
 
 ## 测试范围
 
@@ -33,7 +33,8 @@ description: 在 Pomelo Orbit 的 web 前端编写、审查或精简轻量单元
 检查警告时使用显式显示日志的命令：
 
 ```powershell
-yarn --cwd web test --reporter=default --silent=false --no-color
+cd web
+corepack yarn test --reporter=default --silent=false --no-color
 ```
 
 当前 Vitest 在 agent 环境可能默认使用隐藏已通过用例日志的 reporter；普通运行显示通过，不能证明没有警告。
@@ -54,12 +55,13 @@ yarn --cwd web test --reporter=default --silent=false --no-color
 
 ## 验证与交付
 
-修改前端实现或测试后，在仓库根目录运行：
+修改前端实现或测试后，从仓库根目录进入 `web/` 运行项目固定版本的 Yarn：
 
 ```powershell
-yarn --cwd web lint:fix
-yarn --cwd web typecheck
-yarn --cwd web test --reporter=default --silent=false --no-color
+cd web
+corepack yarn lint:fix
+corepack yarn typecheck
+corepack yarn test --reporter=default --silent=false --no-color
 ```
 
 普通单元测试即可，不运行前端覆盖率。根目录 `task test -- --cov` 的覆盖率只属于 Go，前端仍运行普通测试。仅修改实践文档或 skill 时，核验文档、链接及 skill 结构即可。

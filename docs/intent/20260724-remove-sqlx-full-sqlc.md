@@ -19,7 +19,7 @@ Review status: Accepted
 
 领域边界以共识文档为准：
 
-- [`docs/analyze/20260724-domain-split-consensus-共识.md`](../analyze/20260724-domain-split-consensus-共识.md)
+- [`docs/analyze/20260724-domain-split-consensus-共识.md`](../archive/analyze/20260724-domain-split-consensus-共识.md)
 
 **禁止**继续以 `ci` / `cd` 作为目标业务包或 sqlc 领域名；`ci`/`cd` 仅可保留为历史 HTTP 路由或 migration 分组标签。
 

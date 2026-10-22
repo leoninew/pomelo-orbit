@@ -1,7 +1,7 @@
 # Plan / 计划：通过项目别名连接环境并执行命令
 最后修改时间: 2026-10-16 12:37:36
 
-历史记录：本文的 Python/HTTP 实现已由 [Go CLI 共享业务任务](20261016-cli-command-consolidation.md)取代，以下保留当时实施记录；现行用法见 [CLI 指南](../guides/project-environment-cli.md)。
+历史记录：本文的 Python/HTTP 实现已由 [Go CLI 共享业务任务](20261016-cli-command-consolidation.md)取代，以下保留当时实施记录；现行用法见 [CLI 指南](../archive/guides/project-environment-cli.md)。
 
 ## Review status / 审查状态
 
@@ -211,7 +211,7 @@ uv --directory scripts run --locked --no-sync pytest
 - A03：Web 票据与 CLI PAT 共用 `internal/api/http/terminal` 协议；直接获取 grant 共用终端配额。Python 使用锁定的 websockets / prompt-toolkit，实现 raw 输入、控制键、Ctrl+]、resize、UTF-8 增量输出与关闭恢复；大段粘贴按 16 KiB 分帧，64 条队列溢出明确断开。
 - A04—A08：CommandService 与独立 SSH CommandRunner 已落地，包含同连接首次主机指纹固定、命令前资格复核、无 PTY 执行、stdin EOF、分离字节输出、真实退出状态、未知状态、总超时、每 2 秒资格复核、1 MiB 共享输出预算、独立配额及 5 秒清理预算。CLI 路由注册在请求 UoW 之前；PAT/JWT 分离，终端/命令正文不进入 HTTP 日志。部署 Probe 门槛保持原规则。
 - Windows 实施细化：沿用 PowerShell 编码和路径/字符串 quote；native 程序使用 ProcessStartInfo + 显式 Windows CRT argv 编码，继承 SSH 标准句柄，避免 Windows PowerShell native 参数绑定丢失空参数或内嵌引号。cmdlet/异常失败仍映射为非零退出。此为既定字面 argv/字节流承诺的具体实现，不增加第二种命令接口。
-- A09：新增 [调用指南](../guides/project-environment-cli.md)，同步 scripts README、环境变量模板、文档索引、产品模型、后端架构与 MCP/客户端指南。示例覆盖项目发现、交互、模型 JSON 调用及显式 Linux/Windows shell；标明无自动重试与诊断授权边界。
+- A09：新增 [调用指南](../archive/guides/project-environment-cli.md)，同步 scripts README、环境变量模板、文档索引、产品模型、后端架构与 MCP/客户端指南。示例覆盖项目发现、交互、模型 JSON 调用及显式 Linux/Windows shell；标明无自动重试与诊断授权边界。
 - 依赖：新增 `websockets==15.0.1`、`prompt-toolkit==3.0.52`，更新 uv.lock 并执行 `uv --directory scripts sync --all-groups --locked`；未升级无关依赖。uv 因跨磁盘缓存使用普通文件复制，未影响检查。
 
 开发证据（对应最终实现）：

@@ -30,7 +30,7 @@ Doc role: living SoT
 | C-20 | Repository 与 Repository Credential 全局共享，Project 只作成员校验上下文 | 仓库 `code`、凭据名称全局唯一；Application Pipeline、Run、Artifact 和 Environment 仍按 Project 归属；仓库删除检查所有现存应用流水线绑定，应用流水线删除检查其未结束 Run；历史 Run/Snapshot/Artifact 不直接阻止仓库删除 |
 | C-21 | Web CI/CD 日志统一组件、功能与样式，采用 Fetch + SSE | 全部来源运行中持续读取；文件按字节续读，容器跟随并按时间重叠恢复；关闭停止订阅并保留页面缓存；不提供复制/导出，部署终态不结束容器日志，stop 仍不展示容器日志 |
 | C-22 | Service 生命周期以后成功受理操作为准 | 创建 Deployment、设置当前指针和入队同事务；取消旧操作尽力且异常最多 warning，不等待物理退出；SQL 条件防止迟到回写，任务终态与历史删除不恢复旧资格。CD 使用独立 execution/cancel timeout（1h/5s），仅 Service 粒度，不处理 CI、心跳、租约、重启恢复或跨 Project 宿主协调 |
-| C-23 | 环境管理使用同一 Go 二进制的 `cli env`，本地直接 SSH | 与 WebAPI 共用配置、数据和业务，复用 MCP PAT 操作者及环境 SSH 身份；仅 SSH，首版 list/ssh/exec 和 forward start/status/stop。本地 TCP 转发固定到 SSH 主机自身回环端口；无自动重连。Python CLI/uv 项目及专属 HTTP 路由移除，仅标准库单文件 `scripts/release.py` 接续打包，见 [CLI 指南](../guides/project-environment-cli.md) |
+| C-23 | 环境管理使用同一 Go 二进制的 `cli env`，本地直接 SSH | 与 WebAPI 共用配置、数据和业务，复用 MCP PAT 操作者及环境 SSH 身份；仅 SSH，首版 list/ssh/exec 和 forward start/status/stop。本地 TCP 转发固定到 SSH 主机自身回环端口；无自动重连。Python CLI/uv 项目及专属 HTTP 路由移除，仅标准库单文件 `scripts/release.py` 接续打包，见 [CLI 指南](guides/project-environment-cli.md) |
 | C-24 | Environment Credential 是 Environment 的可选子记录 | `environment_id` 非空唯一外键；先环境后凭据，环境只读取派生身份。local 删除子行，显式初始化才生成密钥；交接替换使用新凭据 ID。000054 只迁移有效当前绑定，未绑定历史密钥的恢复依赖备份 |
 
 ## 废止（Superseded）
@@ -51,8 +51,8 @@ Doc role: living SoT
 | X-12 | MCP 浏览器 grant、loopback callback、token file、HTTP /mcp Bearer transport | C-18；显式进程凭据与内存 Core |
 | X-13 | Project 创建时自动预建 local Environment，空库预置 Gateway/Service | C-19；Project 与 membership 创建后由 Web Wizard 配置 Environment、Probe 与 Gateway |
 | X-14 | local Environment 工作目录来自 `workspace.deployment` 或运行时 YAML 回退 | `Environment.workspace_root` 为已保存的唯一工作区根；当前 CI 只在 local 执行，CD 按 local/ssh 目标执行 |
-| X-15 | Python 数据库重置、SQLite 复制、原生备份及 Service / Environment JSONL 传输命令 | 2026-10-08 移除 `database-ops`、`database-transfer` 与对应 skill、测试和 dbtalk 依赖；当时保留的 Python CLI 框架于 2026-10-16 按 C-23 移除。相关过程文档归档至 `docs/archive/specflow/`，[旧操作指南](../archive/guides/service-data-transfer.md)归档至 `docs/archive/guides/`；Project CD 接管 API / Web 继续使用现有业务实现 |
-| X-16 | `manage.py` 的手工升级、Docker 操作、旧目录备份和日志清理 | 2026-10-08 移除旧脚本；当时保留的独立 `remote ssh/exec/scp/tunnel` 及 scripts 专属连接配置于 2026-10-16 按 C-23 移除。已完成的[工作区改造过程文档](../archive/specflow/verification/20260818-configurable-ci-cd-workspaces.md)归档，当前受管部署见 [迁移指南](../guides/orbit-self-migration.md) |
+| X-15 | Python 数据库重置、SQLite 复制、原生备份及 Service / Environment JSONL 传输命令 | 2026-10-08 移除 `database-ops`、`database-transfer` 与对应 skill、测试和 dbtalk 依赖；当时保留的 Python CLI 框架于 2026-10-16 按 C-23 移除。相关过程文档归档至 `docs/archive/specflow/`，[旧操作指南](guides/service-data-transfer.md)归档至 `docs/archive/guides/`；Project CD 接管 API / Web 继续使用现有业务实现 |
+| X-16 | `manage.py` 的手工升级、Docker 操作、旧目录备份和日志清理 | 2026-10-08 移除旧脚本；当时保留的独立 `remote ssh/exec/scp/tunnel` 及 scripts 专属连接配置于 2026-10-16 按 C-23 移除。已完成的[工作区改造过程文档](specflow/verification/20260818-configurable-ci-cd-workspaces.md)归档，当前受管部署见 [迁移指南](guides/orbit-self-migration.md) |
 
 ## Backlog（非本账本承诺交付）
 

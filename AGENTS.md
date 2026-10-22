@@ -1,33 +1,24 @@
-# Repository Agent Instructions
+# 开发约定
 
-## 工作原则
+- 先读相关代码和测试，沿用项目职责边界；文档与代码冲突时以代码为准。
+- 直接实现当前设计；不添加兼容层、别名、默认值兜底或新旧逻辑并存。
+- 未经用户要求，不启动、停止或重启开发服务器，不修改已执行的迁移。
+- API 路由使用单数形式，如 `/api/ci/repository`。
+- 前端位于 `web/`，使用共享组件和现有样式；不散落底层 Reka primitives。时间展示使用 `web/src/utils/time.ts`。
+- 后端遵循既有事务、仓储和日志边界。架构与测试依赖治理见 [后端技能](.agents/skills/backend-architecture-governance/SKILL.md)。
+- 测试覆盖当前业务的主要流程和真实失败边界，不穷举理论情况，不保留已移除行为的断言。
+- 前端只保留轻量单测，不做并发、性能、集成、端到端或整页串联测试；见 [前端测试技能](.agents/skills/frontend-unit-testing/SKILL.md)。后端持久化、事务及协议测试按实际边界分类。
 
-- 先理解现状，再形成方案。开始实现前，应阅读相关代码与活文档，寻找仓库内最接近的既有实现和约定；方案应立足项目上下文，优先复用、扩展或保持一致。既有实现是重要参考而非不可质疑的模板，确实不适用时应基于当前需求作出清晰、一致的新设计。
-- 测试用于验证系统当前承诺的行为，优先覆盖主要正向流程和真实、高风险的失败边界。除非用户明确要求，不穷举理论上的负向情况，不对系统不存储、不可达、已不再适用或已经移除的业务行为建立断言。
-- 前端只保留轻量单元测试，聚焦业务规则、数据转换、请求契约和简单组件行为；不编写并发、性能、集成、端到端或复杂 UI 测试，不追求单元测试覆盖率。外部 API 与复杂子组件使用替身，不通过整页挂载串联 Router、Store 和 API 验证流程。编写、审查或清理前端测试时，遵循项目内 [frontend-unit-testing skill](.agents/skills/frontend-unit-testing/SKILL.md)。
-- 后端架构复查、测试依赖治理和跨层编排遵循项目内 [backend-architecture-governance skill](.agents/skills/backend-architecture-governance/SKILL.md)。单测直接验证真实规则与用例，只替换明确端口；持久化、事务和协议验证按实际边界分类，不将前端测试限制扩展到后端。
-- 项目工程 skill 统一维护于 `.agents/skills/`，仅供当前仓库使用。
-- 项目处于活跃开发期。除非用户明确要求，不引入兼容层、别名、默认值兜底或新旧逻辑并存；变更应直接收敛到当前设计。
-- 除非用户明确要求，不主动启动、停止或重启开发服务器；开发服务器默认由用户管理。
+## 验证
 
-## 实现约定
+- 前端：在 `web/` 运行 `corepack yarn lint:fix`、`corepack yarn typecheck`，按变更补充单测。
+- Go：运行 `task check` 和 `go test ./cmd/... ./internal/...`。
+- Go 核心单测：`task test:go:unit -- -count=1`；完整测试：`task test:go:all -- -count=1`。
+- 使用项目现有工具；计时使用 `-count=1`，不依据缓存结果判断性能。
 
-- API 路由统一使用单数形式，例如 `/api/ci/repository`。
-- 除非用户明确要求，不修改已执行的迁移文件。
-- 前端目录为 `web`。页面优先使用项目共享组件，组件样式和字体应沿用现有设计体系；除非用户明确要求，不直接散落底层 Reka primitives。
-- 前端时间展示统一使用 `web/src/utils/time.ts`；除非用户明确要求，不在业务代码中直接使用 `dayjs()`。
-- 后端事务、仓储、日志等基础模式应遵循仓库内已有边界与实现方式。
+## 文档
 
-## 变更验证
-
-- 修改前端后运行 `yarn --cwd web lint:fix` 与 `yarn --cwd web typecheck`。
-- 修改 Go 后端后运行 `task check` 与 `go test ./cmd/... ./internal/...`。
-- 日常核心规则与用例反馈使用 `task test:go:unit -- -count=1`；完整 Go 验证使用 `task test:go:all -- -count=1`。核心入口不替代上述固定检查，不通过测试结果缓存判断实际耗时。
-- 验证范围应与变更风险相匹配；除固定检查外，补充能够证明本次行为正确的最小有效验证。
-
-## 文档依据
-
-- 默认阅读顺序：`docs/README.md` -> `docs/INDEX.md` -> `docs/product/`、`docs/architecture/`、`docs/decisions/`，以及已校准的 `docs/guides/`、`docs/frontend/`。
-- `docs/archive/**` 为历史材料。除非用户明确要求，不将其作为实现或验收依据。
-- 进行中的 SpecFlow 任务使用 `docs/intent|spec|plan|verification`，已归档过程文档位于 `docs/archive/specflow/`。
-- 文档与代码冲突时以代码为准，并同步修正活文档。
+- 入口为 [README](README.md) 和 [业务模型与文档](docs/README.md)。文档只记录必要约定与操作，不复述代码和工作过程。
+- 进行中的 SpecFlow 文档位于 `docs/intent|spec|plan|verification`；完成后归档到 `docs/archive/specflow/`。
+- `docs/archive/` 仅供历史追溯，不作为当前实现或验收依据。
+- 项目技能维护于 `.agents/skills/`。

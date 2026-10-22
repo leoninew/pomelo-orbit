@@ -8,7 +8,7 @@ Review status: Accepted
 | 文档 | 用途 |
 | --- | --- |
 | [requirement](../intent/20260724-domain-split-closeout.md) | 最终业务边界、兼容策略与验收要求 |
-| [domain consensus](../analyze/20260724-domain-split-consensus-共识.md) | 领域地图、物理组织和依赖方向 |
+| [domain consensus](../archive/analyze/20260724-domain-split-consensus-共识.md) | 领域地图、物理组织和依赖方向 |
 | [route cutover workboard](20260724-domain-route-cutover-00-workboard.md) | 后续 API / SPA 路径硬切换的固定路径地图 |
 
 本 Plan 合并并替代此前 `20260724-domain-split-closeout-00` 至 `06` 的分片任务文档。阶段 1--4 可并行实现，阶段 5 是共享装配点的唯一切换，阶段 6 执行全局审计和硬切换；所有阶段已按此顺序完成。

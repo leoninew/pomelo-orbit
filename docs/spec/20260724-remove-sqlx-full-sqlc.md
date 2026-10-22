@@ -6,7 +6,7 @@ Review status: Accepted
 ## Requirement basis
 
 - 需求：[`docs/intent/20260724-remove-sqlx-full-sqlc.md`](../intent/20260724-remove-sqlx-full-sqlc.md)（Accepted）
-- 领域共识：[`docs/analyze/20260724-domain-split-consensus-共识.md`](../analyze/20260724-domain-split-consensus-共识.md)
+- 领域共识：[`docs/analyze/20260724-domain-split-consensus-共识.md`](../archive/analyze/20260724-domain-split-consensus-共识.md)
 - 收紧并覆盖：[`docs/intent/20260705-backend-go-sqlc.md`](../intent/20260705-backend-go-sqlc.md)
 
 ## Overview

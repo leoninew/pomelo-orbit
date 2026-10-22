@@ -15,7 +15,7 @@ Accepted
 
 仓库已有 `RunMCP` 本地入口，可作为共用应用服务的参考。环境业务已有受管密钥、主机指纹、目标及凭据修订校验，SSH 基础设施已有终端和 Windows/Linux 命令编码。
 
-依据：[应用入口](../../internal/bootstrap/app.go)、[环境访问用例](../../internal/application/environment/usecase/access.go)、[环境业务](../../internal/application/environment/usecase/service.go)、[SSH 连接](../../internal/infrastructure/runner/ssh/runtime.go)、[现行 CLI 指南](../guides/project-environment-cli.md)。
+依据：[应用入口](../../internal/bootstrap/app.go)、[环境访问用例](../../internal/application/environment/usecase/access.go)、[环境业务](../../internal/application/environment/usecase/service.go)、[SSH 连接](../../internal/infrastructure/runner/ssh/runtime.go)、[现行 CLI 指南](../archive/guides/project-environment-cli.md)。
 
 ## Goals / 目标
 

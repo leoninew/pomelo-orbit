@@ -1,7 +1,7 @@
 # Intent / 意图：通过项目别名连接环境并执行命令
 最后修改时间: 2026-10-16 12:37:36
 
-历史记录：本文的 Python/HTTP 方案已由 [Go CLI 共享业务任务](20261016-cli-command-consolidation.md)取代，以下保留当时目标；现行用法见 [CLI 指南](../guides/project-environment-cli.md)。
+历史记录：本文的 Python/HTTP 方案已由 [Go CLI 共享业务任务](20261016-cli-command-consolidation.md)取代，以下保留当时目标；现行用法见 [CLI 指南](../archive/guides/project-environment-cli.md)。
 
 ## Review status / 审查状态
 
@@ -30,7 +30,7 @@ Accepted
 
 现状依据：
 
-- [产品模型](../product/cd-model.md)、[后端架构](../architecture/backend.md)与[客户端调用机制](../guides/client-cloud-invocation.md)。
+- [产品模型](../archive/cd-model.md)、[后端架构](../archive/architecture/backend.md)与[客户端调用机制](../archive/guides/client-cloud-invocation.md)。
 - [环境终端用例](../../internal/application/environment/usecase/terminal.go)、[环境凭据](../../internal/application/environment/usecase/ssh_key.go)与[SSH runner](../../internal/infrastructure/runner/ssh/runtime.go)。
 - [HTTP 认证](../../internal/api/http/security/authz.go)、[PAT 认证服务](../../internal/application/auth/usecase/service.go)与[MCP 项目 scope](../../internal/api/mcp/delivery/scope.go)。
 - 当时的 CLI 使用说明及 `scripts/src/pomelo_orbit_cli/commands/remote.py`，源码现已删除。

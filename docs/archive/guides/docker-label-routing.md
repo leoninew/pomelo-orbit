@@ -218,4 +218,4 @@ networks:
 
 - [Traefik Docker Provider 文档](https://doc.traefik.io/traefik/providers/docker/)
 - [Traefik 路由规则](https://doc.traefik.io/traefik/routing/routers/)
-- [证书管理指南](./certificate-management.md)
+- [证书管理指南](certificate-management.md)

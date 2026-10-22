@@ -1,7 +1,7 @@
 # Verification / 验证：通过项目别名连接环境并执行命令
 最后修改时间: 2026-10-16 12:37:36
 
-历史记录：本文只证明当时的 Python/HTTP 实现，不替代 [Go CLI 共享业务任务](../plan/20261016-cli-command-consolidation.md)的开发检查和验收；现行用法见 [CLI 指南](../guides/project-environment-cli.md)。
+历史记录：本文只证明当时的 Python/HTTP 实现，不替代 [Go CLI 共享业务任务](../plan/20261016-cli-command-consolidation.md)的开发检查和验收；现行用法见 [CLI 指南](../archive/guides/project-environment-cli.md)。
 
 ## Review status / 审查状态
 
@@ -49,7 +49,7 @@ Accepted
 | A06 | 通过 | 实测 Docker Desktop 进程缺失、WSL 实例停止且引擎管道不存在时，SSH 宿主机诊断仍成功；无 Probe/Gateway 前置条件另有用例证据 |
 | A07 | 通过 | 每次实测显式 `--project guohua`；精确 code、访问拒绝、local 禁止及无自动回退/重试由用例与客户端实现覆盖 |
 | A08 | 通过 | 实测 45 秒 `timed_out`、部分输出和无 exit code；输出预算、配额、撤权和取消测试通过；命令正文日志排除测试通过 |
-| A09 | 通过 | [调用指南](../guides/project-environment-cli.md)与 CLI 参数一致；实测使用 list、exec、JSON、显式 shell 和 stdin，不依赖 SCP |
+| A09 | 通过 | [调用指南](../archive/guides/project-environment-cli.md)与 CLI 参数一致；实测使用 list、exec、JSON、显式 shell 和 stdin，不依赖 SCP |
 | A10 | 通过（开发检查与记录） | Implementation 固定检查通过，本轮未变更代码；已明确记录真实 Windows 实测及 A03 的未验证矩阵，不将其计为全平台通过 |
 
 ## Check results / 检查结果

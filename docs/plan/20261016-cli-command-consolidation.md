@@ -16,7 +16,7 @@ Accepted
 - 用户明确要求 Python CLI 相关实现首先移除；后续允许以最小依赖、单文件 `scripts/release.py` 承接复杂打包，不保留完整 uv 项目。
 - 用户明确端口转发使用本地 `-L`，不扩展目标主机访问其他主机的管理能力；要求规划 `forward` 状态、启动、停止。
 - 代码基线：HEAD `4e83dda1639cd7995f2eaa1d1031779672f64058`；实现前重新核对工作区。
-- 分层依据：[后端架构](../architecture/backend.md)、[项目架构治理 skill](../../.agents/skills/backend-architecture-governance/SKILL.md)。
+- 分层依据：[后端架构](../archive/architecture/backend.md)、[项目架构治理 skill](../../.agents/skills/backend-architecture-governance/SKILL.md)。
 
 ## Technical decisions / 技术设计与决策
 

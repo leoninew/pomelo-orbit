@@ -1,9 +1,9 @@
 # Docker 部署与服务器首次部署指南
 最后修改时间: 2026-10-09 19:55:36
 
-Doc role: living guide（运维向）。与代码冲突时以代码为准；领域模型见 [CD 模型](../product/cd-model.md)。
+Doc role: living guide（运维向）。与代码冲突时以代码为准；领域模型见 [CD 模型](../cd-model.md)。
 
-本指南统一说明 Pomelo Orbit 的 Docker 部署、服务器首次部署、更新和目录权限要求。服务器首次部署不再维护另一套重复步骤；旧入口见 [服务器首次部署兼容入口](./server-deployment.md)。
+本指南统一说明 Pomelo Orbit 的 Docker 部署、服务器首次部署、更新和目录权限要求。服务器首次部署不再维护另一套重复步骤；旧入口见 [服务器首次部署兼容入口](server-deployment.md)。
 
 ## 前置条件
 
@@ -64,6 +64,8 @@ EOF
 ```
 
 如果使用本地构建镜像，将 `image` 改为对应的本地镜像标签即可；Compose 其余的数据、socket 和权限配置保持一致。
+
+源码构建使用 `task build`，国内镜像源构建使用 `task build cn=1`。两份 Dockerfile 的前端阶段统一使用 Node.js 22、Corepack 和 `web/package.json` 固定的 Yarn Modern，复制 `.yarnrc.yml` 并执行 `yarn install --immutable`。普通构建使用 npm 官方源；`Dockerfile.cn` 通过 `COREPACK_NPM_REGISTRY` 和 `YARN_NPM_REGISTRY_SERVER` 指定 npmmirror，分别用于下载 Yarn 与前端依赖。两种构建共用同一份锁文件，不在构建期间改写包地址。
 
 ## 3. 准备 .env 和目录权限
 

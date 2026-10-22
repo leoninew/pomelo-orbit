@@ -7,7 +7,7 @@ Review status: Accepted
 
 领域拆分已将 HTTP、Proto、sqlc 和部分 application 代码迁入资源领域目录，但仍需完成业务术语、application family 接线和历史 `ci` / `cd` 双桶的收口。本需求定义收尾后的唯一生产边界；此前按任务拆分的实施文档由同名 Plan 统一替代。
 
-领域边界、物理组织和依赖方向以 [领域拆分共识](../analyze/20260724-domain-split-consensus-共识.md) 为准。
+领域边界、物理组织和依赖方向以 [领域拆分共识](../archive/analyze/20260724-domain-split-consensus-共识.md) 为准。
 
 ## Goal
 

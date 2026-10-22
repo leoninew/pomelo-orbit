@@ -90,7 +90,7 @@ Accepted
 
 ## Risks / 风险
 
-- 当前没有实际业务库的数据预检查证据。异常绑定或未绑定密钥数量须在升级前按[迁移指南](../guides/environment-credential-migration.md)确认。
+- 当前没有实际业务库的数据预检查证据。异常绑定或未绑定密钥数量须在升级前按[迁移指南](../archive/guides/environment-credential-migration.md)确认。
 - 未绑定历史密钥不会迁入新表，down 无法恢复这些行；完整恢复依赖升级前数据库备份和对应加密配置。
 - MySQL DDL 有隐式提交，失败不能假设整体自动回滚；三库真实升级/回退及外部 SSH 场景未获得本轮运行证据。
 

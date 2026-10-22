@@ -1,15 +1,15 @@
 # Pomelo Orbit - Multi-stage Dockerfile
 
 # Stage 1: Build web
-FROM node:20-alpine AS web-builder
+FROM node:22-alpine AS web-builder
 
 WORKDIR /app/web
 
 # Copy web package files
-COPY web/package.json web/yarn.lock ./
+COPY web/package.json web/yarn.lock web/.yarnrc.yml ./
 
 # Install dependencies
-RUN yarn install --frozen-lockfile
+RUN corepack enable && yarn install --immutable
 
 # Copy web source
 COPY web/ ./

@@ -15,7 +15,7 @@ tasks:
       GOTOOLCHAIN: local
       PATH: '{{.TASKFILE_DIR}}/bin{{if eq OS "windows"}};{{else}}:{{end}}{{.PATH}}'
     cmds:
-      - yarn --cwd web install --frozen-lockfile
+      - cd web && corepack yarn install --immutable
       - mkdir -p bin
       - |
         set -e
@@ -72,7 +72,7 @@ tasks:
   web:dev:
     desc: Start the frontend development server
     cmds:
-      - yarn --cwd web dev
+      - cd web && corepack yarn dev
 
   cli:
     desc: Run the local CLI with development configuration
@@ -91,9 +91,9 @@ tasks:
       WEB_LINT_TASK: '{{if eq .FIX_ENABLED "1"}}lint:fix{{else}}lint{{end}}'
       WEB_FORMAT_TASK: '{{if eq .FIX_ENABLED "1"}}format:fix{{else}}format{{end}}'
     cmds:
-      - yarn --cwd web typecheck
-      - yarn --cwd web {{.WEB_LINT_TASK}}
-      - yarn --cwd web {{.WEB_FORMAT_TASK}}
+      - cd web && corepack yarn typecheck
+      - cd web && corepack yarn {{.WEB_LINT_TASK}}
+      - cd web && corepack yarn {{.WEB_FORMAT_TASK}}
       - ./bin/golangci-lint config verify
       - ./bin/golangci-lint fmt {{.FIX_FORMAT_ARGS}} ./cmd/... ./internal/... ./sql
       - ./bin/golangci-lint run {{.FIX_LINT_ARGS}} ./cmd/... ./internal/... ./sql
@@ -114,7 +114,7 @@ tasks:
       COVER_ENABLED: '{{if contains "--cov" (default "" .CLI_ARGS)}}1{{end}}'
       COVER_ARGS: '{{if eq .COVER_ENABLED "1"}}-cover -coverprofile=coverage.out{{end}}'
     cmds:
-      - yarn --cwd web test
+      - cd web && corepack yarn test
       - task: test:go:unit
         vars:
           CLI_ARGS: '{{.COVER_ARGS}}'

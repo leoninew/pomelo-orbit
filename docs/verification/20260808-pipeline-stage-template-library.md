@@ -14,7 +14,7 @@ Review status: Draft
 
 ## Spec Alignment
 
-- 实现与活文档 [CI Pipeline 设计](../guides/ci-pipeline-design.md) 和 [CD 领域模型](../product/cd-model.md) 一致。
+- 实现与活文档 [CI Pipeline 设计](../archive/guides/ci-pipeline-design.md) 和 [CD 领域模型](../archive/cd-model.md) 一致。
 - 既有 Requirement、Spec、Plan 仍含“模板阶段和引用不保存制品”的旧设计。按用户指令未回写，后续与旧过程文档一并归档。
 
 ## Plan Alignment

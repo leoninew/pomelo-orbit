@@ -9,7 +9,7 @@ Review status: Accepted
 |------|------|
 | [requirement](../intent/20260724-remove-sqlx-full-sqlc.md) | Accepted |
 | [spec](../spec/20260724-remove-sqlx-full-sqlc.md) | Accepted |
-| [domain consensus](../analyze/20260724-domain-split-consensus-共识.md) | 已确认基线 |
+| [domain consensus](../archive/analyze/20260724-domain-split-consensus-共识.md) | 已确认基线 |
 
 流程：标准模式 / standard。合入策略：**特性分支一次切主干**（分支内可按步提交，不在主干分域渐进）。
 

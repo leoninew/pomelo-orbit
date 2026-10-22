@@ -24,7 +24,7 @@
 
 ## 依据与边界
 
-- 当前 `AGENTS.md`、`Taskfile.yml`、[后端架构](../architecture/backend.md)、CD 产品模型与运行时约定。
+- 当前 `AGENTS.md`、`Taskfile.yml`、[后端架构](../archive/architecture/backend.md)、CD 产品模型与运行时约定。
 - 用户指定的 K12 Delivery OS `architecture-governance`：采用按职责追踪、通过端口直接测试、治理实现与测试依赖的原则。
 - `best-practices:backend-service-architecture`（0.1.0）：采用分层、依赖方向、生成代码隔离、组合根和适配器边界。
 - 项目内 [backend-architecture-governance](../../.agents/skills/backend-architecture-governance/SKILL.md) 及其[项目边界](../../.agents/skills/backend-architecture-governance/references/backend-boundaries.md)。该 skill 自包含，无须另一项目或插件存在。

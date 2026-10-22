@@ -1,7 +1,7 @@
 # Orbit 作为普通应用的停机迁移
 最后修改时间: 2026-10-06 21:49:12
 
-本指南记录普通应用迁移步骤，操作入口为 `ssh tencent`。2026-10-06 已执行初次迁移；实际证据、发现的问题、备份位置及修正版待人工验收状态见 [本次 Verification](../verification/20261006-component-user-group-add.md#tencent-execution-and-handoff)。Orbit 使用普通 Application / Version / Service，通过目录和 Docker socket 挂载使用现有 DooD。
+本指南记录普通应用迁移步骤，操作入口为 `ssh tencent`。2026-10-06 已执行初次迁移；实际证据、发现的问题、备份位置及修正版待人工验收状态见 [本次 Verification](../../verification/20261006-component-user-group-add.md#tencent-execution-and-handoff)。Orbit 使用普通 Application / Version / Service，通过目录和 Docker socket 挂载使用现有 DooD。
 
 ## 1. 前置准备
 
@@ -48,7 +48,7 @@ docker compose -p pomelo-orbit -f /opt/pomelo-orbit/docker-compose.yml stop
 
 ## 4. Gateway 与域名
 
-Gateway 保持原目录 `/opt/pomelo-orbit/data/deployment/traefik-default`、project `traefik-default`。先核对真实 Environment、Service code 和原 Compose 的用途，备份 Compose 后从 Gateway 入口确认原目录并正常重部署，生成受管配置和运行绑定。当前部署不要求 owner 标记；通过其他服务根目录及实际挂载占用检查后，会替换已有 Compose。保留 dynamic/certs/acme，不伪造数据库部署成功或运行目录。参见 [确认部署目录](./deployment.md#确认部署目录)。
+Gateway 保持原目录 `/opt/pomelo-orbit/data/deployment/traefik-default`、project `traefik-default`。先核对真实 Environment、Service code 和原 Compose 的用途，备份 Compose 后从 Gateway 入口确认原目录并正常重部署，生成受管配置和运行绑定。当前部署不要求 owner 标记；通过其他服务根目录及实际挂载占用检查后，会替换已有 Compose。保留 dynamic/certs/acme，不伪造数据库部署成功或运行目录。参见 [确认部署目录](deployment.md#确认部署目录)。
 
 外部或内部 worker 都可执行，因为共享规则依据已部署的容器标签与实际 bind。Gateway 就绪后，配置 `orbit.preflite.cn`、`orbit-api.preflite.cn` 两条 Route，目标为新 Service 的 `pomelo-orbit` component / HTTP 80 endpoint，使用实际支持的 entrypoint 与 resolver。先预览 Route sync，再显式确认冻结修订；普通部署不会自动发布 Route。检查 TLS/SNI、登录和 API。
 

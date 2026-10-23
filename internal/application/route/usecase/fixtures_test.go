@@ -3,6 +3,7 @@ package routesvc
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ const (
 type recordingRoutePublisher struct {
 	published    []model.Route
 	publications map[string]routeport.Publication
+	owners       map[string][]string
 	failures     map[string]error
 	attempts     []string
 	dependencies string
@@ -54,6 +56,18 @@ func (p *recordingRoutePublisher) InspectPublication(_ context.Context, _ string
 	}
 	return nil, nil
 }
+
+// Ownership is supplied as port facts, independently of publication phases.
+func (p *recordingRoutePublisher) FindPublicationOwners(_ context.Context, _ string, _ model.GatewayConfig, names []string) (map[string][]routeport.Publication, error) {
+	owners := make(map[string][]routeport.Publication)
+	for _, name := range names {
+		for _, id := range p.owners[name] {
+			owners[name] = append(owners[name], p.publications[id])
+		}
+	}
+	return owners, nil
+}
+
 func (p *recordingRoutePublisher) PublishRoute(_ context.Context, _ string, _ model.GatewayConfig, route model.Route, _ string) (routeport.PublicationResult, error) {
 	p.attempts = append(p.attempts, route.Id)
 	result := routeport.PublicationResult{OperationId: "operation-" + route.Id, FileCommit: "committed", ConfigurationMatch: "matched", CertificateVerification: "not_applicable", Recovery: "not_needed", Cleanup: "completed"}
@@ -71,6 +85,11 @@ func (p *recordingRoutePublisher) PublishRoute(_ context.Context, _ string, _ mo
 		p.publications = make(map[string]routeport.Publication)
 	}
 	p.publications[route.Id] = routeport.Publication{Route: route, Phase: "confirmed"}
+	if !route.Enabled {
+		for name, ids := range p.owners {
+			p.owners[name] = slices.DeleteFunc(ids, func(id string) bool { return id == route.Id })
+		}
+	}
 	return result, nil
 }
 

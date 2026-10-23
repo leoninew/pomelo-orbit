@@ -29,6 +29,9 @@ type RouteConfigPublisher interface {
 	OpenSession(context.Context, string) (context.Context, func(), error)
 	ListPublicationRouteIds(context.Context, string, model.GatewayConfig) ([]string, error)
 	InspectPublication(context.Context, string, model.GatewayConfig, model.Route) (*Publication, error)
+	// FindPublicationOwners inspects only files belonging to the requested names,
+	// including previous names retained by interrupted publications.
+	FindPublicationOwners(context.Context, string, model.GatewayConfig, []string) (map[string][]Publication, error)
 	PublishRoute(context.Context, string, model.GatewayConfig, model.Route, string) (PublicationResult, error)
 	ValidateGateway(context.Context, string, model.GatewayConfig, []model.Route) (string, error)
 }

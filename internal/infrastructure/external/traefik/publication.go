@@ -134,7 +134,7 @@ func (m *RouteManager) InspectPublication(ctx context.Context, projectId string,
 	if err != nil {
 		return nil, err
 	}
-	item, err = readPublicationRecord(ctx, projectId, gateway, target, files, base, route)
+	item, err = readPublicationRecord(ctx, projectId, gateway, target, files, base, route, nil)
 	if err != nil || item == nil {
 		return item, err
 	}
@@ -144,7 +144,7 @@ func (m *RouteManager) InspectPublication(ctx context.Context, projectId string,
 	return item, nil
 }
 
-func readPublicationRecord(ctx context.Context, projectId string, gateway model.GatewayConfig, target environmentport.Target, files deploymentport.WorkspaceFiles, base string, route model.Route) (item *routeport.Publication, resultErr error) {
+func readPublicationRecord(ctx context.Context, projectId string, gateway model.GatewayConfig, target environmentport.Target, files deploymentport.WorkspaceFiles, base string, route model.Route, names map[string]bool) (item *routeport.Publication, resultErr error) {
 	if !validPublicationId(route.Id) {
 		return nil, errors.New("invalid Route publication identity")
 	}
@@ -172,6 +172,15 @@ func readPublicationRecord(ctx context.Context, projectId string, gateway model.
 	var record routeport.Publication
 	if err := json.Unmarshal(data, &record); err != nil {
 		return nil, apperror.WrapWithCode(apperror.KindConflict, "route_sync_publication_record_invalid", "Route publication record is invalid.", fmt.Errorf("decode Route %s publication record: %w", route.Id, err))
+	}
+	if names != nil {
+		matched := false
+		for _, name := range publicationOwnerNames(record) {
+			matched = matched || names[name]
+		}
+		if !matched {
+			return nil, nil
+		}
 	}
 	// An ID without a business Route also comes from Project-wide discovery.
 	// A valid record owned by another Project is outside that scope; do not
@@ -395,7 +404,7 @@ func (m *RouteManager) PublishRoute(ctx context.Context, projectId string, gatew
 		return result, err
 	}
 	checkCtx, finishCheck := operation.StartStage(ctx, "Route sync", "verify_publication", m.timeouts.StateLoad, "operation_id", result.OperationId)
-	previous, err := readPublicationRecord(checkCtx, projectId, gateway, target, files, base, route)
+	previous, err := readPublicationRecord(checkCtx, projectId, gateway, target, files, base, route, nil)
 	if err == nil && previous != nil {
 		err = inspectPublication(checkCtx, target, files, base, previous)
 	}

@@ -41,6 +41,15 @@ func TestProjectPublicationDiscoveryExcludesOtherProjects(t *testing.T) {
 	if len(runtime.writes) != 0 {
 		t.Fatal("preview modified publication files")
 	}
+	owners, err := m.FindPublicationOwners(context.Background(), "project-1", testGateway(), []string{current.Name, foreign.Name})
+	if err != nil || len(owners) != 1 || len(owners[current.Name]) != 1 || owners[current.Name][0].Route.Id != current.Id {
+		t.Fatalf("owner lookup included another Project: owners=%+v err=%v", owners, err)
+	}
+	for _, name := range runtime.reads {
+		if name == activeTestPath(foreign.Name) {
+			t.Fatal("owner lookup inspected another Project's runtime configuration")
+		}
+	}
 	// The same file must remain a conflict for a real business Route in scope.
 	_, err = m.InspectPublication(context.Background(), "project-1", testGateway(), foreign)
 	if !apperror.IsKind(err, apperror.KindConflict) || apperror.Classify(err).Code != "route_sync_publication_ownership_conflict" {
@@ -48,5 +57,16 @@ func TestProjectPublicationDiscoveryExcludesOtherProjects(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), otherProject) || strings.Contains(apperror.Classify(err).Message, otherProject) {
 		t.Fatalf("ownership details must be retained for logs, with a separate UI message: %v", err)
+	}
+	// A matching record from this Project must still belong to its Gateway.
+	record.Route.ProjectId = current.ProjectId
+	data, err = json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.files[publicationRecordPath(foreign.Id)] = data
+	_, err = m.FindPublicationOwners(context.Background(), "project-1", testGateway(), []string{foreign.Name})
+	if err == nil || apperror.Classify(err).Code != "route_sync_publication_ownership_conflict" {
+		t.Fatalf("owner lookup accepted another Gateway: %v", err)
 	}
 }

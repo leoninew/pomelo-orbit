@@ -79,6 +79,7 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 	if s.transactionRunner == nil {
 		return result, apperror.New(apperror.KindInternal, "route sync transaction is not configured")
 	}
+	withdrawn := make(map[string]bool)
 	for index, route := range plan.routes {
 		item := routedto.RouteSyncResult{RouteId: route.Id, RouteName: route.Name, BusinessSave: "unchanged", FileCommit: "not_attempted", ConfigurationMatch: "unverified", CertificateVerification: "not_applicable", Recovery: "not_needed", Cleanup: "not_attempted"}
 		if route.Enabled && route.HTTPSEnabled {
@@ -97,19 +98,7 @@ func (s Service) ConfirmRouteSync(ctx context.Context, userId string, projectId 
 			if len(one.updates) != 0 {
 				item.BusinessSave = "saved"
 			}
-			fingerprint := ""
-			if publication, found := plan.publications[route.Id]; found {
-				fingerprint = hashSyncValue(publication)
-			}
-			if !route.Enabled && fingerprint == "" {
-				item.Code = "route_sync_completed"
-				item.FileCommit = "not_applicable"
-				item.ConfigurationMatch = "not_applicable"
-				item.Cleanup = "not_applicable"
-				result.Results = append(result.Results, item)
-				continue
-			}
-			published, publishErr := s.routePublisher.PublishRoute(ctx, projectId, plan.gateway, route, fingerprint)
+			published, publishErr := s.publishSyncRoute(ctx, projectId, one, withdrawn)
 			item.OperationId, item.FileCommit, item.ConfigurationMatch = published.OperationId, published.FileCommit, published.ConfigurationMatch
 			item.CertificateVerification, item.Recovery, item.Cleanup = published.CertificateVerification, published.Recovery, published.Cleanup
 			err = publishErr

@@ -262,6 +262,20 @@ def migration_sql(operations: list[dict[str, Any]]) -> str:
     return f"DO {delimiter}\nBEGIN\n{body}\nEND;\n{delimiter};\n"
 
 
+def verify_business_data(db: Database, operations: list[dict[str, Any]]) -> None:
+    checks = []
+    for op in operations:
+        expected = {**op["key"], **op["after"]}
+        checks.append(
+            f'SELECT {sql_value(op["table"])} AS table_name, {sql_value(op["key"]["id"])} AS id '
+            f'WHERE NOT EXISTS (SELECT 1 FROM "{op["table"]}" WHERE {predicate(expected)})'
+        )
+    missing = db.query(" UNION ALL ".join(checks))
+    if missing:
+        raise MigrationError("Business data does not match the migration: "
+                             + ", ".join(row["table_name"] + "/" + row["id"] for row in missing))
+
+
 def inventory(db: Database, environment: str) -> dict[str, Any]:
     environments = db.query(
         "SELECT e.*,c.id AS ssh_credential_id,c.revision AS ssh_credential_revision,p.name AS project_name FROM environment e JOIN project p ON p.id=e.project_id LEFT JOIN environment_credential c ON c.environment_id=e.id AND e.target_type='ssh' "
@@ -405,7 +419,9 @@ def build_mutations(snapshot: dict[str, Any], source: str, target: str,
 
     env = snapshot["environment"]
     revision = env["target_revision"] + 1
-    before = {key: value for key, value in env.items() if key != "project_name"}
+    # Joined metadata is needed for runtime bindings, but is not stored on environment.
+    before = {key: value for key, value in env.items()
+              if key not in {"project_name", "ssh_credential_id", "ssh_credential_revision"}}
     after = {"workspace_root": target, "target_revision": revision, "updated_at": timestamp}
     operations = [mutation("environment", {"id": env["id"]}, before, after)]
     for service in snapshot["services"]:
@@ -1134,10 +1150,7 @@ def apply_migration(path: Path, runtime: Runtime, config: dict[str, Any], db: Da
                 step("redeploy:" + service["code"], lambda service=service: recreate_service(plan, service, host))
 
         def verify() -> None:
-            rows = db.query("SELECT workspace_root,target_revision FROM environment WHERE id=" + sql_value(plan["environment_id"]))
-            if (len(rows) != 1 or canonical(rows[0]["workspace_root"]) != canonical(plan["target"])
-                    or rows[0]["target_revision"] != plan["new_revision"]):
-                raise MigrationError("The saved destination or target revision does not match the migration")
+            verify_business_data(db, plan["mutations"])
             current = host.call("containers")
             if current["daemon"] != plan["docker_daemon"]:
                 raise MigrationError("The Docker daemon changed during migration")
@@ -1151,7 +1164,8 @@ def apply_migration(path: Path, runtime: Runtime, config: dict[str, Any], db: Da
                 if any(m["Type"] == "bind" and within(m["Source"], plan["source"]) for item in running for m in item["mounts"]):
                     raise MigrationError("A running service still mounts the old workspace: " + service["code"])
             write_json(bundle / "verification.json", {"environment_id": plan["environment_id"], "workspace_root": plan["target"],
-                       "services_verified": len(plan["services"]), "source_retained": True})
+                       "services_verified": len(plan["services"]), "business_mutations_verified": len(plan["mutations"]),
+                       "source_retained": True})
         step("verify", verify)
         step("release-workspace", lambda: host.call("release", source=plan["source"], owner=digest(plan)))
         release_active_plan(path)

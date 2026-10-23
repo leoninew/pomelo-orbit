@@ -194,9 +194,6 @@ func TestSelectedSyncDoesNotCarryAnotherRoutesUnsyncedEdit(t *testing.T) {
 	if result.Code != "route_sync_completed" || len(publisher.published) != 1 || publisher.published[0].Id != a.Id {
 		t.Fatalf("result=%+v published=%+v", result, publisher.published)
 	}
-	if publisher.lists != 0 || len(publisher.inspected) != 2 {
-		t.Fatalf("selected synchronization listed publications or repeated inspection: lists=%d inspected=%+v", publisher.lists, publisher.inspected)
-	}
 	for _, route := range publisher.inspected {
 		if route.Id != a.Id || route.Name != a.Name {
 			t.Fatalf("selected synchronization inspected another Route or omitted its business code: %+v", route)

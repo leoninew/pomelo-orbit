@@ -275,7 +275,7 @@ class PlanningTests(unittest.TestCase):
 
 
 class ExecutionTests(unittest.TestCase):
-    def test_cold_copy_bootstrap_and_resume_preserve_new_database_writes(self):
+    def test_resume_preserves_new_database_writes_and_rechecks_business_data(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source, target, bundle = root / "data", root / "target", root / "plan"
@@ -298,17 +298,23 @@ class ExecutionTests(unittest.TestCase):
             data = snapshot()
             data["environment"].update(workspace_root=str(source), last_probe_status="failed", last_probe_revision=4,
                                        last_probe_diagnostic="Environment was already unreachable")
+            data["services"] = [
+                {**data["services"][0], "id": service["id"], "code": service["code"],
+                 "deployment_directory": service["source_directory"], "runtime_directory": service["source_directory"],
+                 "status": "running" if service["running"] else "stopped"}
+                for service in services
+            ]
             plan = {"format": 2, "blockers": [], "host": migration.socket.gethostname(), "profile": "development",
                     "docker_daemon": "daemon", "source": str(source), "target": str(target), "python": None,
                     "connection": {"environment": {"target_type": "local"}}, "environment_id": "env-1",
                     "project_code": "project-1", "new_revision": 5, "snapshot": data, "services": services,
                     "containers": copy.deepcopy(containers), "overrides": [],
-                    "mutations": [migration.mutation("environment", {"id": "env-1"}, {"target_revision": 4}, {"target_revision": 5})]}
+                    "mutations": migration.build_mutations(data, str(source), str(target), "2026-10-19T00:00:00Z", {})}
             path = bundle / "plan.json"
             migration.write_json(path, plan)
             migration.write_private(bundle / "plan.sha256", migration.digest(plan))
             migration.write_json(root / "active.json", {"plan": str(path)})
-            events, live = [], {"updated": False, "fail": True}
+            events, live = [], {"updated": False, "fail": True, "stale_service": True}
 
             def fake_run(argv, cwd, timeout=120):
                 if argv[:2] == ["docker", "stop"]:
@@ -343,9 +349,13 @@ class ExecutionTests(unittest.TestCase):
                     events.append("sql")
                     live["updated"] = True
 
+            def query(sql):
+                if "AS table_name" in sql:
+                    return [{"table_name": "service", "id": "web"}] if live["stale_service"] else []
+                return [{"value": 1}]
+
             db, runtime = Mock(), Mock()
-            db.query.side_effect = lambda sql: [{"workspace_root": str(target), "last_probe_status": "failed",
-                                                "last_probe_revision": 4, "target_revision": 5}] if "SELECT workspace_root" in sql else [{"value": 1}]
+            db.query.side_effect = query
             db.execute.side_effect = update
             db.backup.side_effect = lambda file: events.append("backup") or file.write_bytes(b"dump")
             runtime.call.side_effect = AssertionError("A local migration must not call Environment Probe")
@@ -360,6 +370,12 @@ class ExecutionTests(unittest.TestCase):
                     migration.apply_migration(path, runtime, config, db, root)
                 database_file = target / "deployment" / "pg" / "data"
                 database_file.write_bytes(b"new-database-writes")
+                with self.assertRaisesRegex(migration.MigrationError, "Business data.*service/web"):
+                    migration.apply_migration(path, runtime, config, db, root)
+                self.assertTrue((root / "active.json").exists())
+                self.assertFalse((bundle / "verification.json").exists())
+                self.assertNotEqual(json.loads((bundle / "state.json").read_text())["steps"]["verify"], "done")
+                live["stale_service"] = False
                 migration.apply_migration(path, runtime, config, db, root)
                 self.assertEqual(database_file.read_bytes(), b"new-database-writes")
                 self.assertFalse((root / "active.json").exists())
@@ -459,6 +475,16 @@ class FilesystemTests(unittest.TestCase):
 
 
 class BusinessRulesTests(unittest.TestCase):
+    def test_joined_credential_metadata_is_not_an_environment_write_guard(self):
+        data = snapshot()
+        ops = migration.build_mutations(data, "D:/old", "E:/new", "2026-10-19T00:00:00Z", {})
+        environment = next(op for op in ops if op["table"] == "environment")
+        self.assertEqual(set(environment["before"]),
+                         {"id", "code", "project_id", "workspace_root", "target_revision", "target_type"})
+        self.assertEqual(data["environment"]["ssh_credential_id"], "key-1")
+        self.assertEqual(data["environment"]["ssh_credential_revision"], 2)
+        self.assertEqual([op["key"]["id"] for op in ops if op["table"] == "pipeline_run"], ["run-1"])
+
     def test_only_current_proven_run_binding_is_carried_forward(self):
         data = snapshot()
         for key, value in (("environment_target_revision", 1), ("ssh_credential_revision", 1),
@@ -555,7 +581,8 @@ class PostgresTransactionTests(unittest.TestCase):
         CREATE SCHEMA migration_test;
         SET search_path TO migration_test;
         CREATE TABLE environment (id text primary key, workspace_root text, target_revision int,
-            last_probe_revision int, last_probe_status text, last_probe_diagnostic text, last_probe_at timestamptz);
+            last_probe_revision int, last_probe_status text, last_probe_diagnostic text, last_probe_at timestamptz,
+            updated_at timestamptz);
         CREATE TABLE service (id text primary key, deployment_directory text);
         CREATE TABLE pipeline_run (id text primary key);
         CREATE TABLE artifact (id text primary key);
@@ -575,6 +602,31 @@ class PostgresTransactionTests(unittest.TestCase):
 
     def execute(self, operations: list, check: bool = True):
         self.sql("SET search_path TO migration_test;\n" + migration.migration_sql(operations), check=check)
+
+    def test_planned_environment_update_works_with_environment_owned_credentials(self):
+        data = snapshot()
+        data["environment"] = {"id": "env-1", "workspace_root": "D:/old", "target_revision": 4,
+                               "project_name": "Project", "ssh_credential_id": "key-1",
+                               "ssh_credential_revision": 2}
+        data["services"], data["runs"] = [], []
+        operations = migration.build_mutations(data, "D:/old", "E:/new", "2026-10-19T00:00:00Z", {})
+        self.execute(operations)
+        self.execute(operations)
+        self.assertEqual(self.sql("SET search_path TO migration_test; SELECT workspace_root||':'||target_revision FROM environment WHERE id='env-1';"), "E:/new:5")
+
+    def test_business_verification_detects_stale_service_after_environment_move(self):
+        db = Mock()
+        db.query.side_effect = lambda statement: json.loads(self.sql(
+            "SET search_path TO migration_test; SELECT coalesce(json_agg(t),'[]'::json) FROM ("
+            + statement + ") t;"))
+        self.execute(self.ops[:1])
+        with self.assertRaisesRegex(migration.MigrationError, "Business data.*service/svc-1"):
+            migration.verify_business_data(db, self.ops)
+        self.sql("SET search_path TO migration_test; DELETE FROM service WHERE id='svc-1';")
+        with self.assertRaisesRegex(migration.MigrationError, "Business data.*service/svc-1"):
+            migration.verify_business_data(db, self.ops)
+        self.sql("SET search_path TO migration_test; INSERT INTO service VALUES ('svc-1','E:/new/deployment/web');")
+        migration.verify_business_data(db, self.ops)
 
     def test_transaction_relocates_only_selected_environment_and_is_replayable(self):
         history_sql = "SET search_path TO migration_test; SELECT last_probe_status||':'||last_probe_revision||':'||last_probe_diagnostic||':'||last_probe_at FROM environment WHERE id='env-1';"

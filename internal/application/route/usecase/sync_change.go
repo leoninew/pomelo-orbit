@@ -25,12 +25,13 @@ type syncPlan struct {
 	updates      []model.Route
 	changes      []routedto.RouteSyncChange
 	publications map[string]routeport.Publication
+	withdrawals  map[string][]routeport.Publication
 	gateway      model.GatewayConfig
 	dependencies string
 }
 
 func (s Service) buildSyncPlan(ctx context.Context, projectId string, input routedto.RouteSyncPreviewInput, gateway model.GatewayConfig) (syncPlan, error) {
-	plan := syncPlan{changes: input.Changes, gateway: gateway, publications: make(map[string]routeport.Publication)}
+	plan := syncPlan{changes: input.Changes, gateway: gateway, publications: make(map[string]routeport.Publication), withdrawals: make(map[string][]routeport.Publication)}
 	switch input.Scope {
 	case "project":
 		if len(input.RouteIds) != 0 {
@@ -81,6 +82,7 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, input rout
 		changes[change.RouteId] = change
 	}
 	processedIds := make([]string, 0, len(plan.ids))
+	deletedIds := make(map[string]bool)
 	for _, id := range plan.ids {
 		original, err := s.route.Route(ctx, projectId, id)
 		deleted := errors.Is(err, repository.ErrNotFound)
@@ -97,6 +99,7 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, input rout
 			plan.publications[id] = *published
 		}
 		if deleted {
+			deletedIds[id] = true
 			if published == nil {
 				if input.Scope == "project" {
 					continue
@@ -119,14 +122,15 @@ func (s Service) buildSyncPlan(ctx context.Context, projectId string, input rout
 		plan.routes = append(plan.routes, desired)
 	}
 	plan.ids = processedIds
-	return plan, nil
+	err := s.planOrphanWithdrawals(ctx, projectId, &plan, deletedIds)
+	return plan, err
 }
 
 func (plan syncPlan) routePlan(index int) syncPlan {
 	route := plan.routes[index]
 	one := syncPlan{
 		ids: []string{route.Id}, routes: []model.Route{route}, originals: []model.Route{plan.originals[index]},
-		publications: plan.publications, gateway: plan.gateway, dependencies: plan.dependencies,
+		publications: plan.publications, withdrawals: plan.withdrawals, gateway: plan.gateway, dependencies: plan.dependencies,
 	}
 	for _, change := range plan.changes {
 		if change.RouteId == route.Id {
@@ -147,7 +151,7 @@ func previewSyncPlan(plan syncPlan) routedto.RouteSyncPreview {
 		action := "publish"
 		if !route.Enabled {
 			action = "withdraw"
-			if _, found := plan.publications[route.Id]; !found {
+			if _, found := plan.publications[route.Id]; !found && len(plan.withdrawals[route.Id]) == 0 {
 				action = "skip"
 			}
 		}
@@ -177,6 +181,7 @@ func syncPlanHashes(plan syncPlan) (string, string) {
 		if item, found := plan.publications[id]; found {
 			files = append(files, item)
 		}
+		files = append(files, plan.withdrawals[id]...)
 	}
 	publicationHash := hashSyncValue(struct {
 		Files                 []routeport.Publication
@@ -240,6 +245,15 @@ func (s Service) applyRouteSyncChanges(ctx context.Context, projectId string, pl
 
 func (s Service) verifyAndSaveSyncRoute(ctx context.Context, projectId string, plan syncPlan) error {
 	original := plan.originals[0]
+	for _, publication := range plan.withdrawals[original.Id] {
+		_, err := s.route.Route(ctx, projectId, publication.Route.Id)
+		if err == nil {
+			return apperror.NewWithCode(apperror.KindConflict, routeSyncPreviewExpiredCode, "Route publication owner changed after preview. Preview again.")
+		}
+		if !errors.Is(err, repository.ErrNotFound) {
+			return err
+		}
+	}
 	current, err := s.route.Route(ctx, projectId, original.Id)
 	if errors.Is(err, repository.ErrNotFound) && len(plan.updates) == 0 && !original.Enabled {
 		return nil

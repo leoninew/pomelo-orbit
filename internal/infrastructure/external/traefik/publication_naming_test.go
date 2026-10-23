@@ -9,9 +9,51 @@ import (
 	"testing"
 
 	routeport "github.com/leoninew/pomelo-orbit/internal/application/route/port"
+	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 	"gopkg.in/yaml.v3"
 )
+
+func TestSameNamePublicationCanFollowVerifiedWithdrawal(t *testing.T) {
+	for _, modified := range []bool{false, true} {
+		name := "managed file"
+		if modified {
+			name = "external edit"
+		}
+		t.Run(name, func(t *testing.T) {
+			runtime := newRouteRuntimeFake()
+			runtime.autoAPI = true
+			manager := newRouteManager(routeTargetResolver{}, runtime, testRouteTimeouts(), func() bool { return false })
+			old := publicationTestRoute("minio")
+			old.Id = "previous-minio"
+			publishTestRoute(t, manager, old)
+			if modified {
+				runtime.files[activeTestPath(old.Name)] = []byte("external content")
+			}
+			old.Enabled = false
+			_, err := manager.PublishRoute(context.Background(), "project-1", testGateway(), old, testPublicationFingerprint(t, manager, old.Id))
+			if modified {
+				if err == nil || apperror.Classify(err).Code != "route_sync_file_changed" || string(runtime.files[activeTestPath(old.Name)]) != "external content" {
+					t.Fatalf("withdrawal did not preserve the external change: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			current := publicationTestRoute("minio")
+			current.Id, current.TargetUrl = "current-minio", "http://new-minio:9001"
+			result := publishTestRoute(t, manager, current)
+			if result.ConfigurationMatch != "matched" || !strings.Contains(string(runtime.files[activeTestPath(current.Name)]), current.TargetUrl) {
+				t.Fatalf("current Route did not replace the deleted publication: %+v", result)
+			}
+			oldRecord, err := manager.InspectPublication(context.Background(), "project-1", testGateway(), old)
+			if err != nil || oldRecord == nil || oldRecord.Route.Enabled {
+				t.Fatalf("old publication was left active: item=%+v err=%v", oldRecord, err)
+			}
+		})
+	}
+}
 
 func TestRouteCodeNamesFilesAndResourcesWhileIdentityOwnsCertificates(t *testing.T) {
 	runtime := newRouteRuntimeFake()

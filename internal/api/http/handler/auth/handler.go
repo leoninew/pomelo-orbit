@@ -25,13 +25,15 @@ type TurnstileVerifier interface {
 type Handler struct {
 	logger            *slog.Logger
 	turnstile         config.TurnstileConfig
+	googleConfig      config.GoogleConfig
+	google            authsvc.GoogleService
 	service           authsvc.Service
 	authenticator     security.Authenticator
 	turnstileVerifier TurnstileVerifier
 }
 
-func New(logger *slog.Logger, turnstile config.TurnstileConfig, service authsvc.Service, authenticator security.Authenticator, verifier TurnstileVerifier) Handler {
-	return Handler{logger: logger, turnstile: turnstile, service: service, authenticator: authenticator, turnstileVerifier: verifier}
+func New(logger *slog.Logger, turnstile config.TurnstileConfig, googleConfig config.GoogleConfig, service authsvc.Service, google authsvc.GoogleService, authenticator security.Authenticator, verifier TurnstileVerifier) Handler {
+	return Handler{logger: logger, turnstile: turnstile, googleConfig: googleConfig, google: google, service: service, authenticator: authenticator, turnstileVerifier: verifier}
 }
 
 func (h Handler) GetCSRFToken(c *gin.Context) {
@@ -203,16 +205,39 @@ func (h Handler) RevokeMCPAccessToken(c *gin.Context) {
 }
 
 func (h Handler) GoogleOAuth(c *gin.Context) {
-	transport.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
+	login, err := h.google.Begin(c.Query("redirect"))
+	if err != nil {
+		transport.WriteError(c, err)
+		return
+	}
+	h.googleSessionCookie(c, login.Session, int(authsvc.GoogleSessionTtl.Seconds()))
+	c.Header("Cache-Control", "no-store")
+	c.Redirect(http.StatusFound, login.URL)
 }
 
 func (h Handler) GoogleCallback(c *gin.Context) {
+	session, _ := c.Cookie(googleSessionCookieName)
+	h.googleSessionCookie(c, "", -1)
+	c.Header("Cache-Control", "no-store")
 	var req authv1.GoogleCallbackReq
 	if err := transport.DecodeJSON(c, &req); err != nil {
 		transport.WriteStatusError(c, http.StatusBadRequest, "Invalid JSON body")
 		return
 	}
-	transport.WriteStatusError(c, http.StatusServiceUnavailable, "Google OAuth is not configured")
+	result, err := h.google.Complete(c.Request.Context(), authdto.GoogleCallbackInput{Code: req.Code, State: req.State, Session: session, IP: clientIP(c), UserAgent: c.Request.UserAgent()})
+	if err != nil {
+		transport.WriteError(c, err)
+		return
+	}
+	resp := authv1.GoogleCallbackResp{AccessToken: result.Token, TokenType: "bearer", Redirect: result.Redirect}
+	transport.WriteProtoJSON(c, http.StatusOK, &resp)
+}
+
+const googleSessionCookieName = "pomelo_orbit_google_session"
+
+func (h Handler) googleSessionCookie(c *gin.Context, value string, maxAge int) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(googleSessionCookieName, value, maxAge, "/api/auth/google/callback", "", strings.HasPrefix(h.googleConfig.RedirectUri, "https://"), true)
 }
 
 func clientIP(c *gin.Context) string {

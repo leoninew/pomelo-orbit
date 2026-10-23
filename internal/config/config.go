@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/mail"
 	"net/url"
 	"os"
@@ -44,6 +45,7 @@ type Config struct {
 	Jwt                   JwtConfig                   `mapstructure:"jwt" yaml:"jwt"`
 	ProjectInitialization ProjectInitializationConfig `mapstructure:"project_initialization" yaml:"project_initialization"`
 	Turnstile             TurnstileConfig             `mapstructure:"turnstile" yaml:"turnstile"`
+	Google                GoogleConfig                `mapstructure:"google" yaml:"google"`
 	Settings              SettingsConfig              `mapstructure:"settings" yaml:"settings"`
 	LLM                   LLMConfig                   `mapstructure:"llm" yaml:"llm"`
 	MCP                   MCPConfig                   `mapstructure:"mcp" yaml:"mcp"`
@@ -208,6 +210,33 @@ type TurnstileConfig struct {
 	VerifyUrl string `mapstructure:"verify_url" yaml:"verify_url"`
 }
 
+type GoogleConfig struct {
+	ClientId     string `mapstructure:"client_id" yaml:"client_id"`
+	ClientSecret string `mapstructure:"client_secret" yaml:"client_secret"`
+	RedirectUri  string `mapstructure:"redirect_uri" yaml:"redirect_uri"`
+}
+
+func validateGoogleConfig(cfg GoogleConfig) error {
+	if cfg == (GoogleConfig{}) {
+		return nil
+	}
+	if strings.TrimSpace(cfg.ClientId) == "" || strings.TrimSpace(cfg.ClientSecret) == "" || strings.TrimSpace(cfg.RedirectUri) == "" {
+		return errors.New("google.client_id, google.client_secret and google.redirect_uri must be configured together")
+	}
+	callback, err := url.Parse(cfg.RedirectUri)
+	if err != nil || callback.Hostname() == "" || callback.User != nil || callback.RawQuery != "" || callback.Fragment != "" || callback.Path != "/google/callback" {
+		return errors.New("google.redirect_uri must be an absolute URL ending in /google/callback without credentials, query or fragment")
+	}
+	if callback.Scheme == "https" {
+		return nil
+	}
+	ip := net.ParseIP(callback.Hostname())
+	if callback.Scheme == "http" && (callback.Hostname() == "localhost" || (ip != nil && ip.IsLoopback())) {
+		return nil
+	}
+	return errors.New("google.redirect_uri must use HTTPS or HTTP on localhost/loopback")
+}
+
 type SettingsConfig struct {
 	SecretKeys []string `mapstructure:"secret_keys" yaml:"secret_keys"`
 }
@@ -242,6 +271,9 @@ func configDecodeHook() viper.DecoderConfigOption {
 }
 
 func (c Config) Validate() error {
+	if err := validateGoogleConfig(c.Google); err != nil {
+		return err
+	}
 	if err := validateServerRuntimeOriginConfig(c.Server); err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/aymanbagabas/go-pty v0.2.3
 	github.com/coder/websocket v1.8.15
+	github.com/coreos/go-oidc/v3 v3.16.0
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/go-viper/mapstructure/v2 v2.4.0
@@ -23,6 +24,7 @@ require (
 	github.com/sqlc-dev/sqlc v1.30.0
 	golang.org/x/crypto v0.51.0
 	golang.org/x/net v0.53.0
+	golang.org/x/oauth2 v0.35.0
 	golang.org/x/sys v0.44.0
 	golang.org/x/term v0.43.0
 	google.golang.org/protobuf v1.36.11
@@ -48,6 +50,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
@@ -103,7 +106,6 @@ require (
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/mod v0.35.0 // indirect
-	golang.org/x/oauth2 v0.35.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.15.0 // indirect

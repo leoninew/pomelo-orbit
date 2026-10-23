@@ -57,6 +57,13 @@ message PasswordChangeReq {
 
 message GoogleCallbackReq {
   string code = 1;
+  string state = 2;
+}
+
+message GoogleCallbackResp {
+  string access_token = 1;
+  string token_type = 2;
+  string redirect = 3;
 }
 
 message TurnstileConfigResp {

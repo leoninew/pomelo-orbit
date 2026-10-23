@@ -544,6 +544,7 @@ func (x *PasswordChangeReq) GetNewPassword() string {
 type GoogleCallbackReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	State         string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -585,6 +586,73 @@ func (x *GoogleCallbackReq) GetCode() string {
 	return ""
 }
 
+func (x *GoogleCallbackReq) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+type GoogleCallbackResp struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	TokenType     string                 `protobuf:"bytes,2,opt,name=token_type,json=tokenType,proto3" json:"token_type,omitempty"`
+	Redirect      string                 `protobuf:"bytes,3,opt,name=redirect,proto3" json:"redirect,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GoogleCallbackResp) Reset() {
+	*x = GoogleCallbackResp{}
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GoogleCallbackResp) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GoogleCallbackResp) ProtoMessage() {}
+
+func (x *GoogleCallbackResp) ProtoReflect() protoreflect.Message {
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GoogleCallbackResp.ProtoReflect.Descriptor instead.
+func (*GoogleCallbackResp) Descriptor() ([]byte, []int) {
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GoogleCallbackResp) GetAccessToken() string {
+	if x != nil {
+		return x.AccessToken
+	}
+	return ""
+}
+
+func (x *GoogleCallbackResp) GetTokenType() string {
+	if x != nil {
+		return x.TokenType
+	}
+	return ""
+}
+
+func (x *GoogleCallbackResp) GetRedirect() string {
+	if x != nil {
+		return x.Redirect
+	}
+	return ""
+}
+
 type TurnstileConfigResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
@@ -595,7 +663,7 @@ type TurnstileConfigResp struct {
 
 func (x *TurnstileConfigResp) Reset() {
 	*x = TurnstileConfigResp{}
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[9]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -607,7 +675,7 @@ func (x *TurnstileConfigResp) String() string {
 func (*TurnstileConfigResp) ProtoMessage() {}
 
 func (x *TurnstileConfigResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[9]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -620,7 +688,7 @@ func (x *TurnstileConfigResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnstileConfigResp.ProtoReflect.Descriptor instead.
 func (*TurnstileConfigResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{9}
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TurnstileConfigResp) GetEnabled() bool {
@@ -649,7 +717,7 @@ type MCPAccessTokenResp struct {
 
 func (x *MCPAccessTokenResp) Reset() {
 	*x = MCPAccessTokenResp{}
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[10]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -661,7 +729,7 @@ func (x *MCPAccessTokenResp) String() string {
 func (*MCPAccessTokenResp) ProtoMessage() {}
 
 func (x *MCPAccessTokenResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[10]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -674,7 +742,7 @@ func (x *MCPAccessTokenResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MCPAccessTokenResp.ProtoReflect.Descriptor instead.
 func (*MCPAccessTokenResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{10}
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *MCPAccessTokenResp) GetId() string {
@@ -715,7 +783,7 @@ type MCPAccessTokenCreateReq struct {
 
 func (x *MCPAccessTokenCreateReq) Reset() {
 	*x = MCPAccessTokenCreateReq{}
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[11]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +795,7 @@ func (x *MCPAccessTokenCreateReq) String() string {
 func (*MCPAccessTokenCreateReq) ProtoMessage() {}
 
 func (x *MCPAccessTokenCreateReq) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[11]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +808,7 @@ func (x *MCPAccessTokenCreateReq) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MCPAccessTokenCreateReq.ProtoReflect.Descriptor instead.
 func (*MCPAccessTokenCreateReq) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{11}
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *MCPAccessTokenCreateReq) GetName() string {
@@ -767,7 +835,7 @@ type MCPAccessTokenCreatedResp struct {
 
 func (x *MCPAccessTokenCreatedResp) Reset() {
 	*x = MCPAccessTokenCreatedResp{}
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[12]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -779,7 +847,7 @@ func (x *MCPAccessTokenCreatedResp) String() string {
 func (*MCPAccessTokenCreatedResp) ProtoMessage() {}
 
 func (x *MCPAccessTokenCreatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[12]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -792,7 +860,7 @@ func (x *MCPAccessTokenCreatedResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MCPAccessTokenCreatedResp.ProtoReflect.Descriptor instead.
 func (*MCPAccessTokenCreatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{12}
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *MCPAccessTokenCreatedResp) GetAccessToken() *MCPAccessTokenResp {
@@ -818,7 +886,7 @@ type MCPAccessTokenListResp struct {
 
 func (x *MCPAccessTokenListResp) Reset() {
 	*x = MCPAccessTokenListResp{}
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -830,7 +898,7 @@ func (x *MCPAccessTokenListResp) String() string {
 func (*MCPAccessTokenListResp) ProtoMessage() {}
 
 func (x *MCPAccessTokenListResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -843,7 +911,7 @@ func (x *MCPAccessTokenListResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MCPAccessTokenListResp.ProtoReflect.Descriptor instead.
 func (*MCPAccessTokenListResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{13}
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *MCPAccessTokenListResp) GetItems() []*MCPAccessTokenResp {
@@ -903,9 +971,15 @@ const file_orbit_v1_auth_auth_proto_rawDesc = "" +
 	"\tLogoutReq\"Y\n" +
 	"\x11PasswordChangeReq\x12!\n" +
 	"\fold_password\x18\x01 \x01(\tR\voldPassword\x12!\n" +
-	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"'\n" +
+	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"=\n" +
 	"\x11GoogleCallbackReq\x12\x12\n" +
-	"\x04code\x18\x01 \x01(\tR\x04code\"J\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\"r\n" +
+	"\x12GoogleCallbackResp\x12!\n" +
+	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12\x1d\n" +
+	"\n" +
+	"token_type\x18\x02 \x01(\tR\ttokenType\x12\x1a\n" +
+	"\bredirect\x18\x03 \x01(\tR\bredirect\"J\n" +
 	"\x13TurnstileConfigResp\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x19\n" +
 	"\bsite_key\x18\x02 \x01(\tR\asiteKey\"\x8a\x01\n" +
@@ -939,7 +1013,7 @@ func file_orbit_v1_auth_auth_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_auth_auth_proto_rawDescData
 }
 
-var file_orbit_v1_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_orbit_v1_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_orbit_v1_auth_auth_proto_goTypes = []any{
 	(*LoginHistoryResp)(nil),          // 0: orbit.v1.auth.LoginHistoryResp
 	(*LoginHistoryPaginatedResp)(nil), // 1: orbit.v1.auth.LoginHistoryPaginatedResp
@@ -950,16 +1024,17 @@ var file_orbit_v1_auth_auth_proto_goTypes = []any{
 	(*LogoutReq)(nil),                 // 6: orbit.v1.auth.LogoutReq
 	(*PasswordChangeReq)(nil),         // 7: orbit.v1.auth.PasswordChangeReq
 	(*GoogleCallbackReq)(nil),         // 8: orbit.v1.auth.GoogleCallbackReq
-	(*TurnstileConfigResp)(nil),       // 9: orbit.v1.auth.TurnstileConfigResp
-	(*MCPAccessTokenResp)(nil),        // 10: orbit.v1.auth.MCPAccessTokenResp
-	(*MCPAccessTokenCreateReq)(nil),   // 11: orbit.v1.auth.MCPAccessTokenCreateReq
-	(*MCPAccessTokenCreatedResp)(nil), // 12: orbit.v1.auth.MCPAccessTokenCreatedResp
-	(*MCPAccessTokenListResp)(nil),    // 13: orbit.v1.auth.MCPAccessTokenListResp
+	(*GoogleCallbackResp)(nil),        // 9: orbit.v1.auth.GoogleCallbackResp
+	(*TurnstileConfigResp)(nil),       // 10: orbit.v1.auth.TurnstileConfigResp
+	(*MCPAccessTokenResp)(nil),        // 11: orbit.v1.auth.MCPAccessTokenResp
+	(*MCPAccessTokenCreateReq)(nil),   // 12: orbit.v1.auth.MCPAccessTokenCreateReq
+	(*MCPAccessTokenCreatedResp)(nil), // 13: orbit.v1.auth.MCPAccessTokenCreatedResp
+	(*MCPAccessTokenListResp)(nil),    // 14: orbit.v1.auth.MCPAccessTokenListResp
 }
 var file_orbit_v1_auth_auth_proto_depIdxs = []int32{
 	0,  // 0: orbit.v1.auth.LoginHistoryPaginatedResp.items:type_name -> orbit.v1.auth.LoginHistoryResp
-	10, // 1: orbit.v1.auth.MCPAccessTokenCreatedResp.access_token:type_name -> orbit.v1.auth.MCPAccessTokenResp
-	10, // 2: orbit.v1.auth.MCPAccessTokenListResp.items:type_name -> orbit.v1.auth.MCPAccessTokenResp
+	11, // 1: orbit.v1.auth.MCPAccessTokenCreatedResp.access_token:type_name -> orbit.v1.auth.MCPAccessTokenResp
+	11, // 2: orbit.v1.auth.MCPAccessTokenListResp.items:type_name -> orbit.v1.auth.MCPAccessTokenResp
 	3,  // [3:3] is the sub-list for method output_type
 	3,  // [3:3] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
@@ -974,14 +1049,14 @@ func file_orbit_v1_auth_auth_proto_init() {
 	}
 	file_orbit_v1_auth_auth_proto_msgTypes[0].OneofWrappers = []any{}
 	file_orbit_v1_auth_auth_proto_msgTypes[3].OneofWrappers = []any{}
-	file_orbit_v1_auth_auth_proto_msgTypes[10].OneofWrappers = []any{}
+	file_orbit_v1_auth_auth_proto_msgTypes[11].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_auth_auth_proto_rawDesc), len(file_orbit_v1_auth_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

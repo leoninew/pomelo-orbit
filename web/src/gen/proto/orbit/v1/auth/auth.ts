@@ -63,6 +63,13 @@ export interface PasswordChangeReq {
 
 export interface GoogleCallbackReq {
   code: string;
+  state: string;
+}
+
+export interface GoogleCallbackResp {
+  access_token: string;
+  token_type: string;
+  redirect: string;
 }
 
 export interface TurnstileConfigResp {

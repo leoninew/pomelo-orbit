@@ -352,6 +352,51 @@ func (q *Queries) UserById(ctx context.Context, id string) (UserByIdRow, error) 
 	return i, err
 }
 
+const userByOAuthAccount = `-- name: UserByOAuthAccount :one
+SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
+       email, auth_source, created_at, updated_at, last_login_at
+FROM ` + "`" + `user` + "`" + `
+WHERE oauth_provider = ? AND oauth_provider_id = ?
+`
+
+type UserByOAuthAccountParams struct {
+	OauthProvider   string `db:"oauth_provider"`
+	OAuthProviderId string `db:"oauth_provider_id"`
+}
+
+type UserByOAuthAccountRow struct {
+	Id              string       `db:"id"`
+	Username        string       `db:"username"`
+	PasswordHash    string       `db:"password_hash"`
+	Status          string       `db:"status"`
+	OauthProvider   string       `db:"oauth_provider"`
+	OAuthProviderId string       `db:"oauth_provider_id"`
+	Email           string       `db:"email"`
+	AuthSource      string       `db:"auth_source"`
+	CreatedAt       time.Time    `db:"created_at"`
+	UpdatedAt       time.Time    `db:"updated_at"`
+	LastLoginAt     sql.NullTime `db:"last_login_at"`
+}
+
+func (q *Queries) UserByOAuthAccount(ctx context.Context, arg UserByOAuthAccountParams) (UserByOAuthAccountRow, error) {
+	row := q.db.QueryRowContext(ctx, userByOAuthAccount, arg.OauthProvider, arg.OAuthProviderId)
+	var i UserByOAuthAccountRow
+	err := row.Scan(
+		&i.Id,
+		&i.Username,
+		&i.PasswordHash,
+		&i.Status,
+		&i.OauthProvider,
+		&i.OAuthProviderId,
+		&i.Email,
+		&i.AuthSource,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.LastLoginAt,
+	)
+	return i, err
+}
+
 const userByUsername = `-- name: UserByUsername :one
 SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
        email, auth_source, created_at, updated_at, last_login_at

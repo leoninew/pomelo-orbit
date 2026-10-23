@@ -67,12 +67,18 @@ turnstile:
   secret_key: "1x0000000000000000000000000000000AA"
   verify_url: "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
+google:
+  client_id: ""
+  client_secret: ""
+  redirect_uri: ""
+
 settings:
   secret_keys:
     - database__url
     - jwt__secret_key
     - mcp__access_token
     - turnstile__secret_key
+    - google__client_secret
     - llm__api_key
     - project_initialization__gateway__dns_api_token
 

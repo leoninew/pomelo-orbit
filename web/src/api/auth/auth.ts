@@ -1,6 +1,7 @@
 import type {
   CSRFTokenResp,
   GoogleCallbackReq,
+  GoogleCallbackResp,
   MCPAccessTokenCreatedResp,
   MCPAccessTokenCreateReq,
   MCPAccessTokenListResp,
@@ -68,7 +69,7 @@ export const authApi = {
   },
 
   // Google OAuth 回调
-  googleCallback(data: GoogleCallbackReq): Promise<TokenResp> {
-    return request.post('/api/auth/google/callback', data);
+  googleCallback(data: GoogleCallbackReq): Promise<GoogleCallbackResp> {
+    return request.post('/api/auth/google/callback', data, { withCredentials: true });
   },
 };

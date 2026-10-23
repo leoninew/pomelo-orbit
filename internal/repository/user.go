@@ -16,6 +16,7 @@ type UserStore interface {
 	UserById(ctx context.Context, id string) (model.User, error)
 	UserByUsername(ctx context.Context, username string) (model.User, error)
 	UserByEmail(ctx context.Context, email string) (model.User, error)
+	UserByOAuthAccount(ctx context.Context, provider string, providerId string) (model.User, error)
 	CreateUser(ctx context.Context, user model.User) error
 	UpdateUser(ctx context.Context, user model.User) error
 	SetUserStatus(ctx context.Context, userId string, status string) error

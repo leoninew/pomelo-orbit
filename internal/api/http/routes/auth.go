@@ -7,7 +7,7 @@ import (
 )
 
 func (r Router) registerAuth(engine *gin.Engine) {
-	handler := authhandler.New(r.logger, r.cfg.Turnstile, r.deps.AuthService, r.deps.Authenticator, r.deps.TurnstileVerifier)
+	handler := authhandler.New(r.logger, r.cfg.Turnstile, r.cfg.Google, r.deps.AuthService, r.deps.GoogleAuthService, r.deps.Authenticator, r.deps.TurnstileVerifier)
 	engine.GET("/api/auth/csrf-token", handler.GetCSRFToken)
 	engine.GET("/api/auth/turnstile-config", handler.GetTurnstileConfig)
 	engine.POST("/api/auth/login", handler.Login)

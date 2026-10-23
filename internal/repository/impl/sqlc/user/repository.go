@@ -54,6 +54,14 @@ func (r Repository) UserByEmail(ctx context.Context, email string) (model.User, 
 	return userFromRow(user.Id, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OAuthProviderId, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
 }
 
+func (r Repository) UserByOAuthAccount(ctx context.Context, provider string, providerId string) (model.User, error) {
+	user, err := r.q(ctx).UserByOAuthAccount(ctx, usersqlc.UserByOAuthAccountParams{OauthProvider: provider, OAuthProviderId: providerId})
+	if err != nil {
+		return model.User{}, fmt.Errorf("load user by OAuth account: %w", sqlcommon.TranslateError(err))
+	}
+	return userFromRow(user.Id, user.Username, user.PasswordHash, user.Status, user.OauthProvider, user.OAuthProviderId, user.Email, user.AuthSource, user.CreatedAt, user.UpdatedAt, user.LastLoginAt), nil
+}
+
 func (r Repository) UserRoles(ctx context.Context, userId string) ([]string, error) {
 	roles, err := r.q(ctx).UserRoles(ctx, userId)
 	if err != nil {

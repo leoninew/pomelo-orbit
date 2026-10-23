@@ -11,6 +11,7 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/api/http/transport"
 	deliverymcp "github.com/leoninew/pomelo-orbit/internal/api/mcp/delivery"
 	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
+	authport "github.com/leoninew/pomelo-orbit/internal/application/auth/port"
 	authsvc "github.com/leoninew/pomelo-orbit/internal/application/auth/usecase"
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
@@ -32,6 +33,7 @@ import (
 	jwt "github.com/leoninew/pomelo-orbit/internal/auth/jwt"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
+	googleclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/external/google"
 	llmclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/external/openai"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/turnstile"
@@ -58,6 +60,7 @@ func NewHTTPServer(cfg config.Config, logger *slog.Logger, database *sql.DB, tas
 type applicationServices struct {
 	TransactionRunner            databasetx.TransactionRunner
 	AuthService                  authsvc.Service
+	GoogleAuthService            authsvc.GoogleService
 	RoleService                  rolesvc.Service
 	UserService                  usersvc.Service
 	ProjectService               projectsvc.Service
@@ -110,6 +113,11 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	deploymentDispatcher := queuedispatch.NewDeploymentDispatcher(taskService)
 	authService := authsvc.New(stores.user, stores.auth, tokenService, logger, cfg.Jwt.SecretKey)
 	transactionRunner := databasetx.NewTransactionRunner(database)
+	var googleProvider authport.GoogleProvider
+	if cfg.Google.ClientId != "" {
+		googleProvider = googleclient.New(cfg.Google)
+	}
+	googleAuthService := authsvc.NewGoogle(authService, googleProvider, transactionRunner)
 	credentialService := credentialsvc.New(stores.project, stores.credential, stores.repository, cfg.Jwt.SecretKey)
 	pipelineLogStore := executionlog.Store{}
 	deploymentLogStore := executionlog.NewDeploymentStore(cfg.Logging.DeploymentRoot)
@@ -189,6 +197,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 	services := applicationServices{
 		TransactionRunner:            transactionRunner,
 		AuthService:                  authService,
+		GoogleAuthService:            googleAuthService,
 		RoleService:                  rolesvc.New(stores.role, stores.user),
 		UserService:                  usersvc.New(stores.user, stores.role, projectService),
 		ProjectService:               projectService,
@@ -244,6 +253,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 			"/api/project-initialization/probe",
 			"/api/auth/login",
 			"/api/auth/logout",
+			"/api/auth/google/callback",
 			"/api/service/:service_id/preview",
 			"/api/service/status-check/preview",
 			"/api/version/:version_id/preview",
@@ -251,6 +261,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		),
 		Authenticator:                security.New(logger, services.AuthService),
 		AuthService:                  services.AuthService,
+		GoogleAuthService:            services.GoogleAuthService,
 		RoleService:                  services.RoleService,
 		UserService:                  services.UserService,
 		ProjectService:               services.ProjectService,

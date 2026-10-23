@@ -46,6 +46,10 @@ func (s fakeAuthStore) UserByEmail(context.Context, string) (model.User, error) 
 	panic("unexpected call")
 }
 
+func (s fakeAuthStore) UserByOAuthAccount(context.Context, string, string) (model.User, error) {
+	panic("unexpected call")
+}
+
 func (s fakeAuthStore) CreateUser(context.Context, model.User) error {
 	panic("unexpected call")
 }

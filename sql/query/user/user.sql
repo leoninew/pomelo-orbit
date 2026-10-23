@@ -16,6 +16,12 @@ SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
 FROM `user`
 WHERE email = ?;
 
+-- name: UserByOAuthAccount :one
+SELECT id, username, password_hash, status, oauth_provider, oauth_provider_id,
+       email, auth_source, created_at, updated_at, last_login_at
+FROM `user`
+WHERE oauth_provider = sqlc.arg(oauth_provider) AND oauth_provider_id = sqlc.arg(oauth_provider_id);
+
 -- name: CountUsers :one
 SELECT COUNT(*)
 FROM `user`

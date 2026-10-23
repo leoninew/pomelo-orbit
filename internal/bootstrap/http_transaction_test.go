@@ -30,6 +30,7 @@ func TestHTTPTransactionAssemblyExcludesFileAndCertificateOperations(t *testing.
 		{http.MethodDelete, "/api/setting/config", "/api/setting/config", false},
 		{http.MethodPost, "/api/route/:route_id/mkcert", "/api/route/route-1/mkcert", false},
 		{http.MethodPost, "/api/application", "/api/application", true},
+		{http.MethodPost, "/api/auth/google/callback", "/api/auth/google/callback", false},
 	} {
 		t.Run(test.method+test.path, func(t *testing.T) {
 			if test.transaction {

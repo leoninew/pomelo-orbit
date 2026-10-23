@@ -38,6 +38,7 @@ type Dependencies struct {
 	MutatingUnitOfWork           gin.HandlerFunc
 	Authenticator                security.Authenticator
 	AuthService                  authsvc.Service
+	GoogleAuthService            authsvc.GoogleService
 	RoleService                  rolesvc.Service
 	UserService                  usersvc.Service
 	ProjectService               projectsvc.Service

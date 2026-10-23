@@ -22,6 +22,7 @@ type Querier interface {
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UserByEmail(ctx context.Context, email string) (UserByEmailRow, error)
 	UserById(ctx context.Context, id string) (UserByIdRow, error)
+	UserByOAuthAccount(ctx context.Context, arg UserByOAuthAccountParams) (UserByOAuthAccountRow, error)
 	UserByUsername(ctx context.Context, username string) (UserByUsernameRow, error)
 	UserPermissions(ctx context.Context, userID string) ([]string, error)
 	UserRoleDetails(ctx context.Context, userID string) ([]Role, error)

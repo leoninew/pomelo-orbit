@@ -61,7 +61,7 @@
           <div class="flex gap-2">
             <dt>状态</dt>
             <dd>
-              <AppBadge variant="pill" :tone="deploymentStatusTone">
+              <AppBadge variant="status" :tone="deploymentStatusTone">
                 {{ deployment.status }}
               </AppBadge>
             </dd>

@@ -57,6 +57,11 @@
           <dt>{{ t('common.status') }}</dt>
           <dd>
             <AppBadge variant="status" :tone="user.status === 'enabled' ? 'success' : 'default'">
+              <CircleMinus
+                v-if="user.status === 'disabled'"
+                class="size-4 shrink-0"
+                aria-hidden="true"
+              />
               {{ user.status }}
             </AppBadge>
           </dd>
@@ -277,7 +282,7 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { ArrowLeft, Ban, CheckCircle, Trash2 } from '@lucide/vue';
+  import { ArrowLeft, Ban, CheckCircle, CircleMinus, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';

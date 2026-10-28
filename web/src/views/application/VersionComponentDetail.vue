@@ -56,7 +56,7 @@
             :disabled="operating"
             @edit="startBasicEditing"
           >
-            <div v-if="isNew" class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            <div v-if="isNew" class="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2">
               <div>
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.detail.fields.component') }}
@@ -128,7 +128,7 @@
               </div>
             </div>
 
-            <dl v-else class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+            <dl v-else class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
               <div class="min-w-0">
                 <dt class="text-muted-foreground">
                   {{ t('application.detail.fields.component') }}
@@ -187,9 +187,9 @@
               v-if="isNew"
               v-model:user="form.user"
               v-model:groups="form.group_add"
-              class="p-5"
+              class="pt-4"
             />
-            <dl v-else class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+            <dl v-else class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
               <div class="min-w-0">
                 <dt class="text-muted-foreground">
                   {{ t('application.componentDetail.fields.user') }}
@@ -215,12 +215,12 @@
             :disabled="operating"
             @edit="startHealthcheckEditing"
           >
-            <p v-if="!form.healthcheck_enabled" class="p-5 text-sm text-muted-foreground">
+            <p v-if="!form.healthcheck_enabled" class="pt-4 text-sm text-muted-foreground">
               {{ t('common.notSet') }}
             </p>
             <dl
               v-else
-              class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3"
+              class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3"
             >
               <div>
                 <dt class="text-muted-foreground">

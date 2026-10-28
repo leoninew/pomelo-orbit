@@ -91,9 +91,7 @@
               </h2>
               <AppTruncatedText :text="svc.code" class="text-sm text-foreground" />
             </div>
-            <AppBadge variant="status" :tone="appStatusTone(svc.status)">
-              {{ svc.status }}
-            </AppBadge>
+            <ServiceStatusBadge :status="svc.status" />
           </div>
 
           <dl class="mt-5 grid gap-3 text-sm">
@@ -186,9 +184,7 @@
                 </AppTruncatedText>
               </td>
               <td>
-                <AppBadge variant="status" :tone="appStatusTone(svc.status)">
-                  {{ svc.status }}
-                </AppBadge>
+                <ServiceStatusBadge :status="svc.status" />
               </td>
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="svc.updated_at" />
@@ -414,7 +410,6 @@
   import { ToggleGroupItem, ToggleGroupRoot, ToolbarRoot } from 'reka-ui';
   import { applicationApi } from '@/api/application/application';
   import { serviceApi } from '@/api/service/service';
-  import AppBadge from '@/components/ui/AppBadge.vue';
   import AppDialog from '@/components/ui/AppDialog.vue';
   import AppDialogActions from '@/components/ui/AppDialogActions.vue';
   import AppTooltip from '@/components/ui/AppTooltip.vue';
@@ -435,7 +430,7 @@
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
-  import { appStatusTone } from '@/utils/status';
+  import ServiceStatusBadge from '@/components/service/ServiceStatusBadge.vue';
 
   const { t } = useI18n();
   const toast = useToast();

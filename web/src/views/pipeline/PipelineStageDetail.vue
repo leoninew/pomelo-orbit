@@ -56,7 +56,7 @@
             复制
           </button>
         </template>
-        <div v-if="stage.script" class="p-5">
+        <div v-if="stage.script" class="pt-4">
           <MonacoEditor
             :model-value="stage.script"
             language="shell"

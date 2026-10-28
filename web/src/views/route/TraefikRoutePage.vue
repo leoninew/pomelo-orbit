@@ -77,27 +77,27 @@
                   variant="status"
                   :tone="traefikRoute.status === 'enabled' ? 'success' : 'default'"
                 >
+                  <CircleMinus
+                    v-if="traefikRoute.status === 'disabled'"
+                    class="size-4 shrink-0"
+                    aria-hidden="true"
+                  />
                   {{ traefikRoute.status }}
                 </AppBadge>
               </td>
               <td class="max-w-0">
-                <AppTruncatedText
+                <a
                   v-if="
                     !isTCPRouter(traefikRoute) && buildRouteUrl(traefikRoute.rule, traefikRoute.tls)
                   "
-                  :text="traefikRoute.rule"
-                  as-child
+                  :href="buildRouteUrl(traefikRoute.rule, traefikRoute.tls)!"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="app-link inline-flex max-w-full items-center gap-1"
                 >
-                  <a
-                    :href="buildRouteUrl(traefikRoute.rule, traefikRoute.tls)!"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="app-link relative pr-4"
-                  >
-                    {{ traefikRoute.rule }}
-                    <ExternalLink class="absolute right-0 top-1/2 size-3 -translate-y-1/2" />
-                  </a>
-                </AppTruncatedText>
+                  <AppTruncatedText :text="traefikRoute.rule" />
+                  <ExternalLink class="size-3 shrink-0" />
+                </a>
                 <AppTruncatedText v-else :text="traefikRoute.rule" class="text-foreground" />
               </td>
               <td class="max-w-0 text-foreground">
@@ -116,7 +116,7 @@
               </td>
               <td class="whitespace-nowrap">
                 <AppBadge
-                  variant="status"
+                  variant="category"
                   :tone="
                     isTCPRouter(traefikRoute) ? 'warning' : traefikRoute.tls ? 'info' : 'default'
                   "
@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ExternalLink } from '@lucide/vue';
+  import { CircleMinus, ExternalLink } from '@lucide/vue';
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { projectInitializationApi } from '@/api/project/initialization';

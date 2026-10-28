@@ -87,9 +87,7 @@
           <div class="flex gap-2">
             <dt>{{ t('common.status') }}</dt>
             <dd>
-              <AppBadge variant="status" :tone="appStatusTone(service.status)">
-                {{ service.status }}
-              </AppBadge>
+              <ServiceStatusBadge :status="service.status" />
             </dd>
           </div>
           <div class="flex gap-2 sm:col-span-2">
@@ -330,7 +328,6 @@
   import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { applicationApi } from '@/api/application/application';
   import { serviceApi } from '@/api/service/service';
-  import AppBadge from '@/components/ui/AppBadge.vue';
   import AppDialog from '@/components/ui/AppDialog.vue';
   import AppDialogActions from '@/components/ui/AppDialogActions.vue';
   import AppTooltip from '@/components/ui/AppTooltip.vue';
@@ -355,7 +352,7 @@
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
-  import { appStatusTone } from '@/utils/status';
+  import ServiceStatusBadge from '@/components/service/ServiceStatusBadge.vue';
   import { formatTime } from '@/utils/time';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ui/ComboboxSelect.vue';
   import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';

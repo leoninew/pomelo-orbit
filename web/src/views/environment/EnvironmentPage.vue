@@ -167,22 +167,7 @@
       </form>
       <p v-if="submitError" class="app-field-error mt-3" role="alert">{{ submitError }}</p>
       <template #footer>
-        <div class="flex w-full flex-wrap items-center justify-between gap-3">
-          <button
-            v-if="form.targetType === 'ssh'"
-            type="button"
-            class="app-button h-9 px-3"
-            :disabled="operating || loadingSshCommand"
-            :aria-busy="loadingSshCommand"
-            @click="openSshCommand"
-          >
-            <RefreshCw v-if="loadingSshCommand" class="size-4 animate-spin" aria-hidden="true" />
-            <KeyRound v-else class="size-4" aria-hidden="true" />
-            {{ t('project.initialization.sshCommand') }}
-          </button>
-          <span v-else />
-          <AppDialogActions :busy="operating" @cancel="isEditDialogOpen = false" @confirm="save" />
-        </div>
+        <AppDialogActions :busy="operating" @cancel="isEditDialogOpen = false" @confirm="save" />
       </template>
     </AppDialog>
 

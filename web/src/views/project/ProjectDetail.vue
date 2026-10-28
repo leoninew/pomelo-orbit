@@ -49,6 +49,7 @@
               {{ t('project.active') }}
             </AppBadge>
             <AppBadge v-else variant="status" tone="default">
+              <CircleMinus class="size-4 shrink-0" aria-hidden="true" />
               {{ t('project.deprecated') }}
             </AppBadge>
           </dd>
@@ -102,6 +103,11 @@
                   variant="status"
                   :tone="member.status === 'enabled' ? 'success' : 'default'"
                 >
+                  <CircleMinus
+                    v-if="member.status === 'disabled'"
+                    class="size-4 shrink-0"
+                    aria-hidden="true"
+                  />
                   {{ member.status }}
                 </AppBadge>
               </td>
@@ -209,7 +215,7 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { ArrowLeft, Download, Server, Upload, UserPlus } from '@lucide/vue';
+  import { ArrowLeft, CircleMinus, Download, Server, Upload, UserPlus } from '@lucide/vue';
   import { onMounted, reactive, ref, computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';

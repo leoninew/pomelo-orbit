@@ -27,14 +27,10 @@
             <tr v-for="row in rows" :key="row.service_id">
               <td class="align-top break-words">{{ row.service_code }}</td>
               <td class="align-top break-words">
-                <AppBadge variant="status" :tone="appStatusTone(row.recorded_status)">
-                  {{ row.recorded_status }}
-                </AppBadge>
+                <ServiceStatusBadge :status="row.recorded_status" />
               </td>
               <td class="align-top break-words">
-                <AppBadge variant="status" :tone="appStatusTone(row.observed_status)">
-                  {{ row.observed_status }}
-                </AppBadge>
+                <ServiceStatusBadge :status="row.observed_status" />
               </td>
               <td class="align-top break-words">
                 <AppTooltip :content="row.result === 'failed' ? row.reason : undefined">
@@ -90,7 +86,7 @@
     ServiceStatusCheckPreviewResp,
   } from '@/gen/proto/orbit/v1/service/service';
   import { ApiError } from '@/utils/request';
-  import { appStatusTone } from '@/utils/status';
+  import ServiceStatusBadge from '@/components/service/ServiceStatusBadge.vue';
 
   type RowResult = 'pending' | 'processing' | 'completed' | 'failed' | 'unchanged';
   interface CheckRow extends ServiceStatusCheckItemResp {

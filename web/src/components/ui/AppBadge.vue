@@ -6,11 +6,6 @@
       class="size-4 shrink-0"
       aria-hidden="true"
     />
-    <span
-      v-else-if="variant === 'status' || variant === 'category'"
-      class="size-1.5 shrink-0 rounded-full bg-current"
-      aria-hidden="true"
-    />
     <slot />
   </span>
 </template>
@@ -20,7 +15,7 @@
 </script>
 
 <script setup lang="ts">
-  import { CircleAlert, CircleCheck, CircleX } from '@lucide/vue';
+  import { CircleCheck, CircleX } from '@lucide/vue';
   import { computed } from 'vue';
 
   interface Props {
@@ -39,9 +34,6 @@
     }
     if (props.tone === 'error') {
       return CircleX;
-    }
-    if (props.tone === 'warning') {
-      return CircleAlert;
     }
     return null;
   });

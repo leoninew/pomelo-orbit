@@ -78,7 +78,7 @@
           <div class="flex gap-2">
             <dt>{{ t('common.status') }}</dt>
             <dd>
-              <AppBadge variant="pill" :tone="pipelineStatusTone">
+              <AppBadge variant="status" :tone="pipelineStatusTone">
                 {{ run.status }}
               </AppBadge>
             </dd>
@@ -197,7 +197,7 @@
                   <td>
                     <div class="flex items-center gap-1.5">
                       <AppBadge
-                        variant="pill"
+                        variant="status"
                         :tone="stageStatusTone(stageRunMap[stage.id]?.status ?? 'waiting_to_run')"
                       >
                         {{ stageRunMap[stage.id]?.status ?? 'waiting_to_run' }}

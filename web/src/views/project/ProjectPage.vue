@@ -61,6 +61,7 @@
                   {{ t('project.active') }}
                 </AppBadge>
                 <AppBadge v-else variant="status" tone="default">
+                  <CircleMinus class="size-4 shrink-0" aria-hidden="true" />
                   {{ t('project.deprecated') }}
                 </AppBadge>
               </td>
@@ -405,7 +406,7 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { FileUp, Plus, Upload, X } from '@lucide/vue';
+  import { CircleMinus, FileUp, Plus, Upload, X } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import { useRoute, useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';

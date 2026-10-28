@@ -137,11 +137,16 @@
               </td>
               <td>
                 <AppBadge variant="status" :tone="routeEnabled(route) ? 'success' : 'default'">
+                  <CircleMinus
+                    v-if="!routeEnabled(route)"
+                    class="size-4 shrink-0"
+                    aria-hidden="true"
+                  />
                   {{ routeEnabled(route) ? t('route.status.enabled') : t('route.status.disabled') }}
                 </AppBadge>
               </td>
               <td>
-                <AppBadge variant="status" :tone="route.https_enabled ? 'info' : 'default'">
+                <AppBadge variant="category" :tone="route.https_enabled ? 'info' : 'default'">
                   {{ route.protocol === 'tcp' ? 'TCP' : route.https_enabled ? 'HTTPS' : 'HTTP' }}
                 </AppBadge>
               </td>
@@ -517,7 +522,7 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { ExternalLink, Plus, RefreshCw } from '@lucide/vue';
+  import { CircleMinus, ExternalLink, Plus, RefreshCw } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';

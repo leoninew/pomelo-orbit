@@ -113,6 +113,7 @@
             <dt>{{ t('common.status') }}</dt>
             <dd>
               <AppBadge variant="status" :tone="routeEnabled ? 'success' : 'default'">
+                <CircleMinus v-if="!routeEnabled" class="size-4 shrink-0" aria-hidden="true" />
                 {{ routeEnabled ? t('route.status.enabled') : t('route.status.disabled') }}
               </AppBadge>
             </dd>
@@ -133,7 +134,7 @@
       </DetailInfoCard>
 
       <DetailInfoCard v-if="routeData.protocol === 'http'" :title="t('route.httpsConfig')">
-        <div class="flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-4">
           <div class="flex items-center gap-3">
             <ShieldCheck v-if="routeData.https_enabled" class="size-5 text-primary" />
             <ShieldOff v-else class="size-5 text-muted-foreground" />
@@ -343,6 +344,7 @@
   import AppInput from '@/components/ui/AppInput.vue';
   import {
     ArrowLeft,
+    CircleMinus,
     ExternalLink,
     Play,
     PowerOff,

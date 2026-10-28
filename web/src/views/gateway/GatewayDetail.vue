@@ -120,22 +120,20 @@
         :disabled="operating"
         @edit="openIngressEditDialog"
       >
-        <div class="space-y-3 px-5 py-4">
-          <dl class="app-detail-info-grid">
-            <div class="flex gap-2">
-              <dt>{{ t('gateway.fields.defaultEntrypoint') }}</dt>
-              <dd>
-                <AppBadge variant="pill">{{ gateway.default_entrypoint }}</AppBadge>
-              </dd>
-            </div>
-            <div class="flex gap-2">
-              <dt>{{ t('gateway.fields.tlsMode') }}</dt>
-              <dd>
-                <AppBadge variant="pill">{{ gateway.tls_mode }}</AppBadge>
-              </dd>
-            </div>
-          </dl>
-        </div>
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt>{{ t('gateway.fields.defaultEntrypoint') }}</dt>
+            <dd>
+              <AppBadge variant="pill">{{ gateway.default_entrypoint }}</AppBadge>
+            </dd>
+          </div>
+          <div class="flex gap-2">
+            <dt>{{ t('gateway.fields.tlsMode') }}</dt>
+            <dd>
+              <AppBadge variant="pill">{{ gateway.tls_mode }}</AppBadge>
+            </dd>
+          </div>
+        </dl>
       </DetailInfoCard>
 
       <DetailInfoCard
@@ -144,31 +142,29 @@
         :disabled="operating"
         @edit="openCertificateEditDialog"
       >
-        <div class="space-y-3 px-5 py-4">
-          <dl class="app-detail-info-grid">
-            <div class="flex gap-2">
-              <dt>{{ t('gateway.fields.acmeProfile') }}</dt>
-              <dd>
-                <AppBadge variant="pill">{{ acmeProfileLabel(gateway.acme_profile) }}</AppBadge>
-              </dd>
-            </div>
-            <div v-if="gateway.acme_profile" class="flex gap-2">
-              <dt>{{ t('gateway.fields.acmeEmail') }}</dt>
-              <dd class="text-foreground">{{ gateway.acme_email }}</dd>
-            </div>
-            <div v-if="usesDNSProfile(gateway.acme_profile)" class="flex gap-2">
-              <dt>{{ t('gateway.fields.dnsApiToken') }}</dt>
-              <dd class="min-w-0 flex-1">
-                <SensitiveValue
-                  :value="gateway.dns_api_token"
-                  :label="t('gateway.fields.dnsApiToken')"
-                  :show-label="t('common.showValue')"
-                  :hide-label="t('common.hideValue')"
-                />
-              </dd>
-            </div>
-          </dl>
-        </div>
+        <dl class="app-detail-info-grid">
+          <div class="flex gap-2">
+            <dt>{{ t('gateway.fields.acmeProfile') }}</dt>
+            <dd>
+              <AppBadge variant="pill">{{ acmeProfileLabel(gateway.acme_profile) }}</AppBadge>
+            </dd>
+          </div>
+          <div v-if="gateway.acme_profile" class="flex gap-2">
+            <dt>{{ t('gateway.fields.acmeEmail') }}</dt>
+            <dd class="text-foreground">{{ gateway.acme_email }}</dd>
+          </div>
+          <div v-if="usesDNSProfile(gateway.acme_profile)" class="flex gap-2">
+            <dt>{{ t('gateway.fields.dnsApiToken') }}</dt>
+            <dd class="min-w-0 flex-1">
+              <SensitiveValue
+                :value="gateway.dns_api_token"
+                :label="t('gateway.fields.dnsApiToken')"
+                :show-label="t('common.showValue')"
+                :hide-label="t('common.hideValue')"
+              />
+            </dd>
+          </div>
+        </dl>
       </DetailInfoCard>
     </template>
 

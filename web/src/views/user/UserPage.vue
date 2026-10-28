@@ -66,6 +66,11 @@
                   variant="status"
                   :tone="user.status === 'enabled' ? 'success' : 'default'"
                 >
+                  <CircleMinus
+                    v-if="user.status === 'disabled'"
+                    class="size-4 shrink-0"
+                    aria-hidden="true"
+                  />
                   {{ user.status }}
                 </AppBadge>
               </td>
@@ -304,7 +309,7 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { Plus } from '@lucide/vue';
+  import { CircleMinus, Plus } from '@lucide/vue';
   import { computed, nextTick, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';

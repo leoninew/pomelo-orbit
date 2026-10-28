@@ -43,9 +43,9 @@
         <div class="flex gap-2">
           <dt>类型</dt>
           <dd>
-            <AppBadge variant="pill">
+            <span class="text-xs text-muted-foreground">
               {{ credential.type }}
-            </AppBadge>
+            </span>
           </dd>
         </div>
         <div class="flex gap-2">
@@ -143,7 +143,6 @@
   import { credentialApi } from '@/api/credential/credential';
   import AppDialog from '@/components/ui/AppDialog.vue';
   import AppDialogActions from '@/components/ui/AppDialogActions.vue';
-  import AppBadge from '@/components/ui/AppBadge.vue';
   import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
   import SensitiveValue from '@/components/ui/SensitiveValue.vue';

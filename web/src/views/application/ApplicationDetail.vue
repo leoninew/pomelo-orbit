@@ -135,7 +135,7 @@
                   <td class="whitespace-nowrap text-muted-foreground">
                     <AppTableTime :time="version.created_at" />
                   </td>
-                  <td>
+                  <td class="app-table-actions">
                     <div class="flex flex-wrap items-center gap-3">
                       <router-link :to="`/version/${version.id}`" class="app-link">
                         {{ t('application.view') }}
@@ -208,7 +208,7 @@
                               </td>
                               <td class="text-muted-foreground">{{ component.pull_policy }}</td>
                               <td class="text-muted-foreground">{{ component.restart_policy }}</td>
-                              <td>
+                              <td class="app-table-actions">
                                 <div
                                   v-if="version.status === 'unpublished'"
                                   class="flex items-center gap-2"
@@ -273,7 +273,7 @@
                 <td class="text-muted-foreground">
                   <AppTableTime :time="version.created_at" />
                 </td>
-                <td>
+                <td class="app-table-actions">
                   <div class="flex flex-wrap items-center gap-3">
                     <button
                       v-if="versionsOnly && version.status === 'unpublished'"

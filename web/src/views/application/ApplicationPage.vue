@@ -21,16 +21,16 @@
     </ToolbarRoot>
 
     <!-- 加载 -->
-    <div v-if="status === 'loading'" class="app-surface">
+    <div v-if="status === 'loading'" class="app-list-surface">
       <AppLoadingState />
     </div>
-    <div v-else-if="status === 'error'" class="app-surface">
+    <div v-else-if="status === 'error'" class="app-list-surface">
       <div class="py-16 text-center text-destructive">
         <p class="text-sm">{{ error || t('application.toast.loadFailed') }}</p>
       </div>
     </div>
 
-    <div v-else class="app-surface">
+    <div v-else class="app-list-surface">
       <AppEmptyState v-if="applications.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table table-fixed min-w-[960px]">
@@ -73,7 +73,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="app.updated_at" />
               </td>
-              <td>
+              <td class="app-table-actions">
                 <div class="flex items-center gap-3 whitespace-nowrap">
                   <button class="app-link" :disabled="operating" @click="openEditDialog(app)">
                     {{ t('common.edit') }}

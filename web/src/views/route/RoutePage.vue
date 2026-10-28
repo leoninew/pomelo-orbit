@@ -1,6 +1,6 @@
 <template>
   <AppLoadingState v-if="!projectReadinessChecked" size="section" />
-  <div v-else-if="!projectReady" class="app-surface">
+  <div v-else-if="!projectReady" class="app-list-surface">
     <p v-if="projectReadinessError" class="py-16 text-center text-sm text-destructive">
       {{ projectReadinessError }}
     </p>
@@ -59,15 +59,15 @@
       </div>
     </ToolbarRoot>
 
-    <div v-if="routeStatus === 'loading'" class="app-surface">
+    <div v-if="routeStatus === 'loading'" class="app-list-surface">
       <AppLoadingState />
     </div>
-    <div v-else-if="routeStatus === 'error'" class="app-surface">
+    <div v-else-if="routeStatus === 'error'" class="app-list-surface">
       <div class="py-16 text-center text-destructive">
         <p class="text-sm">{{ routeError || t('route.toast.loadFailed') }}</p>
       </div>
     </div>
-    <div v-else class="app-surface">
+    <div v-else class="app-list-surface">
       <AppEmptyState v-if="routes.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table table-fixed min-w-[1400px]">
@@ -152,7 +152,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="route.created_at" />
               </td>
-              <td class="whitespace-nowrap">
+              <td class="app-table-actions whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button class="app-link" :disabled="routeOperating" @click="openEditModal(route)">
                     {{ t('common.edit') }}

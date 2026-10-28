@@ -23,6 +23,8 @@ export default {
     clearSearch: 'Clear search',
     clearInput: 'Clear input',
     clearSelection: 'Clear selection',
+    showValue: 'Show value',
+    hideValue: 'Hide value',
     perPage: '{size} / page',
     previousPage: 'Previous page',
     nextPage: 'Next page',

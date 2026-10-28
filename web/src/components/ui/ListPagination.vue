@@ -1,8 +1,8 @@
 <template>
   <div
     v-if="totalPages > 0"
-    class="overflow-x-auto"
-    :class="standalone ? '' : 'border-t border-border px-5 py-3 sm:px-6'"
+    class="app-pagination overflow-x-auto border-t border-border py-4"
+    :class="standalone ? '' : 'px-4'"
   >
     <div class="flex min-w-max items-center justify-end gap-3">
       <SelectControl
@@ -14,7 +14,7 @@
       />
       <div class="flex items-center gap-1">
         <button
-          class="flex size-9 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+          class="app-pagination-button"
           :disabled="current <= 1"
           :aria-label="t('common.previousPage')"
           :title="t('common.previousPage')"
@@ -26,12 +26,7 @@
           <button
             v-for="page in totalPages"
             :key="page"
-            class="flex size-9 items-center justify-center rounded-lg border text-sm transition-colors"
-            :class="
-              page === current
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-input bg-background text-foreground hover:bg-muted/50'
-            "
+            class="app-pagination-button"
             :aria-current="page === current ? 'page' : undefined"
             @click="goPage(page)"
           >
@@ -42,14 +37,7 @@
           <button
             v-for="(page, index) in visiblePages"
             :key="page === -1 ? `ellipsis-${index}` : page"
-            class="flex size-9 items-center justify-center rounded-lg border text-sm transition-colors"
-            :class="
-              page === current
-                ? 'border-primary bg-primary text-primary-foreground'
-                : page === -1
-                  ? 'border-transparent bg-transparent text-muted-foreground cursor-default'
-                  : 'border-input bg-background text-foreground hover:bg-muted/50'
-            "
+            class="app-pagination-button"
             :disabled="page === -1"
             :aria-current="page === current ? 'page' : undefined"
             @click="page !== -1 && goPage(page)"
@@ -58,7 +46,7 @@
           </button>
         </template>
         <button
-          class="flex size-9 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50"
+          class="app-pagination-button"
           :disabled="current >= totalPages"
           :aria-label="t('common.nextPage')"
           :title="t('common.nextPage')"

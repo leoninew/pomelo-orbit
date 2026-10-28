@@ -2,7 +2,7 @@
   <AppTruncatedText
     :text="formatTime(time)"
     :display-text="formatTime(time, 'YYYY-MM-DD')"
-    class="whitespace-nowrap"
+    class="whitespace-nowrap tabular-nums text-xs text-muted-foreground"
   />
 </template>
 

@@ -15,7 +15,7 @@
     >
       <component :is="toastConfig[toast.type].icon" class="mt-0.5 size-5 shrink-0" />
       <div class="min-w-0 flex-1">
-        <ToastTitle class="text-sm font-semibold">
+        <ToastTitle class="text-sm font-normal">
           {{ toastConfig[toast.type].title }}
         </ToastTitle>
         <ToastDescription class="mt-1 text-sm leading-5 opacity-90">

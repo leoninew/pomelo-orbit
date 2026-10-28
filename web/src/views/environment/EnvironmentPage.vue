@@ -153,8 +153,6 @@
       v-model:open="isEditDialogOpen"
       :title="t('project.environment.editTitle')"
       width-class="w-[min(720px,calc(100vw-32px))]"
-      body-class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4"
-      content-class="max-h-[calc(100vh-32px)] flex flex-col"
     >
       <form novalidate @submit.prevent="save">
         <EnvironmentTargetFields

@@ -1,15 +1,23 @@
 <template>
   <header
-    class="sticky top-0 z-40 flex min-h-14 shrink-0 items-center overflow-hidden border-b border-border bg-card/95 px-3 shadow-sm backdrop-blur md:h-16 md:px-4"
+    class="app-topbar sticky top-0 z-40 flex min-h-14 shrink-0 items-center overflow-hidden border-b border-border bg-background px-3 md:h-16 md:px-4"
   >
     <RouterLink
       to="/"
-      class="flex h-14 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:bg-accent focus-visible:text-primary sm:px-3 md:h-full md:w-60"
+      class="app-brand-link flex h-14 w-auto shrink-0 items-center gap-3 rounded-md px-2 text-foreground outline-none transition-colors hover:text-primary focus-visible:bg-accent focus-visible:text-primary sm:px-3 md:h-full md:w-60"
       :aria-label="t('app.homeAria')"
     >
-      <img src="/logo-128.png" alt="Pomelo Orbit Logo" class="size-9" width="36" height="36" />
+      <img
+        src="/logo-128.png"
+        alt="Pomelo Orbit Logo"
+        class="app-brand-image size-9"
+        width="36"
+        height="36"
+      />
       <div class="hidden flex-col sm:flex">
-        <span class="text-base font-semibold leading-tight tracking-normal">Pomelo Orbit</span>
+        <span class="app-brand-name text-base font-medium leading-tight tracking-normal">
+          Pomelo Orbit
+        </span>
         <span
           v-if="runtimeConfig.envLabel"
           class="text-xs leading-tight text-amber-600 dark:text-amber-400"
@@ -21,25 +29,27 @@
 
     <NavigationMenuRoot
       :model-value="currentModule ?? undefined"
-      class="flex h-14 min-w-0 flex-1 overflow-x-auto md:h-full md:flex-none"
+      class="app-primary-nav flex h-14 min-w-0 flex-1 overflow-x-auto md:h-full md:flex-none"
       :aria-label="t('app.primaryNavAria')"
       :delay-duration="100"
       :skip-delay-duration="200"
     >
-      <NavigationMenuList class="flex h-full min-w-max items-stretch gap-0">
+      <NavigationMenuList class="flex h-full min-w-max items-center gap-1">
         <NavigationMenuItem
           v-for="item in localizedPrimaryNavigation"
           :key="item.key"
           :value="item.key"
+          class="app-module-item"
         >
           <NavigationMenuLink as-child :active="isActive(item.key)">
             <RouterLink
               :to="item.path"
-              class="flex h-full min-w-24 items-center justify-center border-b-2 px-3 text-sm outline-none transition-colors focus-visible:bg-accent/50 md:min-w-28 md:px-5"
+              class="app-module-link flex h-9 min-w-24 items-center justify-center border-b px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-w-28 md:px-5"
+              :data-active="isActive(item.key) ? '' : undefined"
               :class="
                 isActive(item.key)
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
               "
             >
               {{ item.label }}
@@ -51,7 +61,10 @@
 
     <div class="hidden flex-1 md:block" />
 
-    <ToolbarRoot class="hidden items-center gap-3 md:flex" :aria-label="t('app.globalToolbarAria')">
+    <ToolbarRoot
+      class="app-global-tools hidden items-center gap-3 md:flex"
+      :aria-label="t('app.globalToolbarAria')"
+    >
       <ToolbarButton
         class="inline-flex size-9 items-center justify-center rounded-md text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
         :aria-label="t('theme.' + theme)"
@@ -74,7 +87,7 @@
 
     <DropdownMenuRoot>
       <DropdownMenuTrigger
-        class="ml-1 flex h-10 max-w-40 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:max-w-56"
+        class="app-project-switcher ml-1 flex h-10 max-w-40 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:max-w-56"
         :aria-label="t('app.projectMenuAria', { project: activeProjectLabel })"
         @click="handleProjectMenuOpen"
       >
@@ -86,7 +99,7 @@
       </DropdownMenuTrigger>
       <DropdownMenuPortal>
         <DropdownMenuContent
-          class="z-50 min-w-56 max-w-[calc(100vw-1rem)] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-slideDownAndFade"
+          class="app-popover-content min-w-56 max-w-[calc(100vw-1rem)] overflow-y-auto data-[state=open]:animate-slideDownAndFade motion-reduce:animate-none"
           align="end"
           :side-offset="8"
         >
@@ -97,7 +110,7 @@
             <DropdownMenuItem
               v-for="project in projectStore.activeProjects"
               :key="project.id"
-              class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+              class="app-option-item justify-start gap-2"
               :class="{ 'bg-accent': project.id === projectStore.activeProjectId }"
               @select="handleSwitchProject(project.id)"
             >
@@ -122,11 +135,11 @@
     </DropdownMenuRoot>
     <DropdownMenuRoot>
       <DropdownMenuTrigger
-        class="ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
+        class="app-user-menu-trigger ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
         :aria-label="t('app.userMenuAria')"
       >
         <span
-          class="flex size-8 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground"
+          class="app-user-avatar flex size-8 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground"
         >
           {{ (authStore.user?.username || 'admin').slice(0, 1).toUpperCase() }}
         </span>
@@ -135,12 +148,12 @@
       </DropdownMenuTrigger>
       <DropdownMenuPortal>
         <DropdownMenuContent
-          class="z-50 min-w-64 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg outline-none data-[state=open]:animate-slideDownAndFade"
+          class="app-popover-content min-w-64 data-[state=open]:animate-slideDownAndFade motion-reduce:animate-none"
           align="end"
           :side-offset="8"
         >
           <DropdownMenuItem
-            class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+            class="app-option-item justify-start gap-2"
             @select="isAboutDialogOpen = true"
           >
             <CircleHelp class="size-4" />
@@ -148,16 +161,13 @@
           </DropdownMenuItem>
           <div class="my-1 h-px bg-border" />
           <DropdownMenuItem
-            class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+            class="app-option-item justify-start gap-2"
             @select="isPasswordDialogOpen = true"
           >
             <KeyRound class="size-4" />
             {{ t('user.changePassword') }}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            class="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm outline-none transition-colors data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
-            @select="handleLogout"
-          >
+          <DropdownMenuItem class="app-option-item justify-start gap-2" @select="handleLogout">
             <LogOut class="size-4" />
             {{ t('user.logout') }}
           </DropdownMenuItem>
@@ -227,12 +237,11 @@
     v-model:open="isAboutDialogOpen"
     :title="t('app.about')"
     width-class="w-[min(400px,calc(100vw-32px))]"
-    body-class="space-y-4 px-6 py-5"
   >
     <div class="flex items-center justify-center gap-4">
       <img src="/logo-128.png" alt="Pomelo Orbit Logo" class="size-14" width="56" height="56" />
       <div>
-        <p class="text-base font-semibold text-foreground">Pomelo Orbit</p>
+        <p class="text-base font-normal text-foreground">Pomelo Orbit</p>
         <p class="mt-1 font-mono text-sm text-muted-foreground">
           {{ t('app.versionLabel', { version: runtimeConfig.appVersion }) }}
         </p>

@@ -23,6 +23,8 @@ export default {
     clearSearch: '清空搜索',
     clearInput: '清空输入',
     clearSelection: '清空选择',
+    showValue: '显示值',
+    hideValue: '隐藏值',
     perPage: '{size} 条/页',
     previousPage: '上一页',
     nextPage: '下一页',

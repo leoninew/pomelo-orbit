@@ -16,7 +16,7 @@
       </div>
     </div>
 
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
         <p class="text-sm">{{ error || t('userManagement.loadFailed') }}</p>
@@ -78,7 +78,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="user.last_login_at" />
               </td>
-              <td v-if="canWriteUsers" class="whitespace-nowrap">
+              <td v-if="canWriteUsers" class="app-table-actions whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button class="app-link" @click="openEditDialog(user)">
                     {{ t('common.edit') }}

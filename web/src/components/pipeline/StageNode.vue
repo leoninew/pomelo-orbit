@@ -1,12 +1,13 @@
 <template>
   <div
-    class="min-w-[160px] cursor-pointer rounded-lg border-2 bg-card p-3 shadow-sm transition-all hover:shadow-md"
-    :class="[data.selected ? 'border-primary' : 'border-border', isRunning ? 'animate-pulse' : '']"
+    class="pipeline-stage-node min-w-[160px] cursor-pointer rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary"
+    :class="isRunning ? 'animate-pulse motion-reduce:animate-none' : ''"
+    :data-selected="data.selected ? '' : undefined"
     @click="handleClick"
   >
     <div class="space-y-2">
       <div class="flex items-center justify-between">
-        <h4 class="text-base font-semibold text-foreground">{{ stage.name }}</h4>
+        <h4 class="text-base font-normal text-foreground">{{ stage.name }}</h4>
         <span
           v-if="status"
           class="inline-block h-2 w-2 rounded-full"

@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="repository-workspace space-y-6">
     <ToolbarRoot class="app-toolbar-simple" aria-label="仓库工具栏">
       <SearchControl
         v-model="searchText"
@@ -13,15 +13,24 @@
       </button>
     </ToolbarRoot>
 
-    <!-- Table Card -->
-    <div class="app-surface">
+    <div class="repository-data">
       <AppLoadingState v-if="status === 'loading'" />
       <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
         <p class="text-sm">{{ error || '获取项目列表失败' }}</p>
       </div>
       <AppEmptyState v-else-if="repositories.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[1040px]">
+        <table class="repository-table app-data-table">
+          <colgroup>
+            <col style="width: 14.3%" />
+            <col style="width: 12.2%" />
+            <col style="width: 29.6%" />
+            <col style="width: 7.9%" />
+            <col style="width: 8.5%" />
+            <col style="width: 7.6%" />
+            <col style="width: 10.7%" />
+            <col style="width: 9.2%" />
+          </colgroup>
           <thead>
             <tr>
               <th>名称</th>
@@ -37,19 +46,25 @@
           <tbody>
             <tr v-for="p in repositories" :key="p.id">
               <td>
-                <router-link :to="`/repository/${p.id}`" class="app-link whitespace-nowrap">
-                  {{ p.name }}
+                <router-link :to="`/repository/${p.id}`" class="repository-name app-link">
+                  <FolderGit2 class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <AppTruncatedText :text="p.name" class="min-w-0" />
                 </router-link>
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ p.code }}</td>
-              <td class="text-foreground">
-                <AppTruncatedText :text="repositoryLocation(p)" class="max-w-64" />
+              <td class="repository-code whitespace-nowrap">{{ p.code }}</td>
+              <td class="repository-location">
+                <AppTruncatedText :text="repositoryLocation(p)" />
               </td>
               <td class="whitespace-nowrap text-foreground">
                 {{ p.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ p.default_branch }}</td>
-              <td class="whitespace-nowrap text-foreground">
+              <td>
+                <span class="repository-branch">
+                  <GitBranch class="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  {{ p.default_branch }}
+                </span>
+              </td>
+              <td class="repository-credential whitespace-nowrap">
                 <router-link
                   v-if="p.git_credential_id"
                   :to="`/repository-credential/${p.git_credential_id}`"
@@ -59,11 +74,13 @@
                 </router-link>
                 <span v-else-if="p.has_credential">已配置</span>
               </td>
-              <td class="whitespace-nowrap text-foreground">
+              <td class="repository-updated whitespace-nowrap">
                 <AppTableTime :time="p.updated_at" />
               </td>
-              <td class="whitespace-nowrap">
-                <button class="app-link mr-3" @click="openEditModal(p)">编辑</button>
+              <td class="app-table-actions repository-actions whitespace-nowrap">
+                <button class="repository-edit app-link mr-3" @click="openEditModal(p)">
+                  编辑
+                </button>
                 <button class="app-link-danger" @click="openDeleteDialog(p)">删除</button>
               </td>
             </tr>
@@ -350,7 +367,7 @@
       」吗？此操作不可撤销。
     </p>
     <label class="mt-4 flex cursor-pointer items-center gap-2">
-      <input v-model="deleteWorkspace" type="checkbox" class="size-4 accent-destructive" />
+      <input v-model="deleteWorkspace" type="checkbox" class="app-checkbox accent-destructive" />
       <span class="text-sm text-foreground">
         同时删除由 CI 工作区管理的源码目录（{{ pendingDelete?.code }}）
       </span>
@@ -371,7 +388,7 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { Plus } from '@lucide/vue';
+  import { FolderGit2, GitBranch, Plus } from '@lucide/vue';
   import { computed, reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { repositoryApi } from '@/api/repository/repository';

@@ -181,7 +181,7 @@
                     </AppBadge>
                   </div>
                 </td>
-                <td>
+                <td class="app-table-actions">
                   <div class="flex items-center gap-3">
                     <button class="app-link" @click="openStageDialog(stage)">编辑</button>
                     <button class="app-link-danger" @click="removeStage(stage)">删除</button>
@@ -262,7 +262,6 @@
       v-model:open="stageOpen"
       :title="editingStage ? '编辑阶段' : '添加阶段'"
       width-class="w-[min(760px,calc(100vw-32px))]"
-      body-class="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-4"
     >
       <form class="space-y-4" @submit.prevent="saveStage">
         <div v-if="!editingStage" class="space-y-1.5">
@@ -304,7 +303,7 @@
               v-model="stageForm.depends_on"
               type="checkbox"
               :value="stage.id"
-              class="size-4"
+              class="app-checkbox"
             />
             {{ stage.name }}
           </label>
@@ -442,6 +441,7 @@
         <AppDialogActions
           :busy="saving"
           confirm-label="删除"
+          variant="destructive"
           @cancel="deleteOpen = false"
           @confirm="deletePipeline"
         />

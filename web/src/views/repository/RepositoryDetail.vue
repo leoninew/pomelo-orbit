@@ -229,7 +229,7 @@
         」吗？此操作不可撤销。
       </p>
       <label class="mt-4 flex cursor-pointer items-center gap-2">
-        <input v-model="deleteWorkspace" type="checkbox" class="size-4 accent-destructive" />
+        <input v-model="deleteWorkspace" type="checkbox" class="app-checkbox accent-destructive" />
         <span class="text-sm text-foreground">
           同时删除由 CI 工作区管理的源码目录（{{ repository?.code }}）
         </span>

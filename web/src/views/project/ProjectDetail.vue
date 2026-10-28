@@ -81,8 +81,8 @@
 
       <AppLoadingState v-if="loadingMembers" size="section" />
       <AppEmptyState v-else-if="filteredMembers.length === 0" size="compact" />
-      <div v-else class="px-5 py-4">
-        <table class="app-data-table">
+      <div v-else class="overflow-x-auto">
+        <table class="app-data-table min-w-[760px]">
           <thead>
             <tr>
               <th>{{ t('userManagement.username') }}</th>
@@ -109,7 +109,7 @@
                 <AppBadge variant="pill">{{ member.auth_source }}</AppBadge>
               </td>
               <td><AppTableTime v-if="member.last_login_at" :time="member.last_login_at" /></td>
-              <td class="w-20">
+              <td class="app-table-actions w-20">
                 <button
                   class="app-link-danger"
                   :disabled="operating"

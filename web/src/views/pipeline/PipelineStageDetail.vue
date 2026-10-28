@@ -97,7 +97,7 @@
                     class="max-w-xl"
                   />
                 </td>
-                <td>
+                <td class="app-table-actions">
                   <div class="flex items-center gap-3">
                     <button class="app-link" @click="openArtifact(index)">编辑</button>
                     <button class="app-link-danger" @click="removeArtifact(index)">删除</button>

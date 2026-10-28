@@ -1,6 +1,6 @@
 <template>
   <AppLoadingState v-if="!projectReadinessChecked" size="section" />
-  <div v-else-if="!projectReady" class="app-surface">
+  <div v-else-if="!projectReady" class="app-list-surface">
     <p v-if="projectReadinessError" class="py-16 text-center text-sm text-destructive">
       {{ projectReadinessError }}
     </p>
@@ -36,17 +36,17 @@
       </router-link>
     </ToolbarRoot>
 
-    <div v-if="status === 'loading'" class="app-surface">
+    <div v-if="status === 'loading'" class="app-list-surface">
       <AppLoadingState />
     </div>
-    <div v-else-if="status === 'error'" class="app-surface py-16 text-center">
+    <div v-else-if="status === 'error'" class="app-list-surface py-16 text-center">
       <p class="text-sm text-destructive">{{ error || t('traefikRoute.toast.loadFailed') }}</p>
       <p class="mt-1 text-xs text-muted-foreground">{{ t('traefikRoute.serviceCheckHint') }}</p>
       <button class="app-link mx-auto mt-3 block text-sm" @click="fetchRoutes">
         {{ t('traefikRoute.retry') }}
       </button>
     </div>
-    <div v-else class="app-surface">
+    <div v-else class="app-list-surface">
       <AppEmptyState v-if="filteredRoutes.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table table-fixed min-w-[1080px]">

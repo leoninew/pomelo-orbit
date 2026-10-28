@@ -93,4 +93,23 @@ describe('project store', () => {
       name: 'Renamed Project',
     });
   });
+
+  it('keeps the project label when initialization reselects the restored project', () => {
+    localStorage.setItem(ACTIVE_PROJECT_ID_KEY, JSON.stringify('current-project'));
+    localStorage.setItem(
+      ACTIVE_PROJECT_SUMMARY_KEY,
+      JSON.stringify({ id: 'current-project', name: 'Current Project' })
+    );
+    const store = useProjectStore();
+
+    store.setActiveProject('current-project');
+
+    expect(store.activeProjectName).toBe('Current Project');
+    expect(projectApi.list).not.toHaveBeenCalled();
+
+    store.setActiveProject('another-project');
+
+    expect(store.activeProjectName).toBeNull();
+    expect(localStorage.getItem(ACTIVE_PROJECT_SUMMARY_KEY)).toBeNull();
+  });
 });

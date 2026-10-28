@@ -36,7 +36,11 @@ export const useProjectStore = defineStore('project', () => {
     activeProjectId.value = project_id;
     storageStore.setItem(ACTIVE_PROJECT_ID_KEY, project_id);
     const project = projects.value.find((item) => item.id === project_id);
-    activeProjectSummary.value = project ? { id: project.id, name: project.name } : null;
+    if (project) {
+      activeProjectSummary.value = { id: project.id, name: project.name };
+    } else if (activeProjectSummary.value?.id !== project_id) {
+      activeProjectSummary.value = null;
+    }
     if (activeProjectSummary.value) {
       storageStore.setItem(ACTIVE_PROJECT_SUMMARY_KEY, activeProjectSummary.value);
     } else {

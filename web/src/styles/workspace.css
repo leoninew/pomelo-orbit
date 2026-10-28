@@ -1,0 +1,334 @@
+.app-brand-image {
+  width: 2rem;
+  height: 2rem;
+}
+
+.app-brand-name {
+  font-weight: 500;
+}
+
+.app-module-item {
+  height: 100%;
+}
+
+.app-module-link {
+  position: relative;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.app-module-link[data-active] {
+  color: var(--workspace-brand);
+}
+
+.app-module-link[data-active]::after {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0;
+  left: 0.75rem;
+  height: 2px;
+  background: currentColor;
+  content: '';
+}
+
+.app-project-switcher {
+  height: 2.25rem;
+  margin-inline: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
+  padding-inline: 0.75rem;
+}
+
+.app-project-switcher > svg {
+  color: hsl(var(--muted-foreground));
+}
+
+.app-user-menu-trigger {
+  flex-shrink: 0;
+}
+
+.app-user-avatar {
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
+.app-global-tools {
+  gap: 0.5rem;
+}
+
+.app-sidebar {
+  background: hsl(var(--muted));
+}
+
+.app-nav-group-trigger {
+  height: 2.25rem;
+  gap: 0.625rem;
+}
+
+.app-nav-children {
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.app-nav-children .app-nav-item {
+  padding-left: 2.25rem;
+}
+
+.app-nav-item[data-active] {
+  background: transparent;
+  color: var(--workspace-brand);
+}
+
+.app-nav-item[data-active]::before {
+  height: 1.125rem;
+  background: currentColor;
+}
+
+.dialogue-history-item[data-active] {
+  border-color: color-mix(in srgb, var(--workspace-brand) 35%, hsl(var(--border)));
+  background: transparent;
+}
+
+.dialogue-history-item[data-active]::before {
+  position: absolute;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  left: -1px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--workspace-brand);
+  content: '';
+}
+
+.pipeline-stage-node[data-selected] {
+  border-color: var(--workspace-brand);
+  box-shadow: 0 0 0 1px var(--workspace-brand);
+}
+
+.home-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.home-metric {
+  position: relative;
+  min-width: 0;
+  min-height: 9rem;
+  border-radius: 0.375rem;
+  padding: 1.25rem 1.5rem;
+  transition: background-color 150ms;
+}
+
+.home-metric:hover {
+  background: hsl(var(--muted));
+}
+
+.home-metric:focus-visible {
+  outline: 2px solid var(--workspace-brand);
+  outline-offset: -2px;
+}
+
+.home-metric::before {
+  position: absolute;
+  top: 1.5rem;
+  bottom: 1.5rem;
+  left: 0;
+  display: none;
+  width: 1px;
+  background: hsl(var(--border));
+  content: '';
+}
+
+.home-metric-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-right: 4.5rem;
+}
+
+.home-metric-image {
+  position: absolute;
+  top: 2rem;
+  right: 1.5rem;
+  width: 4rem;
+  height: 4rem;
+  object-fit: contain;
+}
+
+.home-records {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+}
+
+.home-record-header {
+  display: flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.home-view-all,
+.repository-edit {
+  color: var(--workspace-brand);
+}
+
+.home-record-table {
+  min-width: 32rem;
+}
+
+.home-record-table :is(th, td) {
+  padding-inline: 0.75rem;
+}
+
+.home-record-time {
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+.home-entity-icon {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: hsl(var(--accent));
+  color: hsl(var(--muted-foreground));
+}
+
+.home-entity-link {
+  color: hsl(var(--foreground));
+}
+
+.repository-table {
+  min-width: 64rem;
+  table-layout: fixed;
+}
+
+.repository-table :is(th, td) {
+  padding-inline: 0.75rem;
+}
+
+.repository-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.repository-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+.repository-table :is(.repository-name, .repository-credential .app-link) {
+  color: hsl(var(--foreground));
+}
+
+.repository-table :is(.repository-code, .repository-branch) {
+  font-family: var(--font-mono);
+}
+
+.repository-table
+  :is(
+    .repository-code,
+    .repository-location,
+    .repository-branch,
+    .repository-credential,
+    .repository-updated
+  ) {
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+.repository-location {
+  color: hsl(var(--muted-foreground));
+}
+
+:is(.repository-data, .app-list-surface) .app-pagination {
+  border-top: 0;
+  padding-inline: 0;
+}
+
+:is(.repository-data, .app-list-surface) .app-pagination .app-select-trigger {
+  height: 2.25rem;
+}
+
+@media (min-width: 640px) {
+  .home-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-metric:nth-child(even)::before {
+    display: block;
+  }
+}
+
+@media (min-width: 768px) {
+  .app-brand-link {
+    width: 12rem;
+    padding-inline: 0.5rem;
+  }
+
+  .app-primary-nav {
+    margin-left: 1.5rem;
+  }
+
+  .app-project-switcher {
+    max-width: 13rem;
+  }
+
+  .app-sidebar:not([data-collapsed]) {
+    width: 13rem;
+  }
+
+  .app-secondary-nav {
+    padding: 1.5rem 1rem;
+  }
+
+  .app-workspace-main {
+    padding-block: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .home-overview {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .home-metric:not(:first-child)::before {
+    display: block;
+  }
+
+  .home-records {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1536px) {
+  .home-metric-copy {
+    padding-right: 5.5rem;
+  }
+
+  .home-metric-image {
+    width: 5rem;
+    height: 5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-metric {
+    transition: none;
+  }
+}

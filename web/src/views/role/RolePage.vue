@@ -16,7 +16,7 @@
       </div>
     </div>
 
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
         <p class="text-sm">{{ error || t('roleManagement.loadFailed') }}</p>
@@ -58,7 +58,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="role.created_at" />
               </td>
-              <td v-if="canWriteRoles" class="whitespace-nowrap">
+              <td v-if="canWriteRoles" class="app-table-actions whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button class="app-link" @click="openEditDialog(role)">
                     {{ t('common.edit') }}

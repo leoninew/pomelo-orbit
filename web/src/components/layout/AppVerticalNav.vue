@@ -1,15 +1,18 @@
 <template>
-  <nav class="flex-1 overflow-x-auto overflow-y-hidden p-3 md:overflow-y-auto md:p-4">
+  <nav
+    class="app-secondary-nav flex-1 overflow-x-auto overflow-y-hidden p-3 md:overflow-y-auto md:p-4"
+  >
     <!-- Collapsed: level-1 only, jump to first child -->
     <div v-if="collapsed" class="flex gap-2 md:flex-col md:gap-1">
       <RouterLink
         v-for="branch in items"
         :key="branch.key"
         :to="branch.path"
-        class="flex h-10 shrink-0 items-center justify-center rounded-md px-3 text-sm transition-colors md:px-0"
+        class="app-nav-item relative flex h-10 shrink-0 items-center justify-center rounded-md px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:px-0"
+        :data-active="isBranchActive(branch) ? '' : undefined"
         :class="
           isBranchActive(branch)
-            ? 'bg-primary/10 text-primary'
+            ? 'text-foreground'
             : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
         "
         :title="branch.label"
@@ -19,7 +22,7 @@
     </div>
 
     <!-- Expanded: true two-level menu (L1 expandable, L2 routes) -->
-    <div v-else class="flex gap-3 md:block md:space-y-1">
+    <div v-else class="flex gap-3 md:block md:space-y-5">
       <CollapsibleRoot
         v-for="branch in items"
         :key="branch.key"
@@ -28,10 +31,10 @@
         @update:open="(open) => setOpen(branch.key, open)"
       >
         <CollapsibleTrigger
-          class="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition-colors outline-none focus-visible:bg-muted/60 focus-visible:text-foreground"
+          class="app-nav-group-trigger flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           :class="
             isBranchActive(branch)
-              ? 'bg-muted/60 text-foreground'
+              ? 'text-foreground'
               : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
           "
         >
@@ -46,15 +49,16 @@
         </CollapsibleTrigger>
 
         <CollapsibleContent class="overflow-hidden data-[state=closed]:animate-none">
-          <div class="mt-1 space-y-0.5 border-l border-border/70 ml-5 pl-2">
+          <div class="app-nav-children mt-1 space-y-0.5 ml-5 pl-2">
             <RouterLink
               v-for="child in branch.children"
               :key="child.key"
               :to="child.path"
-              class="flex h-9 items-center rounded-md px-2.5 text-sm transition-colors"
+              class="app-nav-item relative flex h-9 items-center rounded-md px-2.5 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              :data-active="selectedKey === child.key ? '' : undefined"
               :class="
                 selectedKey === child.key
-                  ? 'bg-primary/10 text-primary'
+                  ? 'text-foreground'
                   : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
               "
             >

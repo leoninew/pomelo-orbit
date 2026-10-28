@@ -7,12 +7,7 @@
         role="tab"
         type="button"
         :aria-selected="activeScope === tab.value"
-        class="border-b-2 px-3 py-2 text-sm"
-        :class="
-          activeScope === tab.value
-            ? 'border-primary text-foreground'
-            : 'border-transparent text-muted-foreground hover:text-foreground'
-        "
+        class="app-tab"
         @click="activeScope = tab.value"
       >
         {{ tab.label }} ({{ tab.count }})
@@ -63,7 +58,7 @@
                 class="max-w-sm text-foreground"
               />
             </td>
-            <td v-if="!readonly" class="w-32">
+            <td v-if="!readonly" class="app-table-actions w-32">
               <div class="flex items-center gap-3">
                 <button v-if="canEdit(variable)" class="app-link" @click="emit('edit', variable)">
                   {{ t('common.edit') }}

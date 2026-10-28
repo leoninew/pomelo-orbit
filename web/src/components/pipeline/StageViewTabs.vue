@@ -6,12 +6,7 @@
       role="tab"
       type="button"
       :aria-selected="modelValue === tab.value"
-      class="border-b-2 px-3 py-2 text-sm"
-      :class="
-        modelValue === tab.value
-          ? 'border-primary text-foreground'
-          : 'border-transparent text-muted-foreground hover:text-foreground'
-      "
+      class="app-tab"
       @click="emit('update:modelValue', tab.value)"
     >
       {{ tab.label }}

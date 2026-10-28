@@ -27,12 +27,12 @@
         <ToggleGroupRoot
           v-model="viewMode"
           type="single"
-          class="flex h-10 shrink-0 overflow-hidden rounded-md border border-border bg-background"
+          class="app-segmented-control"
           :aria-label="t('service.viewMode')"
         >
           <ToggleGroupItem
             value="card"
-            class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+            class="app-segmented-item"
             :aria-label="t('service.cardView')"
             :title="t('service.cardView')"
           >
@@ -40,7 +40,7 @@
           </ToggleGroupItem>
           <ToggleGroupItem
             value="table"
-            class="flex size-10 items-center justify-center text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+            class="app-segmented-item"
             :aria-label="t('service.tableView')"
             :title="t('service.tableView')"
           >
@@ -63,30 +63,26 @@
       </div>
     </ToolbarRoot>
 
-    <div v-if="status === 'loading'" class="app-surface">
+    <div v-if="status === 'loading'" class="app-list-surface">
       <AppLoadingState />
     </div>
 
-    <div v-else-if="status === 'error'" class="app-surface">
+    <div v-else-if="status === 'error'" class="app-list-surface">
       <div class="py-16 text-center text-destructive">
         <p class="text-sm">{{ error || t('service.toast.loadFailed') }}</p>
       </div>
     </div>
 
-    <div v-else-if="services.length === 0" class="app-surface">
+    <div v-else-if="services.length === 0" class="app-list-surface">
       <AppEmptyState />
     </div>
 
     <div v-else-if="viewMode === 'card'" class="space-y-6">
       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <article
-          v-for="svc in services"
-          :key="svc.id"
-          class="app-surface flex min-h-56 flex-col p-5 transition-colors hover:border-primary"
-        >
+        <article v-for="svc in services" :key="svc.id" class="app-card flex min-h-56 flex-col p-5">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0 space-y-1">
-              <h2 class="text-base font-semibold text-foreground">
+              <h2 class="text-base font-normal text-foreground">
                 <AppTruncatedText :text="svc.application_name" as-child>
                   <router-link :to="`/service/${svc.id}`" class="app-link">
                     {{ svc.application_name }}
@@ -153,7 +149,7 @@
       />
     </div>
 
-    <div v-else class="app-surface">
+    <div v-else class="app-list-surface">
       <div class="overflow-x-auto">
         <table class="app-data-table min-w-[1120px]">
           <thead>
@@ -193,7 +189,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="svc.updated_at" />
               </td>
-              <td>
+              <td class="app-table-actions">
                 <div class="flex flex-wrap items-center gap-3">
                   <AppTooltip
                     :content="

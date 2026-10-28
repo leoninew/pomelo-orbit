@@ -22,7 +22,7 @@
       </div>
     </div>
 
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <p v-else-if="status === 'error'" class="py-16 text-center text-sm text-destructive">
         {{ error || '加载流水线失败' }}
@@ -86,7 +86,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="pipeline.updated_at" />
               </td>
-              <td>
+              <td class="app-table-actions">
                 <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <button class="app-link" @click="openEditDialog(pipeline)">编辑</button>
                   <button
@@ -178,7 +178,6 @@
     v-model:open="instantiateOpen"
     title="创建应用流水线"
     width-class="w-[min(760px,calc(100vw-32px))]"
-    body-class="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-4"
   >
     <form class="space-y-4" @submit.prevent="instantiate">
       <div class="space-y-1.5">

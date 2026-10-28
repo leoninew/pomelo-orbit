@@ -172,7 +172,7 @@
       </DetailInfoCard>
     </template>
 
-    <div v-else class="app-surface">
+    <div v-else class="app-list-surface">
       <AppEmptyState />
     </div>
 

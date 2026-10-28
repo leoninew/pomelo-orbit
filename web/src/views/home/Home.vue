@@ -1,57 +1,30 @@
 <template>
-  <div class="space-y-6">
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 2xl:grid-cols-4">
+  <div class="home-workspace space-y-8">
+    <div class="home-overview">
       <button
         v-for="(card, index) in overviewCards"
         :key="card.label"
         :aria-label="`查看${card.label}详情，当前${card.value}个`"
-        class="group app-surface relative flex min-h-36 items-center gap-4 overflow-hidden px-4 py-4 text-left shadow-sm transition-all duration-300 hover:scale-[1.02] hover:border-primary/30 hover:shadow-lg"
+        class="home-metric text-left"
         @click="router.push(card.path)"
       >
-        <!-- 图标 -->
-        <div class="flex shrink-0 items-center">
-          <div
-            class="flex size-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
-            :class="card.iconBgClass"
-          >
-            <component :is="card.icon" class="size-5" :class="card.iconColorClass" />
-          </div>
-        </div>
-
-        <!-- 指标文字 -->
-        <div class="flex min-w-0 flex-1 flex-col justify-center gap-2">
-          <p class="text-base text-foreground">{{ card.label }}</p>
-          <span class="text-base text-foreground">
+        <div class="home-metric-copy">
+          <p class="text-sm text-muted-foreground">{{ card.label }}</p>
+          <span class="home-metric-value text-base tabular-nums text-foreground">
             {{ card.value }}
           </span>
-          <span class="text-sm text-muted-foreground">{{ card.description }}</span>
+          <span class="text-xs text-muted-foreground">{{ card.description }}</span>
         </div>
-
-        <!-- 插图 -->
-        <div
-          class="flex shrink-0 items-center opacity-90 transition-opacity duration-300 group-hover:opacity-100"
-        >
-          <img
-            :src="cardImages[index]"
-            :alt="card.label"
-            class="h-24 w-24 rounded-xl bg-white/80 object-contain p-1 ring-1 ring-black/5 transition-colors dark:bg-white/90 dark:ring-white/10 sm:h-28 sm:w-28 xl:h-24 xl:w-24 2xl:h-28 2xl:w-28"
-          />
-        </div>
-
-        <!-- Hover 光晕效果 -->
-        <div
-          class="pointer-events-none absolute inset-0 rounded-lg opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-          :style="{ background: getCardGlow(card.iconColorClass) }"
-        ></div>
+        <img :src="cardImages[index]" :alt="card.label" class="home-metric-image" />
       </button>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 2xl:grid-cols-2">
-      <section class="app-surface overflow-hidden">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="text-base font-semibold text-foreground">{{ t('home.recentBuilds') }}</h2>
+    <div class="home-records">
+      <section class="min-w-0">
+        <div class="home-record-header">
+          <h2 class="text-base font-normal text-foreground">{{ t('home.recentBuilds') }}</h2>
           <button
-            class="app-link inline-flex items-center gap-1 text-sm"
+            class="home-view-all app-link inline-flex items-center gap-1 text-xs"
             @click="router.push('/pipeline-run')"
           >
             {{ t('common.viewAll') }}
@@ -64,11 +37,11 @@
         </div>
         <AppEmptyState v-else-if="recentRuns.length === 0" />
         <div v-else class="overflow-x-auto">
-          <table class="app-data-table table-fixed min-w-[560px]">
+          <table class="home-record-table app-data-table table-fixed">
             <colgroup>
-              <col class="w-[42%]" />
-              <col class="w-[34%]" />
-              <col class="w-[24%]" />
+              <col class="w-[46%]" />
+              <col class="w-[22%]" />
+              <col class="w-[32%]" />
             </colgroup>
             <thead>
               <tr>
@@ -80,16 +53,21 @@
             <tbody>
               <tr v-for="run in recentRuns" :key="run.id">
                 <td class="overflow-hidden">
-                  <AppTruncatedText :text="run.repository_name" as-child>
-                    <button
-                      class="app-link"
-                      @click="router.push(`/repository/${run.repository_id}`)"
-                    >
-                      {{ run.repository_name }}
-                    </button>
-                  </AppTruncatedText>
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span class="home-entity-icon" aria-hidden="true">
+                      <FolderGit2 class="size-4" />
+                    </span>
+                    <AppTruncatedText :text="run.repository_name" class="min-w-0" as-child>
+                      <button
+                        class="app-link home-entity-link"
+                        @click="router.push(`/repository/${run.repository_id}`)"
+                      >
+                        {{ run.repository_name }}
+                      </button>
+                    </AppTruncatedText>
+                  </div>
                 </td>
-                <td class="text-foreground">
+                <td class="home-record-time">
                   <AppTableTime :time="run.created_at" />
                 </td>
                 <td>
@@ -103,11 +81,11 @@
         </div>
       </section>
 
-      <section class="app-surface overflow-hidden">
-        <div class="app-section-header flex items-center justify-between">
-          <h2 class="text-base font-semibold text-foreground">{{ t('home.recentDeploys') }}</h2>
+      <section class="min-w-0">
+        <div class="home-record-header">
+          <h2 class="text-base font-normal text-foreground">{{ t('home.recentDeploys') }}</h2>
           <button
-            class="app-link inline-flex items-center gap-1 text-sm"
+            class="home-view-all app-link inline-flex items-center gap-1 text-xs"
             @click="router.push('/deployments')"
           >
             {{ t('common.viewAll') }}
@@ -120,11 +98,11 @@
         </div>
         <AppEmptyState v-else-if="recentDeploys.length === 0" />
         <div v-else class="overflow-x-auto">
-          <table class="app-data-table table-fixed min-w-[560px]">
+          <table class="home-record-table app-data-table table-fixed">
             <colgroup>
-              <col class="w-[42%]" />
-              <col class="w-[34%]" />
-              <col class="w-[24%]" />
+              <col class="w-[46%]" />
+              <col class="w-[22%]" />
+              <col class="w-[32%]" />
             </colgroup>
             <thead>
               <tr>
@@ -136,16 +114,21 @@
             <tbody>
               <tr v-for="deployment in recentDeploys" :key="deployment.id">
                 <td class="overflow-hidden">
-                  <AppTruncatedText :text="deployment.application_name" as-child>
-                    <button
-                      class="app-link"
-                      @click="router.push(`/application/${deployment.application_id}`)"
-                    >
-                      {{ deployment.application_name }}
-                    </button>
-                  </AppTruncatedText>
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span class="home-entity-icon" aria-hidden="true">
+                      <Server class="size-4" />
+                    </span>
+                    <AppTruncatedText :text="deployment.application_name" class="min-w-0" as-child>
+                      <button
+                        class="app-link home-entity-link"
+                        @click="router.push(`/application/${deployment.application_id}`)"
+                      >
+                        {{ deployment.application_name }}
+                      </button>
+                    </AppTruncatedText>
+                  </div>
                 </td>
-                <td class="text-foreground">
+                <td class="home-record-time">
                   <AppTableTime :time="deployment.started_at" />
                 </td>
                 <td>
@@ -163,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowRight, FolderGit2, LayoutGrid, Play, Rocket } from '@lucide/vue';
+  import { ArrowRight, FolderGit2, Server } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import { useI18n } from 'vue-i18n';
@@ -184,8 +167,6 @@
   import type { PipelineRunResp } from '@/gen/proto/orbit/v1/pipeline_run/pipeline_run';
   import { statusTone } from '@/utils/status';
   import { getTodayStart } from '@/utils/time';
-
-  // 导入卡片图片
   import image1 from '@/assets/images/1.png';
   import image2 from '@/assets/images/2.png';
   import image3 from '@/assets/images/3.png';
@@ -205,53 +186,30 @@
 
   const cardImages = [image1, image2, image3, image4];
 
-  function getCardGlow(iconColorClass: string): string {
-    const colorMap: Record<string, string> = {
-      blue: 'rgba(59, 130, 246, 0.05)',
-      purple: 'rgba(168, 85, 247, 0.05)',
-      indigo: 'rgba(99, 102, 241, 0.05)',
-    };
-    const color = Object.keys(colorMap).find((key) => iconColorClass.includes(key));
-    const glowColor = color ? colorMap[color] : 'rgba(249, 115, 22, 0.05)';
-    return `radial-gradient(circle at 50% 50%, ${glowColor} 0%, transparent 70%)`;
-  }
-
   const overviewCards = computed(() => [
     {
       label: t('home.repositories'),
       value: pipelineStats.projectCount,
       description: t('home.repositoriesDesc'),
       path: '/repository',
-      icon: FolderGit2,
-      iconBgClass: 'bg-blue-500/10 dark:bg-blue-400/10',
-      iconColorClass: 'text-blue-600 dark:text-blue-400',
     },
     {
       label: t('home.todayBuilds'),
       value: pipelineStats.todayRuns,
       description: t('home.todayBuildsDesc'),
       path: '/pipeline-run',
-      icon: Play,
-      iconBgClass: 'bg-purple-500/10 dark:bg-purple-400/10',
-      iconColorClass: 'text-purple-600 dark:text-purple-400',
     },
     {
       label: t('home.applications'),
       value: deploymentStats.applicationCount,
       description: t('home.applicationsDesc'),
       path: '/applications',
-      icon: LayoutGrid,
-      iconBgClass: 'bg-indigo-500/10 dark:bg-indigo-400/10',
-      iconColorClass: 'text-indigo-600 dark:text-indigo-400',
     },
     {
       label: t('home.todayDeploys'),
       value: deploymentStats.todayDeploys,
       description: t('home.todayDeploysDesc'),
       path: '/deployments',
-      icon: Rocket,
-      iconBgClass: 'bg-orange-500/10 dark:bg-orange-400/10',
-      iconColorClass: 'text-orange-600 dark:text-orange-400',
     },
   ]);
 

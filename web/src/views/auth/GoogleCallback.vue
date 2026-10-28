@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10"
-  >
+  <div class="min-h-screen flex items-center justify-center bg-muted">
     <div class="text-center">
       <div
         class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"

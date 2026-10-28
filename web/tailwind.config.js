@@ -1,16 +1,25 @@
-import { fontFamily } from 'tailwindcss/defaultTheme'
+import { fontFamily } from 'tailwindcss/defaultTheme';
 
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
-  content: [
-    './index.html',
-    './src/**/*.{vue,js,ts,jsx,tsx}',
-  ],
+  content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', ...fontFamily.sans],
+        sans: [
+          'Inter',
+          'Segoe UI',
+          'Noto Sans SC',
+          'PingFang SC',
+          'Microsoft YaHei UI',
+          'Microsoft YaHei',
+          ...fontFamily.sans,
+        ],
+      },
+      fontSize: {
+        xs: ['0.75rem', { lineHeight: '1.25rem' }],
+        sm: ['0.875rem', { lineHeight: '1.375rem' }],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -93,4 +102,4 @@ export default {
     },
   },
   plugins: [],
-}
+};

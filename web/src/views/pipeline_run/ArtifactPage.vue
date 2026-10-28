@@ -20,7 +20,7 @@
       </div>
     </ToolbarRoot>
 
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
         <p class="text-sm">{{ error || '加载失败' }}</p>

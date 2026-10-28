@@ -12,7 +12,7 @@
             v-for="role in user.role_items"
             :key="role.id"
             :value="role.id"
-            class="px-4 py-2 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-foreground"
+            class="app-tab"
           >
             {{ role.name }}
           </TabsTrigger>

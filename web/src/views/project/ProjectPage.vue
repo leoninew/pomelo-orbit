@@ -20,7 +20,7 @@
       </div>
     </ToolbarRoot>
 
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
         <p class="text-sm">{{ error || t('project.loadFailed') }}</p>
@@ -70,7 +70,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="project.updated_at" />
               </td>
-              <td class="whitespace-nowrap">
+              <td class="app-table-actions whitespace-nowrap">
                 <div class="flex items-center gap-3">
                   <button class="app-link" @click="openEditDialog(project)">
                     {{ t('common.edit') }}
@@ -103,8 +103,6 @@
       v-model:open="isDialogOpen"
       :title="editingProject ? t('project.editProject') : t('project.createProject')"
       width-class="w-[min(760px,calc(100vw-32px))]"
-      body-class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4"
-      content-class="max-h-[calc(100vh-32px)] flex flex-col"
     >
       <form class="space-y-4" novalidate @submit.prevent="handleSave">
         <div class="space-y-1.5">

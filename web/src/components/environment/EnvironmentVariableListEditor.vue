@@ -1,5 +1,5 @@
 <template>
-  <form class="app-surface app-detail-card space-y-4" @submit.prevent="submit">
+  <form class="app-detail-card space-y-4" @submit.prevent="submit">
     <div class="app-section-header app-detail-section-header">
       <h2 class="app-detail-section-title">{{ title }}</h2>
       <div class="app-detail-section-actions">
@@ -130,7 +130,7 @@
                 </button>
               </div>
             </td>
-            <td v-if="editable" class="whitespace-nowrap">
+            <td v-if="editable" class="app-table-actions whitespace-nowrap">
               <div v-if="isEditing(row.id)" class="flex h-9 items-center gap-2">
                 <button
                   type="button"
@@ -177,7 +177,7 @@
         </tbody>
         <tfoot v-if="editable && allowAdd">
           <tr>
-            <td :colspan="columnCount">
+            <td :colspan="columnCount" class="app-table-actions">
               <button
                 type="button"
                 class="app-link inline-flex items-center gap-1"

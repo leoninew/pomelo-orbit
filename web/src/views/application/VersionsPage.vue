@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-base font-semibold text-foreground">
+    <h1 class="text-base font-normal text-foreground">
       {{ t('nav.versions') }}
     </h1>
     <ToolbarRoot class="app-toolbar-scroll" :aria-label="t('application.toolbar')">
@@ -16,10 +16,10 @@
       </div>
     </ToolbarRoot>
 
-    <div v-if="loadingApplications" class="app-surface">
+    <div v-if="loadingApplications" class="app-list-surface">
       <AppLoadingState />
     </div>
-    <div v-else-if="loadError" class="app-surface">
+    <div v-else-if="loadError" class="app-list-surface">
       <div class="py-16 text-center text-destructive">
         <p class="text-sm">{{ loadError }}</p>
       </div>

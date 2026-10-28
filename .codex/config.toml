@@ -11,3 +11,6 @@ env_vars = ["POMELO_ORBIT_MCP__ACCESS_TOKEN"]
 
 [mcp_servers.pomelo-orbit-mcp.env]
 POMELO_ORBIT_APP__ENV = "development"
+
+[mcp_servers.ardot-local]
+url = "http://127.0.0.1:50501/api/v1/mcp"

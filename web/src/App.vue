@@ -7,14 +7,13 @@
     <div v-else class="flex h-full min-h-0 flex-col">
       <AppTopBar :current-module="currentPrimaryModule" />
 
-      <div
-        class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-3 md:flex-row md:gap-4 md:p-4"
-      >
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <!-- Sidebar -->
         <aside
           v-if="currentScope"
-          class="flex shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-all duration-200"
+          class="app-sidebar flex shrink-0 flex-col overflow-hidden border-b border-border bg-background transition-all duration-200 motion-reduce:transition-none md:border-b-0 md:border-r"
           :class="collapsed ? 'md:w-16' : 'md:w-60'"
+          :data-collapsed="collapsed ? '' : undefined"
         >
           <AppVerticalNav
             :items="sidebarItems"
@@ -23,7 +22,7 @@
           />
 
           <button
-            class="hidden h-11 items-center justify-center border-t border-border text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground md:flex"
+            class="app-icon-button m-3 hidden w-auto shrink-0 md:flex"
             @click="collapsed = !collapsed"
           >
             <PanelLeftClose v-if="!collapsed" class="size-4" />
@@ -33,7 +32,7 @@
 
         <!-- Main content -->
         <main
-          class="flex min-w-0 flex-1 flex-col"
+          class="app-workspace-main flex min-h-0 min-w-0 flex-1 flex-col p-4 md:p-6 xl:p-10"
           :class="isDeploymentDialogue ? 'overflow-visible' : 'overflow-x-hidden overflow-y-auto'"
         >
           <div class="min-h-0 flex-1">
@@ -48,6 +47,7 @@
 </template>
 
 <script setup lang="ts">
+  import '@/styles/workspace.css';
   import { PanelLeftClose, PanelLeftOpen } from '@lucide/vue';
   import { computed, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
@@ -84,5 +84,5 @@
     });
   });
 
-  const isStandalonePage = computed(() => route.meta.standalone === true || route.name === 'Login');
+  const isStandalonePage = computed(() => route.meta.standalone === true);
 </script>

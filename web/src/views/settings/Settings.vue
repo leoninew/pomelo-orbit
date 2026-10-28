@@ -9,26 +9,26 @@
       />
     </ToolbarRoot>
 
-    <div v-if="config?.pending_restart" class="app-tip border-amber-200 bg-amber-50">
-      <p class="text-sm text-amber-800">{{ t('settings.restartWarning') }}</p>
+    <div v-if="config?.pending_restart" class="app-tip bg-amber-50 dark:bg-amber-500/10">
+      <p class="text-sm text-amber-800 dark:text-amber-300">{{ t('settings.restartWarning') }}</p>
     </div>
     <p v-if="config?.next_config_error" class="app-field-error" role="alert">
       {{ config.next_config_error }}
     </p>
     <p v-if="submitError" class="app-field-error" role="alert">{{ submitError }}</p>
 
-    <div v-if="configLoading" class="app-surface">
+    <div v-if="configLoading" class="app-list-surface">
       <AppLoadingState />
     </div>
-    <div v-else-if="configStatus === 'error'" class="app-surface">
+    <div v-else-if="configStatus === 'error'" class="app-list-surface">
       <div class="py-16 text-center text-destructive">
         <p class="text-sm">{{ configError || t('settings.loadFailed') }}</p>
       </div>
     </div>
-    <div v-else-if="filteredConfig.length === 0" class="app-surface">
+    <div v-else-if="filteredConfig.length === 0" class="app-list-surface">
       <AppEmptyState />
     </div>
-    <div v-else class="app-surface">
+    <div v-else class="app-list-surface">
       <div class="overflow-x-auto">
         <table class="app-data-table table-fixed min-w-[960px]">
           <colgroup>
@@ -125,7 +125,7 @@
                   </p>
                 </div>
               </td>
-              <td v-if="canWriteSettings" class="whitespace-nowrap">
+              <td v-if="canWriteSettings" class="app-table-actions whitespace-nowrap">
                 <div v-if="drafts[item.key] || resetKeys.has(item.key)" class="flex gap-2">
                   <button :disabled="operating" class="app-link" @click="handleSave">
                     {{ changeCount > 1 ? t('settings.saveAll') : t('common.save') }}

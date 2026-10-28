@@ -1,6 +1,6 @@
 <template>
   <div class="flex h-full min-h-0 flex-col">
-    <section class="app-surface flex min-h-0 flex-1 overflow-hidden border-border">
+    <section class="dialogue-workspace flex min-h-0 flex-1 overflow-hidden">
       <aside
         v-if="!historyCollapsed"
         class="hidden min-h-0 w-64 shrink-0 border-r border-border lg:flex"
@@ -15,11 +15,11 @@
         />
       </aside>
 
-      <div class="flex min-w-0 flex-1 flex-col">
-        <div class="flex h-12 shrink-0 items-center border-b border-border px-3">
+      <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div class="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
           <button
             type="button"
-            class="app-icon-button lg:hidden"
+            class="app-icon-button shrink-0 lg:hidden"
             :aria-label="t('deploymentDialogue.history')"
             :title="t('deploymentDialogue.history')"
             @click="mobileHistoryOpen = true"
@@ -28,7 +28,7 @@
           </button>
           <button
             type="button"
-            class="app-icon-button hidden lg:inline-flex"
+            class="app-icon-button hidden shrink-0 lg:inline-flex"
             :aria-label="t('deploymentDialogue.toggleHistory')"
             :title="t('deploymentDialogue.toggleHistory')"
             @click="historyCollapsed = !historyCollapsed"
@@ -37,7 +37,7 @@
           </button>
           <AppTruncatedText
             :text="activeConversationTitle || t('deploymentDialogue.newConversation')"
-            class="ml-2 text-sm font-medium text-foreground"
+            class="min-w-0 flex-1 text-sm text-foreground"
           />
           <ToolbarRoot
             v-if="activeConversation"
@@ -57,70 +57,69 @@
           </ToolbarRoot>
         </div>
 
-        <div ref="scrollContainer" class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
-          <div
-            v-if="messages.length === 0"
-            class="flex h-full min-h-80 items-center justify-center"
-          >
-            <p class="text-sm text-muted-foreground">{{ t('deploymentDialogue.empty') }}</p>
-          </div>
-
-          <article
-            v-for="(item, index) in messages"
-            :key="`${item.role}-${index}`"
-            class="flex"
-            :class="item.role === 'user' ? 'justify-end' : 'justify-start'"
-          >
-            <div
-              class="max-w-[88%] break-words rounded-xl px-4 py-3 text-sm leading-6 sm:max-w-[76%]"
-              :class="
-                item.role === 'user' ? 'bg-primary text-primary-foreground' : messageClass(item)
-              "
-            >
-              <p v-if="item.role === 'user'" class="whitespace-pre-wrap">{{ item.content }}</p>
-              <MarkdownContent v-else :content="item.content" />
-              <details
-                v-for="(call, callIndex) in item.tool_calls || []"
-                :key="callIndex"
-                class="mt-3 border-t border-border/70 pt-2 text-xs"
-              >
-                <summary class="cursor-pointer text-muted-foreground">{{ call.name }}</summary>
-                <pre
-                  class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-background p-2 text-foreground"
-                  >{{ call.result_json }}</pre>
-              </details>
+        <div ref="scrollContainer" class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          <div class="mx-auto flex min-h-full w-full max-w-5xl flex-col gap-5">
+            <div v-if="messages.length === 0" class="flex flex-1 items-center justify-center">
+              <p class="text-sm text-muted-foreground">{{ t('deploymentDialogue.empty') }}</p>
             </div>
-          </article>
 
-          <div v-if="pending" class="flex justify-start">
-            <div
-              class="rounded-xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground"
+            <article
+              v-for="(item, index) in messages"
+              :key="`${item.role}-${index}`"
+              class="flex"
+              :class="item.role === 'user' ? 'justify-end' : 'justify-start'"
             >
-              <span class="processing-status" role="status">
-                {{ t('deploymentDialogue.thinking') }}
-                <span aria-hidden="true">{{ '.'.repeat(thinkingDotCount) }}</span>
-              </span>
-              <ul
-                v-if="toolActivity.length > 0"
-                class="mt-2 space-y-1 border-t border-border/70 pt-2 text-xs"
+              <div
+                class="min-w-0 max-w-[88%] break-words rounded-lg px-4 py-3 text-sm leading-6 sm:max-w-[76%]"
+                :class="
+                  item.role === 'user' ? 'bg-primary text-primary-foreground' : messageClass(item)
+                "
               >
-                <li
-                  v-for="(activity, index) in toolActivity"
-                  :key="`${activity.name}-${index}`"
-                  :class="activity.status === 'failed' ? 'text-destructive' : ''"
+                <p v-if="item.role === 'user'" class="whitespace-pre-wrap">{{ item.content }}</p>
+                <MarkdownContent v-else :content="item.content" />
+                <details
+                  v-for="(call, callIndex) in item.tool_calls || []"
+                  :key="callIndex"
+                  class="mt-3 border-t border-border/70 pt-2 text-xs"
                 >
-                  {{ toolActivityText(activity) }}
-                </li>
-              </ul>
+                  <summary class="cursor-pointer text-muted-foreground">{{ call.name }}</summary>
+                  <pre
+                    class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-background p-2 text-foreground"
+                    >{{ call.result_json }}</pre>
+                </details>
+              </div>
+            </article>
+
+            <div v-if="pending" class="flex justify-start">
+              <div
+                class="min-w-0 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground"
+              >
+                <span class="processing-status" role="status">
+                  {{ t('deploymentDialogue.thinking') }}
+                  <span aria-hidden="true">{{ '.'.repeat(thinkingDotCount) }}</span>
+                </span>
+                <ul
+                  v-if="toolActivity.length > 0"
+                  class="mt-2 space-y-1 border-t border-border/70 pt-2 text-xs"
+                >
+                  <li
+                    v-for="(activity, index) in toolActivity"
+                    :key="`${activity.name}-${index}`"
+                    :class="activity.status === 'failed' ? 'text-destructive' : ''"
+                  >
+                    {{ toolActivityText(activity) }}
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
 
-        <form class="shrink-0 border-t border-border p-4 sm:p-5" @submit.prevent="send">
-          <div class="flex items-center gap-3">
+        <form class="shrink-0 border-t border-border p-4 sm:px-6 sm:py-5" @submit.prevent="send">
+          <div class="mx-auto flex w-full max-w-5xl items-end gap-3">
             <AppTextarea
               v-model="draft"
-              class="min-h-11 flex-1 resize-none disabled:opacity-60"
+              class="min-h-16 flex-1 resize-none disabled:opacity-60"
               :placeholder="t('deploymentDialogue.placeholder')"
               :aria-label="t('deploymentDialogue.placeholder')"
               :disabled="pending || historyLoading"
@@ -128,7 +127,7 @@
               @keydown.enter.exact.prevent="send"
             />
             <button
-              class="app-button-primary size-10 p-0"
+              class="app-button-primary size-10 shrink-0 p-0"
               type="submit"
               :aria-label="t('deploymentDialogue.send')"
               :title="t('deploymentDialogue.send')"
@@ -141,11 +140,27 @@
       </div>
     </section>
 
-    <AppDrawer v-model:open="mobileHistoryOpen" :title="t('deploymentDialogue.history')">
+    <AppDrawer
+      v-model:open="mobileHistoryOpen"
+      :title="t('deploymentDialogue.history')"
+      body-class="min-h-0 flex-1 overflow-hidden p-0"
+    >
+      <template #actions>
+        <button
+          type="button"
+          class="app-icon-button"
+          :aria-label="t('deploymentDialogue.newConversation')"
+          :title="t('deploymentDialogue.newConversation')"
+          @click="startNewConversation"
+        >
+          <Plus class="size-4" />
+        </button>
+      </template>
       <DeploymentDialogueHistory
         :conversations="conversations"
         :active-conversation-id="activeConversationId"
         :loading="historyLoading"
+        :show-header="false"
         @new="startNewConversation"
         @select="selectConversation"
         @delete="requestDeleteConversation"
@@ -178,7 +193,7 @@
   import { storeToRefs } from 'pinia';
   import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { PanelLeft, PanelLeftClose, Send, Trash2 } from '@lucide/vue';
+  import { PanelLeft, PanelLeftClose, Plus, Send, Trash2 } from '@lucide/vue';
   import { ToolbarRoot } from 'reka-ui';
   import { dialogueApi } from '@/api/dialogue/dialogue';
   import AppDialog from '@/components/ui/AppDialog.vue';

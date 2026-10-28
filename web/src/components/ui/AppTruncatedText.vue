@@ -6,7 +6,7 @@
         :as-child="asChild"
         class="block truncate"
         :class="{
-          'cursor-help underline decoration-dashed underline-offset-2 focus-visible:outline focus-visible:outline-ring':
+          'cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-4 focus-visible:outline focus-visible:outline-ring':
             hasHiddenText,
         }"
         :tabindex="hasHiddenText && !asChild ? 0 : undefined"

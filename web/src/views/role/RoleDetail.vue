@@ -145,6 +145,7 @@
             <input
               v-model="permissionForm.codes"
               type="checkbox"
+              class="app-checkbox mt-0.5"
               :value="permission.code"
               :disabled="operating"
             />

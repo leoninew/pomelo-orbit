@@ -1,5 +1,5 @@
 <template>
-  <section class="app-surface app-detail-card">
+  <section class="app-detail-card">
     <div class="app-section-header app-detail-section-header shrink-0">
       <slot name="header">
         <h2 v-if="title" class="app-detail-section-title">{{ title }}</h2>
@@ -10,7 +10,7 @@
         >
           <button
             v-if="editable"
-            class="app-button-primary h-9 px-3"
+            class="app-button h-9 px-3"
             :disabled="disabled"
             @click="emit('edit')"
           >

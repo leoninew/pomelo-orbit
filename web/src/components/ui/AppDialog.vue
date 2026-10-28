@@ -8,9 +8,9 @@
         @open-auto-focus.prevent
         @close-auto-focus.prevent
       >
-        <div class="border-b border-border px-6 py-4">
+        <div class="shrink-0 px-6 pb-2 pt-6">
           <div class="flex min-w-0 items-center justify-between gap-3">
-            <DialogTitle class="min-w-0 text-base font-semibold text-foreground">
+            <DialogTitle class="min-w-0 break-words text-base font-normal text-foreground">
               {{ title }}
             </DialogTitle>
             <slot name="title-actions" />
@@ -23,7 +23,7 @@
         <div :class="bodyClass">
           <slot />
         </div>
-        <div v-if="$slots.footer" class="flex justify-end gap-2 border-t border-border px-6 py-4">
+        <div v-if="$slots.footer" class="flex shrink-0 flex-wrap justify-end gap-2 px-6 pb-6 pt-4">
           <slot name="footer" />
         </div>
       </DialogContent>
@@ -54,7 +54,7 @@
     {
       description: '',
       widthClass: 'w-[min(520px,calc(100vw-32px))]',
-      bodyClass: 'space-y-4 px-6 py-4',
+      bodyClass: 'min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4',
       contentClass: '',
     }
   );

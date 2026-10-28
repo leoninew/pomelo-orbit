@@ -3,48 +3,50 @@
 
 @layer base {
   :root {
-    --background: 216 33% 97%; /* #f8fafc 风格 */
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 100%;
+    --foreground: 240 5.9% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 5.9% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --popover-foreground: 240 5.9% 10%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 25% 98.4%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 25% 98.4%;
+    --muted-foreground: 240 4.2% 42%;
+    --accent: 240 12% 96%;
+    --accent-foreground: 240 5.9% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 220 13% 91%; /* 通用边框颜色 */
-    --input: 220 13% 91%; /* 输入框边框颜色，与 border 保持一致以确保视觉统一 */
-    --ring: 221.2 83.2% 53.3%;
+    --border: 240 13% 91.9%;
+    --input: 240 13% 91.9%;
+    --ring: 228.4 76.5% 61.6%;
+    --workspace-brand: #526fe8;
     --radius: 0.5rem;
   }
 
   .dark {
     --background: 220 18% 7%;
-    --foreground: 210 40% 96%;
-    --card: 220 17% 11%;
-    --card-foreground: 210 40% 96%;
+    --foreground: 240 5% 96%;
+    --card: 220 18% 7%;
+    --card-foreground: 240 5% 96%;
     --popover: 220 17% 11%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 217.2 91.2% 59.8%;
+    --popover-foreground: 240 5% 96%;
+    --primary: 240 5% 96%;
     --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 220 14% 17%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 220 14% 17%;
-    --muted-foreground: 215 18% 68%;
-    --accent: 220 14% 17%;
-    --accent-foreground: 210 40% 96%;
+    --secondary: 240 7% 15%;
+    --secondary-foreground: 240 5% 96%;
+    --muted: 240 8% 10%;
+    --muted-foreground: 240 5% 68%;
+    --accent: 240 7% 15%;
+    --accent-foreground: 240 5% 96%;
     --destructive: 0 62.8% 50%;
     --destructive-foreground: 210 40% 98%;
-    --border: 220 13% 22%;
-    --input: 220 13% 22%;
-    --ring: 224.3 76.3% 48%;
+    --border: 240 7% 20%;
+    --input: 240 7% 25%;
+    --ring: 228 100% 80%;
+    --workspace-brand: #9daeff;
   }
 }
 
@@ -53,7 +55,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-sm text-foreground;
+    @apply bg-background font-sans text-sm text-foreground antialiased;
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
@@ -84,20 +86,33 @@
 }
 
 @layer components {
+  .app-nav-item[data-active]::before {
+    @apply absolute left-0 h-4 w-0.5 rounded-full bg-foreground;
+    content: '';
+  }
+
   .app-surface {
-    @apply overflow-hidden rounded-lg border border-border/50 bg-card shadow-sm;
+    @apply overflow-hidden rounded-lg border border-border bg-card;
+  }
+
+  .app-list-surface {
+    @apply min-w-0 overflow-hidden;
+  }
+
+  .app-card {
+    @apply rounded-lg border border-border bg-card transition-colors hover:bg-muted;
   }
 
   .app-section-header {
-    @apply min-h-[60px] border-b border-border px-6 py-3;
+    @apply min-h-12 border-b border-border py-3;
   }
 
   .app-detail-card {
-    @apply text-sm;
+    @apply min-w-0 text-sm;
   }
 
   .app-detail-subsection {
-    @apply border-t border-border p-5 sm:p-6;
+    @apply border-t border-border py-6;
   }
 
   .app-detail-section-header {
@@ -109,15 +124,15 @@
   }
 
   .app-detail-page-title {
-    @apply text-base font-semibold text-foreground;
+    @apply text-base font-normal text-foreground;
   }
 
   .app-detail-section-title {
-    @apply text-sm font-semibold text-foreground;
+    @apply text-sm font-normal text-foreground;
   }
 
   .app-detail-info-grid {
-    @apply grid grid-cols-1 gap-x-8 gap-y-3 px-5 py-4 text-sm sm:grid-cols-2;
+    @apply grid grid-cols-1 gap-x-8 gap-y-4 py-5 text-sm sm:grid-cols-2;
   }
 
   .app-detail-info-grid > * {
@@ -133,7 +148,7 @@
   }
 
   .app-detail-fields {
-    @apply text-sm;
+    @apply py-5 text-sm;
   }
 
   .app-detail-fields > div {
@@ -141,7 +156,7 @@
   }
 
   .app-detail-fields dt {
-    @apply shrink-0 text-muted-foreground;
+    @apply w-32 shrink-0 text-muted-foreground;
   }
 
   .app-detail-fields dd {
@@ -149,7 +164,7 @@
   }
 
   .app-detail-list-item {
-    @apply flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-primary/40;
+    @apply flex items-start gap-2 rounded-md border border-border bg-muted px-4 py-3 text-sm transition-colors hover:bg-accent;
   }
 
   .app-toolbar-simple {
@@ -183,19 +198,19 @@
   }
 
   .app-field-error {
-    @apply !text-xs !font-normal !leading-4 !text-destructive;
+    @apply !text-xs !font-normal !leading-5 !text-destructive;
   }
 
   .app-field-warning {
-    @apply !text-xs !font-normal !leading-4 !text-amber-700 dark:!text-amber-400;
+    @apply !text-xs !font-normal !leading-5 !text-amber-700 dark:!text-amber-400;
   }
 
   .app-field-hint {
-    @apply text-xs text-muted-foreground;
+    @apply text-xs leading-5 text-muted-foreground;
   }
 
   .app-input {
-    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors focus-within:border-ring data-[disabled]:cursor-not-allowed data-[disabled]:bg-muted/30 data-[disabled]:text-muted-foreground;
+    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-muted focus-within:bg-background focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring data-[disabled]:cursor-not-allowed data-[disabled]:bg-muted/50 data-[disabled]:text-muted-foreground;
   }
 
   .app-input-control {
@@ -218,10 +233,6 @@
     @apply inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground outline-none transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  .app-input-error {
-    @apply border-destructive focus:border-destructive focus-within:border-destructive;
-  }
-
   .app-search-control {
     @apply max-w-sm gap-0 overflow-hidden px-0;
   }
@@ -231,15 +242,15 @@
   }
 
   .app-search-button {
-    @apply inline-flex h-full min-w-20 shrink-0 items-center justify-center bg-primary px-5 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-full min-w-16 shrink-0 items-center justify-center border-l border-input px-4 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-textarea {
-    @apply min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus-within:border-ring data-[disabled]:cursor-not-allowed data-[disabled]:bg-muted/30 data-[disabled]:text-muted-foreground;
+    @apply min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors hover:bg-muted focus-within:bg-background focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring data-[disabled]:cursor-not-allowed data-[disabled]:bg-muted/50 data-[disabled]:text-muted-foreground;
   }
 
   .app-button {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-input bg-background px-4 text-sm text-foreground transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm text-secondary-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-button-primary {
@@ -247,11 +258,11 @@
   }
 
   .app-button-danger {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-destructive/50 bg-background px-4 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-button-warning {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-amber-500/60 bg-background px-4 text-sm text-amber-700 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-400;
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm text-amber-700 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-400;
   }
 
   .app-button-destructive {
@@ -259,19 +270,60 @@
   }
 
   .app-icon-button {
-    @apply inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .app-segmented-control {
+    @apply inline-flex h-10 shrink-0 items-center gap-1 rounded-md border border-border p-0.5;
+  }
+
+  .app-segmented-item {
+    @apply inline-flex h-8 min-w-8 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-muted data-[state=on]:text-foreground;
+  }
+
+  .app-pagination-button {
+    @apply inline-flex size-9 items-center justify-center rounded-md border border-transparent text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .app-pagination-button[aria-current='page'] {
+    border-color: color-mix(in srgb, var(--workspace-brand) 40%, transparent);
+    color: hsl(var(--foreground));
+  }
+
+  .app-pagination .app-select-trigger {
+    @apply bg-transparent hover:bg-muted;
+  }
+
+  :is(
+    .app-button,
+    .app-button-primary,
+    .app-button-danger,
+    .app-button-warning,
+    .app-button-destructive,
+    .app-icon-button,
+    .app-search-button,
+    .app-pagination-button,
+    .app-segmented-item,
+    .app-card,
+    .app-link,
+    .app-link-danger,
+    .app-link-success,
+    .app-link-warning
+  ):focus-visible {
+    @apply outline-none ring-2 ring-inset ring-ring ring-offset-2 ring-offset-background;
   }
 
   .app-action-item {
-    @apply block w-full rounded-md border border-border bg-muted/30 p-3 text-left text-sm transition-colors hover:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply block w-full rounded-md border border-border bg-muted p-4 text-left text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-checkbox {
-    @apply size-4 rounded border-input text-primary transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply size-4 shrink-0 rounded border-input accent-primary transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .app-link {
     @apply text-primary underline-offset-4 transition-colors hover:underline disabled:pointer-events-none disabled:opacity-50;
+    color: var(--workspace-brand);
   }
 
   .app-link-danger {
@@ -287,7 +339,7 @@
   }
 
   .app-select-trigger {
-    @apply flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-accent/50 focus:border-ring disabled:cursor-not-allowed disabled:opacity-60;
+    @apply flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .app-select-trigger[data-placeholder] {
@@ -303,11 +355,15 @@
   }
 
   .app-combobox-anchor {
-    @apply flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-accent/50 focus-within:border-ring;
+    @apply flex h-10 items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted focus-within:bg-background focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring;
+  }
+
+  .app-input-error {
+    @apply border-destructive focus:border-destructive focus-within:border-destructive focus-within:ring-destructive focus-visible:ring-destructive;
   }
 
   .app-popover-content {
-    @apply z-[60] max-h-64 rounded-lg border border-border bg-popover p-1 text-sm font-normal text-popover-foreground shadow-lg outline-none;
+    @apply z-[60] max-h-64 rounded-lg border border-border/70 bg-popover p-1 text-sm font-normal text-popover-foreground shadow-md outline-none;
   }
 
   .app-option-item {
@@ -315,7 +371,7 @@
   }
 
   .app-tip {
-    @apply rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground;
+    @apply rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground;
   }
 
   .app-tooltip-content {
@@ -323,15 +379,15 @@
   }
 
   .app-dialog-overlay {
-    @apply fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-overlayShow;
+    @apply fixed inset-0 z-50 bg-slate-950/16 data-[state=open]:animate-overlayShow dark:bg-black/50;
   }
 
   .app-dialog-content {
-    @apply fixed left-1/2 top-1/2 z-[51] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-card text-sm text-foreground shadow-xl outline-none data-[state=open]:animate-contentShow;
+    @apply fixed left-1/2 top-1/2 z-[51] flex max-h-[calc(100dvh-32px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-popover text-sm text-popover-foreground shadow-xl outline-none data-[state=open]:animate-contentShow;
   }
 
   .app-drawer-content {
-    @apply fixed bottom-0 right-0 top-0 z-50 flex max-h-screen max-w-full flex-col border-l border-border bg-card text-sm text-foreground shadow-xl outline-none;
+    @apply fixed bottom-0 right-0 top-0 z-50 flex max-h-dvh max-w-full flex-col border-l border-border bg-popover text-sm text-popover-foreground shadow-xl outline-none;
   }
 
   .app-toast-root {
@@ -343,27 +399,41 @@
   }
 
   .app-data-table thead {
-    @apply border-b border-border bg-muted/30;
+    @apply border-b border-border bg-muted;
   }
 
   .app-data-table th {
-    @apply h-11 whitespace-nowrap px-5 py-2 text-left align-middle text-sm text-muted-foreground;
-  }
-
-  .app-data-table tbody {
-    @apply divide-y divide-border;
+    @apply h-11 whitespace-nowrap px-3 py-3 text-left align-middle text-xs font-normal text-muted-foreground;
   }
 
   .app-data-table tbody tr {
-    @apply transition-colors hover:bg-muted/30;
+    @apply transition-colors hover:bg-muted focus-within:bg-muted;
   }
 
   .app-data-table td {
-    @apply h-11 px-5 py-2 align-middle text-sm;
+    @apply h-13 border-b border-border px-3 py-2 align-middle text-sm;
   }
 
   .app-data-table :is(button, input, select, textarea, [role='button'], [role='combobox']) {
     @apply text-sm;
+  }
+
+  .app-data-table td:not(.app-table-actions) a.app-link {
+    color: hsl(var(--foreground));
+  }
+
+  .app-data-table .app-table-actions,
+  .app-data-table .app-table-actions :is(button, a, [role='button']) {
+    @apply text-xs font-normal;
+  }
+
+  .app-tab {
+    @apply border-b-2 border-transparent px-4 py-3 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring aria-selected:border-primary aria-selected:text-foreground;
+  }
+
+  .app-tab[aria-selected='true'] {
+    border-color: var(--workspace-brand);
+    color: var(--workspace-brand);
   }
 }
 
@@ -445,4 +515,15 @@
 
 .app-toast-root[data-swipe='end'] {
   animation: app-toast-swipe-out 100ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-dialog-overlay[data-state],
+  .app-dialog-content[data-state],
+  .app-drawer-content[data-state],
+  .app-toast-root[data-state],
+  .app-toast-root[data-swipe] {
+    animation: none;
+    transition: none;
+  }
 }

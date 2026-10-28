@@ -202,8 +202,8 @@
                       >
                         {{ stageRunMap[stage.id]?.status ?? 'waiting_to_run' }}
                       </AppBadge>
-                      <PopoverRoot v-if="stageRunMap[stage.id]?.error_message">
-                        <PopoverTrigger as-child>
+                      <AppPopover v-if="stageRunMap[stage.id]?.error_message">
+                        <template #trigger>
                           <button
                             type="button"
                             class="app-icon-button size-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -212,26 +212,17 @@
                           >
                             <CircleAlert class="size-4" aria-hidden="true" />
                           </button>
-                        </PopoverTrigger>
-                        <PopoverPortal>
-                          <PopoverContent
-                            side="top"
-                            align="start"
-                            :side-offset="6"
-                            class="z-[60] max-h-64 w-[min(24rem,calc(100vw-32px))] overflow-y-auto rounded-md border border-border bg-popover p-3 text-sm text-popover-foreground shadow-lg outline-none"
-                          >
-                            <p class="mb-1 font-medium">
-                              {{ t('pipelineRun.fields.errorMessage') }}
-                            </p>
-                            <p class="whitespace-pre-wrap break-words text-muted-foreground">
-                              {{ stageRunMap[stage.id]?.error_message }}
-                            </p>
-                          </PopoverContent>
-                        </PopoverPortal>
-                      </PopoverRoot>
+                        </template>
+                        <p class="mb-1 font-medium">
+                          {{ t('pipelineRun.fields.errorMessage') }}
+                        </p>
+                        <p class="whitespace-pre-wrap break-words text-muted-foreground">
+                          {{ stageRunMap[stage.id]?.error_message }}
+                        </p>
+                      </AppPopover>
                     </div>
                   </td>
-                  <td>
+                  <td class="app-table-actions">
                     <button
                       v-if="stageRunMap[stage.id]"
                       class="app-link"
@@ -363,13 +354,13 @@
   import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
-  import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
   import { ensureProjectExecutionReady } from '@/router/projectReadiness';
   import { pipelineApi } from '@/api/pipeline/pipeline';
   import { pipelineRunApi } from '@/api/pipeline_run/pipeline_run';
   import AppDialog from '@/components/ui/AppDialog.vue';
   import AppDialogActions from '@/components/ui/AppDialogActions.vue';
   import AppBadge from '@/components/ui/AppBadge.vue';
+  import AppPopover from '@/components/ui/AppPopover.vue';
   import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
   import DetailPageHeader from '@/components/ui/DetailPageHeader.vue';
   import AppEmptyState from '@/components/ui/AppEmptyState.vue';

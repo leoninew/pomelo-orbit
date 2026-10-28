@@ -3,8 +3,6 @@
     v-model:open="openModel"
     :title="t('project.initialization.sshCommandTitle')"
     width-class="w-[min(820px,calc(100vw-32px))]"
-    body-class="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4"
-    content-class="max-h-[calc(100vh-32px)] flex flex-col"
   >
     <AppLoadingState v-if="loading" size="section" aria-live="polite" />
     <div v-else-if="command" class="min-h-0">

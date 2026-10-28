@@ -48,16 +48,24 @@
                     v-if="editingRuntimeKey === field.key && field.kind === 'select'"
                     v-model="editingRuntimeValue"
                     :options="field.values"
+                    :aria-label="field.label"
                     width-class="h-9 w-full"
                   />
-                  <AppTextarea
-                    v-else-if="editingRuntimeKey === field.key"
+                  <AppInput
+                    v-else-if="editingRuntimeKey === field.key && field.kind === 'input'"
                     v-model="editingRuntimeValue"
+                    class="h-9"
                     :class="runtimeIdentityError(field) ? 'app-input-error' : ''"
+                    :aria-label="field.label"
                     :aria-invalid="runtimeIdentityError(field) ? 'true' : undefined"
                     :aria-describedby="
                       runtimeIdentityError(field) ? `identity-${field.key}-error` : undefined
                     "
+                  />
+                  <AppTextarea
+                    v-else-if="editingRuntimeKey === field.key && field.kind === 'textarea'"
+                    v-model="editingRuntimeValue"
+                    :aria-label="field.label"
                     rows="3"
                   />
                   <AppTruncatedText
@@ -79,7 +87,7 @@
                     {{ runtimeIdentityError(field) }}
                   </p>
                 </td>
-                <td class="whitespace-nowrap">
+                <td class="app-table-actions whitespace-nowrap">
                   <div v-if="editingRuntimeKey === field.key" class="flex h-9 items-center gap-2">
                     <button
                       class="text-muted-foreground hover:text-foreground"
@@ -178,7 +186,7 @@
                     "
                   />
                 </td>
-                <td>
+                <td class="app-table-actions">
                   <div v-if="editingResourceKey === field.key" class="flex h-9 items-center gap-2">
                     <button
                       class="text-muted-foreground hover:text-foreground"
@@ -271,7 +279,7 @@
                     </div>
                   </dl>
                 </td>
-                <td>
+                <td class="app-table-actions">
                   <div class="flex h-9 items-center gap-2">
                     <button
                       v-if="!endpoint.deleted"
@@ -338,7 +346,7 @@
                   {{ mount.read_only ? t('common.yes') : t('common.no') }}
                 </td>
                 <td>{{ mount.shared ? t('common.yes') : t('common.no') }}</td>
-                <td class="w-36">
+                <td class="app-table-actions w-36">
                   <div class="flex items-center gap-3">
                     <button
                       v-if="!mount.deleted"
@@ -377,7 +385,6 @@
       :open="mountDialogOpen"
       title="编辑 Mount"
       width-class="w-[min(640px,calc(100vw-32px))]"
-      body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setMountDialogOpen"
     >
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -460,7 +467,6 @@
       :open="endpointDialogOpen"
       title="编辑 Endpoint"
       width-class="w-[min(640px,calc(100vw-32px))]"
-      body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setEndpointDialogOpen"
     >
       <div v-if="editingEndpointRow" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -634,14 +640,14 @@
   type RuntimeFieldDefinition = {
     key: RuntimeFieldKey;
     label: string;
-    kind: 'text' | 'select';
+    kind: 'input' | 'textarea' | 'select';
     values: string[];
   };
   type RuntimeField = {
     key: RuntimeFieldKey;
     label: string;
     state: RuntimeFieldState;
-    kind: 'text' | 'select';
+    kind: 'input' | 'textarea' | 'select';
     values: string[];
   };
 
@@ -1121,11 +1127,11 @@
     return value || '-';
   }
   const runtimeFieldDefinitions = computed<RuntimeFieldDefinition[]>(() => [
-    { key: 'user', label: t('application.componentDetail.fields.user'), kind: 'text', values: [] },
+    { key: 'user', label: t('application.componentDetail.fields.user'), kind: 'input', values: [] },
     {
       key: 'group_add',
       label: t('application.componentDetail.fields.groupAdd'),
-      kind: 'text',
+      kind: 'input',
       values: [],
     },
     {
@@ -1143,13 +1149,13 @@
     {
       key: 'entrypoint',
       label: t('application.componentDetail.fields.containerEntrypoint'),
-      kind: 'text',
+      kind: 'textarea',
       values: [],
     },
     {
       key: 'command',
       label: t('application.componentDetail.fields.command'),
-      kind: 'text',
+      kind: 'textarea',
       values: [],
     },
   ]);

@@ -49,7 +49,7 @@
             </td>
             <td class="text-muted-foreground">{{ component.pull_policy }}</td>
             <td class="text-muted-foreground">{{ component.restart_policy }}</td>
-            <td>
+            <td class="app-table-actions">
               <div v-if="editable" class="flex items-center gap-2">
                 <button class="app-link" :disabled="disabled" @click="emit('edit', component)">
                   {{ t('common.edit') }}

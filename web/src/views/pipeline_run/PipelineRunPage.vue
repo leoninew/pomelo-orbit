@@ -18,7 +18,7 @@
         />
       </div>
     </ToolbarRoot>
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <p v-else-if="status === 'error'" class="py-16 text-center text-sm text-destructive">
         {{ error || '加载运行记录失败' }}
@@ -69,7 +69,7 @@
               <td class="whitespace-nowrap text-foreground">
                 {{ formatDuration(run.started_at, run.finished_at) }}
               </td>
-              <td class="whitespace-nowrap">
+              <td class="app-table-actions whitespace-nowrap">
                 <button
                   v-if="isComplete(run.status)"
                   class="app-link-danger"

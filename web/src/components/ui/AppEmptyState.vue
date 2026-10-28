@@ -1,10 +1,12 @@
 <template>
   <div
-    class="flex flex-col items-center justify-center text-muted-foreground"
+    class="flex flex-col items-center justify-center gap-4 px-6 text-center text-muted-foreground"
     :class="paddingClass"
   >
-    <Inbox :class="iconClass" />
-    <div class="mt-2 text-sm">
+    <div class="flex size-16 items-center justify-center rounded-full bg-muted">
+      <Inbox :class="iconClass" :stroke-width="1.5" aria-hidden="true" />
+    </div>
+    <div class="max-w-md text-sm leading-6">
       <slot>{{ displayMessage }}</slot>
     </div>
   </div>
@@ -37,5 +39,5 @@
     }
     return 'py-16';
   });
-  const iconClass = computed(() => (props.size === 'compact' ? 'size-8' : 'size-12'));
+  const iconClass = computed(() => (props.size === 'compact' ? 'size-6' : 'size-8'));
 </script>

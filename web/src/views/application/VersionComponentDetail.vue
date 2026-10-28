@@ -43,12 +43,7 @@
             :aria-label="t('application.componentDetail.title')"
             class="flex min-w-max gap-1"
           >
-            <TabsTrigger
-              v-for="tab in tabs"
-              :key="tab.id"
-              :value="tab.id"
-              class="border-b-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground"
-            >
+            <TabsTrigger v-for="tab in tabs" :key="tab.id" :value="tab.id" class="app-tab">
               {{ tab.label }}
             </TabsTrigger>
           </TabsList>
@@ -61,7 +56,7 @@
             :disabled="operating"
             @edit="startBasicEditing"
           >
-            <div v-if="isNew" class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 sm:p-6">
+            <div v-if="isNew" class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
               <div>
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.detail.fields.component') }}
@@ -133,10 +128,7 @@
               </div>
             </div>
 
-            <dl
-              v-else
-              class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-5 p-5 sm:grid-cols-2 sm:p-6"
-            >
+            <dl v-else class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
               <div class="min-w-0">
                 <dt class="text-muted-foreground">
                   {{ t('application.detail.fields.component') }}
@@ -195,12 +187,9 @@
               v-if="isNew"
               v-model:user="form.user"
               v-model:groups="form.group_add"
-              class="p-5 sm:p-6"
+              class="p-5"
             />
-            <dl
-              v-else
-              class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-5 p-5 sm:grid-cols-2 sm:p-6"
-            >
+            <dl v-else class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
               <div class="min-w-0">
                 <dt class="text-muted-foreground">
                   {{ t('application.componentDetail.fields.user') }}
@@ -226,12 +215,12 @@
             :disabled="operating"
             @edit="startHealthcheckEditing"
           >
-            <p v-if="!form.healthcheck_enabled" class="p-5 text-sm text-muted-foreground sm:p-6">
+            <p v-if="!form.healthcheck_enabled" class="p-5 text-sm text-muted-foreground">
               {{ t('common.notSet') }}
             </p>
             <dl
               v-else
-              class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 p-5 sm:grid-cols-2 lg:grid-cols-3 sm:p-6"
+              class="app-detail-fields grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3"
             >
               <div>
                 <dt class="text-muted-foreground">
@@ -329,7 +318,7 @@
                   <tr v-for="(row, index) in form.dependencies" :key="`dependency-${index}`">
                     <td class="min-w-56 text-foreground">{{ row.name }}</td>
                     <td class="min-w-56 text-foreground">{{ row.condition }}</td>
-                    <td class="w-32">
+                    <td class="app-table-actions w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button
                           class="app-link"
@@ -386,7 +375,7 @@
                     <td class="text-foreground">{{ row.mode || 'host' }}</td>
                     <td class="text-foreground">{{ row.host_port || '-' }}</td>
                     <td class="text-foreground">{{ row.container_port }}</td>
-                    <td class="w-32">
+                    <td class="app-table-actions w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button
                           class="app-link"
@@ -458,7 +447,7 @@
                       {{ row.read_only ? t('common.yes') : t('common.no') }}
                     </td>
                     <td>{{ row.shared ? t('common.yes') : t('common.no') }}</td>
-                    <td class="w-36">
+                    <td class="app-table-actions w-36">
                       <div class="flex items-center gap-3">
                         <button
                           v-if="canEdit && row.source_type === 'controlled_file'"
@@ -520,7 +509,7 @@
                     <td class="min-w-60 break-all text-foreground">{{ row.target }}</td>
                     <td class="min-w-52 text-foreground">{{ row.size_bytes }}</td>
                     <td class="min-w-40 text-foreground">{{ row.mode }}</td>
-                    <td class="w-32">
+                    <td class="app-table-actions w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button
                           class="app-link"
@@ -610,7 +599,7 @@
                     <td class="min-w-60 break-all text-foreground">
                       {{ row.capabilities.join(', ') }}
                     </td>
-                    <td class="w-32">
+                    <td class="app-table-actions w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button
                           class="app-link"
@@ -662,7 +651,7 @@
                     <td class="min-w-52 text-foreground">{{ row.name }}</td>
                     <td class="min-w-52 text-foreground">{{ row.soft }}</td>
                     <td class="min-w-52 text-foreground">{{ row.hard }}</td>
-                    <td class="w-32">
+                    <td class="app-table-actions w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button
                           class="app-link"
@@ -963,7 +952,6 @@
       :open="recordDialogGroup !== null"
       :title="recordDialogTitle"
       width-class="w-[min(640px,calc(100vw-32px))]"
-      body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setRecordDialogOpen"
     >
       <template v-if="recordDialogGroup === 'ports'">
@@ -1272,7 +1260,6 @@
       :open="mountDialogOpen"
       :title="mountDialogTitle"
       width-class="w-[min(760px,calc(100vw-32px))]"
-      body-class="space-y-4 px-6 py-4 text-sm"
       @update:open="setMountDialogOpen"
     >
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

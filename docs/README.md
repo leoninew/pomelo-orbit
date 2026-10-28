@@ -19,6 +19,10 @@ Pomelo Orbit 管理 CI 流水线、Docker Compose 应用部署与 Traefik 网关
 
 开发与常用命令见 [项目 README](../README.md)，工程约定见 [AGENTS.md](../AGENTS.md)。具体业务规则以对应实现、测试及进行中的变更规格为准。
 
+前端布局、文字、表格及共享控件遵循[前端界面规范](frontend-design.md)。
+
+本次全系统前端统一的[意图](intent/20261028-open-canvas-visual-language.md)、[计划](plan/20261028-open-canvas-visual-language.md)和[验证结果](verification/20261028-open-canvas-visual-language.md)使用同一份 SpecFlow 记录。
+
 ## 变更记录
 
 进行中的 SpecFlow 文档位于 `intent/`、`spec/`、`plan/`、`verification/`。

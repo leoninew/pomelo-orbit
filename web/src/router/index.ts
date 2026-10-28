@@ -13,13 +13,13 @@ const router = createRouter({
       path: '/login',
       name: 'Login',
       component: () => import('@/views/auth/Login.vue'),
-      meta: { title: '登录', public: true },
+      meta: { title: '登录', public: true, standalone: true },
     },
     {
       path: '/google/callback',
       name: 'GoogleCallback',
       component: () => import('@/views/auth/GoogleCallback.vue'),
-      meta: { title: 'Google 登录', public: true },
+      meta: { title: 'Google 登录', public: true, standalone: true },
     },
 
     {

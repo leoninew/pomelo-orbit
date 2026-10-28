@@ -19,7 +19,7 @@
       </div>
     </ToolbarRoot>
 
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <div v-else-if="status === 'error'" class="text-center py-16 text-destructive">
         <p class="text-sm">{{ error || '加载失败' }}</p>
@@ -44,13 +44,13 @@
                 </router-link>
               </td>
               <td>
-                <AppBadge variant="pill" tone="info">
+                <span class="text-xs text-muted-foreground">
                   {{ cred.type }}
-                </AppBadge>
+                </span>
               </td>
               <td class="text-foreground"><AppTableTime :time="cred.created_at" /></td>
               <td class="text-foreground"><AppTableTime :time="cred.updated_at" /></td>
-              <td>
+              <td class="app-table-actions">
                 <button class="app-link mr-3" @click="openEditModal(cred)">编辑</button>
                 <button class="app-link-danger" @click="confirmDelete(cred.id)">删除</button>
               </td>
@@ -221,7 +221,6 @@
   import { computed, nextTick, reactive, ref, watch } from 'vue';
   import { useRouter } from 'vue-router';
   import { credentialApi } from '@/api/credential/credential';
-  import AppBadge from '@/components/ui/AppBadge.vue';
   import AppDialog from '@/components/ui/AppDialog.vue';
   import AppDialogActions from '@/components/ui/AppDialogActions.vue';
   import AppEmptyState from '@/components/ui/AppEmptyState.vue';

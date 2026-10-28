@@ -13,7 +13,7 @@
       </button>
     </div>
 
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <p v-else-if="status === 'error'" class="py-16 text-center text-sm text-destructive">
         {{ error || '加载阶段失败' }}
@@ -50,7 +50,7 @@
               <td class="whitespace-nowrap text-foreground">
                 <AppTableTime :time="stage.updated_at" />
               </td>
-              <td>
+              <td class="app-table-actions">
                 <div class="flex items-center gap-3">
                   <router-link :to="`/pipeline-stage/${stage.id}`" class="app-link">
                     详情

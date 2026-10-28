@@ -56,7 +56,7 @@
                 </div>
               </div>
             </td>
-            <td>
+            <td class="app-table-actions">
               <div class="flex items-center gap-3">
                 <router-link
                   class="app-link"

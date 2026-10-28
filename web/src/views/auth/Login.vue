@@ -1,11 +1,9 @@
 <template>
-  <div
-    class="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4"
-  >
+  <div class="min-h-screen flex items-center justify-center bg-muted p-4">
     <div class="w-full max-w-md">
-      <div class="app-surface rounded-lg p-8">
+      <div class="app-surface rounded-xl p-8">
         <div class="text-center mb-8">
-          <h1 class="text-base font-semibold text-foreground mb-2">{{ t('login.title') }}</h1>
+          <h1 class="text-base font-normal text-foreground mb-2">{{ t('login.title') }}</h1>
           <p class="text-muted-foreground">{{ t('login.subtitle') }}</p>
         </div>
 
@@ -107,7 +105,7 @@
 
           <button
             type="button"
-            class="app-button-outline flex w-full items-center justify-center gap-2"
+            class="app-button flex w-full items-center justify-center gap-2"
             :disabled="sessionExpired"
             @click="handleGoogleLogin"
           >

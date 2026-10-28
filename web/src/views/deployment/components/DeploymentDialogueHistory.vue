@@ -1,7 +1,13 @@
 <template>
-  <nav class="flex min-h-0 min-w-0 flex-1 flex-col" :aria-label="t('deploymentDialogue.history')">
-    <div class="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
-      <span class="text-sm font-medium text-foreground">{{ t('deploymentDialogue.history') }}</span>
+  <nav
+    class="flex h-full min-h-0 min-w-0 flex-1 flex-col"
+    :aria-label="t('deploymentDialogue.history')"
+  >
+    <div
+      v-if="showHeader"
+      class="flex h-12 shrink-0 items-center justify-between border-b border-border px-3"
+    >
+      <span class="text-sm text-foreground">{{ t('deploymentDialogue.history') }}</span>
       <button
         type="button"
         class="app-icon-button"
@@ -22,20 +28,22 @@
     >
       {{ t('deploymentDialogue.historyEmpty') }}
     </p>
-    <ol v-else class="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+    <ol v-else class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
       <li
         v-for="conversation in conversations"
         :key="conversation.id"
-        class="group flex min-w-0 rounded-md transition-colors"
+        class="dialogue-history-item relative flex min-w-0 items-center rounded-md border transition-colors"
+        :data-active="conversation.id === activeConversationId ? '' : undefined"
         :class="
           conversation.id === activeConversationId
-            ? 'bg-accent text-accent-foreground'
-            : 'text-foreground hover:bg-muted'
+            ? 'border-border text-foreground'
+            : 'border-transparent text-foreground hover:bg-muted'
         "
       >
         <button
           type="button"
-          class="min-w-0 flex-1 px-2.5 py-2 text-left text-sm"
+          class="min-w-0 flex-1 rounded-md px-3 py-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          :aria-current="conversation.id === activeConversationId ? 'true' : undefined"
           @click="emit('select', conversation.id)"
         >
           <AppTruncatedText :text="conversation.title" as-child>
@@ -45,22 +53,22 @@
             {{ formatRelativeTime(conversation.updated_at) }}
           </span>
         </button>
-        <SelectControl
+        <AppActionMenu
           v-if="conversation.id === activeConversationId"
           :options="conversationActions"
-          :placeholder="t('deploymentDialogue.conversationActions')"
-          width-class="w-9 shrink-0 self-stretch !h-auto !rounded-none !border-0 !bg-transparent !px-2 hover:!bg-muted/50"
-          @update:model-value="handleConversationAction($event, conversation)"
+          @select="handleConversationAction($event, conversation)"
         >
           <template #trigger>
-            <span
+            <button
+              type="button"
+              class="app-icon-button mr-1 shrink-0"
               :aria-label="t('deploymentDialogue.conversationActions')"
               :title="t('deploymentDialogue.conversationActions')"
             >
               <Ellipsis class="size-4" />
-            </span>
+            </button>
           </template>
-        </SelectControl>
+        </AppActionMenu>
       </li>
     </ol>
   </nav>
@@ -72,15 +80,19 @@
   import { useI18n } from 'vue-i18n';
   import AppSpinner from '@/components/ui/AppSpinner.vue';
   import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
-  import SelectControl, { type SelectOptionValue } from '@/components/ui/SelectControl.vue';
+  import AppActionMenu from '@/components/ui/AppActionMenu.vue';
   import type { DeploymentDialogueConversation } from '@/gen/proto/orbit/v1/dialogue/dialogue';
   import { formatRelativeTime } from '@/utils/time';
 
-  defineProps<{
-    conversations: DeploymentDialogueConversation[];
-    activeConversationId?: string;
-    loading: boolean;
-  }>();
+  withDefaults(
+    defineProps<{
+      conversations: DeploymentDialogueConversation[];
+      activeConversationId?: string;
+      loading: boolean;
+      showHeader?: boolean;
+    }>(),
+    { showHeader: true }
+  );
 
   const emit = defineEmits<{
     new: [];
@@ -89,12 +101,11 @@
   }>();
 
   const { t } = useI18n();
-  const conversationActions = computed(() => [{ value: 'delete', label: t('common.delete') }]);
+  const conversationActions = computed(() => [
+    { value: 'delete', label: t('common.delete'), destructive: true },
+  ]);
 
-  function handleConversationAction(
-    action: SelectOptionValue,
-    conversation: DeploymentDialogueConversation
-  ) {
+  function handleConversationAction(action: string, conversation: DeploymentDialogueConversation) {
     if (action === 'delete') {
       emit('delete', conversation);
     }

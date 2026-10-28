@@ -1,5 +1,16 @@
 <template>
   <span :class="badgeClass">
+    <component
+      :is="statusIcon"
+      v-if="variant === 'status' && statusIcon"
+      class="size-4 shrink-0"
+      aria-hidden="true"
+    />
+    <span
+      v-else-if="variant === 'status'"
+      class="size-1.5 shrink-0 rounded-full bg-current"
+      aria-hidden="true"
+    />
     <slot />
   </span>
 </template>
@@ -9,6 +20,7 @@
 </script>
 
 <script setup lang="ts">
+  import { CircleAlert, CircleCheck, CircleX } from '@lucide/vue';
   import { computed } from 'vue';
 
   interface Props {
@@ -21,27 +33,47 @@
     tone: 'default',
   });
 
+  const statusIcon = computed(() => {
+    if (props.tone === 'success') {
+      return CircleCheck;
+    }
+    if (props.tone === 'error') {
+      return CircleX;
+    }
+    if (props.tone === 'warning') {
+      return CircleAlert;
+    }
+    return null;
+  });
+
   const badgeClass = computed(() => {
-    const base = 'inline-flex items-center whitespace-nowrap rounded border px-2 py-0.5 text-xs';
+    const base =
+      'inline-flex items-center gap-1.5 whitespace-nowrap rounded py-0.5 text-xs leading-5';
 
     const variants = {
-      default: '',
+      default: 'px-2',
       status: '',
-      pill: 'rounded-full',
+      pill: 'rounded-full px-2',
     };
 
     const tones: Record<BadgeTone, string> = {
-      default: 'border-border bg-muted text-muted-foreground',
-      primary: 'border-primary/30 bg-primary/10 text-primary',
-      success:
-        'border-green-200 bg-green-50 text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300',
-      error:
-        'border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300',
-      warning:
-        'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300',
-      info: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300',
+      default: 'text-muted-foreground',
+      primary: 'text-primary',
+      success: 'text-emerald-700 dark:text-emerald-300',
+      error: 'text-red-700 dark:text-red-300',
+      warning: 'text-amber-700 dark:text-amber-300',
+      info: 'text-blue-700 dark:text-blue-300',
     };
 
-    return `${base} ${variants[props.variant]} ${tones[props.tone]}`;
+    const backgrounds: Record<BadgeTone, string> = {
+      default: 'bg-muted',
+      primary: 'bg-primary/10',
+      success: 'bg-emerald-50 dark:bg-emerald-500/10',
+      error: 'bg-red-50 dark:bg-red-500/10',
+      warning: 'bg-amber-50 dark:bg-amber-500/10',
+      info: 'bg-blue-50 dark:bg-blue-500/10',
+    };
+
+    return `${base} ${variants[props.variant]} ${tones[props.tone]} ${props.variant === 'status' ? '' : backgrounds[props.tone]}`;
   });
 </script>

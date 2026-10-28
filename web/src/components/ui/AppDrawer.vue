@@ -10,7 +10,7 @@
       >
         <div :class="headerClass">
           <div class="min-w-0">
-            <DialogTitle class="text-base font-semibold text-foreground">
+            <DialogTitle class="break-words text-base font-normal text-foreground">
               <slot name="title">{{ title }}</slot>
             </DialogTitle>
             <DialogDescription v-if="description" class="mt-1 text-sm text-muted-foreground">
@@ -35,7 +35,10 @@
         <div :class="bodyClass">
           <slot />
         </div>
-        <div v-if="$slots.footer" class="flex justify-end gap-2 border-t border-border px-6 py-4">
+        <div
+          v-if="$slots.footer"
+          class="flex shrink-0 flex-wrap justify-end gap-2 border-t border-border px-6 py-5"
+        >
           <slot name="footer" />
         </div>
       </DialogContent>
@@ -70,7 +73,8 @@
     {
       description: '',
       widthClass: 'w-[min(720px,100vw)]',
-      headerClass: 'flex items-start justify-between gap-4 border-b border-border px-6 py-4',
+      headerClass:
+        'flex shrink-0 items-center justify-between gap-4 border-b border-border px-6 py-5',
       bodyClass: 'min-h-0 flex-1 overflow-y-auto px-6 py-4',
       contentClass: '',
     }

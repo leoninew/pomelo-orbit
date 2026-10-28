@@ -10,7 +10,7 @@
     </ToolbarRoot>
 
     <!-- Table Card -->
-    <div class="app-surface">
+    <div class="app-list-surface">
       <AppLoadingState v-if="status === 'loading'" />
       <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
         <p class="text-sm">{{ error || t('loginHistory.loadFailed') }}</p>

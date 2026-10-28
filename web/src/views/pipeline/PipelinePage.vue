@@ -53,7 +53,7 @@
               <td>
                 <AppBadge
                   :tone="pipeline.kind === 'template' ? 'info' : 'success'"
-                  variant="status"
+                  variant="category"
                 >
                   {{ pipeline.kind === 'template' ? '模板' : '应用流水线' }}
                 </AppBadge>

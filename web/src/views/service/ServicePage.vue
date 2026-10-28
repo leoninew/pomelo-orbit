@@ -82,14 +82,14 @@
         <article v-for="svc in services" :key="svc.id" class="app-card flex min-h-56 flex-col p-5">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0 space-y-1">
-              <h2 class="text-base font-normal text-foreground">
+              <h2 class="text-sm font-normal text-foreground">
                 <AppTruncatedText :text="svc.application_name" as-child>
-                  <router-link :to="`/service/${svc.id}`" class="app-link">
+                  <router-link :to="`/service/${svc.id}`" class="app-link text-foreground">
                     {{ svc.application_name }}
                   </router-link>
                 </AppTruncatedText>
               </h2>
-              <AppTruncatedText :text="svc.code" class="text-sm text-muted-foreground" />
+              <AppTruncatedText :text="svc.code" class="text-sm text-foreground" />
             </div>
             <AppBadge variant="status" :tone="appStatusTone(svc.status)">
               {{ svc.status }}
@@ -98,23 +98,27 @@
 
           <dl class="mt-5 grid gap-3 text-sm">
             <div class="flex items-center justify-between gap-3">
-              <dt class="text-muted-foreground">{{ t('service.fields.version') }}</dt>
+              <dt class="shrink-0 whitespace-nowrap text-muted-foreground">
+                {{ t('service.fields.version') }}
+              </dt>
               <dd class="min-w-0 text-right">
                 <AppTruncatedText :text="svc.version_label" as-child>
-                  <router-link :to="`/version/${svc.version_id}`" class="app-link">
+                  <router-link :to="`/version/${svc.version_id}`" class="app-link text-foreground">
                     {{ svc.version_label }}
                   </router-link>
                 </AppTruncatedText>
               </dd>
             </div>
             <div class="flex items-center justify-between gap-3">
-              <dt class="text-muted-foreground">{{ t('common.updatedAt') }}</dt>
-              <dd class="whitespace-nowrap text-foreground">{{ formatTime(svc.updated_at) }}</dd>
+              <dt class="shrink-0 whitespace-nowrap text-muted-foreground">
+                {{ t('common.updatedAt') }}
+              </dt>
+              <dd><AppTableTime :time="svc.updated_at" /></dd>
             </div>
           </dl>
 
           <div
-            class="mt-auto flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm"
+            class="mt-auto flex flex-wrap items-center gap-3 border-t border-border pt-4 text-xs leading-5"
           >
             <AppTooltip
               :content="
@@ -432,7 +436,6 @@
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
   import { appStatusTone } from '@/utils/status';
-  import { formatTime } from '@/utils/time';
 
   const { t } = useI18n();
   const toast = useToast();

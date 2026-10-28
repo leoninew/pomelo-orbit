@@ -7,7 +7,7 @@
       aria-hidden="true"
     />
     <span
-      v-else-if="variant === 'status'"
+      v-else-if="variant === 'status' || variant === 'category'"
       class="size-1.5 shrink-0 rounded-full bg-current"
       aria-hidden="true"
     />
@@ -24,7 +24,7 @@
   import { computed } from 'vue';
 
   interface Props {
-    variant?: 'default' | 'status' | 'pill';
+    variant?: 'default' | 'status' | 'category' | 'pill';
     tone?: BadgeTone;
   }
 
@@ -53,6 +53,7 @@
     const variants = {
       default: 'px-2',
       status: '',
+      category: '',
       pill: 'rounded-full px-2',
     };
 
@@ -74,6 +75,6 @@
       info: 'bg-blue-50 dark:bg-blue-500/10',
     };
 
-    return `${base} ${variants[props.variant]} ${tones[props.tone]} ${props.variant === 'status' ? '' : backgrounds[props.tone]}`;
+    return `${base} ${variants[props.variant]} ${tones[props.tone]} ${props.variant === 'status' || props.variant === 'category' ? '' : backgrounds[props.tone]}`;
   });
 </script>

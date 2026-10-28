@@ -138,13 +138,10 @@
         class="app-user-menu-trigger ml-1 flex h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:ml-0 md:h-11 md:gap-3 md:px-3"
         :aria-label="t('app.userMenuAria')"
       >
-        <span
-          class="app-user-avatar flex size-8 items-center justify-center rounded-full bg-primary text-sm text-primary-foreground"
-        >
-          {{ (authStore.user?.username || 'admin').slice(0, 1).toUpperCase() }}
+        <span class="max-w-16 truncate text-sm sm:max-w-32">
+          {{ authStore.user?.username || 'admin' }}
         </span>
-        <span class="hidden text-sm lg:inline">{{ authStore.user?.username || 'admin' }}</span>
-        <ChevronDown class="hidden size-4 text-muted-foreground sm:block" />
+        <ChevronDown class="size-4 shrink-0 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuPortal>
         <DropdownMenuContent

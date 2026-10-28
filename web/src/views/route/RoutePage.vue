@@ -31,10 +31,6 @@
         @search="handleRouteSearch"
       />
       <div class="ml-auto flex flex-wrap items-center gap-2">
-        <router-link to="/route/traefik" class="app-button h-10 px-3">
-          <Network class="size-4" />
-          {{ t('route.sections.traefikRouters') }}
-        </router-link>
         <button
           class="h-10 px-3"
           :class="hasPendingChanges ? 'app-button-warning' : 'app-button'"
@@ -521,7 +517,7 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { ExternalLink, Network, Plus, RefreshCw } from '@lucide/vue';
+  import { ExternalLink, Plus, RefreshCw } from '@lucide/vue';
   import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';

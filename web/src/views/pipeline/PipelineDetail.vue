@@ -42,7 +42,7 @@
           <div class="flex gap-2">
             <dt>类型</dt>
             <dd>
-              <AppBadge :tone="isTemplate ? 'info' : 'success'" variant="status">
+              <AppBadge :tone="isTemplate ? 'info' : 'success'" variant="category">
                 {{ isTemplate ? '模板' : '应用流水线' }}
               </AppBadge>
             </dd>

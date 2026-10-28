@@ -108,7 +108,7 @@
   }
 
   .app-detail-card {
-    @apply min-w-0 text-sm;
+    @apply min-w-0 bg-muted px-4 pb-4 text-sm sm:px-5;
   }
 
   .app-detail-subsection {
@@ -408,6 +408,12 @@
 
   .app-data-table tbody tr {
     @apply transition-colors hover:bg-muted focus-within:bg-muted;
+  }
+
+  .app-detail-card .app-data-table thead,
+  .app-detail-card .app-data-table tbody tr:hover,
+  .app-detail-card .app-data-table tbody tr:focus-within {
+    @apply bg-accent;
   }
 
   .app-data-table td {

@@ -30,10 +30,6 @@
         class="shrink-0"
         @search="handleSearch"
       />
-      <router-link to="/routes" class="app-button ml-auto h-10 px-3">
-        <ArrowLeft class="size-4" />
-        {{ t('route.sections.customConfiguration') }}
-      </router-link>
     </ToolbarRoot>
 
     <div v-if="status === 'loading'" class="app-list-surface">
@@ -137,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ArrowLeft, ExternalLink } from '@lucide/vue';
+  import { ExternalLink } from '@lucide/vue';
   import { computed, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { projectInitializationApi } from '@/api/project/initialization';

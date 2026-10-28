@@ -72,7 +72,9 @@
               <div
                 class="min-w-0 max-w-[88%] break-words rounded-lg px-4 py-3 text-sm leading-6 sm:max-w-[76%]"
                 :class="
-                  item.role === 'user' ? 'bg-primary text-primary-foreground' : messageClass(item)
+                  item.role === 'user'
+                    ? 'border border-border bg-accent text-foreground'
+                    : messageClass(item)
                 "
               >
                 <p v-if="item.role === 'user'" class="whitespace-pre-wrap">{{ item.content }}</p>

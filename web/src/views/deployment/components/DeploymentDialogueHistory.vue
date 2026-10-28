@@ -28,17 +28,12 @@
     >
       {{ t('deploymentDialogue.historyEmpty') }}
     </p>
-    <ol v-else class="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+    <ol v-else class="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
       <li
         v-for="conversation in conversations"
         :key="conversation.id"
-        class="dialogue-history-item relative flex min-w-0 items-center rounded-md border transition-colors"
+        class="dialogue-history-item relative flex min-w-0 items-center rounded transition-colors hover:bg-muted"
         :data-active="conversation.id === activeConversationId ? '' : undefined"
-        :class="
-          conversation.id === activeConversationId
-            ? 'border-border text-foreground'
-            : 'border-transparent text-foreground hover:bg-muted'
-        "
       >
         <button
           type="button"

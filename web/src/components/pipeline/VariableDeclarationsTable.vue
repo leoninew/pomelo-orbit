@@ -32,7 +32,7 @@
               <span class="text-foreground">{{ variable.name }}</span>
             </td>
             <td>
-              <AppBadge variant="status">{{ variable.kind }}</AppBadge>
+              <span class="text-xs text-muted-foreground">{{ variable.kind }}</span>
             </td>
             <td>
               <AppTruncatedText
@@ -89,7 +89,6 @@
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n';
   import { computed, ref } from 'vue';
-  import AppBadge from '@/components/ui/AppBadge.vue';
   import AppEmptyState from '@/components/ui/AppEmptyState.vue';
   import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
   import type { VariableConfigurationResp, VariableResp } from '@/gen/proto/orbit/v1/common/common';

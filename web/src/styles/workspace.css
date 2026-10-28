@@ -35,8 +35,6 @@
 .app-project-switcher {
   height: 2.25rem;
   margin-inline: 0.5rem;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--muted));
   padding-inline: 0.75rem;
 }
 
@@ -46,12 +44,6 @@
 
 .app-user-menu-trigger {
   flex-shrink: 0;
-}
-
-.app-user-avatar {
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--accent));
-  color: hsl(var(--foreground));
 }
 
 .app-global-tools {
@@ -87,15 +79,14 @@
 }
 
 .dialogue-history-item[data-active] {
-  border-color: color-mix(in srgb, var(--workspace-brand) 35%, hsl(var(--border)));
-  background: transparent;
+  background: hsl(var(--muted));
 }
 
 .dialogue-history-item[data-active]::before {
   position: absolute;
   top: 0.75rem;
   bottom: 0.75rem;
-  left: -1px;
+  left: 0;
   width: 2px;
   border-radius: 2px;
   background: var(--workspace-brand);
@@ -234,10 +225,6 @@
 
 .repository-table :is(.repository-name, .repository-credential .app-link) {
   color: hsl(var(--foreground));
-}
-
-.repository-table :is(.repository-code, .repository-branch) {
-  font-family: var(--font-mono);
 }
 
 .repository-table

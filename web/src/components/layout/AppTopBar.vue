@@ -20,7 +20,7 @@
         </span>
         <span
           v-if="runtimeConfig.envLabel"
-          class="text-xs leading-tight text-amber-600 dark:text-amber-400"
+          class="text-sm leading-tight text-amber-600 dark:text-amber-400"
         >
           {{ runtimeConfig.envLabel }}
         </span>
@@ -117,7 +117,7 @@
               <AppTruncatedText :text="project.name" class="flex-1" as-child>
                 <span>{{ project.name }}</span>
               </AppTruncatedText>
-              <span class="shrink-0 text-xs text-muted-foreground">{{ project.code }}</span>
+              <span class="shrink-0 text-sm text-muted-foreground">{{ project.code }}</span>
               <Check
                 v-if="project.id === projectStore.activeProjectId"
                 class="size-4 shrink-0 text-primary"

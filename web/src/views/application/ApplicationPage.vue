@@ -61,7 +61,7 @@
                   </router-link>
                 </AppTruncatedText>
               </td>
-              <td class="text-foreground"><AppTruncatedText class="text-xs" :text="app.code" /></td>
+              <td class="text-foreground"><AppTruncatedText class="text-sm" :text="app.code" /></td>
               <td>
                 <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
                   {{ app.kind }}

@@ -40,7 +40,7 @@
 
   const badgeClass = computed(() => {
     const base =
-      'inline-flex items-center gap-1.5 whitespace-nowrap rounded py-0.5 text-xs leading-5';
+      'inline-flex items-center gap-1.5 whitespace-nowrap rounded py-0.5 text-sm leading-5';
 
     const variants = {
       default: 'px-2',

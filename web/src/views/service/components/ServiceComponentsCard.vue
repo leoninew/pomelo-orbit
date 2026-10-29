@@ -50,7 +50,7 @@
                   class="flex items-center gap-2 text-sm"
                 >
                   <AppBadge variant="pill">{{ endpoint.mode }}</AppBadge>
-                  <span class="text-foreground text-xs">
+                  <span class="text-foreground text-sm">
                     {{ endpoint.protocol }}/{{ endpoint.container_port }}
                   </span>
                 </div>

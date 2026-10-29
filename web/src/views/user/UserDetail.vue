@@ -216,7 +216,7 @@
             />
             <span>
               <span class="block text-foreground">{{ role.name }}</span>
-              <span class="block text-xs text-muted-foreground">{{ role.code }}</span>
+              <span class="block text-sm text-muted-foreground">{{ role.code }}</span>
             </span>
           </label>
         </div>

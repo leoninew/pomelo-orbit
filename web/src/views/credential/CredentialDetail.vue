@@ -43,7 +43,7 @@
         <div class="flex gap-2">
           <dt>类型</dt>
           <dd>
-            <span class="text-xs text-muted-foreground">
+            <span class="text-sm text-muted-foreground">
               {{ credential.type }}
             </span>
           </dd>

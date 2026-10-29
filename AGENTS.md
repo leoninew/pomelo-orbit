@@ -5,6 +5,8 @@
 - 未经用户要求，不启动、停止或重启开发服务器，不修改已执行的迁移。
 - API 路由使用单数形式，如 `/api/ci/repository`。
 - 前端位于 `web/`，使用共享组件和现有样式；不散落底层 Reka primitives。时间展示使用 `web/src/utils/time.ts`。
+- 代码编辑、代码与命令展示、日志及终端内容统一使用 12px；其他前端文字不使用 12px，除非用户明确要求。
+- 页面表格的 ID 列完整展示，不使用截断组件。
 - 后端遵循既有事务、仓储和日志边界。架构与测试依赖治理见 [后端技能](.agents/skills/backend-architecture-governance/SKILL.md)。
 - 测试覆盖当前业务的主要流程和真实失败边界，不穷举理论情况，不保留已移除行为的断言。
 - 前端只保留轻量单测，不做并发、性能、集成、端到端或整页串联测试；见 [前端测试技能](.agents/skills/frontend-unit-testing/SKILL.md)。后端持久化、事务及协议测试按实际边界分类。

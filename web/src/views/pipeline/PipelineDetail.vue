@@ -338,11 +338,11 @@
           </p>
           <div class="grid gap-2 sm:grid-cols-2">
             <pre
-              class="whitespace-pre-wrap break-words bg-muted/40 p-2 text-sm text-muted-foreground"
+              class="app-code-content whitespace-pre-wrap break-words bg-muted/40 p-2 text-muted-foreground"
               >{{ difference.current }}</pre>
-            <pre class="whitespace-pre-wrap break-words bg-muted/40 p-2 text-sm text-foreground">{{
-              difference.target
-            }}</pre>
+            <pre
+              class="app-code-content whitespace-pre-wrap break-words bg-muted/40 p-2 text-foreground"
+              >{{ difference.target }}</pre>
           </div>
         </div>
         <p class="text-sm text-muted-foreground">私有名称、说明、依赖、排序和制品配置将保留。</p>

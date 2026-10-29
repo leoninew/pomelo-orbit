@@ -427,7 +427,6 @@
       value: version.id,
       label: version.label,
       description: version.status,
-      descriptionKind: 'enum' as const,
     }))
   );
   const componentOptions = computed(() =>

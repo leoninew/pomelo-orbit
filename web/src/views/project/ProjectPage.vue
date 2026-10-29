@@ -55,7 +55,7 @@
                   </router-link>
                 </AppTruncatedText>
               </td>
-              <td class="whitespace-nowrap text-foreground text-xs">{{ project.code }}</td>
+              <td class="whitespace-nowrap text-foreground text-sm">{{ project.code }}</td>
               <td>
                 <AppBadge v-if="project.is_active" variant="status" tone="success">
                   {{ t('project.active') }}
@@ -491,7 +491,6 @@
       value: project.id,
       label: project.name,
       description: project.code,
-      descriptionKind: 'code' as const,
     }))
   );
 

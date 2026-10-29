@@ -48,12 +48,10 @@
           </thead>
           <tbody>
             <tr v-for="a in artifacts" :key="a.id">
-              <td class="overflow-hidden font-mono text-xs">
-                <AppTruncatedText class="text-xs" :text="a.id" as-child>
-                  <router-link :to="`/pipeline-run/artifact/${a.id}`" class="app-link">
-                    {{ a.id }}
-                  </router-link>
-                </AppTruncatedText>
+              <td class="break-all font-mono text-sm">
+                <router-link :to="`/pipeline-run/artifact/${a.id}`" class="app-link">
+                  {{ a.id }}
+                </router-link>
               </td>
               <td class="text-foreground">
                 <AppTruncatedText :text="a.name" />

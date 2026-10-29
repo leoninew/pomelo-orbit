@@ -29,7 +29,7 @@
       <dl v-if="role" class="app-detail-info-grid">
         <div class="flex gap-2">
           <dt>{{ t('roleManagement.code') }}</dt>
-          <dd class="text-foreground text-xs">{{ role.code }}</dd>
+          <dd class="text-foreground text-sm">{{ role.code }}</dd>
         </div>
         <div class="flex gap-2">
           <dt>{{ t('common.name') }}</dt>
@@ -151,7 +151,7 @@
             />
             <span>
               <span class="block text-foreground">{{ permission.name }}</span>
-              <span class="block text-xs text-muted-foreground">{{ permission.code }}</span>
+              <span class="block text-sm text-muted-foreground">{{ permission.code }}</span>
             </span>
           </label>
         </div>

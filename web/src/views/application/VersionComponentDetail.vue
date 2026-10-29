@@ -118,13 +118,13 @@
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.componentDetail.fields.containerEntrypoint') }}
                 </label>
-                <AppTextarea v-model="form.entrypoint" rows="3" />
+                <AppTextarea v-model="form.entrypoint" class="app-code-content" rows="3" />
               </div>
               <div class="sm:col-span-2">
                 <label class="app-field-label mb-1.5 block">
                   {{ t('application.componentDetail.fields.command') }}
                 </label>
-                <AppTextarea v-model="form.command" rows="3" />
+                <AppTextarea v-model="form.command" class="app-code-content" rows="3" />
               </div>
             </div>
 
@@ -143,13 +143,13 @@
                 <dt class="text-muted-foreground">
                   {{ t('application.componentDetail.fields.pullPolicy') }}
                 </dt>
-                <dd class="mt-1 text-foreground text-xs">{{ form.pull_policy }}</dd>
+                <dd class="mt-1 text-foreground text-sm">{{ form.pull_policy }}</dd>
               </div>
               <div>
                 <dt class="text-muted-foreground">
                   {{ t('application.componentDetail.fields.restartPolicy') }}
                 </dt>
-                <dd class="mt-1 text-foreground text-xs">
+                <dd class="mt-1 text-foreground text-sm">
                   {{ form.restart_policy || t('common.notSet') }}
                 </dd>
               </div>
@@ -160,7 +160,10 @@
                 <dd v-if="!form.entrypoint" class="mt-1 text-foreground">
                   {{ t('common.notSet') }}
                 </dd>
-                <dd v-else class="mt-1 whitespace-pre-wrap break-words text-foreground">
+                <dd
+                  v-else
+                  class="app-code-content mt-1 whitespace-pre-wrap break-words text-foreground"
+                >
                   {{ form.entrypoint }}
                 </dd>
               </div>
@@ -171,7 +174,10 @@
                 <dd v-if="!form.command" class="mt-1 text-foreground">
                   {{ t('common.notSet') }}
                 </dd>
-                <dd v-else class="mt-1 whitespace-pre-wrap break-words text-foreground">
+                <dd
+                  v-else
+                  class="app-code-content mt-1 whitespace-pre-wrap break-words text-foreground"
+                >
                   {{ form.command }}
                 </dd>
               </div>
@@ -285,7 +291,7 @@
                 <dd v-if="!form.healthcheck_test" class="mt-1 text-foreground">
                   {{ t('common.notSet') }}
                 </dd>
-                <dd v-else class="mt-1 break-all text-foreground">
+                <dd v-else class="app-code-content mt-1 break-all text-foreground">
                   {{ form.healthcheck_test }}
                 </dd>
               </div>
@@ -371,8 +377,8 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.ports" :key="`port-${index}`">
-                    <td class="text-foreground text-xs">{{ row.protocol || 'tcp' }}</td>
-                    <td class="text-foreground text-xs">{{ row.mode || 'host' }}</td>
+                    <td class="text-foreground text-sm">{{ row.protocol || 'tcp' }}</td>
+                    <td class="text-foreground text-sm">{{ row.mode || 'host' }}</td>
                     <td class="text-foreground">{{ row.host_port || '-' }}</td>
                     <td class="text-foreground">{{ row.container_port }}</td>
                     <td class="app-table-actions w-32">
@@ -438,7 +444,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.mounts" :key="`mount-${index}`">
-                    <td class="min-w-28 text-foreground text-xs">
+                    <td class="min-w-28 text-foreground text-sm">
                       {{ mountTypeLabel(row.source_type) }}
                     </td>
                     <td class="min-w-56 break-all text-foreground">{{ row.source }}</td>
@@ -508,7 +514,7 @@
                   <tr v-for="(row, index) in form.tmpfs" :key="`tmpfs-${index}`">
                     <td class="min-w-60 break-all text-foreground">{{ row.target }}</td>
                     <td class="min-w-52 text-foreground">{{ row.size_bytes }}</td>
-                    <td class="min-w-40 text-foreground text-xs">{{ row.mode }}</td>
+                    <td class="min-w-40 text-foreground text-sm">{{ row.mode }}</td>
                     <td class="app-table-actions w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button
@@ -748,13 +754,13 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.containerEntrypoint') }}
           </label>
-          <AppTextarea v-model="form.entrypoint" rows="3" />
+          <AppTextarea v-model="form.entrypoint" class="app-code-content" rows="3" />
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.command') }}
           </label>
-          <AppTextarea v-model="form.command" rows="3" />
+          <AppTextarea v-model="form.command" class="app-code-content" rows="3" />
         </div>
       </div>
       <p v-if="formError" class="app-field-error">{{ formError }}</p>
@@ -883,6 +889,7 @@
         </label>
         <AppInput
           v-model="form.healthcheck_test"
+          class="app-code-content"
           :class="healthcheckErrors.test ? 'app-input-error' : ''"
           type="text"
           :aria-invalid="healthcheckErrors.test ? 'true' : undefined"

@@ -89,7 +89,7 @@
                   </router-link>
                 </AppTruncatedText>
               </h2>
-              <AppTruncatedText :text="svc.code" class="text-xs text-foreground" />
+              <AppTruncatedText :text="svc.code" class="text-sm text-foreground" />
             </div>
             <ServiceStatusBadge :status="svc.status" />
           </div>
@@ -175,7 +175,7 @@
                   {{ svc.application_name }}
                 </router-link>
               </td>
-              <td class="text-foreground text-xs">{{ svc.code }}</td>
+              <td class="text-foreground text-sm">{{ svc.code }}</td>
               <td>
                 <AppTruncatedText :text="svc.version_label" class="max-w-60" as-child>
                   <router-link :to="`/version/${svc.version_id}`" class="app-link">
@@ -495,7 +495,6 @@
       value: version.id,
       label: version.label,
       description: version.status,
-      descriptionKind: 'enum' as const,
     }))
   );
   const deployVersionSelectOptions = computed(() =>
@@ -503,7 +502,6 @@
       value: version.id,
       label: version.label,
       description: version.status,
-      descriptionKind: 'enum' as const,
     }))
   );
 

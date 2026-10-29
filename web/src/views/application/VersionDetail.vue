@@ -262,7 +262,7 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.command') }}
           </label>
-          <AppTextarea v-model="componentForm.command" rows="3" />
+          <AppTextarea v-model="componentForm.command" class="app-code-content" rows="3" />
         </div>
         <ComponentIdentityFields
           v-model:user="componentForm.user"
@@ -352,7 +352,7 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.command') }}
           </label>
-          <AppTextarea v-model="componentEditForm.command" rows="3" />
+          <AppTextarea v-model="componentEditForm.command" class="app-code-content" rows="3" />
         </div>
       </div>
       <p v-if="componentEditError" class="app-field-error mt-3" role="alert">

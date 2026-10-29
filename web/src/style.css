@@ -440,6 +440,11 @@
     @apply text-sm font-normal;
   }
 
+  .app-code-content,
+  .app-code-content :is(.app-input-element, .app-textarea-element) {
+    @apply text-xs;
+  }
+
   .app-tab {
     @apply border-b-2 border-transparent px-4 py-3 text-sm text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring aria-selected:border-primary aria-selected:text-foreground;
   }

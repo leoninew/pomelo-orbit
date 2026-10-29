@@ -166,7 +166,7 @@
                     <span class="min-w-0 flex-1 text-sm text-foreground">
                       {{ item.label }}
                     </span>
-                    <span class="text-xs text-muted-foreground">
+                    <span class="text-sm text-muted-foreground">
                       {{ probeCheckStateLabel(index) }}
                     </span>
                   </li>

@@ -36,7 +36,7 @@
           </div>
           <div class="flex gap-2">
             <dt class="whitespace-nowrap">{{ t('application.code') }}</dt>
-            <dd class="text-foreground text-xs">{{ application.code }}</dd>
+            <dd class="text-foreground text-sm">{{ application.code }}</dd>
           </div>
           <div class="flex gap-2">
             <dt class="whitespace-nowrap">{{ t('application.kind') }}</dt>
@@ -206,10 +206,10 @@
                               >
                                 {{ component.image }}
                               </td>
-                              <td class="text-muted-foreground text-xs">
+                              <td class="text-muted-foreground text-sm">
                                 {{ component.pull_policy }}
                               </td>
-                              <td class="text-muted-foreground text-xs">
+                              <td class="text-muted-foreground text-sm">
                                 {{ component.restart_policy }}
                               </td>
                               <td class="app-table-actions">
@@ -493,7 +493,7 @@
           <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.command') }}
           </label>
-          <AppTextarea v-model="componentForm.command" rows="3" />
+          <AppTextarea v-model="componentForm.command" class="app-code-content" rows="3" />
         </div>
       </div>
       <p v-if="componentEditError" class="app-field-error mt-3" role="alert">

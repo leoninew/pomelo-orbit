@@ -40,7 +40,7 @@
         </div>
         <div class="flex gap-2">
           <dt>{{ t('project.code') }}</dt>
-          <dd class="text-foreground text-xs">{{ project.code }}</dd>
+          <dd class="text-foreground text-sm">{{ project.code }}</dd>
         </div>
         <div class="flex gap-2">
           <dt>{{ t('common.status') }}</dt>

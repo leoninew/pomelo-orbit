@@ -43,8 +43,8 @@
           <tbody>
             <tr v-for="role in roles" :key="role.id">
               <td class="max-w-0 text-foreground">
-                <AppTruncatedText class="text-xs" :text="role.code" as-child>
-                  <router-link :to="`/role/${role.id}`" class="app-link text-xs">
+                <AppTruncatedText class="text-sm" :text="role.code" as-child>
+                  <router-link :to="`/role/${role.id}`" class="app-link text-sm">
                     {{ role.code }}
                   </router-link>
                 </AppTruncatedText>

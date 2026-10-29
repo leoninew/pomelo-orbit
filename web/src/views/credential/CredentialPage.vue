@@ -44,7 +44,7 @@
                 </router-link>
               </td>
               <td>
-                <span class="text-xs text-muted-foreground">
+                <span class="text-sm text-muted-foreground">
                   {{ cred.type }}
                 </span>
               </td>

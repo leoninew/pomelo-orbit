@@ -47,11 +47,11 @@
           </div>
           <div class="flex gap-2">
             <dt>编码</dt>
-            <dd class="min-w-0 text-foreground text-xs">{{ repository.code }}</dd>
+            <dd class="min-w-0 text-foreground text-sm">{{ repository.code }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>仓库类型</dt>
-            <dd class="text-foreground text-xs">
+            <dd class="text-foreground text-sm">
               {{ repository.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
             </dd>
           </div>

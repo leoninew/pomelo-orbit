@@ -84,11 +84,11 @@
                   :key="callIndex"
                   class="mt-3 border-t border-border/70 pt-2 text-sm"
                 >
-                  <summary class="cursor-pointer text-xs text-muted-foreground">
+                  <summary class="cursor-pointer text-sm text-muted-foreground">
                     {{ call.name }}
                   </summary>
                   <pre
-                    class="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-background p-2 text-xs text-foreground"
+                    class="app-code-content mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border bg-background p-2 text-foreground"
                     >{{ call.result_json }}</pre>
                 </details>
               </div>

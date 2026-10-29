@@ -8,7 +8,7 @@
     <div v-else-if="command" class="min-h-0">
       <AppTextarea
         :model-value="command"
-        class="h-[420px] resize-none font-mono text-sm"
+        class="app-code-content h-[420px] resize-none font-mono"
         readonly
         spellcheck="false"
         wrap="soft"

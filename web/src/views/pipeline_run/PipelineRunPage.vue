@@ -40,12 +40,10 @@
           </thead>
           <tbody>
             <tr v-for="run in filteredRuns" :key="run.id">
-              <td class="font-mono text-xs">
-                <AppTruncatedText :text="run.id" class="max-w-52 text-xs" as-child>
-                  <router-link :to="`/pipeline-run/${run.id}`" class="app-link">
-                    {{ run.id }}
-                  </router-link>
-                </AppTruncatedText>
+              <td class="break-all font-mono text-sm">
+                <router-link :to="`/pipeline-run/${run.id}`" class="app-link">
+                  {{ run.id }}
+                </router-link>
               </td>
               <td>
                 <router-link :to="`/pipeline/${run.pipeline_id}`" class="app-link">
@@ -129,7 +127,6 @@
   import AppEmptyState from '@/components/ui/AppEmptyState.vue';
   import AppLoadingState from '@/components/ui/AppLoadingState.vue';
   import AppTableTime from '@/components/ui/AppTableTime.vue';
-  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
   import RepositorySelect from '@/components/repository/RepositorySelect.vue';
   import ListPagination from '@/components/ui/ListPagination.vue';
   import SearchControl from '@/components/ui/SearchControl.vue';

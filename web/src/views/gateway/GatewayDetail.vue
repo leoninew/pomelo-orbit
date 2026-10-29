@@ -59,7 +59,7 @@
           </div>
           <div class="flex gap-2">
             <dt>{{ t('gateway.fields.code') }}</dt>
-            <dd class="text-foreground text-xs">{{ gateway.code }}</dd>
+            <dd class="text-foreground text-sm">{{ gateway.code }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>

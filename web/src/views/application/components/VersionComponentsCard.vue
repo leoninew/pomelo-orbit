@@ -47,8 +47,8 @@
                 class="max-w-xs"
               />
             </td>
-            <td class="text-muted-foreground text-xs">{{ component.pull_policy }}</td>
-            <td class="text-muted-foreground text-xs">{{ component.restart_policy }}</td>
+            <td class="text-muted-foreground text-sm">{{ component.pull_policy }}</td>
+            <td class="text-muted-foreground text-sm">{{ component.restart_policy }}</td>
             <td class="app-table-actions">
               <div v-if="editable" class="flex items-center gap-2">
                 <button class="app-link" :disabled="disabled" @click="emit('edit', component)">

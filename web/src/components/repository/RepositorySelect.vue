@@ -67,7 +67,6 @@
         value: item.id,
         label: item.name,
         description: item.code,
-        descriptionKind: 'code',
       }));
       rows.value = nextPage === 1 ? items : [...rows.value, ...items];
       page.value = nextPage;
@@ -157,7 +156,6 @@
             value: id,
             label: item.name,
             description: item.code,
-            descriptionKind: 'code',
           };
         }
       } catch {

@@ -53,7 +53,7 @@
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>{{ t('pipelineRun.fields.runId') }}</dt>
-            <dd class="min-w-0 break-all font-mono text-xs text-foreground">{{ run.id }}</dd>
+            <dd class="min-w-0 break-all font-mono text-sm text-foreground">{{ run.id }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>流水线</dt>
@@ -105,7 +105,7 @@
           </div>
           <div v-if="run.error_message" class="flex gap-2 sm:col-span-2">
             <dt>{{ t('pipelineRun.fields.errorMessage') }}</dt>
-            <dd class="min-w-0 whitespace-pre-wrap break-words text-destructive">
+            <dd class="app-code-content min-w-0 whitespace-pre-wrap break-words text-destructive">
               {{ run.error_message }}
             </dd>
           </div>
@@ -216,7 +216,9 @@
                         <p class="mb-1 font-medium">
                           {{ t('pipelineRun.fields.errorMessage') }}
                         </p>
-                        <p class="whitespace-pre-wrap break-words text-muted-foreground">
+                        <p
+                          class="app-code-content whitespace-pre-wrap break-words text-muted-foreground"
+                        >
                           {{ stageRunMap[stage.id]?.error_message }}
                         </p>
                       </AppPopover>

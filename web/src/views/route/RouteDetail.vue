@@ -120,7 +120,7 @@
           </div>
           <div class="flex gap-2">
             <dt>{{ t('route.fields.protocol') }}</dt>
-            <dd class="text-foreground text-xs">{{ routeData.protocol.toUpperCase() }}</dd>
+            <dd class="text-foreground text-sm">{{ routeData.protocol.toUpperCase() }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('common.createdAt') }}</dt>

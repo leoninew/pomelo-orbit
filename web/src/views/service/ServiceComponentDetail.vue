@@ -43,7 +43,7 @@
                 <td class="max-w-0 text-muted-foreground">
                   <AppTruncatedText
                     :text="displayValue(field.state.base)"
-                    :class="{ 'text-xs': field.kind === 'select' }"
+                    :class="{ 'app-code-content': field.kind === 'textarea' }"
                   />
                 </td>
                 <td class="max-w-0">
@@ -68,6 +68,7 @@
                   <AppTextarea
                     v-else-if="editingRuntimeKey === field.key && field.kind === 'textarea'"
                     v-model="editingRuntimeValue"
+                    class="app-code-content"
                     :aria-label="field.label"
                     rows="3"
                   />
@@ -76,7 +77,7 @@
                     :text="displayValue(field.state.value)"
                     class="h-9 leading-9"
                     :class="[
-                      field.kind === 'select' ? 'text-xs' : '',
+                      field.kind === 'textarea' ? 'app-code-content' : '',
                       runtimeFieldDiffers(field)
                         ? 'text-amber-600 dark:text-amber-400'
                         : 'text-foreground',
@@ -330,7 +331,7 @@
             </thead>
             <tbody>
               <tr v-for="mount in mountRows" :key="mount.target">
-                <td class="min-w-28 text-foreground text-xs">
+                <td class="min-w-28 text-foreground text-sm">
                   {{ mountTypeLabel(mount.source_type) }}
                 </td>
                 <td

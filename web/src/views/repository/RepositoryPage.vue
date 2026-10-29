@@ -51,11 +51,11 @@
                   <AppTruncatedText :text="p.name" class="min-w-0" />
                 </router-link>
               </td>
-              <td class="repository-code whitespace-nowrap text-xs">{{ p.code }}</td>
+              <td class="repository-code whitespace-nowrap text-sm">{{ p.code }}</td>
               <td class="repository-location">
                 <AppTruncatedText :text="repositoryLocation(p)" />
               </td>
-              <td class="whitespace-nowrap text-foreground text-xs">
+              <td class="whitespace-nowrap text-foreground text-sm">
                 {{ p.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
               </td>
               <td>

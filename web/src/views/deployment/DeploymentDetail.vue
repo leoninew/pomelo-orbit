@@ -47,7 +47,7 @@
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>部署 ID</dt>
-            <dd class="min-w-0 break-all font-mono text-xs text-foreground">{{ deploymentId }}</dd>
+            <dd class="min-w-0 break-all font-mono text-sm text-foreground">{{ deploymentId }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('deployment.fields.service') }}</dt>
@@ -87,7 +87,7 @@
           <div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
             <dt>错误信息</dt>
             <dd class="min-w-0 text-destructive">
-              <pre class="whitespace-pre-wrap break-words font-sans text-sm">{{
+              <pre class="app-code-content whitespace-pre-wrap break-words font-sans">{{
                 deployment.error_message
               }}</pre>
             </dd>
@@ -117,7 +117,7 @@
           </div>
           <div v-if="deploymentPullPolicy" class="flex gap-2">
             <dt>{{ t('deployment.fields.pullPolicy') }}</dt>
-            <dd class="text-xs">{{ deploymentPullPolicy }}</dd>
+            <dd class="text-sm">{{ deploymentPullPolicy }}</dd>
           </div>
         </dl>
       </DetailInfoCard>

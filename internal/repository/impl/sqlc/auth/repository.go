@@ -79,12 +79,13 @@ func (r Repository) ListLoginHistory(ctx context.Context, page int, perPage int,
 
 func (r Repository) CreateMCPAccessToken(ctx context.Context, token model.MCPAccessToken) error {
 	err := r.q(ctx).CreateMCPAccessToken(ctx, authsqlc.CreateMCPAccessTokenParams{
-		Id:        token.Id,
-		UserId:    token.UserId,
-		Name:      token.Name,
-		TokenHash: token.TokenHash,
-		ExpiresAt: dbmodel.NullTime(token.ExpiresAt),
-		CreatedAt: token.CreatedAt,
+		Id:             token.Id,
+		UserId:         token.UserId,
+		Name:           token.Name,
+		TokenHash:      token.TokenHash,
+		EncryptedToken: dbmodel.NullString(token.EncryptedToken),
+		ExpiresAt:      dbmodel.NullTime(token.ExpiresAt),
+		CreatedAt:      token.CreatedAt,
 	})
 	if err != nil {
 		return fmt.Errorf("create MCP access token %s: %w", token.Id, err)
@@ -129,11 +130,12 @@ func (r Repository) DeleteMCPAccessToken(ctx context.Context, tokenId string) er
 
 func mcpAccessTokenFrom(row authsqlc.MCPAccessToken) model.MCPAccessToken {
 	return model.MCPAccessToken{
-		Id:        row.Id,
-		UserId:    row.UserId,
-		Name:      row.Name,
-		TokenHash: row.TokenHash,
-		ExpiresAt: dbmodel.TimePtr(row.ExpiresAt),
-		CreatedAt: row.CreatedAt,
+		Id:             row.Id,
+		UserId:         row.UserId,
+		Name:           row.Name,
+		TokenHash:      row.TokenHash,
+		EncryptedToken: dbmodel.StringPtr(row.EncryptedToken),
+		ExpiresAt:      dbmodel.TimePtr(row.ExpiresAt),
+		CreatedAt:      row.CreatedAt,
 	}
 }

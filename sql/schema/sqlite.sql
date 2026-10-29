@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS mcp_access_token (
     user_id TEXT NOT NULL,
     name TEXT NOT NULL,
     token_hash TEXT NOT NULL UNIQUE,
+    encrypted_token TEXT NULL,
     expires_at DATETIME,
     created_at DATETIME NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE

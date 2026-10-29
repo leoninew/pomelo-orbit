@@ -57,12 +57,13 @@ type LoginHistory struct {
 }
 
 // MCPAccessToken is a user-owned credential for the local stdio MCP process.
-// TokenHash is never exposed outside the authentication persistence boundary.
+// TokenHash and EncryptedToken are never exposed in API responses.
 type MCPAccessToken struct {
-	Id        string     `db:"id"`
-	UserId    string     `db:"user_id"`
-	Name      string     `db:"name"`
-	TokenHash string     `db:"token_hash"`
-	ExpiresAt *time.Time `db:"expires_at"`
-	CreatedAt time.Time  `db:"created_at"`
+	Id             string     `db:"id"`
+	UserId         string     `db:"user_id"`
+	Name           string     `db:"name"`
+	TokenHash      string     `db:"token_hash"`
+	EncryptedToken *string    `db:"encrypted_token"`
+	ExpiresAt      *time.Time `db:"expires_at"`
+	CreatedAt      time.Time  `db:"created_at"`
 }

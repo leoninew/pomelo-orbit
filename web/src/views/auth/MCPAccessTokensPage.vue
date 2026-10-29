@@ -1,6 +1,13 @@
 <template>
   <div class="space-y-6">
-    <ToolbarRoot class="flex items-center justify-end" aria-label="MCP access token toolbar">
+    <ToolbarRoot class="app-toolbar-simple" aria-label="MCP access token toolbar">
+      <SearchControl
+        v-model="searchText"
+        class="shrink-0"
+        :placeholder="t('mcpAccessTokens.searchPlaceholder')"
+        :loading="status === 'loading'"
+        @search="handleSearch"
+      />
       <button class="app-button-primary px-5" @click="openCreateDialog">
         <Plus class="size-4" aria-hidden="true" />
         {{ t('mcpAccessTokens.create') }}
@@ -12,20 +19,22 @@
       <div v-else-if="status === 'error'" class="py-16 text-center text-destructive">
         <p class="text-sm">{{ error || t('mcpAccessTokens.loadFailed') }}</p>
       </div>
-      <AppEmptyState v-else-if="tokens.length === 0" />
+      <AppEmptyState v-else-if="filteredTokens.length === 0" />
       <div v-else class="overflow-x-auto">
         <table class="app-data-table min-w-[760px]">
           <thead>
             <tr>
               <th>{{ t('mcpAccessTokens.name') }}</th>
+              <th>{{ t('mcpAccessTokens.token') }}</th>
               <th>{{ t('mcpAccessTokens.expiresAt') }}</th>
               <th>{{ t('mcpAccessTokens.createdAt') }}</th>
               <th class="w-16">&nbsp;</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="token in tokens" :key="token.id">
+            <tr v-for="token in filteredTokens" :key="token.id">
               <td class="text-foreground">{{ token.name }}</td>
+              <td><MCPAccessTokenValue :value="token.token" /></td>
               <td>
                 <AppTableTime v-if="token.expires_at" :time="token.expires_at" />
                 <span v-else>{{ t('mcpAccessTokens.neverExpires') }}</span>
@@ -91,42 +100,6 @@
       </template>
     </AppDialog>
 
-    <AppDialog
-      :open="showCreatedDialog"
-      :title="t('mcpAccessTokens.createdDialogTitle')"
-      @update:open="setCreatedDialogOpen"
-    >
-      <div class="space-y-3">
-        <p class="text-sm text-amber-800">{{ t('mcpAccessTokens.shownOnce') }}</p>
-        <div class="flex gap-2">
-          <AppInput
-            :model-value="createdToken"
-            readonly
-            tabindex="-1"
-            class="min-w-0 font-mono text-sm"
-          />
-          <button
-            type="button"
-            class="app-icon-button shrink-0"
-            :title="t('mcpAccessTokens.copy')"
-            :aria-label="t('mcpAccessTokens.copy')"
-            @click="copyValue(createdToken)"
-          >
-            <Copy class="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-      <template #footer>
-        <button type="button" class="app-button" @click="copyValue(environmentValue)">
-          <Copy class="size-4" aria-hidden="true" />
-          {{ t('mcpAccessTokens.copyEnvironment') }}
-        </button>
-        <button type="button" class="app-button-primary" @click="setCreatedDialogOpen(false)">
-          {{ t('common.confirm') }}
-        </button>
-      </template>
-    </AppDialog>
-
     <AppDialog v-model:open="showRevokeDialog" :title="t('mcpAccessTokens.revokeDialogTitle')">
       <p class="text-sm text-foreground">{{ t('mcpAccessTokens.revokeConfirm') }}</p>
       <p v-if="revokeError" class="app-field-error mt-3" role="alert">{{ revokeError }}</p>
@@ -145,7 +118,7 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { Copy, Plus, Trash2 } from '@lucide/vue';
+  import { Plus, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { authApi } from '@/api/auth/auth';
@@ -154,10 +127,12 @@
   import AppEmptyState from '@/components/ui/AppEmptyState.vue';
   import AppLoadingState from '@/components/ui/AppLoadingState.vue';
   import AppTableTime from '@/components/ui/AppTableTime.vue';
+  import SearchControl from '@/components/ui/SearchControl.vue';
   import SelectControl, { type SelectOption } from '@/components/ui/SelectControl.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { MCPAccessTokenResp } from '@/gen/proto/orbit/v1/auth/auth';
+  import MCPAccessTokenValue from './components/MCPAccessTokenValue.vue';
   import { ToolbarRoot } from 'reka-ui';
 
   const { t } = useI18n();
@@ -165,22 +140,29 @@
   const { status, error, execute: executeLoad } = useStatusAsync();
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const tokens = ref<MCPAccessTokenResp[]>([]);
+  const searchText = ref('');
+  const appliedSearch = ref('');
   const showCreateDialog = ref(false);
-  const showCreatedDialog = ref(false);
   const showRevokeDialog = ref(false);
   const pendingRevokeId = ref('');
-  const createdToken = ref('');
   const form = reactive({ name: '', expires_in_days: 0 });
   const formError = ref('');
   const createError = ref('');
   const revokeError = ref('');
-  const environmentValue = computed(() => `POMELO_ORBIT_MCP__ACCESS_TOKEN=${createdToken.value}`);
   const expiryOptions = computed<SelectOption[]>(() => [
     { value: 0, label: t('mcpAccessTokens.neverExpires') },
     { value: 30, label: t('mcpAccessTokens.expiresIn30Days') },
     { value: 90, label: t('mcpAccessTokens.expiresIn90Days') },
     { value: 365, label: t('mcpAccessTokens.expiresIn365Days') },
   ]);
+  const filteredTokens = computed(() => {
+    const search = appliedSearch.value.trim().toLowerCase();
+    return tokens.value.filter((token) => token.name.toLowerCase().includes(search));
+  });
+
+  function handleSearch() {
+    appliedSearch.value = searchText.value;
+  }
 
   async function loadTokens() {
     try {
@@ -208,15 +190,14 @@
     createError.value = '';
     try {
       await executeOperation(async () => {
-        const response = await authApi.createMcpAccessToken({
+        await authApi.createMcpAccessToken({
           name: form.name.trim(),
           expires_in_days: form.expires_in_days,
         });
-        createdToken.value = response.token;
         showCreateDialog.value = false;
-        showCreatedDialog.value = true;
         await loadTokens();
       });
+      toast.success(t('mcpAccessTokens.createSuccess'));
     } catch (error) {
       createError.value =
         error instanceof Error ? error.message : t('mcpAccessTokens.createFailed');
@@ -242,22 +223,6 @@
     } catch (error) {
       revokeError.value =
         error instanceof Error ? error.message : t('mcpAccessTokens.revokeFailed');
-    }
-  }
-
-  async function copyValue(value: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success(t('mcpAccessTokens.copied'));
-    } catch {
-      toast.error(t('mcpAccessTokens.copyFailed'));
-    }
-  }
-
-  function setCreatedDialogOpen(open: boolean) {
-    showCreatedDialog.value = open;
-    if (!open) {
-      createdToken.value = '';
     }
   }
 

@@ -16,6 +16,7 @@ import (
 	authdto "github.com/leoninew/pomelo-orbit/internal/application/auth/dto"
 	"github.com/leoninew/pomelo-orbit/internal/auth/csrf"
 	jwt "github.com/leoninew/pomelo-orbit/internal/auth/jwt"
+	security "github.com/leoninew/pomelo-orbit/internal/common/crypto"
 	apperror "github.com/leoninew/pomelo-orbit/internal/common/errors"
 	idutil "github.com/leoninew/pomelo-orbit/internal/common/util"
 	"github.com/leoninew/pomelo-orbit/internal/model"
@@ -92,18 +93,22 @@ func (s Service) AuthenticateMCPAccessToken(ctx context.Context, rawToken string
 	return s.authenticateUser(ctx, token.UserId)
 }
 
-func (s Service) CreateMCPAccessToken(ctx context.Context, userId string, input authdto.MCPAccessTokenCreateInput) (authdto.MCPAccessTokenCreated, error) {
+func (s Service) CreateMCPAccessToken(ctx context.Context, userId string, input authdto.MCPAccessTokenCreateInput) (authdto.MCPAccessTokenDetail, error) {
 	name := strings.TrimSpace(input.Name)
 	if userId == "" || name == "" || len(name) > maxMCPAccessTokenNameLen || input.ExpiresInDays < 0 || input.ExpiresInDays > maxMCPAccessTokenLifetime {
-		return authdto.MCPAccessTokenCreated{}, apperror.New(apperror.KindValidation, "Invalid MCP access token fields")
+		return authdto.MCPAccessTokenDetail{}, apperror.New(apperror.KindValidation, "Invalid MCP access token fields")
 	}
 	if _, err := s.authenticateUser(ctx, userId); err != nil {
-		return authdto.MCPAccessTokenCreated{}, err
+		return authdto.MCPAccessTokenDetail{}, err
 	}
 
 	rawToken, err := newMCPAccessToken()
 	if err != nil {
-		return authdto.MCPAccessTokenCreated{}, apperror.Wrap(apperror.KindInternal, "Failed to create MCP access token", err)
+		return authdto.MCPAccessTokenDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create MCP access token", err)
+	}
+	encryptedToken, err := security.EncryptString(s.secretKey, rawToken)
+	if err != nil {
+		return authdto.MCPAccessTokenDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to encrypt MCP access token", err)
 	}
 	now := time.Now().UTC()
 	var expiresAt *time.Time
@@ -111,19 +116,31 @@ func (s Service) CreateMCPAccessToken(ctx context.Context, userId string, input 
 		expires := now.AddDate(0, 0, int(input.ExpiresInDays))
 		expiresAt = &expires
 	}
-	accessToken := model.MCPAccessToken{Id: idutil.NewId(), UserId: userId, Name: name, TokenHash: hashMCPAccessToken(rawToken), ExpiresAt: expiresAt, CreatedAt: now}
+	accessToken := model.MCPAccessToken{Id: idutil.NewId(), UserId: userId, Name: name, TokenHash: hashMCPAccessToken(rawToken), EncryptedToken: &encryptedToken, ExpiresAt: expiresAt, CreatedAt: now}
 	if err := s.auth.CreateMCPAccessToken(ctx, accessToken); err != nil {
-		return authdto.MCPAccessTokenCreated{}, apperror.Wrap(apperror.KindInternal, "Failed to create MCP access token", err)
+		return authdto.MCPAccessTokenDetail{}, apperror.Wrap(apperror.KindInternal, "Failed to create MCP access token", err)
 	}
-	return authdto.MCPAccessTokenCreated{AccessToken: accessToken, Token: rawToken}, nil
+	return authdto.MCPAccessTokenDetail{AccessToken: accessToken, Token: &rawToken}, nil
 }
 
-func (s Service) ListMCPAccessTokens(ctx context.Context, userId string) ([]model.MCPAccessToken, error) {
+func (s Service) ListMCPAccessTokens(ctx context.Context, userId string) ([]authdto.MCPAccessTokenDetail, error) {
 	items, err := s.auth.ListMCPAccessTokens(ctx, userId)
 	if err != nil {
 		return nil, apperror.Wrap(apperror.KindInternal, "Failed to list MCP access tokens", err)
 	}
-	return items, nil
+	details := make([]authdto.MCPAccessTokenDetail, 0, len(items))
+	for _, item := range items {
+		detail := authdto.MCPAccessTokenDetail{AccessToken: item}
+		if item.EncryptedToken != nil {
+			plain, err := security.DecryptString(s.secretKey, *item.EncryptedToken)
+			if err != nil {
+				return nil, apperror.Wrap(apperror.KindInternal, "Failed to decrypt MCP access token", err)
+			}
+			detail.Token = &plain
+		}
+		details = append(details, detail)
+	}
+	return details, nil
 }
 
 func (s Service) RevokeMCPAccessToken(ctx context.Context, userId string, tokenId string) error {

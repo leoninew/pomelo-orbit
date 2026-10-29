@@ -41,6 +41,7 @@ func loginHistoryResponse(history model.LoginHistory) authv1.LoginHistoryResp {
 	return authv1.LoginHistoryResp{Id: history.Id, UserId: history.UserId, Username: history.Username, IpAddress: history.IpAddress, UserAgent: history.UserAgent, LoginAt: transport.FormatTime(history.LoginAt), Success: history.Success}
 }
 
-func mcpAccessTokenResponse(token model.MCPAccessToken) authv1.MCPAccessTokenResp {
-	return authv1.MCPAccessTokenResp{Id: token.Id, Name: token.Name, ExpiresAt: transport.FormatOptionalTime(token.ExpiresAt), CreatedAt: transport.FormatTime(token.CreatedAt)}
+func mcpAccessTokenResponse(detail authdto.MCPAccessTokenDetail) authv1.MCPAccessTokenResp {
+	token := detail.AccessToken
+	return authv1.MCPAccessTokenResp{Id: token.Id, Name: token.Name, ExpiresAt: transport.FormatOptionalTime(token.ExpiresAt), CreatedAt: transport.FormatTime(token.CreatedAt), Token: detail.Token}
 }

@@ -21,6 +21,8 @@ Pomelo Orbit 管理 CI 流水线、Docker Compose 应用部署与 Traefik 网关
 
 前端布局、文字、表格及共享控件遵循[前端界面规范](frontend-design.md)。
 
+访问令牌使用 `POMELO_ORBIT_JWT__SECRET_KEY` 进行 Fernet 加密存储，列表默认遮罩，可显隐及复制；认证仍使用令牌哈希。迁移前仅保存哈希的记录，其可查看令牌值为空，需要重新创建才能查看或复制。更换该密钥会影响已有令牌密文及其他加密凭据的解密。
+
 本次全系统前端统一的[意图](intent/20261028-open-canvas-visual-language.md)、[计划](plan/20261028-open-canvas-visual-language.md)和[验证结果](verification/20261028-open-canvas-visual-language.md)使用同一份 SpecFlow 记录。
 
 ## 变更记录

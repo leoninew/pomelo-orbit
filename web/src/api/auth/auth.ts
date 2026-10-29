@@ -2,7 +2,7 @@ import type {
   CSRFTokenResp,
   GoogleCallbackReq,
   GoogleCallbackResp,
-  MCPAccessTokenCreatedResp,
+  MCPAccessTokenResp,
   MCPAccessTokenCreateReq,
   MCPAccessTokenListResp,
   LoginHistoryPaginatedResp,
@@ -60,7 +60,7 @@ export const authApi = {
     return request.get('/api/auth/mcp-access-token');
   },
 
-  createMcpAccessToken(data: MCPAccessTokenCreateReq): Promise<MCPAccessTokenCreatedResp> {
+  createMcpAccessToken(data: MCPAccessTokenCreateReq): Promise<MCPAccessTokenResp> {
     return request.post('/api/auth/mcp-access-token', data);
   },
 

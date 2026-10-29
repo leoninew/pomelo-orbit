@@ -17,22 +17,22 @@ ORDER BY id DESC
 LIMIT ? OFFSET ?;
 
 -- name: CreateMCPAccessToken :exec
-INSERT INTO mcp_access_token (id, user_id, name, token_hash, expires_at, created_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO mcp_access_token (id, user_id, name, token_hash, encrypted_token, expires_at, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
 
 -- name: ListMCPAccessTokens :many
-SELECT id, user_id, name, token_hash, expires_at, created_at
+SELECT id, user_id, name, token_hash, encrypted_token, expires_at, created_at
 FROM mcp_access_token
 WHERE user_id = ?
 ORDER BY created_at DESC, id DESC;
 
 -- name: MCPAccessTokenByHash :one
-SELECT id, user_id, name, token_hash, expires_at, created_at
+SELECT id, user_id, name, token_hash, encrypted_token, expires_at, created_at
 FROM mcp_access_token
 WHERE token_hash = ?;
 
 -- name: MCPAccessTokenForUser :one
-SELECT id, user_id, name, token_hash, expires_at, created_at
+SELECT id, user_id, name, token_hash, encrypted_token, expires_at, created_at
 FROM mcp_access_token
 WHERE id = ? AND user_id = ?;
 

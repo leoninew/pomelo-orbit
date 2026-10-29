@@ -166,12 +166,13 @@ type LoginHistory struct {
 }
 
 type MCPAccessToken struct {
-	Id        string       `db:"id"`
-	UserId    string       `db:"user_id"`
-	Name      string       `db:"name"`
-	TokenHash string       `db:"token_hash"`
-	ExpiresAt sql.NullTime `db:"expires_at"`
-	CreatedAt time.Time    `db:"created_at"`
+	Id             string         `db:"id"`
+	UserId         string         `db:"user_id"`
+	Name           string         `db:"name"`
+	TokenHash      string         `db:"token_hash"`
+	EncryptedToken sql.NullString `db:"encrypted_token"`
+	ExpiresAt      sql.NullTime   `db:"expires_at"`
+	CreatedAt      time.Time      `db:"created_at"`
 }
 
 type Permission struct {

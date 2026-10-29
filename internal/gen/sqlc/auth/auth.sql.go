@@ -30,17 +30,18 @@ func (q *Queries) CountLoginHistory(ctx context.Context, arg CountLoginHistoryPa
 }
 
 const createMCPAccessToken = `-- name: CreateMCPAccessToken :exec
-INSERT INTO mcp_access_token (id, user_id, name, token_hash, expires_at, created_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO mcp_access_token (id, user_id, name, token_hash, encrypted_token, expires_at, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateMCPAccessTokenParams struct {
-	Id        string       `db:"id"`
-	UserId    string       `db:"user_id"`
-	Name      string       `db:"name"`
-	TokenHash string       `db:"token_hash"`
-	ExpiresAt sql.NullTime `db:"expires_at"`
-	CreatedAt time.Time    `db:"created_at"`
+	Id             string         `db:"id"`
+	UserId         string         `db:"user_id"`
+	Name           string         `db:"name"`
+	TokenHash      string         `db:"token_hash"`
+	EncryptedToken sql.NullString `db:"encrypted_token"`
+	ExpiresAt      sql.NullTime   `db:"expires_at"`
+	CreatedAt      time.Time      `db:"created_at"`
 }
 
 func (q *Queries) CreateMCPAccessToken(ctx context.Context, arg CreateMCPAccessTokenParams) error {
@@ -49,6 +50,7 @@ func (q *Queries) CreateMCPAccessToken(ctx context.Context, arg CreateMCPAccessT
 		arg.UserId,
 		arg.Name,
 		arg.TokenHash,
+		arg.EncryptedToken,
 		arg.ExpiresAt,
 		arg.CreatedAt,
 	)
@@ -117,7 +119,7 @@ func (q *Queries) ListLoginHistory(ctx context.Context, arg ListLoginHistoryPara
 }
 
 const listMCPAccessTokens = `-- name: ListMCPAccessTokens :many
-SELECT id, user_id, name, token_hash, expires_at, created_at
+SELECT id, user_id, name, token_hash, encrypted_token, expires_at, created_at
 FROM mcp_access_token
 WHERE user_id = ?
 ORDER BY created_at DESC, id DESC
@@ -137,6 +139,7 @@ func (q *Queries) ListMCPAccessTokens(ctx context.Context, userID string) ([]MCP
 			&i.UserId,
 			&i.Name,
 			&i.TokenHash,
+			&i.EncryptedToken,
 			&i.ExpiresAt,
 			&i.CreatedAt,
 		); err != nil {
@@ -154,7 +157,7 @@ func (q *Queries) ListMCPAccessTokens(ctx context.Context, userID string) ([]MCP
 }
 
 const mCPAccessTokenByHash = `-- name: MCPAccessTokenByHash :one
-SELECT id, user_id, name, token_hash, expires_at, created_at
+SELECT id, user_id, name, token_hash, encrypted_token, expires_at, created_at
 FROM mcp_access_token
 WHERE token_hash = ?
 `
@@ -167,6 +170,7 @@ func (q *Queries) MCPAccessTokenByHash(ctx context.Context, tokenHash string) (M
 		&i.UserId,
 		&i.Name,
 		&i.TokenHash,
+		&i.EncryptedToken,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
@@ -174,7 +178,7 @@ func (q *Queries) MCPAccessTokenByHash(ctx context.Context, tokenHash string) (M
 }
 
 const mCPAccessTokenForUser = `-- name: MCPAccessTokenForUser :one
-SELECT id, user_id, name, token_hash, expires_at, created_at
+SELECT id, user_id, name, token_hash, encrypted_token, expires_at, created_at
 FROM mcp_access_token
 WHERE id = ? AND user_id = ?
 `
@@ -192,6 +196,7 @@ func (q *Queries) MCPAccessTokenForUser(ctx context.Context, arg MCPAccessTokenF
 		&i.UserId,
 		&i.Name,
 		&i.TokenHash,
+		&i.EncryptedToken,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 	)

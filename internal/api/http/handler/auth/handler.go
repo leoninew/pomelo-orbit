@@ -156,6 +156,7 @@ func (h Handler) ListLoginHistory(c *gin.Context) {
 }
 
 func (h Handler) ListMCPAccessTokens(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -173,6 +174,7 @@ func (h Handler) ListMCPAccessTokens(c *gin.Context) {
 }
 
 func (h Handler) CreateMCPAccessToken(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
 	current, ok := h.authenticator.CurrentUser(c)
 	if !ok {
 		return
@@ -187,8 +189,7 @@ func (h Handler) CreateMCPAccessToken(c *gin.Context) {
 		transport.WriteError(c, err)
 		return
 	}
-	accessToken := mcpAccessTokenResponse(created.AccessToken)
-	resp := authv1.MCPAccessTokenCreatedResp{AccessToken: &accessToken, Token: created.Token}
+	resp := mcpAccessTokenResponse(created)
 	transport.WriteProtoJSON(c, http.StatusCreated, &resp)
 }
 

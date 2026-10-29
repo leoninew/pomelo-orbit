@@ -711,6 +711,7 @@ type MCPAccessTokenResp struct {
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	ExpiresAt     *string                `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3,oneof" json:"expires_at,omitempty"`
 	CreatedAt     string                 `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	Token         *string                `protobuf:"bytes,5,opt,name=token,proto3,oneof" json:"token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -773,6 +774,13 @@ func (x *MCPAccessTokenResp) GetCreatedAt() string {
 	return ""
 }
 
+func (x *MCPAccessTokenResp) GetToken() string {
+	if x != nil && x.Token != nil {
+		return *x.Token
+	}
+	return ""
+}
+
 type MCPAccessTokenCreateReq struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -825,58 +833,6 @@ func (x *MCPAccessTokenCreateReq) GetExpiresInDays() int32 {
 	return 0
 }
 
-type MCPAccessTokenCreatedResp struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   *MCPAccessTokenResp    `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *MCPAccessTokenCreatedResp) Reset() {
-	*x = MCPAccessTokenCreatedResp{}
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *MCPAccessTokenCreatedResp) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*MCPAccessTokenCreatedResp) ProtoMessage() {}
-
-func (x *MCPAccessTokenCreatedResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use MCPAccessTokenCreatedResp.ProtoReflect.Descriptor instead.
-func (*MCPAccessTokenCreatedResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{13}
-}
-
-func (x *MCPAccessTokenCreatedResp) GetAccessToken() *MCPAccessTokenResp {
-	if x != nil {
-		return x.AccessToken
-	}
-	return nil
-}
-
-func (x *MCPAccessTokenCreatedResp) GetToken() string {
-	if x != nil {
-		return x.Token
-	}
-	return ""
-}
-
 type MCPAccessTokenListResp struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Items         []*MCPAccessTokenResp  `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
@@ -886,7 +842,7 @@ type MCPAccessTokenListResp struct {
 
 func (x *MCPAccessTokenListResp) Reset() {
 	*x = MCPAccessTokenListResp{}
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[14]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -898,7 +854,7 @@ func (x *MCPAccessTokenListResp) String() string {
 func (*MCPAccessTokenListResp) ProtoMessage() {}
 
 func (x *MCPAccessTokenListResp) ProtoReflect() protoreflect.Message {
-	mi := &file_orbit_v1_auth_auth_proto_msgTypes[14]
+	mi := &file_orbit_v1_auth_auth_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -911,7 +867,7 @@ func (x *MCPAccessTokenListResp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MCPAccessTokenListResp.ProtoReflect.Descriptor instead.
 func (*MCPAccessTokenListResp) Descriptor() ([]byte, []int) {
-	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{14}
+	return file_orbit_v1_auth_auth_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *MCPAccessTokenListResp) GetItems() []*MCPAccessTokenResp {
@@ -982,21 +938,20 @@ const file_orbit_v1_auth_auth_proto_rawDesc = "" +
 	"\bredirect\x18\x03 \x01(\tR\bredirect\"J\n" +
 	"\x13TurnstileConfigResp\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x19\n" +
-	"\bsite_key\x18\x02 \x01(\tR\asiteKey\"\x8a\x01\n" +
+	"\bsite_key\x18\x02 \x01(\tR\asiteKey\"\xaf\x01\n" +
 	"\x12MCPAccessTokenResp\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\"\n" +
 	"\n" +
 	"expires_at\x18\x03 \x01(\tH\x00R\texpiresAt\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x04 \x01(\tR\tcreatedAtB\r\n" +
-	"\v_expires_at\"U\n" +
+	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x19\n" +
+	"\x05token\x18\x05 \x01(\tH\x01R\x05token\x88\x01\x01B\r\n" +
+	"\v_expires_atB\b\n" +
+	"\x06_token\"U\n" +
 	"\x17MCPAccessTokenCreateReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12&\n" +
-	"\x0fexpires_in_days\x18\x02 \x01(\x05R\rexpiresInDays\"w\n" +
-	"\x19MCPAccessTokenCreatedResp\x12D\n" +
-	"\faccess_token\x18\x01 \x01(\v2!.orbit.v1.auth.MCPAccessTokenRespR\vaccessToken\x12\x14\n" +
-	"\x05token\x18\x02 \x01(\tR\x05token\"Q\n" +
+	"\x0fexpires_in_days\x18\x02 \x01(\x05R\rexpiresInDays\"Q\n" +
 	"\x16MCPAccessTokenListResp\x127\n" +
 	"\x05items\x18\x01 \x03(\v2!.orbit.v1.auth.MCPAccessTokenRespR\x05itemsB\xb7\x01\n" +
 	"\x11com.orbit.v1.authB\tAuthProtoP\x01ZAgithub.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/auth\xa2\x02\x03OVA\xaa\x02\rOrbit.V1.Auth\xca\x02\rOrbit\\V1\\Auth\xe2\x02\x19Orbit\\V1\\Auth\\GPBMetadata\xea\x02\x0fOrbit::V1::Authb\x06proto3"
@@ -1013,7 +968,7 @@ func file_orbit_v1_auth_auth_proto_rawDescGZIP() []byte {
 	return file_orbit_v1_auth_auth_proto_rawDescData
 }
 
-var file_orbit_v1_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_orbit_v1_auth_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_orbit_v1_auth_auth_proto_goTypes = []any{
 	(*LoginHistoryResp)(nil),          // 0: orbit.v1.auth.LoginHistoryResp
 	(*LoginHistoryPaginatedResp)(nil), // 1: orbit.v1.auth.LoginHistoryPaginatedResp
@@ -1028,18 +983,16 @@ var file_orbit_v1_auth_auth_proto_goTypes = []any{
 	(*TurnstileConfigResp)(nil),       // 10: orbit.v1.auth.TurnstileConfigResp
 	(*MCPAccessTokenResp)(nil),        // 11: orbit.v1.auth.MCPAccessTokenResp
 	(*MCPAccessTokenCreateReq)(nil),   // 12: orbit.v1.auth.MCPAccessTokenCreateReq
-	(*MCPAccessTokenCreatedResp)(nil), // 13: orbit.v1.auth.MCPAccessTokenCreatedResp
-	(*MCPAccessTokenListResp)(nil),    // 14: orbit.v1.auth.MCPAccessTokenListResp
+	(*MCPAccessTokenListResp)(nil),    // 13: orbit.v1.auth.MCPAccessTokenListResp
 }
 var file_orbit_v1_auth_auth_proto_depIdxs = []int32{
 	0,  // 0: orbit.v1.auth.LoginHistoryPaginatedResp.items:type_name -> orbit.v1.auth.LoginHistoryResp
-	11, // 1: orbit.v1.auth.MCPAccessTokenCreatedResp.access_token:type_name -> orbit.v1.auth.MCPAccessTokenResp
-	11, // 2: orbit.v1.auth.MCPAccessTokenListResp.items:type_name -> orbit.v1.auth.MCPAccessTokenResp
-	3,  // [3:3] is the sub-list for method output_type
-	3,  // [3:3] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	11, // 1: orbit.v1.auth.MCPAccessTokenListResp.items:type_name -> orbit.v1.auth.MCPAccessTokenResp
+	2,  // [2:2] is the sub-list for method output_type
+	2,  // [2:2] is the sub-list for method input_type
+	2,  // [2:2] is the sub-list for extension type_name
+	2,  // [2:2] is the sub-list for extension extendee
+	0,  // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_orbit_v1_auth_auth_proto_init() }
@@ -1056,7 +1009,7 @@ func file_orbit_v1_auth_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_orbit_v1_auth_auth_proto_rawDesc), len(file_orbit_v1_auth_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   15,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

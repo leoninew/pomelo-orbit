@@ -28,7 +28,7 @@ type MCPAccessTokenCreateInput struct {
 	ExpiresInDays int32
 }
 
-type MCPAccessTokenCreated struct {
+type MCPAccessTokenDetail struct {
 	AccessToken model.MCPAccessToken
-	Token       string
+	Token       *string
 }

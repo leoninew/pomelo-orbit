@@ -82,16 +82,12 @@ export interface MCPAccessTokenResp {
   name: string;
   expires_at?: string | undefined;
   created_at: string;
+  token?: string | undefined;
 }
 
 export interface MCPAccessTokenCreateReq {
   name: string;
   expires_in_days: number;
-}
-
-export interface MCPAccessTokenCreatedResp {
-  access_token: MCPAccessTokenResp | undefined;
-  token: string;
 }
 
 export interface MCPAccessTokenListResp {

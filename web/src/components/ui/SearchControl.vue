@@ -8,7 +8,7 @@
     :clear-label="t('common.clearSearch')"
     :disabled="disabled || loading"
     @clear="emit('search')"
-    @keydown.enter="emit('search')"
+    @keydown.enter.prevent="emit('search')"
   >
     <template #leading>
       <Search class="pointer-events-none mx-3 size-4 shrink-0 text-muted-foreground" />

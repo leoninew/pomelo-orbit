@@ -121,7 +121,7 @@
           <div class="mx-auto flex w-full max-w-5xl items-end gap-3">
             <AppTextarea
               v-model="draft"
-              class="min-h-16 flex-1 resize-none disabled:opacity-60"
+              class="min-h-16 flex-1 resize-none data-[disabled]:opacity-60"
               :placeholder="t('deploymentDialogue.placeholder')"
               :aria-label="t('deploymentDialogue.placeholder')"
               :disabled="pending || historyLoading"

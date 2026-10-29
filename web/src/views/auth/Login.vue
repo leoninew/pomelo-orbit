@@ -13,8 +13,10 @@
             <AppInput
               id="email"
               v-model="form.email"
+              name="email"
               type="email"
               autocomplete="username"
+              :clearable="false"
               :class="errors.email ? 'app-input-error' : ''"
               :placeholder="t('login.emailPlaceholder')"
               :disabled="sessionExpired"
@@ -34,32 +36,35 @@
 
           <div class="space-y-1.5">
             <label for="password" class="app-field-label block">{{ t('login.password') }}</label>
-            <div class="relative">
-              <AppInput
-                id="password"
-                v-model="form.password"
-                :type="showPassword ? 'text' : 'password'"
-                autocomplete="current-password"
-                class="pr-10"
-                maxlength="36"
-                :class="errors.password ? 'app-input-error' : ''"
-                :placeholder="t('login.passwordPlaceholder')"
-                :disabled="sessionExpired"
-                :aria-invalid="errors.password ? 'true' : undefined"
-                :aria-describedby="errors.password ? 'login-password-error' : undefined"
-                @input="errors.password = ''"
-                @keydown.enter="handleLogin"
-              />
-              <button
-                type="button"
-                class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground transition-colors hover:text-foreground"
-                :disabled="sessionExpired"
-                @click="showPassword = !showPassword"
-              >
-                <Eye v-if="!showPassword" class="size-4" />
-                <EyeOff v-else class="size-4" />
-              </button>
-            </div>
+            <AppInput
+              id="password"
+              v-model="form.password"
+              name="password"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              :clearable="false"
+              maxlength="36"
+              :class="errors.password ? 'app-input-error' : ''"
+              :placeholder="t('login.passwordPlaceholder')"
+              :disabled="sessionExpired"
+              :aria-invalid="errors.password ? 'true' : undefined"
+              :aria-describedby="errors.password ? 'login-password-error' : undefined"
+              @input="errors.password = ''"
+            >
+              <template #trailing>
+                <button
+                  type="button"
+                  class="app-icon-button size-6 shrink-0"
+                  :aria-label="t(showPassword ? 'login.hidePassword' : 'login.showPassword')"
+                  :title="t(showPassword ? 'login.hidePassword' : 'login.showPassword')"
+                  :disabled="sessionExpired"
+                  @click="showPassword = !showPassword"
+                >
+                  <Eye v-if="!showPassword" class="size-4" />
+                  <EyeOff v-else class="size-4" />
+                </button>
+              </template>
+            </AppInput>
             <p
               v-if="errors.password"
               id="login-password-error"

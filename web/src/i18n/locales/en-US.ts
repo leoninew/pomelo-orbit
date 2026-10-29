@@ -1493,6 +1493,8 @@ export default {
     password: 'Password',
     emailPlaceholder: 'Enter email',
     passwordPlaceholder: 'Enter password',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     verification: 'Verification',
     verificationRequired: 'Please complete verification',
     verificationFailed: 'Verification failed, please try again',

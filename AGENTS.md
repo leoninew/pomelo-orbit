@@ -13,7 +13,7 @@
 
 - 前端：在 `web/` 运行 `corepack yarn lint:fix`、`corepack yarn typecheck`，按变更补充单测。
 - Go：运行 `task check` 和 `go test ./cmd/... ./internal/...`。
-- Go 核心单测：`task test:go:unit -- -count=1`；完整测试：`task test:go:all -- -count=1`。
+- 前后端单测：`task test`；完整 Go 测试：`go test ./cmd/... ./internal/... ./sql`。
 - 使用项目现有工具；计时使用 `-count=1`，不依据缓存结果判断性能。
 
 ## 文档

@@ -88,20 +88,40 @@
               </span>
             </td>
             <td>
-              <div class="relative min-h-9">
-                <AppInput
-                  v-if="isEditing(row.id)"
-                  :model-value="editingRows[row.id]?.value || ''"
-                  :type="maskValues && !valueVisible[row.id] ? 'password' : 'text'"
-                  class="h-9"
-                  :class="maskValues ? 'pr-10' : ''"
-                  :aria-label="t('environment.fields.value')"
-                  :disabled="disabled"
-                  @input="updateEditingValue(row.id, $event)"
-                />
+              <AppInput
+                v-if="isEditing(row.id)"
+                :model-value="editingRows[row.id]?.value || ''"
+                :type="maskValues && !valueVisible[row.id] ? 'password' : 'text'"
+                class="h-9"
+                :aria-label="t('environment.fields.value')"
+                :disabled="disabled"
+                @input="updateEditingValue(row.id, $event)"
+              >
+                <template v-if="maskValues" #trailing>
+                  <button
+                    type="button"
+                    class="app-icon-button size-6 shrink-0"
+                    :aria-label="
+                      valueVisible[row.id]
+                        ? t('environment.actions.hideValue')
+                        : t('environment.actions.showValue')
+                    "
+                    :title="
+                      valueVisible[row.id]
+                        ? t('environment.actions.hideValue')
+                        : t('environment.actions.showValue')
+                    "
+                    :disabled="disabled"
+                    @click="toggleValueVisibility(row.id)"
+                  >
+                    <EyeOff v-if="valueVisible[row.id]" class="size-4" />
+                    <Eye v-else class="size-4" />
+                  </button>
+                </template>
+              </AppInput>
+              <div v-else class="flex min-h-9 items-center gap-2">
                 <span
-                  v-else
-                  class="flex min-h-9 items-center break-all"
+                  class="min-w-0 flex-1 break-all"
                   :class="
                     isResettable(row.id) ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'
                   "
@@ -111,7 +131,7 @@
                 <button
                   v-if="maskValues"
                   type="button"
-                  class="absolute right-1 top-1/2 inline-flex size-9 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
+                  class="app-icon-button shrink-0"
                   :aria-label="
                     valueVisible[row.id]
                       ? t('environment.actions.hideValue')

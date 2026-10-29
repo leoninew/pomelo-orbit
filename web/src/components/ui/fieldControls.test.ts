@@ -61,6 +61,20 @@ describe('shared field interactions', () => {
     expect(value.value).toBe('');
     expect(onSearch).toHaveBeenCalledTimes(1);
   });
+
+  it('handles Enter as search and prevents the containing form from submitting', async () => {
+    const onSearch = vi.fn();
+    const root = await mount(() => h(SearchControl, { modelValue: 'api', onSearch }));
+    const enter = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    element<HTMLInputElement>(root, 'input').dispatchEvent(enter);
+    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(enter.defaultPrevented).toBe(true);
+  });
+
   it('clears a text field without submitting its form', async () => {
     const value = ref('api');
     const onInput = vi.fn();
@@ -124,6 +138,55 @@ describe('shared field interactions', () => {
     await nextTick();
     expect(value.value).toBe('');
     expect(input.value).toBe('');
+  });
+
+  it('allows credential fields to omit clearing while keeping a trailing action', async () => {
+    const value = ref('password');
+    const visible = ref(false);
+    const onSubmit = vi.fn();
+    const root = await mount(() =>
+      h('form', { onSubmit }, [
+        h(
+          AppInput,
+          {
+            modelValue: value.value,
+            clearable: false,
+            type: visible.value ? 'text' : 'password',
+            autocomplete: 'current-password',
+            'onUpdate:modelValue': (next: string | number) => {
+              value.value = String(next);
+            },
+          },
+          {
+            trailing: () =>
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => {
+                    visible.value = !visible.value;
+                  },
+                },
+                i18n.global.t(visible.value ? 'login.hidePassword' : 'login.showPassword')
+              ),
+          }
+        ),
+      ])
+    );
+    const input = element<HTMLInputElement>(root, 'input');
+    const toggle = element<HTMLButtonElement>(root, 'button');
+    expect(root.querySelector('.app-clear-button')).toBeNull();
+    expect(input.autocomplete).toBe('current-password');
+    expect(input.type).toBe('password');
+    toggle.click();
+    await nextTick();
+    expect(input.type).toBe('text');
+    expect(input.value).toBe('password');
+    toggle.click();
+    await nextTick();
+    expect(input.type).toBe('password');
+    expect(input.value).toBe('password');
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('clears multiline text', async () => {

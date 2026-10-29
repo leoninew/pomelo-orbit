@@ -17,7 +17,6 @@ task webapi:dev
 | --- | --- |
 | `task check` | 类型、格式和 lint 检查 |
 | `task test` | 前端与 Go 核心单测 |
-| `task test:go:all -- -count=1` | 完整 Go 测试 |
 | `task build` | 构建 Docker 镜像 |
 | `task build cn=1` | 使用国内镜像源构建 |
 | `task cli -- env --help` | 环境 SSH 与远程命令 |

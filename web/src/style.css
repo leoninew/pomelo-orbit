@@ -211,7 +211,7 @@
   }
 
   .app-input {
-    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-muted focus-within:bg-background focus-within:ring-2 focus-within:ring-inset focus-within:ring-ring data-[disabled]:cursor-not-allowed data-[disabled]:bg-muted/50 data-[disabled]:text-muted-foreground;
+    @apply h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors hover:bg-muted focus-within:bg-background focus-within:outline-2 focus-within:outline-solid focus-within:-outline-offset-2 focus-within:outline-ring data-[disabled]:cursor-not-allowed data-[disabled]:bg-muted/50 data-[disabled]:text-muted-foreground;
   }
 
   .app-input-control {
@@ -220,6 +220,12 @@
 
   .app-input-element {
     @apply h-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed;
+  }
+
+  .app-input-element:autofill {
+    box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
   }
 
   .app-textarea-control {
@@ -360,7 +366,7 @@
   }
 
   .app-input-error {
-    @apply border-destructive focus:border-destructive focus-within:border-destructive focus-within:ring-destructive focus-visible:ring-destructive;
+    @apply border-destructive focus:border-destructive focus-within:border-destructive focus-within:outline-destructive focus-within:ring-destructive focus-visible:ring-destructive;
   }
 
   .app-popover-content {

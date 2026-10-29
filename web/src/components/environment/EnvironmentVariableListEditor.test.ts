@@ -19,6 +19,7 @@ function createEditorApp(
     savedRows: rows.value.map((row) => ({ ...row })),
     allowAdd: false,
     allowRemove: false,
+    maskValues: true,
     defaultValues: { LOG_LEVEL: 'info' },
     defaultValueLabel: 'Default',
     valueLabel: 'Current',
@@ -30,7 +31,7 @@ function createEditorApp(
 }
 
 describe('EnvironmentVariableListEditor', () => {
-  it('saves an edited row from the save action', async () => {
+  it('preserves an edited masked value across visibility changes and saves it', async () => {
     const rows = ref<EnvironmentVariableListRow[]>([
       { id: 'LOG_LEVEL', key: 'LOG_LEVEL', value: 'info' },
     ]);
@@ -60,6 +61,24 @@ describe('EnvironmentVariableListEditor', () => {
       if (!valueInput) {
         throw new Error('environment value input was not rendered');
       }
+      target
+        .querySelector<HTMLButtonElement>(
+          `button[aria-label="${messages.environment.actions.hideValue}"]`
+        )
+        ?.click();
+      await nextTick();
+      expect(valueInput.type).toBe('password');
+      expect(valueInput.value).toBe('info');
+      target
+        .querySelector<HTMLButtonElement>(
+          `button[aria-label="${messages.environment.actions.showValue}"]`
+        )
+        ?.click();
+      await nextTick();
+      expect(valueInput.type).toBe('text');
+      expect(valueInput.value).toBe('info');
+      expect(savedEntries.value).toEqual([]);
+
       valueInput.value = 'debug';
       valueInput.dispatchEvent(new Event('input', { bubbles: true }));
       await nextTick();

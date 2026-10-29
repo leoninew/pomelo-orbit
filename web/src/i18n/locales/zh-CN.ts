@@ -1458,6 +1458,8 @@ export default {
     password: '密码',
     emailPlaceholder: '请输入邮箱',
     passwordPlaceholder: '请输入密码',
+    showPassword: '显示密码',
+    hidePassword: '隐藏密码',
     verification: '人机验证',
     verificationRequired: '请完成人机验证',
     verificationFailed: '人机验证失败，请重试',

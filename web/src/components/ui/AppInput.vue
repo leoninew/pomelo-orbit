@@ -15,7 +15,7 @@
       class="app-input-element"
     />
     <AppClearButton
-      v-if="value !== '' && !disabled && !readonly"
+      v-if="clearable && value !== '' && !disabled && !readonly"
       :label="clearLabel || t('common.clearInput')"
       @click="clear"
     />
@@ -29,13 +29,17 @@
   import AppClearButton from '@/components/ui/AppClearButton.vue';
 
   defineOptions({ inheritAttrs: false });
-  const props = defineProps<{
-    modelValue?: T;
-    modelModifiers?: { number?: boolean; trim?: boolean };
-    disabled?: boolean;
-    readonly?: boolean;
-    clearLabel?: string;
-  }>();
+  const props = withDefaults(
+    defineProps<{
+      modelValue?: T;
+      modelModifiers?: { number?: boolean; trim?: boolean };
+      disabled?: boolean;
+      readonly?: boolean;
+      clearable?: boolean;
+      clearLabel?: string;
+    }>(),
+    { clearable: true }
+  );
   const emit = defineEmits<{ 'update:modelValue': [value: T]; clear: [] }>();
   const attrs = useAttrs();
   const { t } = useI18n();

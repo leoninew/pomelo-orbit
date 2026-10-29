@@ -449,29 +449,29 @@
             {{ t('gateway.fields.dnsApiToken') }}
             <span class="text-destructive">*</span>
           </label>
-          <div class="relative">
-            <AppInput
-              id="gateway-edit-dns-api-token"
-              v-model="certificateForm.dns_api_token"
-              :type="isCertificateTokenVisible ? 'text' : 'password'"
-              class="pr-10"
-              :class="certificateErrors.dns_api_token ? 'app-input-error' : ''"
-              :aria-invalid="certificateErrors.dns_api_token ? 'true' : undefined"
-              @input="delete certificateErrors.dns_api_token"
-            />
-            <button
-              type="button"
-              class="absolute right-1 top-1/2 inline-flex size-9 -translate-y-1/2 items-center justify-center text-muted-foreground hover:text-foreground"
-              :aria-label="
-                isCertificateTokenVisible ? t('common.hideValue') : t('common.showValue')
-              "
-              :title="isCertificateTokenVisible ? t('common.hideValue') : t('common.showValue')"
-              @click="isCertificateTokenVisible = !isCertificateTokenVisible"
-            >
-              <EyeOff v-if="isCertificateTokenVisible" class="size-4" />
-              <Eye v-else class="size-4" />
-            </button>
-          </div>
+          <AppInput
+            id="gateway-edit-dns-api-token"
+            v-model="certificateForm.dns_api_token"
+            :type="isCertificateTokenVisible ? 'text' : 'password'"
+            :class="certificateErrors.dns_api_token ? 'app-input-error' : ''"
+            :aria-invalid="certificateErrors.dns_api_token ? 'true' : undefined"
+            @input="delete certificateErrors.dns_api_token"
+          >
+            <template #trailing>
+              <button
+                type="button"
+                class="app-icon-button size-6 shrink-0"
+                :aria-label="
+                  isCertificateTokenVisible ? t('common.hideValue') : t('common.showValue')
+                "
+                :title="isCertificateTokenVisible ? t('common.hideValue') : t('common.showValue')"
+                @click="isCertificateTokenVisible = !isCertificateTokenVisible"
+              >
+                <EyeOff v-if="isCertificateTokenVisible" class="size-4" />
+                <Eye v-else class="size-4" />
+              </button>
+            </template>
+          </AppInput>
           <p v-if="certificateErrors.dns_api_token" class="app-field-error" role="alert">
             {{ validationMessage(certificateErrors.dns_api_token) }}
           </p>

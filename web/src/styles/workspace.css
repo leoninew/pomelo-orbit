@@ -179,11 +179,6 @@
   padding-inline: 0.75rem;
 }
 
-.home-record-time {
-  font-size: 0.75rem;
-  line-height: 1.25rem;
-}
-
 .home-entity-icon {
   display: inline-flex;
   width: 1.75rem;
@@ -227,14 +222,7 @@
   color: hsl(var(--foreground));
 }
 
-.repository-table
-  :is(
-    .repository-code,
-    .repository-location,
-    .repository-branch,
-    .repository-credential,
-    .repository-updated
-  ) {
+.repository-table :is(.repository-code, .repository-branch, .repository-credential) {
   font-size: 0.75rem;
   line-height: 1.25rem;
 }

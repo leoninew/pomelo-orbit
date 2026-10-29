@@ -74,7 +74,7 @@
           </div>
           <div class="flex gap-2">
             <dt>{{ t('service.fields.code') }}</dt>
-            <dd class="text-foreground">{{ service.code }}</dd>
+            <dd class="text-foreground text-xs">{{ service.code }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('service.fields.version') }}</dt>
@@ -424,6 +424,7 @@
       value: version.id,
       label: version.label,
       description: version.status,
+      descriptionKind: 'enum' as const,
     }))
   );
   const deployVersionSelectOptions = computed(() =>
@@ -431,6 +432,7 @@
       value: version.id,
       label: version.label,
       description: version.status,
+      descriptionKind: 'enum' as const,
     }))
   );
 

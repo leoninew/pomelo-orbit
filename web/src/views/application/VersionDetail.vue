@@ -169,7 +169,7 @@
             :aria-invalid="basicFormError ? 'true' : undefined"
             @input="basicFormError = ''"
           />
-          <p v-if="basicFormError" class="app-field-error mt-1 text-xs">{{ basicFormError }}</p>
+          <p v-if="basicFormError" class="app-field-error mt-1">{{ basicFormError }}</p>
         </div>
         <div>
           <label class="app-field-label mb-1.5 block">
@@ -414,7 +414,7 @@
           :aria-invalid="forkLabelError ? 'true' : undefined"
           @input="forkLabelError = ''"
         />
-        <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
+        <p v-if="forkLabelError" class="app-field-error mt-1">{{ forkLabelError }}</p>
       </div>
       <p v-if="forkSubmitError" class="app-field-error mt-3" role="alert">
         {{ forkSubmitError }}

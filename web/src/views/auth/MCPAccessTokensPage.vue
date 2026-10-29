@@ -65,7 +65,7 @@
             :placeholder="t('mcpAccessTokens.namePlaceholder')"
             @input="formError = ''"
           />
-          <p v-if="formError" class="app-field-error text-xs">{{ formError }}</p>
+          <p v-if="formError" class="app-field-error">{{ formError }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="mcp-token-expiry">
@@ -103,7 +103,7 @@
             :model-value="createdToken"
             readonly
             tabindex="-1"
-            class="min-w-0 font-mono text-xs"
+            class="min-w-0 font-mono text-sm"
           />
           <button
             type="button"

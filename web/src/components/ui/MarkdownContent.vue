@@ -57,6 +57,7 @@
     padding: 0.125rem 0.25rem;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     font-size: 0.75rem;
+    line-height: 1.25rem;
   }
 
   .markdown-content :deep(pre) {
@@ -78,7 +79,8 @@
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
-    font-size: 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.375rem;
     text-align: left;
   }
 
@@ -88,7 +90,7 @@
     padding: 0.375rem 0.5rem;
     vertical-align: top;
     color: hsl(var(--foreground));
-    font-weight: 600;
+    font-weight: 400;
   }
 
   .markdown-content :deep(td) {
@@ -96,9 +98,5 @@
     border: 1px solid hsl(var(--border));
     padding: 0.375rem 0.5rem;
     vertical-align: top;
-  }
-
-  .markdown-content :deep(td code) {
-    font-size: 0.6875rem;
   }
 </style>

@@ -44,7 +44,7 @@
           <AppTruncatedText :text="conversation.title" as-child>
             <span>{{ conversation.title }}</span>
           </AppTruncatedText>
-          <span class="mt-0.5 block text-xs text-muted-foreground">
+          <span class="mt-0.5 block text-sm text-muted-foreground">
             {{ formatRelativeTime(conversation.updated_at) }}
           </span>
         </button>

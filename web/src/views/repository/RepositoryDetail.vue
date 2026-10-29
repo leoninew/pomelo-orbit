@@ -47,11 +47,11 @@
           </div>
           <div class="flex gap-2">
             <dt>编码</dt>
-            <dd class="min-w-0 text-foreground">{{ repository.code }}</dd>
+            <dd class="min-w-0 text-foreground text-xs">{{ repository.code }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>仓库类型</dt>
-            <dd class="text-foreground">
+            <dd class="text-foreground text-xs">
               {{ repository.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
             </dd>
           </div>
@@ -131,7 +131,7 @@
           <p
             v-if="editErrors.name"
             id="edit-repository-name-error"
-            class="app-field-error text-xs"
+            class="app-field-error"
             role="alert"
           >
             {{ editErrors.name }}
@@ -158,7 +158,7 @@
           <p
             v-if="editErrors.repository_url"
             id="edit-repository-url-error"
-            class="app-field-error text-xs"
+            class="app-field-error"
             role="alert"
           >
             {{ editErrors.repository_url }}
@@ -181,7 +181,7 @@
           <p
             v-if="editErrors.repository_url"
             id="edit-repository-url-error"
-            class="app-field-error text-xs"
+            class="app-field-error"
             role="alert"
           >
             {{ editErrors.repository_url }}
@@ -209,7 +209,7 @@
             placeholder="不使用凭据"
           />
         </div>
-        <p v-if="editFormError" class="app-field-error text-xs" role="alert">
+        <p v-if="editFormError" class="app-field-error" role="alert">
           {{ editFormError }}
         </p>
       </div>
@@ -262,7 +262,7 @@
             :aria-invalid="variableErrors.name ? 'true' : undefined"
             @input="variableErrors.name = ''"
           />
-          <p v-if="variableErrors.name" class="app-field-error text-xs">
+          <p v-if="variableErrors.name" class="app-field-error">
             {{ variableErrors.name }}
           </p>
         </div>

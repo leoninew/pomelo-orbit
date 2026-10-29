@@ -32,7 +32,7 @@
         <p
           v-if="errors.workspaceRoot"
           :id="id('workspace-root-error')"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ errors.workspaceRoot }}
@@ -68,7 +68,7 @@
           :aria-describedby="errors.host ? id('host-error') : undefined"
           @input="errors.host = ''"
         />
-        <p v-if="errors.host" :id="id('host-error')" class="app-field-error text-xs" role="alert">
+        <p v-if="errors.host" :id="id('host-error')" class="app-field-error" role="alert">
           {{ errors.host }}
         </p>
       </div>
@@ -89,7 +89,7 @@
           :aria-describedby="errors.port ? id('port-error') : undefined"
           @input="errors.port = ''"
         />
-        <p v-if="errors.port" :id="id('port-error')" class="app-field-error text-xs" role="alert">
+        <p v-if="errors.port" :id="id('port-error')" class="app-field-error" role="alert">
           {{ errors.port }}
         </p>
       </div>
@@ -108,12 +108,7 @@
           :aria-describedby="errors.username ? id('username-error') : undefined"
           @input="errors.username = ''"
         />
-        <p
-          v-if="errors.username"
-          :id="id('username-error')"
-          class="app-field-error text-xs"
-          role="alert"
-        >
+        <p v-if="errors.username" :id="id('username-error')" class="app-field-error" role="alert">
           {{ errors.username }}
         </p>
       </div>
@@ -135,7 +130,7 @@
         <p
           v-if="errors.workspaceRoot"
           :id="id('workspace-root-error')"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ errors.workspaceRoot }}

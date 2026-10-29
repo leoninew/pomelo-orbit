@@ -55,7 +55,7 @@
                   </router-link>
                 </AppTruncatedText>
               </td>
-              <td class="whitespace-nowrap text-foreground">{{ project.code }}</td>
+              <td class="whitespace-nowrap text-foreground text-xs">{{ project.code }}</td>
               <td>
                 <AppBadge v-if="project.is_active" variant="status" tone="success">
                   {{ t('project.active') }}
@@ -119,7 +119,7 @@
             :aria-invalid="errors.name ? 'true' : undefined"
             @input="errors.name = ''"
           />
-          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+          <p v-if="errors.name" class="app-field-error">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="project-code">
@@ -138,7 +138,7 @@
             :aria-invalid="errors.code ? 'true' : undefined"
             @input="errors.code = ''"
           />
-          <p v-if="errors.code" class="app-field-error text-xs">{{ errors.code }}</p>
+          <p v-if="errors.code" class="app-field-error">{{ errors.code }}</p>
         </div>
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
       </form>
@@ -194,7 +194,7 @@
                   :text="handoverFile.name"
                   class="text-sm font-medium text-foreground"
                 />
-                <p class="mt-0.5 text-xs text-muted-foreground">
+                <p class="mt-0.5 text-sm text-muted-foreground">
                   {{ formatHandoverFileSize(handoverFile.size) }}
                 </p>
               </div>
@@ -238,7 +238,7 @@
           <p
             v-if="handoverErrors.file"
             id="handover-file-error"
-            class="app-field-error text-xs"
+            class="app-field-error"
             role="alert"
           >
             {{ handoverErrors.file }}
@@ -327,7 +327,7 @@
               :aria-invalid="handoverErrors.name ? 'true' : undefined"
               @input="handoverErrors.name = ''"
             />
-            <p v-if="handoverErrors.name" class="app-field-error text-xs">
+            <p v-if="handoverErrors.name" class="app-field-error">
               {{ handoverErrors.name }}
             </p>
           </div>
@@ -346,7 +346,7 @@
               :aria-invalid="handoverErrors.code ? 'true' : undefined"
               @input="handoverErrors.code = ''"
             />
-            <p v-if="handoverErrors.code" class="app-field-error text-xs">
+            <p v-if="handoverErrors.code" class="app-field-error">
               {{ handoverErrors.code }}
             </p>
           </div>
@@ -364,7 +364,7 @@
             :invalid="Boolean(handoverErrors.targetProject)"
             @update:model-value="handoverErrors.targetProject = ''"
           />
-          <p v-if="handoverErrors.targetProject" class="app-field-error text-xs" role="alert">
+          <p v-if="handoverErrors.targetProject" class="app-field-error" role="alert">
             {{ handoverErrors.targetProject }}
           </p>
         </div>
@@ -491,6 +491,7 @@
       value: project.id,
       label: project.name,
       description: project.code,
+      descriptionKind: 'code' as const,
     }))
   );
 

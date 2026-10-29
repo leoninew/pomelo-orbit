@@ -13,7 +13,7 @@
         :aria-invalid="errors.name ? 'true' : undefined"
         @input="updateField('name', ($event.target as HTMLInputElement).value)"
       />
-      <p v-if="errors.name" class="app-field-error mt-1 text-xs">{{ errors.name }}</p>
+      <p v-if="errors.name" class="app-field-error mt-1">{{ errors.name }}</p>
     </div>
 
     <div class="space-y-1.5">
@@ -29,7 +29,7 @@
         :aria-invalid="errors.code ? 'true' : undefined"
         @input="updateField('code', ($event.target as HTMLInputElement).value)"
       />
-      <p v-if="errors.code" class="app-field-error mt-1 text-xs">{{ errors.code }}</p>
+      <p v-if="errors.code" class="app-field-error mt-1">{{ errors.code }}</p>
     </div>
 
     <div class="space-y-1.5">

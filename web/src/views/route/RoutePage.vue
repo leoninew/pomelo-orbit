@@ -217,7 +217,7 @@
           :aria-invalid="errors.name ? 'true' : undefined"
           @input="handleCreateCodeInput(($event.target as HTMLInputElement).value)"
         />
-        <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+        <p v-if="errors.name" class="app-field-error">{{ errors.name }}</p>
       </div>
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-1.5" :class="form.protocol === 'tcp' ? 'sm:col-span-2' : undefined">
@@ -233,7 +233,7 @@
             :aria-invalid="errors.domain ? 'true' : undefined"
             @input="errors.domain = ''"
           />
-          <p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
+          <p v-if="errors.domain" class="app-field-error">{{ errors.domain }}</p>
         </div>
         <div v-if="form.protocol === 'http'" class="space-y-1.5">
           <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
@@ -320,7 +320,7 @@
           :aria-invalid="errors.target_url ? 'true' : undefined"
           @input="errors.target_url = ''"
         />
-        <p v-if="errors.target_url" class="app-field-error text-xs">
+        <p v-if="errors.target_url" class="app-field-error">
           {{ errors.target_url }}
         </p>
       </div>
@@ -368,12 +368,7 @@
           :aria-describedby="editErrors.name ? 'edit-route-name-error' : undefined"
           @input="handleEditCodeInput(($event.target as HTMLInputElement).value)"
         />
-        <p
-          v-if="editErrors.name"
-          id="edit-route-name-error"
-          class="app-field-error text-xs"
-          role="alert"
-        >
+        <p v-if="editErrors.name" id="edit-route-name-error" class="app-field-error" role="alert">
           {{ editErrors.name }}
         </p>
       </div>
@@ -396,7 +391,7 @@
           <p
             v-if="editErrors.domain"
             id="edit-route-domain-error"
-            class="app-field-error text-xs"
+            class="app-field-error"
             role="alert"
           >
             {{ editErrors.domain }}
@@ -495,7 +490,7 @@
         <p
           v-if="editErrors.target_url"
           id="edit-route-target-url-error"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ editErrors.target_url }}

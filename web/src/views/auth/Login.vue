@@ -24,12 +24,7 @@
               :aria-describedby="errors.email ? 'login-email-error' : undefined"
               @input="errors.email = ''"
             />
-            <p
-              v-if="errors.email"
-              id="login-email-error"
-              class="app-field-error text-xs"
-              role="alert"
-            >
+            <p v-if="errors.email" id="login-email-error" class="app-field-error" role="alert">
               {{ errors.email }}
             </p>
           </div>
@@ -68,7 +63,7 @@
             <p
               v-if="errors.password"
               id="login-password-error"
-              class="app-field-error text-xs"
+              class="app-field-error"
               role="alert"
             >
               {{ errors.password }}
@@ -78,7 +73,7 @@
           <div v-if="turnstileEnabled" class="space-y-1.5">
             <label class="app-field-label block">{{ t('login.verification') }}</label>
             <div ref="turnstileContainer" class="flex justify-center"></div>
-            <p v-if="errors.verification" class="app-field-error text-xs">
+            <p v-if="errors.verification" class="app-field-error">
               {{ errors.verification }}
             </p>
           </div>
@@ -91,10 +86,10 @@
             >
               {{ loginButtonLabel }}
             </button>
-            <p v-if="sessionExpired" class="app-field-error text-center text-xs">
+            <p v-if="sessionExpired" class="app-field-error text-center">
               {{ t('login.sessionExpired') }}
             </p>
-            <p v-else-if="initError" class="app-field-error text-center text-xs">
+            <p v-else-if="initError" class="app-field-error text-center">
               {{ t('login.initFailed') }}
             </p>
           </div>
@@ -103,7 +98,7 @@
             <div class="absolute inset-0 flex items-center">
               <div class="w-full border-t border-border"></div>
             </div>
-            <div class="relative flex justify-center text-xs uppercase">
+            <div class="relative flex justify-center text-sm uppercase">
               <span class="bg-background px-2 text-muted-foreground">{{ t('login.or') }}</span>
             </div>
           </div>

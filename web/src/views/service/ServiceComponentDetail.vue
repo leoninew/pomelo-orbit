@@ -41,7 +41,10 @@
               <tr v-for="field in runtimeRows" :key="field.key">
                 <td class="text-foreground">{{ field.label }}</td>
                 <td class="max-w-0 text-muted-foreground">
-                  <AppTruncatedText :text="displayValue(field.state.base)" />
+                  <AppTruncatedText
+                    :text="displayValue(field.state.base)"
+                    :class="{ 'text-xs': field.kind === 'select' }"
+                  />
                 </td>
                 <td class="max-w-0">
                   <SelectControl
@@ -72,11 +75,12 @@
                     v-else
                     :text="displayValue(field.state.value)"
                     class="h-9 leading-9"
-                    :class="
+                    :class="[
+                      field.kind === 'select' ? 'text-xs' : '',
                       runtimeFieldDiffers(field)
                         ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-foreground'
-                    "
+                        : 'text-foreground',
+                    ]"
                   />
                   <p
                     v-if="runtimeIdentityError(field)"
@@ -326,7 +330,7 @@
             </thead>
             <tbody>
               <tr v-for="mount in mountRows" :key="mount.target">
-                <td class="min-w-28 text-foreground">
+                <td class="min-w-28 text-foreground text-xs">
                   {{ mountTypeLabel(mount.source_type) }}
                 </td>
                 <td

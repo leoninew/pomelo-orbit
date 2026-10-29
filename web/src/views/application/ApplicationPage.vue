@@ -61,7 +61,7 @@
                   </router-link>
                 </AppTruncatedText>
               </td>
-              <td class="text-foreground"><AppTruncatedText :text="app.code" /></td>
+              <td class="text-foreground"><AppTruncatedText class="text-xs" :text="app.code" /></td>
               <td>
                 <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
                   {{ app.kind }}
@@ -138,7 +138,7 @@
           :aria-invalid="editErrors.name ? 'true' : undefined"
           @input="editErrors.name = ''"
         />
-        <p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
+        <p v-if="editErrors.name" class="app-field-error mt-1">{{ editErrors.name }}</p>
       </div>
       <div>
         <label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>

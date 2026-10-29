@@ -51,11 +51,11 @@
                   <AppTruncatedText :text="p.name" class="min-w-0" />
                 </router-link>
               </td>
-              <td class="repository-code whitespace-nowrap">{{ p.code }}</td>
+              <td class="repository-code whitespace-nowrap text-xs">{{ p.code }}</td>
               <td class="repository-location">
                 <AppTruncatedText :text="repositoryLocation(p)" />
               </td>
-              <td class="whitespace-nowrap text-foreground">
+              <td class="whitespace-nowrap text-foreground text-xs">
                 {{ p.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
               </td>
               <td>
@@ -119,7 +119,7 @@
         <p
           v-if="errors.name"
           id="create-repository-name-error"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ errors.name }}
@@ -144,7 +144,7 @@
         <p
           v-if="errors.code"
           id="create-repository-code-error"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ errors.code }}
@@ -169,7 +169,7 @@
         <p
           v-if="errors.repository_url"
           id="create-repository-url-error"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ errors.repository_url }}
@@ -194,7 +194,7 @@
         <p
           v-if="errors.repository_url"
           id="create-repository-url-error"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ errors.repository_url }}
@@ -225,7 +225,7 @@
         />
       </div>
 
-      <p v-if="createFormError" class="app-field-error text-xs" role="alert">
+      <p v-if="createFormError" class="app-field-error" role="alert">
         {{ createFormError }}
       </p>
     </div>
@@ -254,7 +254,7 @@
         <p
           v-if="editErrors.name"
           id="edit-repository-name-error"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ editErrors.name }}
@@ -284,7 +284,7 @@
         <p
           v-if="editErrors.repository_url"
           id="edit-repository-url-error"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ editErrors.repository_url }}
@@ -309,7 +309,7 @@
         <p
           v-if="editErrors.repository_url"
           id="edit-repository-url-error"
-          class="app-field-error text-xs"
+          class="app-field-error"
           role="alert"
         >
           {{ editErrors.repository_url }}
@@ -346,7 +346,7 @@
         />
       </div>
 
-      <p v-if="editFormError" class="app-field-error text-xs" role="alert">
+      <p v-if="editFormError" class="app-field-error" role="alert">
         {{ editFormError }}
       </p>
     </form>

@@ -29,7 +29,7 @@
         </span>
         <input ref="fileInput" type="file" accept=".pem" class="hidden" @change="selectFile" />
       </div>
-      <p v-if="error" class="app-field-error text-xs" role="alert">{{ error }}</p>
+      <p v-if="error" class="app-field-error" role="alert">{{ error }}</p>
     </div>
     <template #footer>
       <AppDialogActions

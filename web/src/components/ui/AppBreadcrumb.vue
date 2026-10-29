@@ -2,7 +2,7 @@
   <nav
     v-if="items.length > 0"
     :aria-label="t('app.breadcrumbAria')"
-    class="min-w-0 max-w-full overflow-x-auto py-0.5 text-[11px] leading-4 text-muted-foreground"
+    class="min-w-0 max-w-full overflow-x-auto py-0.5 text-sm text-muted-foreground"
   >
     <ol class="flex min-w-max items-center gap-1.5 whitespace-nowrap">
       <li

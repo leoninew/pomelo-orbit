@@ -13,7 +13,7 @@
           <span class="home-metric-value text-base tabular-nums text-foreground">
             {{ card.value }}
           </span>
-          <span class="text-xs text-muted-foreground">{{ card.description }}</span>
+          <span class="text-sm text-muted-foreground">{{ card.description }}</span>
         </div>
         <img :src="cardImages[index]" :alt="card.label" class="home-metric-image" />
       </button>
@@ -24,7 +24,7 @@
         <div class="home-record-header">
           <h2 class="text-base font-normal text-foreground">{{ t('home.recentBuilds') }}</h2>
           <button
-            class="home-view-all app-link inline-flex items-center gap-1 text-xs"
+            class="home-view-all app-link inline-flex items-center gap-1 text-sm"
             @click="router.push('/pipeline-run')"
           >
             {{ t('common.viewAll') }}
@@ -67,7 +67,7 @@
                     </AppTruncatedText>
                   </div>
                 </td>
-                <td class="home-record-time">
+                <td>
                   <AppTableTime :time="run.created_at" />
                 </td>
                 <td>
@@ -85,7 +85,7 @@
         <div class="home-record-header">
           <h2 class="text-base font-normal text-foreground">{{ t('home.recentDeploys') }}</h2>
           <button
-            class="home-view-all app-link inline-flex items-center gap-1 text-xs"
+            class="home-view-all app-link inline-flex items-center gap-1 text-sm"
             @click="router.push('/deployments')"
           >
             {{ t('common.viewAll') }}
@@ -128,7 +128,7 @@
                     </AppTruncatedText>
                   </div>
                 </td>
-                <td class="home-record-time">
+                <td>
                   <AppTableTime :time="deployment.started_at" />
                 </td>
                 <td>

@@ -120,7 +120,7 @@
           </div>
           <div class="flex gap-2">
             <dt>{{ t('route.fields.protocol') }}</dt>
-            <dd class="text-foreground">{{ routeData.protocol.toUpperCase() }}</dd>
+            <dd class="text-foreground text-xs">{{ routeData.protocol.toUpperCase() }}</dd>
           </div>
           <div class="flex gap-2">
             <dt>{{ t('common.createdAt') }}</dt>
@@ -174,7 +174,7 @@
             :aria-invalid="errors.name ? 'true' : undefined"
             @input="handleCodeInput(($event.target as HTMLInputElement).value)"
           />
-          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+          <p v-if="errors.name" class="app-field-error">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block">
@@ -189,7 +189,7 @@
             :aria-invalid="errors.domain ? 'true' : undefined"
             @input="errors.domain = ''"
           />
-          <p v-if="errors.domain" class="app-field-error text-xs">{{ errors.domain }}</p>
+          <p v-if="errors.domain" class="app-field-error">{{ errors.domain }}</p>
         </div>
         <div v-if="form.protocol === 'http'" class="space-y-1.5">
           <label class="app-field-label block">{{ t('route.fields.pathPrefix') }}</label>
@@ -246,7 +246,7 @@
             :aria-invalid="errors.target_url ? 'true' : undefined"
             @input="errors.target_url = ''"
           />
-          <p v-if="errors.target_url" class="app-field-error text-xs">{{ errors.target_url }}</p>
+          <p v-if="errors.target_url" class="app-field-error">{{ errors.target_url }}</p>
         </div>
         <template v-if="form.protocol === 'tcp'">
           <RouteManagedTargetSelect

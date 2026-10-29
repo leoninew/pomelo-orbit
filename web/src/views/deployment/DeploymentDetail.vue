@@ -87,7 +87,7 @@
           <div v-if="deployment.error_message" class="flex gap-2 sm:col-span-2">
             <dt>错误信息</dt>
             <dd class="min-w-0 text-destructive">
-              <pre class="whitespace-pre-wrap break-words font-sans text-xs">{{
+              <pre class="whitespace-pre-wrap break-words font-sans text-sm">{{
                 deployment.error_message
               }}</pre>
             </dd>
@@ -111,13 +111,13 @@
           </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt>执行命令</dt>
-            <dd class="min-w-0 break-all text-xs text-foreground">
+            <dd class="min-w-0 break-all text-sm text-foreground">
               {{ deployment.command_text || '未记录' }}
             </dd>
           </div>
           <div v-if="deploymentPullPolicy" class="flex gap-2">
             <dt>{{ t('deployment.fields.pullPolicy') }}</dt>
-            <dd>{{ deploymentPullPolicy }}</dd>
+            <dd class="text-xs">{{ deploymentPullPolicy }}</dd>
           </div>
         </dl>
       </DetailInfoCard>

@@ -37,7 +37,7 @@
     </div>
     <div v-else-if="status === 'error'" class="app-list-surface py-16 text-center">
       <p class="text-sm text-destructive">{{ error || t('traefikRoute.toast.loadFailed') }}</p>
-      <p class="mt-1 text-xs text-muted-foreground">{{ t('traefikRoute.serviceCheckHint') }}</p>
+      <p class="mt-1 text-sm text-muted-foreground">{{ t('traefikRoute.serviceCheckHint') }}</p>
       <button class="app-link mx-auto mt-3 block text-sm" @click="fetchRoutes">
         {{ t('traefikRoute.retry') }}
       </button>

@@ -41,7 +41,7 @@
           <tbody>
             <tr v-for="run in filteredRuns" :key="run.id">
               <td class="font-mono text-xs">
-                <AppTruncatedText :text="run.id" class="max-w-52" as-child>
+                <AppTruncatedText :text="run.id" class="max-w-52 text-xs" as-child>
                   <router-link :to="`/pipeline-run/${run.id}`" class="app-link">
                     {{ run.id }}
                   </router-link>

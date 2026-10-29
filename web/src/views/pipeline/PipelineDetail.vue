@@ -338,9 +338,9 @@
           </p>
           <div class="grid gap-2 sm:grid-cols-2">
             <pre
-              class="whitespace-pre-wrap break-words bg-muted/40 p-2 text-xs text-muted-foreground"
+              class="whitespace-pre-wrap break-words bg-muted/40 p-2 text-sm text-muted-foreground"
               >{{ difference.current }}</pre>
-            <pre class="whitespace-pre-wrap break-words bg-muted/40 p-2 text-xs text-foreground">{{
+            <pre class="whitespace-pre-wrap break-words bg-muted/40 p-2 text-sm text-foreground">{{
               difference.target
             }}</pre>
           </div>

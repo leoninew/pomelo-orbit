@@ -12,7 +12,7 @@
       :invalid="Boolean(serviceError)"
       @update:model-value="handleServiceChange"
     />
-    <p v-if="serviceError" class="app-field-error text-xs">{{ serviceError }}</p>
+    <p v-if="serviceError" class="app-field-error">{{ serviceError }}</p>
   </div>
   <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
     <div class="space-y-1.5">
@@ -28,7 +28,7 @@
         :invalid="Boolean(componentError)"
         @update:model-value="handleComponentChange"
       />
-      <p v-if="componentError" class="app-field-error text-xs">{{ componentError }}</p>
+      <p v-if="componentError" class="app-field-error">{{ componentError }}</p>
     </div>
     <div class="space-y-1.5">
       <label class="app-field-label block">
@@ -43,7 +43,7 @@
         :invalid="Boolean(endpointError)"
         @update:model-value="handleEndpointChange"
       />
-      <p v-if="endpointError" class="app-field-error text-xs">{{ endpointError }}</p>
+      <p v-if="endpointError" class="app-field-error">{{ endpointError }}</p>
     </div>
   </div>
   <div v-if="protocol === 'tcp'" class="space-y-1.5">
@@ -60,7 +60,7 @@
       :disabled="disabled || endpointContainerPort === undefined"
       @input="handleListenPortInput"
     />
-    <p v-if="listenPortError" class="app-field-error text-xs">{{ listenPortError }}</p>
+    <p v-if="listenPortError" class="app-field-error">{{ listenPortError }}</p>
   </div>
 </template>
 

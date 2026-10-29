@@ -47,7 +47,7 @@
           <tbody>
             <tr v-for="deployment in deployments" :key="deployment.id">
               <td class="font-mono text-xs">
-                <AppTruncatedText :text="deployment.id" class="max-w-64" as-child>
+                <AppTruncatedText :text="deployment.id" class="max-w-64 text-xs" as-child>
                   <router-link :to="`/deployment/${deployment.id}`" class="app-link">
                     {{ deployment.id }}
                   </router-link>

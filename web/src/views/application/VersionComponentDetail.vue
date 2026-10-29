@@ -143,13 +143,13 @@
                 <dt class="text-muted-foreground">
                   {{ t('application.componentDetail.fields.pullPolicy') }}
                 </dt>
-                <dd class="mt-1 text-foreground">{{ form.pull_policy }}</dd>
+                <dd class="mt-1 text-foreground text-xs">{{ form.pull_policy }}</dd>
               </div>
               <div>
                 <dt class="text-muted-foreground">
                   {{ t('application.componentDetail.fields.restartPolicy') }}
                 </dt>
-                <dd class="mt-1 text-foreground">
+                <dd class="mt-1 text-foreground text-xs">
                   {{ form.restart_policy || t('common.notSet') }}
                 </dd>
               </div>
@@ -371,8 +371,8 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.ports" :key="`port-${index}`">
-                    <td class="text-foreground">{{ row.protocol || 'tcp' }}</td>
-                    <td class="text-foreground">{{ row.mode || 'host' }}</td>
+                    <td class="text-foreground text-xs">{{ row.protocol || 'tcp' }}</td>
+                    <td class="text-foreground text-xs">{{ row.mode || 'host' }}</td>
                     <td class="text-foreground">{{ row.host_port || '-' }}</td>
                     <td class="text-foreground">{{ row.container_port }}</td>
                     <td class="app-table-actions w-32">
@@ -438,7 +438,7 @@
                 </thead>
                 <tbody>
                   <tr v-for="(row, index) in form.mounts" :key="`mount-${index}`">
-                    <td class="min-w-28 text-foreground">
+                    <td class="min-w-28 text-foreground text-xs">
                       {{ mountTypeLabel(row.source_type) }}
                     </td>
                     <td class="min-w-56 break-all text-foreground">{{ row.source }}</td>
@@ -508,7 +508,7 @@
                   <tr v-for="(row, index) in form.tmpfs" :key="`tmpfs-${index}`">
                     <td class="min-w-60 break-all text-foreground">{{ row.target }}</td>
                     <td class="min-w-52 text-foreground">{{ row.size_bytes }}</td>
-                    <td class="min-w-40 text-foreground">{{ row.mode }}</td>
+                    <td class="min-w-40 text-foreground text-xs">{{ row.mode }}</td>
                     <td class="app-table-actions w-32">
                       <div v-if="canEdit" class="flex items-center gap-3">
                         <button

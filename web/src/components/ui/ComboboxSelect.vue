@@ -65,7 +65,8 @@
             <AppTruncatedText
               v-if="option.description"
               :text="option.description"
-              class="max-w-[45%] shrink-0 text-xs text-muted-foreground"
+              class="max-w-[45%] shrink-0 text-muted-foreground"
+              :class="option.descriptionKind ? 'text-xs' : 'text-sm'"
               as-child
             >
               <span>{{ option.description }}</span>
@@ -114,6 +115,7 @@
     value: ComboboxOptionValue;
     label: string;
     description?: string;
+    descriptionKind?: 'code' | 'enum';
     disabled?: boolean;
   }
 

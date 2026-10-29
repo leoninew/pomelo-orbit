@@ -120,7 +120,7 @@
                     :hide-label="t('settings.hideValue')"
                   />
                   <AppTruncatedText v-else :text="displayConfigValue(item.value)" />
-                  <p v-if="resetKeys.has(item.key)" class="mt-1 text-xs text-amber-700">
+                  <p v-if="resetKeys.has(item.key)" class="mt-1 text-sm text-amber-700">
                     {{ t('settings.resetPending') }}
                   </p>
                 </div>

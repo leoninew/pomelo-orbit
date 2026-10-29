@@ -40,7 +40,7 @@
         </div>
         <div class="flex gap-2">
           <dt>{{ t('project.code') }}</dt>
-          <dd class="text-foreground">{{ project.code }}</dd>
+          <dd class="text-foreground text-xs">{{ project.code }}</dd>
         </div>
         <div class="flex gap-2">
           <dt>{{ t('common.status') }}</dt>
@@ -152,7 +152,7 @@
             :aria-invalid="errors.name ? 'true' : undefined"
             @input="errors.name = ''"
           />
-          <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+          <p v-if="errors.name" class="app-field-error">{{ errors.name }}</p>
         </div>
         <div class="space-y-1.5">
           <label class="app-field-label block" for="project-code">

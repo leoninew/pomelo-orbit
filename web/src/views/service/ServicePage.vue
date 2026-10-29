@@ -89,7 +89,7 @@
                   </router-link>
                 </AppTruncatedText>
               </h2>
-              <AppTruncatedText :text="svc.code" class="text-sm text-foreground" />
+              <AppTruncatedText :text="svc.code" class="text-xs text-foreground" />
             </div>
             <ServiceStatusBadge :status="svc.status" />
           </div>
@@ -116,7 +116,7 @@
           </dl>
 
           <div
-            class="mt-auto flex flex-wrap items-center gap-3 border-t border-border pt-4 text-xs leading-5"
+            class="mt-auto flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm"
           >
             <AppTooltip
               :content="
@@ -175,7 +175,7 @@
                   {{ svc.application_name }}
                 </router-link>
               </td>
-              <td class="text-foreground">{{ svc.code }}</td>
+              <td class="text-foreground text-xs">{{ svc.code }}</td>
               <td>
                 <AppTruncatedText :text="svc.version_label" class="max-w-60" as-child>
                   <router-link :to="`/version/${svc.version_id}`" class="app-link">
@@ -359,7 +359,7 @@
             {{ createErrors.version_id }}
           </p>
         </div>
-        <p v-if="createError" class="app-field-error text-xs">{{ createError }}</p>
+        <p v-if="createError" class="app-field-error">{{ createError }}</p>
       </div>
       <template #footer>
         <AppDialogActions
@@ -495,6 +495,7 @@
       value: version.id,
       label: version.label,
       description: version.status,
+      descriptionKind: 'enum' as const,
     }))
   );
   const deployVersionSelectOptions = computed(() =>
@@ -502,6 +503,7 @@
       value: version.id,
       label: version.label,
       description: version.status,
+      descriptionKind: 'enum' as const,
     }))
   );
 

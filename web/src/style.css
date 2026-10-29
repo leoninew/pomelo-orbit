@@ -199,15 +199,15 @@
   }
 
   .app-field-error {
-    @apply !text-xs !font-normal !leading-5 !text-destructive;
+    @apply !text-sm !font-normal !text-destructive;
   }
 
   .app-field-warning {
-    @apply !text-xs !font-normal !leading-5 !text-amber-700 dark:!text-amber-400;
+    @apply !text-sm !font-normal !text-amber-700 dark:!text-amber-400;
   }
 
   .app-field-hint {
-    @apply text-xs leading-5 text-muted-foreground;
+    @apply text-sm text-muted-foreground;
   }
 
   .app-input {
@@ -410,7 +410,7 @@
   }
 
   .app-data-table th {
-    @apply h-11 whitespace-nowrap px-3 py-3 text-left align-middle text-xs font-normal text-muted-foreground;
+    @apply h-11 whitespace-nowrap px-3 py-3 text-left align-middle text-sm font-normal text-muted-foreground;
   }
 
   .app-data-table tbody tr {
@@ -437,7 +437,7 @@
 
   .app-data-table .app-table-actions,
   .app-data-table .app-table-actions :is(button, a, [role='button']) {
-    @apply text-xs font-normal;
+    @apply text-sm font-normal;
   }
 
   .app-tab {

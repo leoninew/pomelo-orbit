@@ -185,7 +185,7 @@
           :placeholder="t('settings.passwordDialog.oldPasswordPlaceholder')"
           :class="passwordErrors.old_password ? 'app-input-error' : ''"
         />
-        <p v-if="passwordErrors.old_password" class="app-field-error text-xs">
+        <p v-if="passwordErrors.old_password" class="app-field-error">
           {{ passwordErrors.old_password }}
         </p>
       </div>
@@ -199,7 +199,7 @@
           :placeholder="t('settings.passwordDialog.newPasswordPlaceholder')"
           :class="passwordErrors.new_password ? 'app-input-error' : ''"
         />
-        <p v-if="passwordErrors.new_password" class="app-field-error text-xs">
+        <p v-if="passwordErrors.new_password" class="app-field-error">
           {{ passwordErrors.new_password }}
         </p>
       </div>
@@ -213,7 +213,7 @@
           :placeholder="t('settings.passwordDialog.confirmPasswordPlaceholder')"
           :class="passwordErrors.confirm_password ? 'app-input-error' : ''"
         />
-        <p v-if="passwordErrors.confirm_password" class="app-field-error text-xs">
+        <p v-if="passwordErrors.confirm_password" class="app-field-error">
           {{ passwordErrors.confirm_password }}
         </p>
       </div>

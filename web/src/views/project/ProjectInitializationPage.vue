@@ -63,7 +63,7 @@
                 >
                   {{ item.title }}
                 </StepperTitle>
-                <StepperDescription class="mt-1 block text-xs leading-5 text-muted-foreground">
+                <StepperDescription class="mt-1 block text-sm text-muted-foreground">
                   {{ item.hint }}
                 </StepperDescription>
               </div>
@@ -183,7 +183,7 @@
             >
               {{ probeDiagnostic }}
             </p>
-            <p v-else-if="probeStatus === 'succeeded'" class="text-xs text-muted-foreground">
+            <p v-else-if="probeStatus === 'succeeded'" class="text-sm text-muted-foreground">
               {{ t('project.initialization.probeLastRun') }}:
               <span class="text-foreground">{{ formatTime(probeLastRun) }}</span>
             </p>

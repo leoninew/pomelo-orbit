@@ -14,7 +14,7 @@
           :style="{ backgroundColor: textColor }"
         ></span>
       </div>
-      <div class="text-xs text-muted-foreground">
+      <div class="text-sm text-muted-foreground">
         <p>{{ stage.image }}</p>
       </div>
       <div v-if="status" class="text-xs" :style="{ color: textColor }">

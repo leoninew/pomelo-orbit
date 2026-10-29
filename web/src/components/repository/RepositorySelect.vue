@@ -67,6 +67,7 @@
         value: item.id,
         label: item.name,
         description: item.code,
+        descriptionKind: 'code',
       }));
       rows.value = nextPage === 1 ? items : [...rows.value, ...items];
       page.value = nextPage;
@@ -152,7 +153,12 @@
       try {
         const item = await repositoryApi.get(projectId, id);
         if (requestGeneration === generation && props.modelValue === id) {
-          selected.value = { value: id, label: item.name, description: item.code };
+          selected.value = {
+            value: id,
+            label: item.name,
+            description: item.code,
+            descriptionKind: 'code',
+          };
         }
       } catch {
         if (requestGeneration === generation && props.modelValue === id) {

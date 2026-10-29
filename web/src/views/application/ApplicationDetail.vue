@@ -36,7 +36,7 @@
           </div>
           <div class="flex gap-2">
             <dt class="whitespace-nowrap">{{ t('application.code') }}</dt>
-            <dd class="text-foreground">{{ application.code }}</dd>
+            <dd class="text-foreground text-xs">{{ application.code }}</dd>
           </div>
           <div class="flex gap-2">
             <dt class="whitespace-nowrap">{{ t('application.kind') }}</dt>
@@ -206,8 +206,12 @@
                               >
                                 {{ component.image }}
                               </td>
-                              <td class="text-muted-foreground">{{ component.pull_policy }}</td>
-                              <td class="text-muted-foreground">{{ component.restart_policy }}</td>
+                              <td class="text-muted-foreground text-xs">
+                                {{ component.pull_policy }}
+                              </td>
+                              <td class="text-muted-foreground text-xs">
+                                {{ component.restart_policy }}
+                              </td>
                               <td class="app-table-actions">
                                 <div
                                   v-if="version.status === 'unpublished'"
@@ -345,7 +349,7 @@
           :aria-invalid="editErrors.name ? 'true' : undefined"
           @input="editErrors.name = ''"
         />
-        <p v-if="editErrors.name" class="app-field-error mt-1 text-xs">{{ editErrors.name }}</p>
+        <p v-if="editErrors.name" class="app-field-error mt-1">{{ editErrors.name }}</p>
       </div>
       <div>
         <label class="app-field-label mb-1.5 block">{{ t('application.code') }}</label>
@@ -552,7 +556,7 @@
             :aria-invalid="versionFormErrors.label ? 'true' : undefined"
             @input="versionFormErrors.label = ''"
           />
-          <p v-if="versionFormErrors.label" class="app-field-error mt-1 text-xs">
+          <p v-if="versionFormErrors.label" class="app-field-error mt-1">
             {{ versionFormErrors.label }}
           </p>
         </div>
@@ -599,7 +603,7 @@
           :aria-invalid="forkLabelError ? 'true' : undefined"
           @input="forkLabelError = ''"
         />
-        <p v-if="forkLabelError" class="app-field-error mt-1 text-xs">{{ forkLabelError }}</p>
+        <p v-if="forkLabelError" class="app-field-error mt-1">{{ forkLabelError }}</p>
       </div>
       <p v-if="forkSubmitError" class="app-field-error mt-3" role="alert">
         {{ forkSubmitError }}

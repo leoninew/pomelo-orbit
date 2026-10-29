@@ -35,7 +35,7 @@
                 "
               >
                 <span
-                  class="inline-flex items-center gap-1 whitespace-nowrap"
+                  class="inline-flex items-center gap-1 whitespace-nowrap text-xs"
                   :class="item.cert_type ? 'cursor-help' : undefined"
                   :tabindex="item.cert_type ? 0 : undefined"
                 >

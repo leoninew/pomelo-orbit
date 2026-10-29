@@ -91,7 +91,7 @@
           :aria-invalid="errors.name ? 'true' : undefined"
           @input="errors.name = ''"
         />
-        <p v-if="errors.name" class="app-field-error text-xs">{{ errors.name }}</p>
+        <p v-if="errors.name" class="app-field-error">{{ errors.name }}</p>
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">
@@ -118,7 +118,7 @@
           :aria-invalid="errors.data ? 'true' : undefined"
           @input="errors.data = ''"
         />
-        <p v-if="errors.data" class="app-field-error text-xs">{{ errors.data }}</p>
+        <p v-if="errors.data" class="app-field-error">{{ errors.data }}</p>
       </div>
     </div>
     <p v-if="credentialSubmitError" class="app-field-error mt-3" role="alert">
@@ -171,7 +171,7 @@
           :aria-invalid="importErrors.name ? 'true' : undefined"
           @input="importErrors.name = ''"
         />
-        <p v-if="importErrors.name" class="app-field-error text-xs">{{ importErrors.name }}</p>
+        <p v-if="importErrors.name" class="app-field-error">{{ importErrors.name }}</p>
       </div>
       <div class="space-y-1.5">
         <label class="app-field-label block">
@@ -196,7 +196,7 @@
           :aria-invalid="importErrors.data ? 'true' : undefined"
           @input="importErrors.data = ''"
         />
-        <p v-if="importErrors.data" class="app-field-error text-xs">
+        <p v-if="importErrors.data" class="app-field-error">
           {{ importErrors.data }}
         </p>
       </div>

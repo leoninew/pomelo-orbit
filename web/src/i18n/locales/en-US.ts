@@ -1,4 +1,54 @@
 export default {
+  dns: {
+    deleteTitle: 'Delete DNS record',
+    deleteRecord: 'Delete {name}',
+    deleteConfirm: 'Delete the A record {name}? This immediately deletes it from Cloudflare.',
+    deleted: 'A record deleted',
+    toolbar: 'DNS records toolbar',
+    searchPlaceholder: 'Search record names',
+    createTitle: 'Add DNS record',
+    namePlaceholder: 'e.g. @ or api.example.com',
+    invalidName: 'Enter a record name of at most 253 characters',
+    created: 'A record created',
+    zone: 'Domain Zone',
+    selectZone: 'Select a Zone',
+    selectProject: 'Select a project first',
+    scopeHint:
+      "Uses this environment's Gateway Cloudflare token to show A records in accessible Zones. Zones may be shared by multiple environments.",
+    tokenMissing:
+      'No Cloudflare DNS API token is configured for this environment. Configure a DNS-01 token in Gateway certificate settings.',
+    permissionDenied:
+      'The Cloudflare token is invalid or lacks Zone Read and DNS Edit permissions for the target Zone.',
+    configureToken: 'Configure Gateway token',
+    noZones: 'No Zones are accessible with this token',
+    noSearchResults: 'No matching A records',
+    noRecords: 'No A records in this Zone',
+    name: 'Name',
+    type: 'Type',
+    address: 'IPv4 address',
+    ttl: 'TTL',
+    proxy: 'Proxy status',
+    automatic: 'Automatic',
+    seconds: '{value} seconds',
+    proxied: 'Proxied',
+    dnsOnly: 'DNS only',
+    editRecord: 'Edit {name}',
+    editTitle: 'Edit A record',
+    editHint:
+      'Saving updates Cloudflare immediately. The name stays unchanged. DNS propagation takes time.',
+    ttlHint:
+      'Use 1 for automatic or 30–86400 seconds. 30 seconds requires an Enterprise Zone; other Zones require at least 60 seconds.',
+    proxiedTTLHint: 'TTL is automatic when Cloudflare proxying is enabled.',
+    enableProxy: 'Enable Cloudflare proxy',
+    invalidIPv4: 'Enter a valid IPv4 address',
+    invalidTTL: 'TTL must be 1 (automatic) or an integer between 30 and 86400',
+    loadFailed: 'Failed to load DNS records',
+    retry: 'Retry',
+    saved: 'A record updated',
+    verifyAfterFailure:
+      'Close the dialog and search the list to verify the current values before retrying.',
+  },
+
   logs: {
     find: 'Find',
     follow: 'Follow output',
@@ -119,6 +169,7 @@ export default {
     backHome: 'Back Home',
   },
   nav: {
+    dns: 'DNS Records',
     home: 'Overview',
     pipeline: 'Pipeline',
     deployment: 'Deployment',

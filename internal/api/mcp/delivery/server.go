@@ -429,6 +429,7 @@ func (c *core) registerOrbitTools(server *mcp.Server) {
 
 	c.registerVersionComponentTools(server)
 	c.registerRouteTools(server)
+	c.registerDNSTools(server)
 
 	addWriteTool(server, c.deps.TransactionRunner, "orbit_publish_version", "Publish a Version through Orbit. Published Components are read-only; Version metadata remains editable and unreferenced Versions can be deleted.", func(ctx context.Context, input struct {
 		VersionId string `json:"version_id" jsonschema:"required"`

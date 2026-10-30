@@ -16,6 +16,7 @@ import (
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	dialoguesvc "github.com/leoninew/pomelo-orbit/internal/application/dialogue/usecase"
+	dnssvc "github.com/leoninew/pomelo-orbit/internal/application/dns/usecase"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
@@ -33,6 +34,7 @@ import (
 	jwt "github.com/leoninew/pomelo-orbit/internal/auth/jwt"
 	"github.com/leoninew/pomelo-orbit/internal/config"
 	databasetx "github.com/leoninew/pomelo-orbit/internal/infrastructure/database/tx"
+	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/cloudflare"
 	googleclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/external/google"
 	llmclient "github.com/leoninew/pomelo-orbit/internal/infrastructure/external/openai"
 	"github.com/leoninew/pomelo-orbit/internal/infrastructure/external/traefik"
@@ -81,6 +83,7 @@ type applicationServices struct {
 	ServiceStatusCheck           *deploymentsvc.StatusCheckService
 	DialogueService              dialoguesvc.Service
 	GatewayService               gatewaysvc.Service
+	DNSService                   dnssvc.Service
 	TaskService                  tasksvc.Service
 }
 
@@ -101,6 +104,7 @@ func newDeliveryMCPDependencies(services applicationServices) deliverymcp.Depend
 		Deployment:        services.DeploymentService,
 		Environment:       services.EnvironmentService,
 		Gateway:           services.GatewayService,
+		DNS:               services.DNSService,
 		Route:             services.RouteService,
 	}
 }
@@ -223,6 +227,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		DeploymentService:  deploymentService,
 		ServiceStatusCheck: deploymentsvc.NewStatusCheckService(stores.project, stores.service, targetResolver, dockerrunner.NewInventory(runtime)),
 		GatewayService:     gatewayService,
+		DNSService:         dnssvc.New(stores.project, stores.gateway, cloudflare.New()),
 		TaskService:        taskService,
 	}
 	services.DialogueService = dialoguesvc.New(
@@ -282,6 +287,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		ServiceStatusCheck:           services.ServiceStatusCheck,
 		DialogueService:              services.DialogueService,
 		GatewayService:               services.GatewayService,
+		DNSService:                   services.DNSService,
 		TaskService:                  services.TaskService,
 		TurnstileVerifier:            turnstile.NewVerifier(cfg.Turnstile),
 	}

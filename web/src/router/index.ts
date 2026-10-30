@@ -134,6 +134,12 @@ const router = createRouter({
       meta: { title: '服务组件配置', menuKey: 'services' },
     },
     {
+      path: '/dns',
+      name: 'DNS',
+      component: () => import('@/views/dns/DNSPage.vue'),
+      meta: { title: 'DNS', menuKey: 'dns' },
+    },
+    {
       path: '/gateway',
       name: 'Gateway',
       component: () => import('@/views/gateway/GatewayDetail.vue'),

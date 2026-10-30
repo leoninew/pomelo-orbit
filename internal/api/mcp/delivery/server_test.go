@@ -27,8 +27,8 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 61 {
-		t.Fatalf("tool count = %d, want 61", len(tools.Tools))
+	if len(tools.Tools) != 66 {
+		t.Fatalf("tool count = %d, want 66", len(tools.Tools))
 	}
 
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
@@ -593,6 +593,7 @@ var deliveryToolNames = []string{
 	"orbit_list_projects", "orbit_select_project", "orbit_get_current_project", "orbit_get_project_environment", "orbit_update_project_environment", "orbit_probe_project_environment",
 	"orbit_list_applications", "orbit_list_application_services", "orbit_list_gateways",
 	"orbit_provision_gateway", "orbit_get_gateway", "orbit_update_gateway",
+	"orbit_list_dns_zones", "orbit_list_dns_a_records", "orbit_create_dns_a_record", "orbit_delete_dns_a_record", "orbit_update_dns_a_record",
 	"orbit_create_application", "orbit_get_application", "orbit_delete_application", "orbit_list_versions", "orbit_get_version",
 	"orbit_create_version_component", "orbit_create_version", "orbit_update_version",
 	"orbit_update_version_component_basic", "orbit_update_version_component_identity", "orbit_update_version_component_runtime", "orbit_update_version_component_endpoints",

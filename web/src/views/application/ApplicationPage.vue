@@ -10,7 +10,7 @@
       />
       <div class="flex items-center gap-3">
         <button
-          class="app-button-primary px-5"
+          class="app-button-primary h-10 px-3"
           :disabled="status === 'loading'"
           @click="openCreateDialog"
         >

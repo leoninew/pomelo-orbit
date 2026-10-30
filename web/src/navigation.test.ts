@@ -31,6 +31,7 @@ describe('domain navigation declarations', () => {
     ['/pipeline-run/artifact', 'pipeline'],
     ['/application/example', 'deployment'],
     ['/gateway', 'deployment'],
+    ['/dns', 'deployment'],
     ['/route/traefik', 'deployment'],
   ] as const)('classifies %s as the %s scope', (path, scope) => {
     expect(getNavigationScope(path)).toBe(scope);
@@ -72,6 +73,7 @@ describe('domain navigation declarations', () => {
         key: 'ingress',
         children: [
           expect.objectContaining({ key: 'gateway', path: '/gateway' }),
+          expect.objectContaining({ key: 'dns', path: '/dns' }),
           expect.objectContaining({ key: 'route', path: '/routes' }),
           expect.objectContaining({ key: 'traefikroutes', path: '/route/traefik' }),
         ],

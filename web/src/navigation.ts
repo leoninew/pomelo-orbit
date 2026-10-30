@@ -166,6 +166,12 @@ const deploymentNavigation: NavigationBranch[] = [
         path: '/gateway',
       },
       {
+        key: 'dns',
+        label: 'DNS',
+        labelKey: 'nav.dns',
+        path: '/dns',
+      },
+      {
         key: 'route',
         label: '自定义路由',
         labelKey: 'nav.routes',
@@ -360,6 +366,7 @@ export function getNavigationScope(path: string): NavigationScope | null {
     path === '/deployments' ||
     path === '/dialogue' ||
     path === '/gateway' ||
+    path === '/dns' ||
     path === '/route' ||
     path.startsWith('/route/') ||
     path === '/routes'

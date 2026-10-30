@@ -9,6 +9,7 @@ import (
 	applicationsvc "github.com/leoninew/pomelo-orbit/internal/application/application/usecase"
 	deploymentdto "github.com/leoninew/pomelo-orbit/internal/application/deployment/dto"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
+	dnsdto "github.com/leoninew/pomelo-orbit/internal/application/dns/dto"
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
@@ -37,6 +38,7 @@ type Dependencies struct {
 	Deployment         DeploymentService
 	Environment        EnvironmentService
 	Gateway            GatewayService
+	DNS                DNSService
 	Route              RouteService
 }
 
@@ -138,3 +140,11 @@ var (
 	_ GatewayService     = gatewaysvc.Service{}
 	_ RouteService       = routesvc.Service{}
 )
+
+type DNSService interface {
+	ListZones(context.Context, string, string) ([]dnsdto.Zone, error)
+	ListARecords(context.Context, string, string, string, string, int, int) (repository.Page[dnsdto.Record], error)
+	CreateARecord(context.Context, string, string, string, dnsdto.CreateRecordInput) (dnsdto.Record, error)
+	DeleteARecord(context.Context, string, string, string, string) error
+	UpdateARecord(context.Context, string, string, string, string, dnsdto.UpdateRecordInput) (dnsdto.Record, error)
+}

@@ -15,6 +15,7 @@ import (
 	credentialsvc "github.com/leoninew/pomelo-orbit/internal/application/credential/usecase"
 	deploymentsvc "github.com/leoninew/pomelo-orbit/internal/application/deployment/usecase"
 	dialoguesvc "github.com/leoninew/pomelo-orbit/internal/application/dialogue/usecase"
+	dnssvc "github.com/leoninew/pomelo-orbit/internal/application/dns/usecase"
 	environmentport "github.com/leoninew/pomelo-orbit/internal/application/environment/port"
 	environmentsvc "github.com/leoninew/pomelo-orbit/internal/application/environment/usecase"
 	gatewaysvc "github.com/leoninew/pomelo-orbit/internal/application/gateway/usecase"
@@ -59,6 +60,7 @@ type Dependencies struct {
 	EnvironmentTerminalService   *environmentsvc.TerminalService
 	EnvironmentTerminalRunner    environmentport.TerminalRunner
 	GatewayService               gatewaysvc.Service
+	DNSService                   dnssvc.Service
 	TaskService                  tasksvc.Service
 	TurnstileVerifier            authhandler.TurnstileVerifier
 }
@@ -93,8 +95,10 @@ func (r Router) Handler() http.Handler {
 	// Dialogue requests can run external LLM and MCP calls. The MCP server owns
 	// transactions for its tool writes, so this route must not hold a request UoW.
 	r.registerDialogue(engine)
+	// DNS writes call Cloudflare directly and must not hold a database transaction.
+	r.registerDNS(engine)
 	if r.deps.MutatingUnitOfWork != nil {
-		// Request-scoped UoW for mutating API routes (health is registered above).
+		// Request-scoped UoW; external-only operations are registered above.
 		engine.Use(r.deps.MutatingUnitOfWork)
 	}
 	r.registerAuth(engine)

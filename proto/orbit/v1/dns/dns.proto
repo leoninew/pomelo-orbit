@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package orbit.v1.dns;
+
+message ZoneResp {
+  string id = 1;
+  string name = 2;
+}
+
+message ZoneListResp {
+  repeated ZoneResp items = 1;
+}
+
+message RecordResp {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  string content = 4;
+  int32 ttl = 5;
+  bool proxied = 6;
+  bool proxiable = 7;
+}
+
+message RecordPaginatedResp {
+  repeated RecordResp items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 per_page = 4;
+  int32 pages = 5;
+}
+
+message RecordUpdateReq {
+  string content = 1;
+  int32 ttl = 2;
+  optional bool proxied = 3;
+}
+
+message RecordCreateReq {
+  string name = 1;
+  string content = 2;
+  int32 ttl = 3;
+  optional bool proxied = 4;
+}

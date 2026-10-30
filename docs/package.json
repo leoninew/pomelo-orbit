@@ -1,0 +1,13 @@
+{
+  "name": "pomelo-orbit-docs",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.18.1",
+  "scripts": {
+    "build": "vitepress build .",
+    "preview": "vitepress preview ."
+  },
+  "devDependencies": {
+    "vitepress": "1.6.4"
+  }
+}

@@ -1,0 +1,4 @@
+node_modules/
+.yarn/
+.vitepress/cache/
+.vitepress/dist/

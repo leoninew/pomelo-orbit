@@ -1,334 +1,158 @@
 <template>
   <div class="flex flex-col gap-4">
-    <div v-if="!versionsOnly" class="flex flex-wrap items-center justify-between gap-3">
-      <DetailPageHeader :items="[]" :title="application?.name || t('application.detail.title')" />
-      <div class="flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <DetailPageHeader
+        v-if="!versionsOnly"
+        :items="[]"
+        :title="application?.name || t('application.detail.title')"
+      />
+      <div class="flex min-w-0 flex-wrap items-center gap-2" :class="versionsOnly ? 'ml-auto' : ''">
+        <SearchControl
+          v-model="versionSearchText"
+          :placeholder="t('application.detail.searchVersionsPlaceholder')"
+          :loading="versionListLoading"
+          class="w-72 min-w-0 max-w-full"
+          @search="handleVersionSearch"
+        />
         <button
-          v-if="application"
-          :disabled="operating"
-          class="app-button-danger h-9 px-3"
-          @click="openDeleteModal"
+          class="app-button-primary h-9 px-3"
+          :disabled="!application || operating"
+          @click="openCreateVersionModal"
         >
-          <Trash2 class="size-4" />
-          {{ t('common.delete') }}
+          <Plus class="size-4" />
+          {{ t('application.detail.dialog.createVersion') }}
         </button>
-        <button class="app-button h-9 px-4" @click="router.push('/applications')">
-          <ArrowLeft class="size-4" />
-          {{ t('common.back') }}
-        </button>
+        <template v-if="!versionsOnly">
+          <button
+            v-if="application"
+            class="app-button h-9 px-3"
+            :disabled="operating"
+            @click="openEditModal"
+          >
+            <Pencil class="size-4" />
+            {{ t('application.detail.dialog.editApplication') }}
+          </button>
+          <button
+            v-if="application"
+            :disabled="operating"
+            class="app-button-danger h-9 px-3"
+            @click="openDeleteModal"
+          >
+            <Trash2 class="size-4" />
+            {{ t('common.delete') }}
+          </button>
+          <button class="app-button h-9 px-4" @click="router.push('/applications')">
+            <ArrowLeft class="size-4" />
+            {{ t('common.back') }}
+          </button>
+        </template>
       </div>
     </div>
 
     <AppLoadingState v-if="basicInfoLoading" size="section" />
 
     <div v-else-if="application" class="flex flex-col gap-4">
-      <DetailInfoCard
-        v-if="!versionsOnly"
-        :title="t('application.detail.sections.basicInfo')"
-        editable
-        :disabled="operating"
-        @edit="openEditModal"
-      >
-        <dl class="app-detail-info-grid">
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">{{ t('common.name') }}</dt>
-            <dd class="text-foreground">{{ application.name }}</dd>
+      <div class="min-w-0">
+        <AppLoadingState v-if="versionListLoading" size="section" />
+        <div v-else-if="versionListError" class="py-8 text-center text-sm">
+          <p class="text-destructive">{{ t('application.toast.loadVersionsFailed') }}</p>
+          <button class="app-button mt-3" @click="loadVersions()">{{ t('common.retry') }}</button>
+        </div>
+        <div
+          v-else
+          class="grid min-h-[420px] grid-cols-1 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)]"
+        >
+          <div class="min-w-0 border-b border-border lg:border-b-0 lg:border-r lg:pr-3">
+            <div class="max-h-80 overflow-y-auto lg:max-h-[680px]">
+              <AppEmptyState v-if="versions.length === 0" size="compact" />
+              <ApplicationVersionTree
+                v-else
+                :versions="versions"
+                :details="versionDetails"
+                :load-states="versionDetailLoadState"
+                :expanded-id="expandedVersionId"
+                :selection="selection"
+                :busy="operating"
+                @create-component="handleNodeAction('create-component', { versionId: $event })"
+                @select="selectNode"
+                @toggle="toggleVersionComponents"
+                @retry="loadVersionDetails"
+              />
+            </div>
           </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">{{ t('application.code') }}</dt>
-            <dd class="text-foreground text-sm">{{ application.code }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">{{ t('application.kind') }}</dt>
-            <dd>
-              <AppBadge variant="pill" :tone="applicationKindTone(application.kind)">
-                {{ application.kind }}
-              </AppBadge>
-            </dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">{{ t('common.createdAt') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
-          </div>
-          <div class="flex gap-2">
-            <dt class="whitespace-nowrap">{{ t('common.updatedAt') }}</dt>
-            <dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
-          </div>
-        </dl>
-      </DetailInfoCard>
-
-      <!-- 版本 -->
-      <DetailInfoCard
-        :title="t('application.detail.sections.versions')"
-        actions-class="flex-nowrap"
-      >
-        <template #actions>
-          <SearchControl
-            v-model="versionSearchText"
-            :placeholder="t('application.detail.searchVersionsPlaceholder')"
-            :loading="versionListLoading"
-            class="min-w-0 flex-1"
-            @search="handleVersionSearch"
-          />
-          <button class="app-button-primary h-9 px-3" @click="openCreateVersionModal">
-            <Plus class="size-4" />
-            {{ t('application.detail.actions.createVersion') }}
-          </button>
-        </template>
-        <AppLoadingState v-if="versionListLoading" size="compact" />
-        <AppEmptyState v-else-if="versions.length === 0" size="compact" />
-        <div v-else-if="!versionsOnly" class="overflow-x-auto">
-          <table class="app-data-table min-w-[1000px]">
-            <thead>
-              <tr>
-                <th class="w-12">
-                  <span class="sr-only">
-                    {{ t('application.detail.actions.expandComponents') }}
-                  </span>
-                </th>
-                <th>{{ t('application.detail.fields.versionLabel') }}</th>
-                <th>{{ t('common.status') }}</th>
-                <th>{{ t('application.detail.fields.components') }}</th>
-                <th>{{ t('common.createdAt') }}</th>
-                <th>{{ t('common.operation') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template v-for="version in versions" :key="version.id">
-                <tr>
-                  <td class="w-12">
-                    <button
-                      type="button"
-                      class="app-icon-button size-7"
-                      :title="
-                        isVersionExpanded(version.id)
-                          ? t('application.detail.actions.collapseComponents')
-                          : t('application.detail.actions.expandComponents')
-                      "
-                      :aria-label="
-                        isVersionExpanded(version.id)
-                          ? t('application.detail.actions.collapseComponents')
-                          : t('application.detail.actions.expandComponents')
-                      "
-                      :aria-expanded="isVersionExpanded(version.id)"
-                      @click="toggleVersionComponents(version.id)"
-                    >
-                      <ChevronDown
-                        class="size-4 transition-transform"
-                        :class="isVersionExpanded(version.id) ? 'rotate-180' : ''"
-                      />
-                    </button>
-                  </td>
-                  <td class="text-foreground">
-                    <router-link :to="`/version/${version.id}`" class="app-link">
-                      {{ version.label }}
-                    </router-link>
-                  </td>
-                  <td>
-                    <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
-                      {{ version.status }}
+          <div class="min-w-0 py-4 lg:py-0 lg:pl-5">
+            <AppLoadingState v-if="selectedDetailState === 'loading'" size="section" />
+            <div v-else-if="selectedDetailState === 'error'" class="py-8 text-center text-sm">
+              <p class="text-destructive">
+                {{ t('application.detail.explorer.loadDetailsFailed') }}
+              </p>
+              <button
+                v-if="selection"
+                class="app-button mt-3"
+                @click="loadVersionDetails(selection.versionId)"
+              >
+                {{ t('common.retry') }}
+              </button>
+            </div>
+            <ApplicationNodeDetails
+              v-else-if="selectedVersion"
+              :version="selectedVersion"
+              :component="selectedComponent"
+              :busy="operating"
+              @action="selection && handleNodeAction($event, selection)"
+            />
+            <DetailInfoCard
+              v-else-if="!selection"
+              :title="t('application.detail.sections.basicInfo')"
+              :editable="!versionsOnly"
+              :disabled="operating"
+              @edit="openEditModal"
+            >
+              <dl class="app-detail-info-grid">
+                <div class="flex gap-2">
+                  <dt class="whitespace-nowrap">{{ t('common.name') }}</dt>
+                  <dd class="text-foreground">{{ application.name }}</dd>
+                </div>
+                <div class="flex gap-2">
+                  <dt class="whitespace-nowrap">{{ t('application.code') }}</dt>
+                  <dd class="text-foreground text-sm">{{ application.code }}</dd>
+                </div>
+                <div class="flex gap-2">
+                  <dt class="whitespace-nowrap">{{ t('application.kind') }}</dt>
+                  <dd>
+                    <AppBadge variant="pill" :tone="applicationKindTone(application.kind)">
+                      {{ application.kind }}
                     </AppBadge>
-                  </td>
-                  <td class="text-muted-foreground">
-                    <AppTruncatedText :text="version.component_summary" class="max-w-xs" />
-                  </td>
-                  <td class="whitespace-nowrap text-muted-foreground">
-                    <AppTableTime :time="version.created_at" />
-                  </td>
-                  <td class="app-table-actions">
-                    <div class="flex flex-wrap items-center gap-3">
-                      <router-link :to="`/version/${version.id}`" class="app-link">
-                        {{ t('application.view') }}
-                      </router-link>
-                      <button
-                        class="app-link"
-                        :disabled="operating"
-                        @click="previewVersion(version.id)"
-                      >
-                        {{ t('application.detail.actions.preview') }}
-                      </button>
-                      <button class="app-link" @click="openForkModal(version)">
-                        {{ t('application.detail.actions.fork') }}
-                      </button>
-                      <button
-                        class="app-link-danger"
-                        :disabled="operating"
-                        @click="openDeleteVersionModal(version)"
-                      >
-                        {{ t('common.delete') }}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                <tr v-if="isVersionExpanded(version.id)" class="!hover:bg-transparent">
-                  <td :colspan="6" class="!h-auto bg-muted/20 p-0">
-                    <div class="px-5 py-4">
-                      <AppLoadingState
-                        v-if="versionComponentLoadState[version.id] === 'loading'"
-                        size="compact"
-                      />
-                      <p
-                        v-else-if="versionComponentLoadState[version.id] === 'error'"
-                        class="py-2 text-sm text-destructive"
-                      >
-                        {{ t('application.versionDetail.componentsLoadFailed') }}
-                      </p>
-                      <AppEmptyState
-                        v-else-if="versionComponents[version.id]?.length === 0"
-                        size="compact"
-                      />
-                      <div v-else-if="versionComponents[version.id]" class="overflow-x-auto">
-                        <table class="app-data-table min-w-[840px]">
-                          <thead>
-                            <tr>
-                              <th>{{ t('application.detail.fields.component') }}</th>
-                              <th>{{ t('application.detail.fields.image') }}</th>
-                              <th>{{ t('application.componentDetail.fields.pullPolicy') }}</th>
-                              <th>{{ t('application.componentDetail.fields.restartPolicy') }}</th>
-                              <th>{{ t('common.operation') }}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr
-                              v-for="component in versionComponents[version.id]"
-                              :key="component.id"
-                            >
-                              <td>
-                                <router-link
-                                  :to="`/version/${version.id}/component/${component.id}`"
-                                  class="app-link"
-                                >
-                                  {{ component.name }}
-                                </router-link>
-                              </td>
-                              <td
-                                class="max-w-md whitespace-normal break-all text-muted-foreground"
-                              >
-                                {{ component.image }}
-                              </td>
-                              <td class="text-muted-foreground text-sm">
-                                {{ component.pull_policy }}
-                              </td>
-                              <td class="text-muted-foreground text-sm">
-                                {{ component.restart_policy }}
-                              </td>
-                              <td class="app-table-actions">
-                                <div
-                                  v-if="version.status === 'unpublished'"
-                                  class="flex items-center gap-2"
-                                >
-                                  <button
-                                    class="app-link"
-                                    :disabled="operating"
-                                    @click="openComponentEditDialog(version.id, component)"
-                                  >
-                                    {{ t('common.edit') }}
-                                  </button>
-                                  <button
-                                    class="app-link-danger"
-                                    :disabled="operating"
-                                    @click="openComponentDeleteDialog(version.id, component)"
-                                  >
-                                    {{ t('common.delete') }}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              </template>
-            </tbody>
-          </table>
+                  </dd>
+                </div>
+                <div class="flex gap-2">
+                  <dt class="whitespace-nowrap">{{ t('common.createdAt') }}</dt>
+                  <dd class="text-muted-foreground">{{ formatTime(application.created_at) }}</dd>
+                </div>
+                <div class="flex gap-2">
+                  <dt class="whitespace-nowrap">{{ t('common.updatedAt') }}</dt>
+                  <dd class="text-muted-foreground">{{ formatTime(application.updated_at) }}</dd>
+                </div>
+              </dl>
+            </DetailInfoCard>
+            <AppEmptyState
+              v-else
+              size="compact"
+              :message="t('application.detail.explorer.selectNode')"
+            />
+          </div>
         </div>
-        <div v-else class="overflow-x-auto">
-          <table class="app-data-table min-w-[880px]">
-            <thead>
-              <tr>
-                <th>{{ t('application.detail.fields.versionLabel') }}</th>
-                <th>{{ t('common.status') }}</th>
-                <th>{{ t('application.detail.fields.components') }}</th>
-                <th>{{ t('application.detail.fields.note') }}</th>
-                <th>{{ t('common.createdAt') }}</th>
-                <th>{{ t('common.operation') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="version in versions" :key="version.id">
-                <td class="text-foreground">
-                  <router-link :to="`/version/${version.id}`" class="app-link">
-                    {{ version.label }}
-                  </router-link>
-                </td>
-                <td>
-                  <AppBadge variant="pill" :tone="versionStatusTone(version.status)">
-                    {{ version.status }}
-                  </AppBadge>
-                </td>
-                <td class="text-muted-foreground">
-                  <AppTruncatedText :text="version.component_summary" class="max-w-xs" />
-                </td>
-                <td class="text-muted-foreground">
-                  <AppTruncatedText :text="version.note" class="max-w-xs" />
-                </td>
-                <td class="text-muted-foreground">
-                  <AppTableTime :time="version.created_at" />
-                </td>
-                <td class="app-table-actions">
-                  <div class="flex flex-wrap items-center gap-3">
-                    <button
-                      v-if="versionsOnly && version.status === 'unpublished'"
-                      class="app-link"
-                      :disabled="operating"
-                      @click="handlePublish(version.id)"
-                    >
-                      {{ t('application.detail.actions.publish') }}
-                    </button>
-                    <button
-                      v-else-if="versionsOnly && version.status === 'published'"
-                      class="app-link"
-                      :disabled="operating"
-                      @click="handleUnpublish(version.id)"
-                    >
-                      {{ t('application.detail.actions.unpublish') }}
-                    </button>
-                    <button
-                      class="app-link"
-                      :disabled="operating"
-                      @click="previewVersion(version.id)"
-                    >
-                      {{ t('application.detail.actions.preview') }}
-                    </button>
-                    <button class="app-link" @click="openForkModal(version)">
-                      {{ t('application.detail.actions.fork') }}
-                    </button>
-                    <button
-                      v-if="versionsOnly"
-                      class="app-link-danger"
-                      :disabled="operating"
-                      @click="openDeleteVersionModal(version)"
-                    >
-                      {{ t('common.delete') }}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </DetailInfoCard>
-      <ListPagination
-        v-if="versionsOnly"
-        :current="versionPagination.current"
-        :page-size="versionPagination.pageSize"
-        :total="versionPagination.total"
-        :total-pages="versionTotalPages"
-        @change-page="handleVersionPageChange"
-        @change-page-size="handleVersionPageSizeChange"
-      />
+        <ListPagination
+          class="!border-t-0"
+          :current="versionPagination.current"
+          :page-size="versionPagination.pageSize"
+          :total="versionPagination.total"
+          :total-pages="versionTotalPages"
+          standalone
+          @change-page="handleVersionPageChange"
+          @change-page-size="handleVersionPageSizeChange"
+        />
+      </div>
     </div>
 
     <!-- 编辑应用 -->
@@ -427,7 +251,11 @@
     <!-- 编辑版本组件基本信息 -->
     <AppDialog
       :open="isComponentEditDialogOpen"
-      title="编辑组件"
+      :title="
+        pendingComponent
+          ? t('application.versionDetail.dialog.editComponent')
+          : t('application.versionDetail.dialog.addComponent')
+      "
       width-class="w-[min(640px,calc(100vw-32px))]"
       @update:open="setComponentEditDialogOpen"
     >
@@ -491,6 +319,12 @@
         </div>
         <div class="sm:col-span-2">
           <label class="app-field-label mb-1.5 block">
+            {{ t('application.componentDetail.fields.containerEntrypoint') }}
+          </label>
+          <AppTextarea v-model="componentForm.entrypoint" class="app-code-content" rows="3" />
+        </div>
+        <div class="sm:col-span-2">
+          <label class="app-field-label mb-1.5 block">
             {{ t('application.componentDetail.fields.command') }}
           </label>
           <AppTextarea v-model="componentForm.command" class="app-code-content" rows="3" />
@@ -505,6 +339,29 @@
           :confirm-label="t('common.save')"
           @cancel="cancelComponentEditing"
           @confirm="saveComponentBasic"
+        />
+      </template>
+    </AppDialog>
+
+    <AppDialog
+      :open="isComponentIdentityDialogOpen"
+      :title="t('application.componentDetail.sections.identity')"
+      width-class="w-[min(480px,calc(100vw-32px))]"
+      @update:open="setComponentIdentityDialogOpen"
+    >
+      <ComponentIdentityFields
+        v-model:user="componentForm.user"
+        v-model:groups="componentForm.group_add"
+      />
+      <p v-if="componentIdentityError" class="app-field-error" role="alert">
+        {{ componentIdentityError }}
+      </p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.save')"
+          @cancel="setComponentIdentityDialogOpen(false)"
+          @confirm="saveComponentIdentity"
         />
       </template>
     </AppDialog>
@@ -539,7 +396,11 @@
     <!-- 创建版本（仅基本信息） -->
     <AppDialog
       v-model:open="isVersionDialogOpen"
-      :title="t('application.detail.dialog.createVersion')"
+      :title="
+        editingVersionId
+          ? t('application.versionDetail.dialog.editBasic')
+          : t('application.detail.dialog.createVersion')
+      "
       width-class="w-[min(420px,calc(100vw-32px))]"
     >
       <div class="space-y-4">
@@ -571,15 +432,15 @@
           />
         </div>
       </div>
-      <p v-if="versionCreateError" class="app-field-error mt-3" role="alert">
-        {{ versionCreateError }}
+      <p v-if="versionSubmitError" class="app-field-error mt-3" role="alert">
+        {{ versionSubmitError }}
       </p>
       <template #footer>
         <AppDialogActions
           :busy="operating"
-          :confirm-label="t('common.create')"
+          :confirm-label="editingVersionId ? t('common.save') : t('common.create')"
           @cancel="isVersionDialogOpen = false"
-          @confirm="handleVersionCreate"
+          @confirm="saveVersion"
         />
       </template>
     </AppDialog>
@@ -654,7 +515,7 @@
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
   import AppTextarea from '@/components/ui/AppTextarea.vue';
-  import { ArrowLeft, ChevronDown, Plus, Trash2 } from '@lucide/vue';
+  import { ArrowLeft, Pencil, Plus, Trash2 } from '@lucide/vue';
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
@@ -666,22 +527,29 @@
   import AppDrawer from '@/components/ui/AppDrawer.vue';
   import AppEmptyState from '@/components/ui/AppEmptyState.vue';
   import AppLoadingState from '@/components/ui/AppLoadingState.vue';
-  import AppTableTime from '@/components/ui/AppTableTime.vue';
-  import AppTruncatedText from '@/components/ui/AppTruncatedText.vue';
   import ListPagination from '@/components/ui/ListPagination.vue';
   import MonacoEditor from '@/components/ui/MonacoEditor.vue';
   import SelectControl from '@/components/ui/SelectControl.vue';
   import SearchControl from '@/components/ui/SearchControl.vue';
+  import ComponentIdentityFields from '@/components/application/ComponentIdentityFields.vue';
   import { useStatusAsync } from '@/composables/useStatusAsync';
   import { useToast } from '@/composables/useToast';
   import type { ApplicationResp } from '@/gen/proto/orbit/v1/application/application';
   import type { VersionComponentResp, VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import { useProjectStore } from '@/stores/project';
-  import { applicationKindTone, versionStatusTone } from '@/utils/status';
+  import { applicationKindTone } from '@/utils/status';
   import { formatTime } from '@/utils/time';
   import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
+  import ApplicationVersionTree from './components/ApplicationVersionTree.vue';
+  import ApplicationNodeDetails from './components/ApplicationNodeDetails.vue';
+  import {
+    resolveVersionTreeSelection,
+    type VersionTreeSelection,
+    type VersionTreeLoadState,
+  } from './versionTree';
   import {
     componentBasicRequestFromForm,
+    componentIdentityRequestFromForm,
     componentFormFromResponse,
     emptyComponentForm,
   } from './componentForm';
@@ -706,9 +574,22 @@
   const application = ref<ApplicationResp>();
   const versions = ref<VersionResp[]>([]);
   const versionSearchText = ref('');
-  const expandedVersionIds = ref<string[]>([]);
-  const versionComponents = reactive<Record<string, VersionComponentResp[]>>({});
-  const versionComponentLoadState = reactive<Record<string, 'loading' | 'loaded' | 'error'>>({});
+  const expandedVersionId = ref('');
+  const versionDetails = reactive<Record<string, VersionResp>>({});
+  const versionDetailLoadState = reactive<Record<string, VersionTreeLoadState>>({});
+  const selection = ref<VersionTreeSelection>();
+  const versionListError = ref(false);
+  const selectedVersion = computed(() =>
+    selection.value ? versionDetails[selection.value.versionId] : undefined
+  );
+  const selectedComponent = computed(() =>
+    selectedVersion.value?.components.find(
+      (component) => component.id === selection.value?.componentId
+    )
+  );
+  const selectedDetailState = computed(() =>
+    selection.value ? versionDetailLoadState[selection.value.versionId] : undefined
+  );
   const versionPagination = reactive({ current: 1, pageSize: 10, total: 0 });
   const versionTotalPages = computed(() =>
     Math.ceil(versionPagination.total / versionPagination.pageSize)
@@ -725,12 +606,15 @@
   const deleteVersionError = ref('');
   const editSubmitError = ref('');
   const deleteApplicationError = ref('');
-  const versionCreateError = ref('');
+  const versionSubmitError = ref('');
+  const editingVersionId = ref('');
   const componentEditError = ref('');
+  const componentIdentityError = ref('');
   const componentDeleteError = ref('');
   const isVersionDialogOpen = ref(false);
   const isForkDialogOpen = ref(false);
   const isComponentEditDialogOpen = ref(false);
+  const isComponentIdentityDialogOpen = ref(false);
   const isComponentDeleteDialogOpen = ref(false);
   const pendingComponentVersionId = ref('');
   const pendingComponent = ref<VersionComponentResp>();
@@ -779,68 +663,153 @@
     }
   }
 
-  async function loadVersions() {
+  async function loadVersions(preferredSelection = selection.value) {
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
       return;
     }
+    versionListError.value = false;
     try {
       await executeVersionList(async () => {
         const resp = await applicationApi.listVersions(projectId, applicationId, {
-          page: versionsOnly ? versionPagination.current : 1,
-          per_page: versionsOnly ? versionPagination.pageSize : 100,
+          page: versionPagination.current,
+          per_page: versionPagination.pageSize,
           search: versionSearchText.value.trim() || undefined,
         });
         if (projectStore.activeProjectId !== projectId) {
           return;
         }
-        versions.value = resp.items ?? [];
-        if (versionsOnly) {
-          versionPagination.total = resp.total;
-          versionPagination.current = resp.page;
-          versionPagination.pageSize = resp.per_page;
+        versionPagination.total = resp.total;
+        versionPagination.current = resp.page;
+        versionPagination.pageSize = resp.per_page;
+        if (resp.total > 0 && resp.items.length === 0 && resp.page > 1) {
+          versionPagination.current = Math.max(1, resp.pages);
+          await loadVersions(preferredSelection);
+          return;
+        }
+        versions.value = resp.items;
+        selection.value = resolveVersionTreeSelection(resp.items, preferredSelection);
+        if (!resp.items.some((version) => version.id === expandedVersionId.value)) {
+          expandedVersionId.value = '';
         }
       });
+      if (selection.value && !versionListError.value) {
+        expandVersion(selection.value.versionId);
+        void loadVersionDetails(selection.value.versionId);
+      }
     } catch {
+      versionListError.value = true;
       toast.error(t('application.toast.loadVersionsFailed'));
     }
   }
 
-  async function loadVersionComponents(versionId: string) {
-    const state = versionComponentLoadState[versionId];
+  async function loadVersionDetails(versionId: string) {
+    const state = versionDetailLoadState[versionId];
     if (state === 'loading' || state === 'loaded') {
       return;
     }
-    versionComponentLoadState[versionId] = 'loading';
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      versionComponentLoadState[versionId] = 'error';
       return;
     }
+    versionDetailLoadState[versionId] = 'loading';
     try {
       const version = await applicationApi.getVersion(projectId, versionId);
       if (projectStore.activeProjectId !== projectId) {
         return;
       }
-      versionComponents[versionId] = version.components ?? [];
-      versionComponentLoadState[versionId] = 'loaded';
+      versionDetails[versionId] = version;
+      versionDetailLoadState[versionId] = 'loaded';
     } catch {
-      versionComponentLoadState[versionId] = 'error';
-      toast.error(t('application.versionDetail.componentsLoadFailed'));
+      versionDetailLoadState[versionId] = 'error';
     }
   }
 
-  function isVersionExpanded(versionId: string) {
-    return expandedVersionIds.value.includes(versionId);
+  function expandVersion(versionId: string) {
+    expandedVersionId.value = versionId;
+  }
+
+  function selectNode(node: VersionTreeSelection) {
+    selection.value = node;
+    expandVersion(node.versionId);
+    void loadVersionDetails(node.versionId);
   }
 
   function toggleVersionComponents(versionId: string) {
-    if (isVersionExpanded(versionId)) {
-      expandedVersionIds.value = expandedVersionIds.value.filter((id) => id !== versionId);
+    if (expandedVersionId.value === versionId) {
+      expandedVersionId.value = '';
+      if (selection.value?.versionId === versionId && selection.value.componentId) {
+        selection.value = { versionId };
+      }
       return;
     }
-    expandedVersionIds.value = [...expandedVersionIds.value, versionId];
-    void loadVersionComponents(versionId);
+    selectNode({ versionId });
+  }
+
+  function updateVersion(version: VersionResp) {
+    versionDetails[version.id] = version;
+    versionDetailLoadState[version.id] = 'loaded';
+    versions.value = versions.value.map((item) => (item.id === version.id ? version : item));
+  }
+
+  function handleNodeAction(action: string, node: VersionTreeSelection) {
+    if (operating.value) {
+      return;
+    }
+    const version = versions.value.find((item) => item.id === node.versionId);
+    if (!version) {
+      return;
+    }
+    const component = node.componentId
+      ? versionDetails[node.versionId]?.components.find((item) => item.id === node.componentId)
+      : undefined;
+    if (node.componentId && !component) {
+      return;
+    }
+    selectNode(node);
+    switch (action) {
+      case 'edit-identity':
+        if (version.status === 'unpublished' && component) {
+          openComponentIdentityDialog(version.id, component);
+        }
+        break;
+      case 'edit':
+        if (version.status !== 'unpublished') {
+          return;
+        }
+        if (component) {
+          openComponentEditDialog(version.id, component);
+        } else {
+          openEditVersionModal(version);
+        }
+        break;
+      case 'delete':
+        if (component) {
+          if (version.status === 'unpublished') {
+            openComponentDeleteDialog(version.id, component);
+          }
+        } else {
+          openDeleteVersionModal(version);
+        }
+        break;
+      case 'create-component':
+        if (version.status === 'unpublished') {
+          openComponentCreateDialog(version.id);
+        }
+        break;
+      case 'fork':
+        openForkModal(version);
+        break;
+      case 'preview':
+        void previewVersion(version.id);
+        break;
+      case 'publish':
+        void handlePublish(version.id);
+        break;
+      case 'unpublish':
+        void handleUnpublish(version.id);
+        break;
+    }
   }
 
   function handleVersionSearch() {
@@ -950,15 +919,32 @@
   }
 
   function openCreateVersionModal() {
+    editingVersionId.value = '';
     versionForm.label = '';
     versionForm.note = '';
     versionFormErrors.label = '';
-    versionCreateError.value = '';
+    versionSubmitError.value = '';
     isVersionDialogOpen.value = true;
   }
 
-  async function handleVersionCreate() {
-    versionCreateError.value = '';
+  function openEditVersionModal(version: VersionResp) {
+    editingVersionId.value = version.id;
+    versionForm.label = version.label;
+    versionForm.note = version.note ?? '';
+    versionFormErrors.label = '';
+    versionSubmitError.value = '';
+    isVersionDialogOpen.value = true;
+  }
+
+  async function showCreatedVersion(version: VersionResp) {
+    updateVersion(version);
+    versionSearchText.value = '';
+    versionPagination.current = 1;
+    await loadVersions({ versionId: version.id });
+  }
+
+  async function saveVersion() {
+    versionSubmitError.value = '';
     versionFormErrors.label = versionForm.label.trim()
       ? ''
       : t('application.validation.versionLabelRequired');
@@ -967,24 +953,36 @@
     }
     const projectId = projectStore.activeProjectId;
     if (!projectId) {
-      versionCreateError.value = t('application.toast.selectProjectRequired');
+      versionSubmitError.value = t('application.toast.selectProjectRequired');
       return;
     }
-    const note = versionForm.note.trim() || undefined;
     try {
       await executeOp(async () => {
-        const created = await applicationApi.createVersion(projectId, applicationId, {
-          application_id: applicationId,
-          label: versionForm.label.trim(),
-          note,
-          components: [],
-        });
-        toast.success(t('application.toast.createVersionSuccess'));
-        isVersionDialogOpen.value = false;
-        router.push(`/version/${created.id}`);
+        const label = versionForm.label.trim();
+        const note = versionForm.note.trim();
+        if (editingVersionId.value) {
+          const updated = await applicationApi.updateVersion(projectId, editingVersionId.value, {
+            label,
+            note,
+          });
+          updateVersion(updated);
+          toast.success(t('application.toast.updateSuccess'));
+          isVersionDialogOpen.value = false;
+          await loadVersions();
+        } else {
+          const created = await applicationApi.createVersion(projectId, applicationId, {
+            application_id: applicationId,
+            label,
+            note: note || undefined,
+            components: [],
+          });
+          toast.success(t('application.toast.createVersionSuccess'));
+          isVersionDialogOpen.value = false;
+          await showCreatedVersion(created);
+        }
       });
     } catch (error) {
-      versionCreateError.value =
+      versionSubmitError.value =
         error instanceof Error ? error.message : t('application.toast.saveFailed');
     }
   }
@@ -997,7 +995,7 @@
     }
     try {
       await executeOp(async () => {
-        await applicationApi.publishVersion(projectId, versionId);
+        updateVersion(await applicationApi.publishVersion(projectId, versionId));
         toast.success(t('application.toast.publishSuccess'));
         await loadVersions();
       });
@@ -1014,7 +1012,7 @@
     }
     try {
       await executeOp(async () => {
-        await applicationApi.unpublishVersion(projectId, versionId);
+        updateVersion(await applicationApi.unpublishVersion(projectId, versionId));
         toast.success(t('application.toast.unpublishSuccess'));
         await loadVersions();
       });
@@ -1052,6 +1050,8 @@
         await applicationApi.deleteVersion(projectId, target.id);
         toast.success(t('application.toast.deleteVersionSuccess'));
         setDeleteVersionDialogOpen(false);
+        delete versionDetails[target.id];
+        delete versionDetailLoadState[target.id];
         await loadVersions();
       });
     } catch (error) {
@@ -1068,6 +1068,15 @@
     Object.assign(componentForm, emptyComponentForm());
   }
 
+  function openComponentCreateDialog(versionId: string) {
+    pendingComponentVersionId.value = versionId;
+    pendingComponent.value = undefined;
+    resetComponentForm();
+    resetComponentErrors();
+    componentEditError.value = '';
+    isComponentEditDialogOpen.value = true;
+  }
+
   function openComponentEditDialog(versionId: string, component: VersionComponentResp) {
     pendingComponentVersionId.value = versionId;
     pendingComponent.value = component;
@@ -1082,6 +1091,8 @@
     resetComponentErrors();
     componentEditError.value = '';
     isComponentEditDialogOpen.value = false;
+    pendingComponent.value = undefined;
+    pendingComponentVersionId.value = '';
   }
 
   function setComponentEditDialogOpen(open: boolean) {
@@ -1094,7 +1105,8 @@
 
   async function saveComponentBasic() {
     const target = pendingComponent.value;
-    if (!target || !pendingComponentVersionId.value) {
+    const versionId = pendingComponentVersionId.value;
+    if (!versionId) {
       return;
     }
     componentEditError.value = '';
@@ -1125,25 +1137,93 @@
     }
     try {
       await executeOp(async () => {
-        const updated = await applicationApi.updateVersionComponentBasic(
+        const updated = target
+          ? await applicationApi.updateVersionComponentBasic(
+              projectId,
+              versionId,
+              target.id,
+              result.value
+            )
+          : await applicationApi.createVersionComponent(projectId, versionId, {
+              ...result.value,
+              group_add: [],
+            });
+        const components = versionDetails[versionId]?.components;
+        if (components) {
+          if (target) {
+            const index = components.findIndex((item) => item.id === updated.id);
+            if (index !== -1) {
+              components.splice(index, 1, updated);
+            }
+          } else {
+            components.push(updated);
+          }
+          components.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        selectNode({ versionId, componentId: updated.id });
+        cancelComponentEditing();
+        toast.success(t('application.toast.updateSuccess'));
+      });
+    } catch (error) {
+      componentEditError.value =
+        error instanceof Error ? error.message : t('application.toast.updateFailed');
+    }
+  }
+
+  function openComponentIdentityDialog(versionId: string, component: VersionComponentResp) {
+    pendingComponentVersionId.value = versionId;
+    pendingComponent.value = component;
+    Object.assign(componentForm, componentFormFromResponse(component));
+    componentIdentityError.value = '';
+    isComponentIdentityDialogOpen.value = true;
+  }
+
+  function setComponentIdentityDialogOpen(open: boolean) {
+    isComponentIdentityDialogOpen.value = open;
+    if (!open) {
+      resetComponentForm();
+      pendingComponent.value = undefined;
+      pendingComponentVersionId.value = '';
+      componentIdentityError.value = '';
+    }
+  }
+
+  async function saveComponentIdentity() {
+    const target = pendingComponent.value;
+    const versionId = pendingComponentVersionId.value;
+    if (!target || !versionId) {
+      return;
+    }
+    componentIdentityError.value = '';
+    const result = componentIdentityRequestFromForm(componentForm);
+    if (!result.valid) {
+      return;
+    }
+    const projectId = projectStore.activeProjectId;
+    if (!projectId) {
+      componentIdentityError.value = t('application.toast.selectProjectRequired');
+      return;
+    }
+    try {
+      await executeOp(async () => {
+        const updated = await applicationApi.updateVersionComponentIdentity(
           projectId,
-          pendingComponentVersionId.value,
+          versionId,
           target.id,
           result.value
         );
-        const components = versionComponents[pendingComponentVersionId.value];
+        const components = versionDetails[versionId]?.components;
         if (components) {
           const index = components.findIndex((item) => item.id === updated.id);
           if (index !== -1) {
             components.splice(index, 1, updated);
           }
         }
-        pendingComponent.value = updated;
-        cancelComponentEditing();
+        setComponentIdentityDialogOpen(false);
         toast.success(t('application.toast.updateSuccess'));
       });
     } catch (error) {
-      componentEditError.value =
+      componentIdentityError.value =
         error instanceof Error ? error.message : t('application.toast.updateFailed');
     }
   }
@@ -1164,7 +1244,8 @@
 
   async function deleteComponent() {
     const target = pendingComponent.value;
-    if (!target || !pendingComponentVersionId.value) {
+    const versionId = pendingComponentVersionId.value;
+    if (!target || !versionId) {
       return;
     }
     componentDeleteError.value = '';
@@ -1175,17 +1256,16 @@
     }
     try {
       await executeOp(async () => {
-        await applicationApi.deleteVersionComponent(
-          projectId,
-          pendingComponentVersionId.value,
-          target.id
-        );
-        const components = versionComponents[pendingComponentVersionId.value];
+        await applicationApi.deleteVersionComponent(projectId, versionId, target.id);
+        const components = versionDetails[versionId]?.components;
         if (components) {
           const index = components.findIndex((item) => item.id === target.id);
           if (index !== -1) {
             components.splice(index, 1);
           }
+        }
+        if (selection.value?.versionId === versionId && selection.value.componentId === target.id) {
+          selection.value = { versionId };
         }
         cancelComponentDeletion();
         toast.success(t('application.toast.updateSuccess'));
@@ -1224,7 +1304,7 @@
         });
         toast.success(t('application.toast.forkSuccess'));
         isForkDialogOpen.value = false;
-        router.push(`/version/${created.id}`);
+        await showCreatedVersion(created);
       });
     } catch (error) {
       forkSubmitError.value =

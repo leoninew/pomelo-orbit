@@ -485,6 +485,14 @@ export default {
     },
     detail: {
       title: 'Application Details',
+      explorer: {
+        title: 'Versions and Components',
+        openDetails: 'Details',
+        editBasic: 'Edit basic info',
+        more: 'More',
+        selectNode: 'Select a version or component on the left',
+        loadDetailsFailed: 'Failed to load details. Please retry.',
+      },
       searchVersionsPlaceholder: 'Search version name/note',
       searchComponentsPlaceholder: 'Search component name/image',
       sections: {

@@ -475,6 +475,14 @@ export default {
     },
     detail: {
       title: '应用详情',
+      explorer: {
+        title: '版本与组件',
+        openDetails: '详情',
+        editBasic: '编辑基本信息',
+        more: '更多',
+        selectNode: '请选择左侧版本或组件',
+        loadDetailsFailed: '详情加载失败，请重试',
+      },
       searchVersionsPlaceholder: '搜索版本名称/备注',
       searchComponentsPlaceholder: '搜索组件名称/镜像',
       sections: {

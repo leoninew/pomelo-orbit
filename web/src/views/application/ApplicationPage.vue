@@ -63,7 +63,7 @@
               </td>
               <td class="text-foreground"><AppTruncatedText class="text-sm" :text="app.code" /></td>
               <td>
-                <AppBadge variant="pill" :tone="applicationKindTone(app.kind)">
+                <AppBadge variant="pill">
                   {{ app.kind }}
                 </AppBadge>
               </td>
@@ -209,7 +209,6 @@
     ApplicationCreateReq,
     ApplicationResp,
   } from '@/gen/proto/orbit/v1/application/application';
-  import { applicationKindTone } from '@/utils/status';
   import { ToolbarRoot } from 'reka-ui';
 
   const { t } = useI18n();

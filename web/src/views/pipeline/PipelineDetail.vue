@@ -43,7 +43,7 @@
             <dt>类型</dt>
             <dd>
               <AppBadge :tone="isTemplate ? 'info' : 'success'" variant="category">
-                {{ isTemplate ? '模板' : '应用流水线' }}
+                {{ isTemplate ? '模板' : '应用' }}
               </AppBadge>
             </dd>
           </div>

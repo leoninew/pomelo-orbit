@@ -153,7 +153,15 @@
 
     <div v-else class="app-list-surface">
       <div class="overflow-x-auto">
-        <table class="app-data-table min-w-[1120px]">
+        <table class="app-data-table table-fixed min-w-[960px]">
+          <colgroup>
+            <col class="w-[18%]" />
+            <col class="w-[24%]" />
+            <col />
+            <col class="w-32" />
+            <col class="w-28" />
+            <col class="w-32" />
+          </colgroup>
           <thead>
             <tr>
               <th>{{ t('service.fields.application') }}</th>
@@ -167,17 +175,15 @@
           <tbody>
             <tr v-for="svc in services" :key="svc.id">
               <td>
-                <router-link
-                  :to="`/service/${svc.id}`"
-                  class="app-link"
-                  :title="svc.application_name"
-                >
-                  {{ svc.application_name }}
-                </router-link>
+                <AppTruncatedText :text="svc.application_name" as-child>
+                  <router-link :to="`/service/${svc.id}`" class="app-link">
+                    {{ svc.application_name }}
+                  </router-link>
+                </AppTruncatedText>
               </td>
-              <td class="text-foreground text-sm">{{ svc.code }}</td>
+              <td class="text-foreground text-sm"><AppTruncatedText :text="svc.code" /></td>
               <td>
-                <AppTruncatedText :text="svc.version_label" class="max-w-60" as-child>
+                <AppTruncatedText :text="svc.version_label" as-child>
                   <router-link :to="`/version/${svc.version_id}`" class="app-link">
                     {{ svc.version_label }}
                   </router-link>
@@ -190,7 +196,7 @@
                 <AppTableTime :time="svc.updated_at" />
               </td>
               <td class="app-table-actions">
-                <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-3 whitespace-nowrap">
                   <AppTooltip
                     :content="
                       svc.application_kind === 'gateway'

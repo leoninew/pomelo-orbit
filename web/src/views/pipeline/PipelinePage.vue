@@ -29,7 +29,16 @@
       </p>
       <AppEmptyState v-else-if="pipelines.length === 0" />
       <div v-else class="overflow-x-auto">
-        <table class="app-data-table min-w-[1000px]">
+        <table class="app-data-table table-fixed min-w-[960px]">
+          <colgroup>
+            <col class="w-[20%]" />
+            <col class="w-28" />
+            <col />
+            <col />
+            <col class="w-16" />
+            <col class="w-28" />
+            <col class="w-40" />
+          </colgroup>
           <thead>
             <tr>
               <th>名称</th>
@@ -38,13 +47,13 @@
               <th>应用</th>
               <th>版本</th>
               <th>更新时间</th>
-              <th class="w-52">操作</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="pipeline in pipelines" :key="pipeline.id">
               <td>
-                <AppTruncatedText :text="pipeline.name" class="max-w-64" as-child>
+                <AppTruncatedText :text="pipeline.name" as-child>
                   <router-link :to="`/pipeline/${pipeline.id}`" class="app-link">
                     {{ pipeline.name }}
                   </router-link>
@@ -55,14 +64,16 @@
                   :tone="pipeline.kind === 'template' ? 'info' : 'success'"
                   variant="category"
                 >
-                  {{ pipeline.kind === 'template' ? '模板' : '应用流水线' }}
+                  {{ pipeline.kind === 'template' ? '模板' : '应用' }}
                 </AppBadge>
               </td>
               <td class="text-foreground">
                 <template v-if="pipeline.kind === 'application' && pipeline.repository_id">
-                  <router-link :to="`/repository/${pipeline.repository_id}`" class="app-link">
-                    {{ pipeline.repository_name }}
-                  </router-link>
+                  <AppTruncatedText :text="pipeline.repository_name" as-child>
+                    <router-link :to="`/repository/${pipeline.repository_id}`" class="app-link">
+                      {{ pipeline.repository_name }}
+                    </router-link>
+                  </AppTruncatedText>
                 </template>
                 <span v-else class="text-muted-foreground">未绑定</span>
               </td>
@@ -74,9 +85,11 @@
                     pipeline.application_name
                   "
                 >
-                  <router-link :to="`/application/${pipeline.application_id}`" class="app-link">
-                    {{ pipeline.application_name }}
-                  </router-link>
+                  <AppTruncatedText :text="pipeline.application_name" as-child>
+                    <router-link :to="`/application/${pipeline.application_id}`" class="app-link">
+                      {{ pipeline.application_name }}
+                    </router-link>
+                  </AppTruncatedText>
                 </template>
                 <span v-else class="text-muted-foreground">未绑定</span>
               </td>
@@ -87,7 +100,7 @@
                 <AppTableTime :time="pipeline.updated_at" />
               </td>
               <td class="app-table-actions">
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div class="flex items-center gap-3 whitespace-nowrap">
                   <button class="app-link" @click="openEditDialog(pipeline)">编辑</button>
                   <button
                     v-if="pipeline.kind === 'template'"
@@ -361,7 +374,7 @@
   const kind = ref<'' | 'template' | 'application'>('');
   const pipelineKindOptions = [
     { value: 'template', label: '模板' },
-    { value: 'application', label: '应用流水线' },
+    { value: 'application', label: '应用' },
   ];
   const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
   const createOpen = ref(false);

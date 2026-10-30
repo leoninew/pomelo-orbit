@@ -22,14 +22,14 @@
       <div v-else class="overflow-x-auto">
         <table class="repository-table app-data-table">
           <colgroup>
-            <col style="width: 14.3%" />
-            <col style="width: 12.2%" />
-            <col style="width: 29.6%" />
-            <col style="width: 7.9%" />
-            <col style="width: 8.5%" />
-            <col style="width: 7.6%" />
-            <col style="width: 10.7%" />
-            <col style="width: 9.2%" />
+            <col class="w-[17%]" />
+            <col class="w-[13%]" />
+            <col />
+            <col class="w-22" />
+            <col class="w-24" />
+            <col class="w-22" />
+            <col class="w-28" />
+            <col class="w-28" />
           </colgroup>
           <thead>
             <tr>
@@ -51,7 +51,7 @@
                   <AppTruncatedText :text="p.name" class="min-w-0" />
                 </router-link>
               </td>
-              <td class="repository-code whitespace-nowrap text-sm">{{ p.code }}</td>
+              <td class="repository-code text-sm"><AppTruncatedText :text="p.code" /></td>
               <td class="repository-location">
                 <AppTruncatedText :text="repositoryLocation(p)" />
               </td>
@@ -59,9 +59,9 @@
                 {{ p.repository_type === 'local_directory' ? '本地目录' : '远程 Git' }}
               </td>
               <td>
-                <span class="repository-branch">
+                <span class="repository-branch max-w-full">
                   <GitBranch class="size-3 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  {{ p.default_branch }}
+                  <AppTruncatedText :text="p.default_branch" />
                 </span>
               </td>
               <td class="repository-credential whitespace-nowrap">
@@ -78,10 +78,10 @@
                 <AppTableTime :time="p.updated_at" />
               </td>
               <td class="app-table-actions repository-actions whitespace-nowrap">
-                <button class="repository-edit app-link mr-3" @click="openEditModal(p)">
-                  编辑
-                </button>
-                <button class="app-link-danger" @click="openDeleteDialog(p)">删除</button>
+                <div class="flex items-center gap-3">
+                  <button class="repository-edit app-link" @click="openEditModal(p)">编辑</button>
+                  <button class="app-link-danger" @click="openDeleteDialog(p)">删除</button>
+                </div>
               </td>
             </tr>
           </tbody>

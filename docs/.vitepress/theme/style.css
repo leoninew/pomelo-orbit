@@ -1,0 +1,32 @@
+:root {
+  --vp-c-brand-1: #526fe8;
+  --vp-c-brand-2: #3d59c9;
+  --vp-c-brand-3: #344eb8;
+}
+
+.dark {
+  --vp-c-brand-1: #9daeff;
+  --vp-c-brand-2: #b5c1ff;
+  --vp-c-brand-3: #cad2ff;
+}
+
+.vp-doc :not(pre) > code,
+.vp-doc div[class*='language-'] pre,
+.vp-doc div[class*='language-'] code {
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.vp-doc div[class*='language-'] > span.lang,
+.vp-doc div[class*='language-'] > button.copy.copied::before,
+.vp-doc .custom-block .custom-block-title,
+.VPDocAsideOutline .outline-title,
+.VPDocFooter .desc,
+.VPBadge,
+.VPMenu .label,
+.VPLocalNav .menu,
+.VPLocalNavOutlineDropdown button,
+.VPNavScreenAppearance .text,
+.VPSkipLink {
+  font-size: 14px;
+}

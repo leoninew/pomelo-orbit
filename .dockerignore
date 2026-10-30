@@ -12,6 +12,12 @@ web/dist
 web/coverage
 web/.yarn
 
+# Documentation (built separately)
+docs/node_modules
+docs/.yarn
+docs/.vitepress/cache
+docs/.vitepress/dist
+
 # Backend
 bin/
 data/

@@ -1,22 +1,22 @@
 # 开发入门
 
-本篇为仓库工程文档，面向从源码参与开发的读者，不属于使用手册，对应 GitHub `develop` 分支。命令默认在仓库根目录执行；前后端启动命令需要分别在两个终端中运行。
+本篇为仓库工程文档，面向从源码参与开发的读者，不属于使用手册，对应 GitHub `develop` 分支。命令统一使用 Bash，默认在仓库根目录执行；前后端启动命令需要分别在两个终端中运行。
 
 ## 前置条件
 
-- Go 1.25、Node.js 22、Corepack 和 Task 3。
+- Bash、Go 1.25、Node.js 22、Corepack 和 Task 3；使用的工具与路径需属于同一开发环境，不混用 Windows 原生与 WSL 工具链。
 - 网络可以访问 Go 模块与 npm 源。`task deps` 会安装锁定的前端依赖和项目固定版本的 Go 工具。
 - Python 3 可用于生成下面的本地密钥；也可以使用其他安全方式生成 Fernet 密钥。
 
 安装项目使用的 Task 版本：
 
-```sh
+```bash
 go install github.com/go-task/task/v3/cmd/task@v3.45.4
 ```
 
 确保 Go 工具的安装目录位于 `PATH`，然后在仓库根目录运行：
 
-```sh
+```bash
 task deps
 ```
 
@@ -24,21 +24,13 @@ task deps
 
 `task webapi` 使用 `development` profile，因此会读取根目录的 `.env.development`。如果该文件不存在，可以从 `.env.example` 创建；已有文件请保留，不要覆盖。
 
-```sh
+```bash
 test -e .env.development || cp .env.example .env.development
-```
-
-PowerShell：
-
-```powershell
-if (-not (Test-Path -LiteralPath .env.development)) {
-  Copy-Item -LiteralPath .env.example -Destination .env.development
-}
 ```
 
 在 `.env.development` 中设置 `POMELO_ORBIT_JWT__SECRET_KEY`。该值必须是有效的 Fernet 密钥；例如使用 Python 生成一个随机密钥：
 
-```sh
+```bash
 python -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())"
 ```
 
@@ -50,13 +42,13 @@ python -c "import base64, os; print(base64.urlsafe_b64encode(os.urandom(32)).dec
 
 在第一个终端启动后端：
 
-```sh
+```bash
 task webapi
 ```
 
 在第二个终端启动前端：
 
-```sh
+```bash
 task web
 ```
 
@@ -68,7 +60,7 @@ task web
 
 在仓库根目录运行：
 
-```sh
+```bash
 task check
 task test
 ```

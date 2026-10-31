@@ -93,9 +93,9 @@ stdio 的标准输出属于协议，诊断写入标准错误及配置的日志�
 
 环境命令行提供 `cli env list`、`exec`、`ssh` 和 `forward start/status/stop`，不覆盖 Web 中所有业务操作。
 
-以下用 `pomelo-orbit` 代称已经准备的可信程序；若不在 PATH 中，使用它的实际路径，Windows 使用对应 `.exe` 文件。在实例配置根目录运行，PAT、数据库与密钥按前述方式注入，不写在命令中。
+以下命令从本地 Bash 发起，用 `pomelo-orbit` 代称已经准备的可信程序；若不在 PATH 中，使用它的实际路径，Windows 使用对应 `.exe` 文件。在实例配置根目录运行，PAT、数据库与密钥按前述方式注入，不写在命令中。远程程序和路径仍按目标平台选择，不因本地使用 Bash 而改变。
 
-```sh
+```bash
 pomelo-orbit cli env --help
 pomelo-orbit cli env list --json
 ```
@@ -112,7 +112,7 @@ pomelo-orbit cli env list --json
 
 下面仅展示读取目标身份的参数；把 `demo` 换成已确认的项目编码，并确认相应程序在远端可用：
 
-```sh
+```bash
 # Linux SSH target
 pomelo-orbit cli env exec --project demo --json -- whoami
 
@@ -149,7 +149,7 @@ pomelo-orbit cli env exec --project demo --json -- whoami.exe
 
 确认本地端口未占用、目标服务已准备后，按下面的方式建立转发。命令会建立或停止真实监听，不要将其当作无副作用的检查：
 
-```sh
+```bash
 pomelo-orbit cli env forward start --project demo -p 15432:5432
 pomelo-orbit cli env forward status -p 15432 --json
 pomelo-orbit cli env forward stop -p 15432

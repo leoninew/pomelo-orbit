@@ -14,7 +14,7 @@
 
 ## 安装前准备
 
-- 一台隔离的 Linux 主机，已安装可用的 Docker Engine、`docker compose`、Git 和 Python 3；执行用户有 Docker 权限以及安装目录的读写权限。
+- 一台隔离的 Linux 主机，已安装可用的 Bash、Docker Engine、`docker compose`、Git 和 Python 3；以下终端命令均在 Bash 中执行，执行用户有 Docker 权限以及安装目录的读写权限。
 - 能访问源码仓库、Dockerfile 所需基础镜像和构建依赖源。为镜像、日志、构建文件和业务数据预留磁盘空间。
 - 宿主机 `9023` 端口未被占用。下面只绑定 `127.0.0.1`；首次改密前不要公开入口。
 - 一个**新的、无现有数据**的安装目录。已有实例应先阅读[数据保留与升级](../operations/data-upgrades.md)，不要套用首次安装步骤重建密钥或覆盖配置。
@@ -25,7 +25,7 @@
 
 在选定的源码父目录执行：
 
-```sh
+```bash
 git clone --branch develop --single-branch https://github.com/leoninew/pomelo-orbit.git
 cd pomelo-orbit
 git rev-parse HEAD
@@ -38,14 +38,14 @@ docker build -t pomelo-orbit:local .
 
 离开源码目录，在自己选定的安装父目录创建新的 `orbit-instance`。以下命令中的 `mkdir` 若提示目录已存在，先停止并确认是否为已有实例，不覆盖其中的文件：
 
-```sh
+```bash
 umask 077
 mkdir orbit-instance && cd orbit-instance && mkdir data logs && touch overwrite.env
 ```
 
 在这个目录创建 `.env`，仅包含本次新实例所需的启动秘密。下面命令会以独占创建方式写文件，已有 `.env` 时会拒绝；不输出密钥：
 
-```sh
+```bash
 python3 -c "import base64,os; key=base64.urlsafe_b64encode(os.urandom(32)).decode(); f=open('.env','x'); f.write('POMELO_ORBIT_JWT__SECRET_KEY='+key+'\n'); f.close()" && chmod 600 .env overwrite.env
 ```
 
@@ -106,7 +106,7 @@ services:
 
 确认当前目录是 `orbit-instance` 后执行：
 
-```sh
+```bash
 docker compose up -d
 docker compose ps
 docker compose logs --tail=100 orbit
@@ -148,8 +148,10 @@ docker compose logs --tail=100 orbit
 1. 在新的专用目录解压完整包，保留 `configs/`、`static/`、启动脚本及 `VERSION`，不能只取可执行文件。记录包版本和可信来源。
 2. 编辑包根目录的 `.env.release`，为新实例填写一次性生成并保留的 `POMELO_ORBIT_JWT__SECRET_KEY`；已有实例使用原密钥。可用前述 Python 的随机生成方法，将结果安全写入该字段，不覆盖整个模板。
 3. 首次试用将 `POMELO_ORBIT_SERVER__HOST` 改为 `127.0.0.1`，保留端口 `9023`，确认 Turnstile 关闭。包模板原本监听所有接口，不应原样用于公开首登。
-4. Windows PowerShell 运行 `./pomelo-orbit.cmd start`；Linux / macOS 运行 `./pomelo-orbit.sh start`。启动器会切换到包根目录并选择 `release` profile，读取 `.env.release`，不是 `.env`。如果另有 `overwrite.env`，先核对其最高优先级覆盖。
+4. 在包根目录的 Bash 终端运行 `bash ./pomelo-orbit.sh start`。Linux / macOS 需已安装 Bash；Windows 原生包需先准备 Git Bash，并确认能访问包目录和其中的 `.exe`。启动器会切换到包根目录并选择 `release` profile，读取 `.env.release`，不是 `.env`。如果另有 `overwrite.env`，先核对其最高优先级覆盖。
 5. 程序以前台方式运行，不自动安装系统服务；后续按你的进程管理方案管理生命周期。按前面的检查和首登步骤验收；需要本机部署时，另行准备程序执行用户可用的 Docker / Compose。
+
+在 WSL 中运行时使用与发行版匹配的 Linux 包及 Linux 路径，不把 Windows 包当作 Linux 程序，也不混用两侧的数据库、配置和 Docker 访问条件。
 
 直接运行二进制不会替你选择 `release` profile 或切换工作目录。不要将启动器的 `status` 当作业务健康检查，也不要在仍有任务运行时使用 `restart`：停止流程可能在等待后强制结束进程。
 

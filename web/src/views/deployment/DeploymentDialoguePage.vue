@@ -33,7 +33,8 @@
             :title="t('deploymentDialogue.toggleHistory')"
             @click="historyCollapsed = !historyCollapsed"
           >
-            <PanelLeftClose class="size-4" />
+            <PanelLeftClose v-if="!historyCollapsed" class="size-4" />
+            <PanelLeft v-else class="size-4" />
           </button>
           <AppTruncatedText
             :text="activeConversationTitle || t('deploymentDialogue.newConversation')"
@@ -58,22 +59,34 @@
         </div>
 
         <div ref="scrollContainer" class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-          <div class="mx-auto flex min-h-full w-full max-w-5xl flex-col gap-5">
-            <div v-if="messages.length === 0" class="flex flex-1 items-center justify-center">
+          <div class="mx-auto flex min-h-full w-full max-w-[78rem] flex-col gap-5">
+            <div
+              v-if="messages.length === 0"
+              class="flex flex-1 flex-col items-center justify-center gap-3 py-8 text-center"
+            >
+              <div
+                class="mb-1 flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+                aria-hidden="true"
+              >
+                <MessageSquareText class="size-6" />
+              </div>
+              <h1 class="text-base font-normal text-foreground">
+                {{ t('deploymentDialogue.emptyTitle') }}
+              </h1>
               <p class="text-sm text-muted-foreground">{{ t('deploymentDialogue.empty') }}</p>
             </div>
 
             <article
               v-for="(item, index) in messages"
               :key="`${item.role}-${index}`"
-              class="flex"
-              :class="item.role === 'user' ? 'justify-end' : 'justify-start'"
+              class="flex min-w-0 flex-col gap-1"
+              :class="item.role === 'user' ? 'items-end' : 'items-start'"
             >
               <div
-                class="min-w-0 max-w-[88%] break-words rounded-lg px-4 py-3 text-sm leading-6 sm:max-w-[76%]"
+                class="dialogue-message min-w-0 break-words rounded-xl px-4 py-3 text-sm leading-6 sm:px-5 sm:py-4"
                 :class="
                   item.role === 'user'
-                    ? 'border border-border bg-accent text-foreground'
+                    ? 'dialogue-message-user max-w-[88%] text-foreground sm:max-w-[76%]'
                     : messageClass(item)
                 "
               >
@@ -82,7 +95,7 @@
                 <details
                   v-for="(call, callIndex) in item.tool_calls || []"
                   :key="callIndex"
-                  class="mt-3 border-t border-border/70 pt-2 text-sm"
+                  class="dialogue-tool-call mt-3 border-t pt-2 text-sm"
                 >
                   <summary class="cursor-pointer text-sm text-muted-foreground">
                     {{ call.name }}
@@ -92,11 +105,15 @@
                     >{{ call.result_json }}</pre>
                 </details>
               </div>
+              <DeploymentDialogueMessageFooter
+                :content="item.content"
+                :created-at="item.created_at"
+              />
             </article>
 
             <div v-if="pending" class="flex justify-start">
               <div
-                class="min-w-0 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground"
+                class="dialogue-notice min-w-0 rounded-xl px-4 py-3 text-sm text-muted-foreground"
               >
                 <span class="processing-status" role="status">
                   {{ t('deploymentDialogue.thinking') }}
@@ -104,7 +121,7 @@
                 </span>
                 <ul
                   v-if="toolActivity.length > 0"
-                  class="mt-2 space-y-1 border-t border-border/70 pt-2 text-sm"
+                  class="dialogue-tool-call mt-2 space-y-1 border-t pt-2 text-sm"
                 >
                   <li
                     v-for="(activity, index) in toolActivity"
@@ -119,26 +136,31 @@
           </div>
         </div>
 
-        <form class="shrink-0 border-t border-border p-4 sm:px-6 sm:py-5" @submit.prevent="send">
-          <div class="mx-auto flex w-full max-w-5xl items-end gap-3">
+        <form class="shrink-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-5" @submit.prevent="send">
+          <div class="dialogue-composer mx-auto w-full max-w-[78rem] rounded-xl p-3">
             <AppTextarea
               v-model="draft"
-              class="min-h-16 flex-1 resize-none data-[disabled]:opacity-60"
+              class="dialogue-composer-input data-[disabled]:opacity-60"
               :placeholder="t('deploymentDialogue.placeholder')"
               :aria-label="t('deploymentDialogue.placeholder')"
+              :aria-describedby="composerHintId"
               :disabled="pending || historyLoading"
               rows="2"
               @keydown.enter.exact.prevent="send"
             />
-            <button
-              class="app-button-primary size-10 shrink-0 p-0"
-              type="submit"
-              :aria-label="t('deploymentDialogue.send')"
-              :title="t('deploymentDialogue.send')"
-              :disabled="pending || historyLoading || !draft.trim()"
-            >
-              <Send :size="17" aria-hidden="true" />
-            </button>
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <p :id="composerHintId" class="px-1 text-sm text-muted-foreground">
+                {{ t('deploymentDialogue.inputHint') }}
+              </p>
+              <button
+                class="app-button-primary ml-auto h-9 shrink-0 px-3"
+                type="submit"
+                :disabled="pending || historyLoading || !draft.trim()"
+              >
+                <Send class="size-4" aria-hidden="true" />
+                {{ t('deploymentDialogue.send') }}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -195,9 +217,9 @@
 <script setup lang="ts">
   import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { storeToRefs } from 'pinia';
-  import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
+  import { computed, nextTick, onUnmounted, ref, useId, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
-  import { PanelLeft, PanelLeftClose, Plus, Send, Trash2 } from '@lucide/vue';
+  import { MessageSquareText, PanelLeft, PanelLeftClose, Plus, Send, Trash2 } from '@lucide/vue';
   import { ToolbarRoot } from 'reka-ui';
   import { dialogueApi } from '@/api/dialogue/dialogue';
   import AppDialog from '@/components/ui/AppDialog.vue';
@@ -212,6 +234,7 @@
     DeploymentDialogueToolCall,
   } from '@/gen/proto/orbit/v1/dialogue/dialogue';
   import DeploymentDialogueHistory from '@/views/deployment/components/DeploymentDialogueHistory.vue';
+  import DeploymentDialogueMessageFooter from '@/views/deployment/components/DeploymentDialogueMessageFooter.vue';
   import { newDeploymentDialogueConversationId } from '@/views/deployment/deploymentDialogueConversationId';
   import {
     type DeploymentDialogueConversationMessage,
@@ -219,6 +242,7 @@
   } from '@/stores/deploymentDialogue';
   import { useProjectStore } from '@/stores/project';
   import { ApiError } from '@/utils/request';
+  import { nowUTC } from '@/utils/time';
 
   type ToolActivity = {
     name: string;
@@ -226,6 +250,7 @@
   };
 
   const { t } = useI18n();
+  const composerHintId = useId();
   const toast = useToast();
   const dialogueStore = useDeploymentDialogueStore();
   const projectStore = useProjectStore();
@@ -314,6 +339,7 @@
       messages.value = detail.messages.map((message) => ({
         role: message.role,
         content: message.content,
+        created_at: message.created_at,
       }));
       mobileHistoryOpen.value = false;
       await scrollToLatest();
@@ -379,7 +405,11 @@
     }
 
     const conversationId = activeConversationId.value || newConversationId();
-    const userMessage: DeploymentDialogueConversationMessage = { role: 'user', content };
+    const userMessage: DeploymentDialogueConversationMessage = {
+      role: 'user',
+      content,
+      created_at: nowUTC(),
+    };
     messages.value.push(userMessage);
     draft.value = '';
     pending.value = true;
@@ -406,6 +436,7 @@
             messages.value.push({
               role: 'assistant',
               content: event.message,
+              created_at: nowUTC(),
               tool_calls: completedToolCalls.value,
             });
             isComplete = true;
@@ -426,6 +457,7 @@
       messages.value.push({
         role: 'assistant',
         content: t('deploymentDialogue.interrupted', { message }),
+        created_at: nowUTC(),
         tool_calls: completedToolCalls.value,
         is_error: true,
       });
@@ -470,8 +502,8 @@
 
   function messageClass(message: DeploymentDialogueConversationMessage) {
     return message.is_error
-      ? 'border border-destructive/50 bg-destructive/10 text-destructive'
-      : 'border border-border bg-muted/50 text-foreground';
+      ? 'dialogue-message-error w-full text-destructive'
+      : 'dialogue-message-assistant w-full text-foreground';
   }
 
   function addToolActivity(toolCall: DeploymentDialogueStreamEvent['tool_call']) {
@@ -537,7 +569,74 @@
 </script>
 
 <style scoped>
+  .dialogue-message,
+  .dialogue-notice {
+    border: 1px solid var(--dialogue-border);
+    background: var(--dialogue-surface);
+  }
+
+  .dialogue-message-user {
+    border-color: var(--dialogue-accent-border);
+    background: var(--dialogue-accent-surface);
+  }
+
+  .dialogue-message-error {
+    border-color: color-mix(in srgb, hsl(var(--destructive)) 20%, hsl(var(--background)));
+    background: color-mix(in srgb, hsl(var(--destructive)) 5%, hsl(var(--background)));
+  }
+
+  .dialogue-notice {
+    border-color: var(--dialogue-accent-border);
+  }
+
+  .dialogue-tool-call {
+    border-color: var(--dialogue-border);
+  }
+
+  .dialogue-composer {
+    border: 1px solid var(--dialogue-border);
+    background: hsl(var(--background));
+    transition:
+      border-color 150ms,
+      outline-color 150ms;
+    outline: 2px solid transparent;
+    outline-offset: 1px;
+  }
+
+  .dialogue-composer:focus-within {
+    border-color: color-mix(in srgb, var(--workspace-brand) 55%, hsl(var(--border)));
+    outline-color: color-mix(in srgb, var(--workspace-brand) 12%, transparent);
+  }
+
+  .dialogue-composer-input {
+    min-height: 0;
+    resize: none;
+    border: 0;
+    background: transparent;
+    padding: 0.25rem;
+  }
+
+  .dialogue-composer-input:hover,
+  .dialogue-composer-input:focus-within {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .dialogue-composer-input :deep(.app-textarea-element) {
+    field-sizing: content;
+    height: auto;
+    min-height: 2.75rem;
+    max-height: min(12.375rem, 25dvh);
+    overflow-y: auto;
+  }
+
   .processing-status {
     display: inline-block;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dialogue-composer {
+      transition: none;
+    }
   }
 </style>

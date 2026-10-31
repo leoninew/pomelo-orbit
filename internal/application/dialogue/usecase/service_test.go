@@ -52,6 +52,9 @@ func TestCompleteTurnRunsMCPToolCallsUntilAssistantReply(t *testing.T) {
 	if len(persisted) != 2 || persisted[0].Role != "user" || persisted[0].Content != "列出应用" || persisted[1].Role != "assistant" || persisted[1].Content != result.Message {
 		t.Fatalf("persisted messages = %#v", persisted)
 	}
+	if persisted[0].CreatedAt.IsZero() || persisted[0].CreatedAt.After(llm.firstCompletionAt) || !persisted[1].CreatedAt.After(persisted[0].CreatedAt) {
+		t.Fatalf("message timestamps = %v, %v; model first called at %v", persisted[0].CreatedAt, persisted[1].CreatedAt, llm.firstCompletionAt)
+	}
 }
 
 func TestCompleteTurnDoesNotPersistWithoutFinalAssistantReply(t *testing.T) {
@@ -150,9 +153,14 @@ func TestCompleteTurnAppendsToExistingConversationAfterFinalAssistantReply(t *te
 
 func TestConversationHistoryCanBeReadAndDeleted(t *testing.T) {
 	store := newFakeDialogueStore()
+	sentAt := time.Date(2026, 10, 31, 2, 20, 0, 0, time.UTC)
+	repliedAt := sentAt.Add(45 * time.Second)
 	conversation := model.DeploymentDialogueConversation{Id: "conversation-1", ProjectId: "project-1", Title: "问题"}
 	store.conversations[conversation.Id] = conversation
-	store.messages[conversation.Id] = []model.DeploymentDialogueMessage{{Id: "message-1", ConversationId: conversation.Id, Role: "user", Content: "问题"}}
+	store.messages[conversation.Id] = []model.DeploymentDialogueMessage{
+		{Id: "message-1", ConversationId: conversation.Id, Role: "user", Content: "问题", CreatedAt: sentAt},
+		{Id: "message-2", ConversationId: conversation.Id, Role: "assistant", Content: "回答", CreatedAt: repliedAt},
+	}
 	service := New(fakeDialogueProject{}, store, fakeDialogueTransaction{}, 32, &fakeLLM{}, &fakeMCPFactory{})
 
 	items, err := service.ListConversations(context.Background(), "user-1", "project-1")
@@ -160,8 +168,11 @@ func TestConversationHistoryCanBeReadAndDeleted(t *testing.T) {
 		t.Fatalf("ListConversations() = %#v, %v", items, err)
 	}
 	detail, err := service.Conversation(context.Background(), "user-1", "project-1", conversation.Id)
-	if err != nil || len(detail.Messages) != 1 || detail.Messages[0].Content != "问题" {
+	if err != nil || len(detail.Messages) != 2 || detail.Messages[0].Content != "问题" || detail.Messages[1].Content != "回答" {
 		t.Fatalf("Conversation() = %#v, %v", detail, err)
+	}
+	if !detail.Messages[0].CreatedAt.Equal(sentAt) || !detail.Messages[1].CreatedAt.Equal(repliedAt) {
+		t.Fatalf("history timestamps = %v, %v", detail.Messages[0].CreatedAt, detail.Messages[1].CreatedAt)
 	}
 	if err := service.DeleteConversation(context.Background(), "user-1", "project-1", conversation.Id); err != nil {
 		t.Fatalf("DeleteConversation() error = %v", err)
@@ -302,14 +313,18 @@ func TestCompleteTurnStopsAfterConfiguredToolCallRounds(t *testing.T) {
 }
 
 type fakeLLM struct {
-	configured bool
-	requests   []port.CompletionRequest
-	responses  []port.CompletionResponse
+	configured        bool
+	requests          []port.CompletionRequest
+	responses         []port.CompletionResponse
+	firstCompletionAt time.Time
 }
 
 func (f *fakeLLM) IsConfigured() bool { return f.configured }
 
 func (f *fakeLLM) Complete(_ context.Context, request port.CompletionRequest) (port.CompletionResponse, error) {
+	if len(f.requests) == 0 {
+		f.firstCompletionAt = time.Now().UTC()
+	}
 	f.requests = append(f.requests, request)
 	if len(f.responses) == 0 {
 		return port.CompletionResponse{}, nil

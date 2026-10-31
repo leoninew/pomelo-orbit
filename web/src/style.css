@@ -108,8 +108,9 @@
   }
 
   .app-detail-card {
-    @apply min-w-0 px-4 pb-4 text-sm sm:px-5;
+    @apply min-w-0 border border-border px-4 pb-4 text-sm sm:px-5;
     background: color-mix(in srgb, hsl(var(--muted)) 65%, hsl(var(--background)));
+    border-color: color-mix(in srgb, hsl(var(--border)) 45%, hsl(var(--muted)));
   }
 
   .app-detail-subsection {

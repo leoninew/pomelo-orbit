@@ -63,7 +63,7 @@ func (s service) Conversation(ctx context.Context, userId, projectId, conversati
 	}
 	result := dialoguedto.ConversationDetail{Conversation: dialogueConversation(conversation), Messages: make([]dialoguedto.Message, 0, len(messages))}
 	for _, message := range messages {
-		result.Messages = append(result.Messages, dialoguedto.Message{Role: message.Role, Content: message.Content})
+		result.Messages = append(result.Messages, dialoguedto.Message{Role: message.Role, Content: message.Content, CreatedAt: message.CreatedAt})
 	}
 	return result, nil
 }
@@ -88,6 +88,7 @@ func (s service) DeleteConversation(ctx context.Context, userId, projectId, conv
 }
 
 func (s service) completeTurn(ctx context.Context, userId, projectId string, input dialoguedto.TurnInput, progress func(dialoguedto.StreamEvent)) (dialoguedto.TurnResult, error) {
+	userCreatedAt := time.Now().UTC()
 	if projectId == "" {
 		return dialoguedto.TurnResult{}, apperror.New(apperror.KindValidation, "project_id is required")
 	}
@@ -154,7 +155,7 @@ func (s service) completeTurn(ctx context.Context, userId, projectId string, inp
 				return partialTurnResult(result, apperror.New(apperror.KindUnavailable, "Deployment dialogue returned an empty response"))
 			}
 			result.Message = message
-			conversation, err = s.persistTurn(ctx, userId, projectId, conversation, input.Messages[len(input.Messages)-1].Content, message)
+			conversation, err = s.persistTurn(ctx, userId, projectId, conversation, input.Messages[len(input.Messages)-1].Content, message, userCreatedAt)
 			if err != nil {
 				return dialoguedto.TurnResult{}, err
 			}
@@ -199,7 +200,7 @@ func (s service) completeTurn(ctx context.Context, userId, projectId string, inp
 	return partialTurnResult(result, apperror.New(apperror.KindUnavailable, fmt.Sprintf("Deployment dialogue exceeded %d tool-call rounds", s.maxToolCallRounds)))
 }
 
-func (s service) persistTurn(ctx context.Context, userId, projectId string, conversation model.DeploymentDialogueConversation, userContent, assistantContent string) (model.DeploymentDialogueConversation, error) {
+func (s service) persistTurn(ctx context.Context, userId, projectId string, conversation model.DeploymentDialogueConversation, userContent, assistantContent string, userCreatedAt time.Time) (model.DeploymentDialogueConversation, error) {
 	now := time.Now().UTC()
 	isNewConversation := conversation.ProjectId == ""
 	userContent = strings.TrimSpace(userContent)
@@ -212,10 +213,10 @@ func (s service) persistTurn(ctx context.Context, userId, projectId string, conv
 		}
 		conversation = model.DeploymentDialogueConversation{
 			Id: conversation.Id, ProjectId: projectId, CreatedByUserId: userId,
-			Title: conversationTitle(userContent), CreatedAt: now, UpdatedAt: now.Add(time.Nanosecond),
+			Title: conversationTitle(userContent), CreatedAt: userCreatedAt, UpdatedAt: now.Add(time.Nanosecond),
 		}
 	}
-	userMessage := model.DeploymentDialogueMessage{Id: idutil.NewId(), ConversationId: conversation.Id, Role: "user", Content: userContent, CreatedAt: now}
+	userMessage := model.DeploymentDialogueMessage{Id: idutil.NewId(), ConversationId: conversation.Id, Role: "user", Content: userContent, CreatedAt: userCreatedAt}
 	assistantMessage := model.DeploymentDialogueMessage{Id: idutil.NewId(), ConversationId: conversation.Id, Role: "assistant", Content: assistantContent, CreatedAt: now.Add(time.Nanosecond)}
 	if err := s.transaction.RunInTransaction(ctx, func(txCtx context.Context) error {
 		if isNewConversation {

@@ -20,6 +20,7 @@ export interface DeploymentDialogueConversation {
 export interface DeploymentDialogueMessage {
   role: string;
   content: string;
+  created_at?: string | undefined;
 }
 
 export interface DeploymentDialogueTurnReq {

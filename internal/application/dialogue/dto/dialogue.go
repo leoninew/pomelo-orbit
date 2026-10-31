@@ -3,8 +3,9 @@ package dto
 import "time"
 
 type Message struct {
-	Role    string
-	Content string
+	Role      string
+	Content   string
+	CreatedAt time.Time
 }
 
 type TurnInput struct {

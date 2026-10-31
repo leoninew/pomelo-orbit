@@ -102,6 +102,7 @@ type DeploymentDialogueMessage struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
 	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	CreatedAt     *string                `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3,oneof" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -146,6 +147,13 @@ func (x *DeploymentDialogueMessage) GetRole() string {
 func (x *DeploymentDialogueMessage) GetContent() string {
 	if x != nil {
 		return x.Content
+	}
+	return ""
+}
+
+func (x *DeploymentDialogueMessage) GetCreatedAt() string {
+	if x != nil && x.CreatedAt != nil {
+		return *x.CreatedAt
 	}
 	return ""
 }
@@ -509,10 +517,13 @@ const file_orbit_v1_dialogue_dialogue_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x04 \x01(\tR\tcreatedAt\x12\x1d\n" +
 	"\n" +
-	"updated_at\x18\x05 \x01(\tR\tupdatedAt\"I\n" +
+	"updated_at\x18\x05 \x01(\tR\tupdatedAt\"|\n" +
 	"\x19DeploymentDialogueMessage\x12\x12\n" +
 	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"\xa7\x01\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\x12\"\n" +
+	"\n" +
+	"created_at\x18\x03 \x01(\tH\x00R\tcreatedAt\x88\x01\x01B\r\n" +
+	"\v_created_at\"\xa7\x01\n" +
 	"\x19DeploymentDialogueTurnReq\x12H\n" +
 	"\bmessages\x18\x02 \x03(\v2,.orbit.v1.dialogue.DeploymentDialogueMessageR\bmessages\x12,\n" +
 	"\x0fconversation_id\x18\x03 \x01(\tH\x00R\x0econversationId\x88\x01\x01B\x12\n" +
@@ -583,6 +594,7 @@ func file_orbit_v1_dialogue_dialogue_proto_init() {
 	if File_orbit_v1_dialogue_dialogue_proto != nil {
 		return
 	}
+	file_orbit_v1_dialogue_dialogue_proto_msgTypes[1].OneofWrappers = []any{}
 	file_orbit_v1_dialogue_dialogue_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

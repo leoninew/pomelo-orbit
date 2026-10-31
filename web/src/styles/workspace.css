@@ -78,19 +78,21 @@
   background: currentColor;
 }
 
-.dialogue-history-item[data-active] {
-  background: hsl(var(--muted));
+.dialogue-workspace,
+.dialogue-history {
+  --dialogue-surface: color-mix(in srgb, hsl(var(--muted)) 80%, hsl(var(--background)));
+  --dialogue-border: color-mix(in srgb, hsl(var(--border)) 65%, hsl(var(--background)));
+  --dialogue-accent-surface: color-mix(in srgb, var(--workspace-brand) 6%, hsl(var(--background)));
+  --dialogue-accent-border: color-mix(in srgb, var(--workspace-brand) 18%, hsl(var(--background)));
 }
 
-.dialogue-history-item[data-active]::before {
-  position: absolute;
-  top: 0.75rem;
-  bottom: 0.75rem;
-  left: 0;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--workspace-brand);
-  content: '';
+.dialogue-history-item:hover {
+  background: var(--dialogue-surface);
+}
+
+.dialogue-history-item[data-active],
+.dialogue-history-item[data-active]:hover {
+  background: var(--dialogue-accent-surface);
 }
 
 .pipeline-stage-node[data-selected] {

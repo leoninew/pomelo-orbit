@@ -190,5 +190,6 @@ func dialogueConversationResponse(conversation dialoguedto.Conversation) *dialog
 }
 
 func dialogueMessageResponse(message dialoguedto.Message) dialoguev1.DeploymentDialogueMessage {
-	return dialoguev1.DeploymentDialogueMessage{Role: message.Role, Content: message.Content}
+	createdAt := transport.FormatTime(message.CreatedAt)
+	return dialoguev1.DeploymentDialogueMessage{Role: message.Role, Content: message.Content, CreatedAt: &createdAt}
 }

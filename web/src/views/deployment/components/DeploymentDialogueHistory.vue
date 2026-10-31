@@ -1,6 +1,6 @@
 <template>
   <nav
-    class="flex h-full min-h-0 min-w-0 flex-1 flex-col"
+    class="dialogue-history flex h-full min-h-0 min-w-0 flex-1 flex-col"
     :aria-label="t('deploymentDialogue.history')"
   >
     <div
@@ -28,11 +28,11 @@
     >
       {{ t('deploymentDialogue.historyEmpty') }}
     </p>
-    <ol v-else class="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+    <ol v-else class="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
       <li
         v-for="conversation in conversations"
         :key="conversation.id"
-        class="dialogue-history-item relative flex min-w-0 items-center rounded transition-colors hover:bg-muted"
+        class="dialogue-history-item flex min-w-0 items-center rounded-lg transition-colors"
         :data-active="conversation.id === activeConversationId ? '' : undefined"
       >
         <button

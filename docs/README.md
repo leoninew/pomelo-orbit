@@ -4,9 +4,9 @@ Pomelo Orbit 管理 CI 流水线、Docker Compose 应用部署与 Traefik 网关
 
 [使用手册](handbook/index.md)面向平台使用者和实例维护者，提供项目配置、构建部署、网络入口及日常维护说明；在线入口为 [GitHub Pages](https://leoninew.github.io/pomelo-orbit/)。
 
-首次使用从[自托管安装](handbook/getting-started/installation.md)和[首个应用部署](handbook/getting-started/first-deployment.md)开始；实例维护参阅[数据保留与升级](handbook/operations/data-upgrades.md)及[故障定位](handbook/operations/troubleshooting.md)。安装和运行示例应先在隔离环境按正文检查，不直接作为生产配置。
+首次使用从[自托管运行](handbook/getting-started/installation.md)和[部署首个应用](handbook/getting-started/first-deployment.md)开始；实例维护参阅[备份与恢复](handbook/operations/backup.md)、[升级](handbook/operations/upgrade.md)及[故障定位](handbook/operations/troubleshooting.md)。
 
-本目录其余内容为工程资料。参与源码开发见[开发入门](development.md)，不需要先完成源码开发环境才能阅读使用手册。
+参与源码开发见[本地开发](handbook/getting-started/development.md)。本目录其余内容为工程资料。
 
 ## 核心模型
 

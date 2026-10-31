@@ -1,64 +1,76 @@
-# 自托管安装
+# 自托管运行
 
-本文提供单机试用的安装路径：在独立 Linux Docker 主机上运行 Pomelo Orbit，使用 SQLite 保存平台数据，先仅允许宿主机本地访问，再完成首次登录。业务容器与平台实例不是同一回事，安装后还需配置项目执行环境。
+使用发布镜像或程序包运行 Pomelo Orbit，无需克隆源码或安装 Git、Go、Node.js、Python。本文以 Linux Docker 主机为例，使用 SQLite 保存平台数据，通过回环端口完成首次登录；程序包安装见[使用程序包](#使用程序包)。
 
-本手册跟随 `develop` 分支。安装前记录所用提交或发布版本；不要把本文视为任意历史版本的安装保证，也不要直接用于已有生产数据库。
+```mermaid
+flowchart TD
+  accTitle: 单机 Docker 安装结构
+  accDescr: 浏览器访问 Orbit 容器，平台挂载持久化数据，并通过宿主机 Docker socket 管理业务容器。
+  B[浏览器或安全端口转发] -->|127.0.0.1:9023| O[Orbit 容器]
+  O -->|挂载| D[平台数据、配置和日志]
+  O -->|Docker socket| H[宿主机 Docker]
+  H --> C[后续部署的业务容器]
+```
 
-## 选择安装来源
+## 选择安装方式
 
-- **已有可信发布包：** 可使用与目标系统匹配的完整包，见本文末尾“使用已取得的程序包”。包应来自项目维护者的可信交付渠道。
-- **没有可用发布包：** 使用下方源码构建镜像路径。构建过程在 Docker 内完成，不要求在宿主机搭建 Go、Node 或前端开发环境。
-- [GitHub Releases](https://github.com/leoninew/pomelo-orbit/releases)是发布资产入口；没有对应版本的资产时，不要把 GitHub 自动提供的源码压缩包当作运行包。镜像仓库中是否存在某标签、是否允许拉取，需另行确认，不能仅凭仓库名称推断。
+| 方式 | 获取的产物 |
+| --- | --- |
+| Docker 安装 | `ghcr.io/leoninew/pomelo-orbit` 发布镜像，或 Release 中对应架构的镜像归档 |
+| 程序包安装 | Release 中与操作系统匹配的完整 ZIP 包 |
 
-本文主路径不依赖预构建公共镜像。构建失败时保留所用提交和脱敏错误，先解决构建问题，不换成来源不明的镜像。
+从 [GitHub Releases](https://github.com/leoninew/pomelo-orbit/releases)选择已发布版本。源码压缩包用于开发，不是运行包；需要修改源码或自行构建镜像时，见[本地开发](./development.md)。
 
 ## 安装前准备
 
-- 一台隔离的 Linux 主机，已安装可用的 Bash、Docker Engine、`docker compose`、Git 和 Python 3；以下终端命令均在 Bash 中执行，执行用户有 Docker 权限以及安装目录的读写权限。
-- 能访问源码仓库、Dockerfile 所需基础镜像和构建依赖源。为镜像、日志、构建文件和业务数据预留磁盘空间。
+- 一台 Linux 主机，已安装 Docker Engine 和 `docker compose`；以下终端命令使用 Bash，执行用户有 Docker 权限以及安装目录的读写权限。
+- 能拉取发布镜像，或已取得对应架构的离线镜像归档；为镜像、日志和业务数据预留磁盘空间。
 - 宿主机 `9023` 端口未被占用。下面只绑定 `127.0.0.1`；首次改密前不要公开入口。
-- 一个**新的、无现有数据**的安装目录。已有实例应先阅读[数据保留与升级](../operations/data-upgrades.md)，不要套用首次安装步骤重建密钥或覆盖配置。
+- 一个**新的、无现有数据**的安装目录。已有实例应先完成[备份](../operations/backup.md)，再按[升级](../operations/upgrade.md)操作。
 
 此路径把宿主机 Docker socket 交给 Orbit，意味着平台及有执行权限的用户能控制该 Docker 主机，接近宿主机管理员权限。不要将它当作不可信租户的安全沙盒；不要通过公开 Docker TCP 端口解决连接问题。
 
-## 1. 获取源码并构建安装镜像
+## 1. 获取运行镜像
 
-在选定的源码父目录执行：
+将下方的 `vX.Y.Z` 替换为所选 Release 的版本标签，拉取镜像：
 
 ```bash
-git clone --branch develop --single-branch https://github.com/leoninew/pomelo-orbit.git
-cd pomelo-orbit
-git rev-parse HEAD
-docker build -t pomelo-orbit:local .
+docker pull ghcr.io/leoninew/pomelo-orbit:vX.Y.Z
 ```
 
-记录输出的提交编号和本地镜像 ID。`develop` 会变化；以后升级应使用独立版本标签并保留旧镜像，不把重复使用 `local` 标签当成版本记录。这里的构建只产生镜像，不安装数据库或启动实例。
+离线安装时，从同一 Release 下载 `linux-amd64` 或 `linux-arm64` 镜像归档并传到宿主机。例如 amd64 主机执行：
+
+```bash
+docker load --input pomelo-orbit-vX.Y.Z-linux-amd64.tar.gz
+```
+
+在线拉取和离线导入任选一种。Compose 使用同一个版本标签，后续升级保留旧镜像。
 
 ## 2. 准备运行目录和稳定密钥
 
-离开源码目录，在自己选定的安装父目录创建新的 `orbit-instance`。以下命令中的 `mkdir` 若提示目录已存在，先停止并确认是否为已有实例，不覆盖其中的文件：
+在选定的安装父目录创建新的 `orbit-instance`。以下命令中的 `mkdir` 若提示目录已存在，先确认是否为已有实例，不覆盖其中的文件：
 
 ```bash
 umask 077
-mkdir orbit-instance && cd orbit-instance && mkdir data logs && touch overwrite.env
+mkdir orbit-instance && cd orbit-instance && mkdir data logs && touch .env overwrite.env
 ```
 
-在这个目录创建 `.env`，仅包含本次新实例所需的启动秘密。下面命令会以独占创建方式写文件，已有 `.env` 时会拒绝；不输出密钥：
+在 `.env` 中填写实例主密钥，将占位值替换为按[密钥管理](../operations/secrets.md#实例主密钥)生成的 Fernet 密钥：
 
-```bash
-python3 -c "import base64,os; key=base64.urlsafe_b64encode(os.urandom(32)).decode(); f=open('.env','x'); f.write('POMELO_ORBIT_JWT__SECRET_KEY='+key+'\n'); f.close()" && chmod 600 .env overwrite.env
+```dotenv
+POMELO_ORBIT_JWT__SECRET_KEY=replace-with-generated-fernet-key
 ```
 
-只在全新实例生成一次，并安全备份 `.env`。这把密钥不仅签名登录令牌，还用于解密平台保存的凭据；后续重启、容器重建、恢复数据库时必须使用匹配的原密钥，不要重新运行生成步骤。不要把运行目录加入 Git 或分享其内容。
+安全备份 `.env`。这把密钥用于签名登录令牌和解密平台凭据；后续重启、容器重建、恢复数据库时使用原值。
 
 ## 3. 创建 Compose 配置
 
-在 `orbit-instance` 中创建 `compose.yaml`：
+在 `orbit-instance` 中创建 `compose.yaml`，将镜像标签替换为第 1 步选择的版本：
 
 ```yaml
 services:
   orbit:
-    image: pomelo-orbit:local
+    image: ghcr.io/leoninew/pomelo-orbit:vX.Y.Z
     restart: unless-stopped
     ports:
       - "127.0.0.1:9023:80"
@@ -98,7 +110,7 @@ services:
 
 不设置自定义 `hostname`，也不把本机 Docker socket 换成另一台主机的 Docker daemon：容器运行时需要查询自身挂载来映射路径。平台工作区和部署日志目录必须落在可映射的挂载内；项目初始化时也应使用 `/app/data/` 下独立目录，而不是容器内未挂载的家目录。
 
-`overwrite.env` 的优先级高于 Compose 注入的环境。空文件适用于首次安装；以后修改 Compose 环境不能保证覆盖已保存的系统设置，详见[配置与密钥](../operations/configuration.md)。
+`overwrite.env` 的优先级高于 Compose 注入的环境。空文件适用于首次安装；以后修改 Compose 环境不能保证覆盖已保存的系统设置，详见[系统配置](../operations/configuration.md)。
 
 此示例关闭 Turnstile，仅用于回环入口的隔离试用；没有配置 LLM、Google 登录或公网 TLS。不要把试用配置直接改成公网监听来交付生产服务。
 
@@ -112,7 +124,7 @@ docker compose ps
 docker compose logs --tail=100 orbit
 ```
 
-`serve` 默认同时启动 Web 和后台 Worker，启动时会自动执行数据库迁移。**首次启动不是只读检查**；不要为了“看看能否启动”把新版本指向生产数据库，也不需要为这个单进程试用另外启动 Worker。
+`serve` 默认同时启动 Web 和后台 Worker，启动时自动执行数据库迁移。本例不另启 Worker，已有数据库的升级按[升级](../operations/upgrade.md)操作。
 
 按以下顺序检查：
 
@@ -120,8 +132,6 @@ docker compose logs --tail=100 orbit
 2. 从 Docker 宿主机浏览器访问 `http://127.0.0.1:9023/`，能够加载登录页面及静态资源。
 3. 在其他电脑访问时，通过你已有的安全管理通道转发宿主机回环端口；其他电脑的 `127.0.0.1` 不是服务器，不要为首登临时开放公网管理入口。
 4. 完成下一节登录和改密，退出后用新密码重新登录。
-
-页面可打开只证明 Web 入口可用；Docker 业务执行、镜像拉取、项目环境、网关与业务访问仍需分别检查。
 
 ## 5. 首次登录并立即改密
 
@@ -137,18 +147,18 @@ docker compose logs --tail=100 orbit
 1. 在尚未公开的入口登录，注意登录字段是邮箱，不是 `admin` 用户名。
 2. 打开顶部用户菜单，选择“修改密码”，填写旧密码和新的独立强密码并保存。
 3. 退出并使用新密码重新登录，保留可恢复的管理员访问方式。
-4. 需要多人使用时，创建各自账号、分配所需角色并加入项目，不共享初始管理员。详见[用户、权限与访问令牌](../guides/users-access.md)。
+4. 需要多人使用时，[创建账号](../guides/users.md)、[分配角色](../guides/roles.md)并[加入项目](../guides/projects.md)，不共享初始管理员。
 
 登录失败时先核对所用版本、迁移是否完成和数据库路径。不要删除数据库重新试密码，也不要修改已执行的迁移或直接覆盖用户密码哈希。
 
-## 使用已取得的程序包
+## 使用程序包
 
-程序包是另一种入口，不需要与 Docker 主路径同时运行。当前打包形式为 Windows / Linux / macOS 的 x64 ZIP；镜像的架构支持不能推断为原生程序包也支持 ARM。
+从 Release 获取 Windows / Linux / macOS 的 x64 ZIP。程序包已包含编译后的前后端；镜像的 ARM 支持不代表原生程序包也支持 ARM。
 
 1. 在新的专用目录解压完整包，保留 `configs/`、`static/`、启动脚本及 `VERSION`，不能只取可执行文件。记录包版本和可信来源。
-2. 编辑包根目录的 `.env.release`，为新实例填写一次性生成并保留的 `POMELO_ORBIT_JWT__SECRET_KEY`；已有实例使用原密钥。可用前述 Python 的随机生成方法，将结果安全写入该字段，不覆盖整个模板。
+2. 编辑包根目录的 `.env.release`，为新实例填写按[密钥管理](../operations/secrets.md#实例主密钥)生成的 `POMELO_ORBIT_JWT__SECRET_KEY`；已有实例使用原密钥，保留模板的其他配置。
 3. 首次试用将 `POMELO_ORBIT_SERVER__HOST` 改为 `127.0.0.1`，保留端口 `9023`，确认 Turnstile 关闭。包模板原本监听所有接口，不应原样用于公开首登。
-4. 在包根目录的 Bash 终端运行 `bash ./pomelo-orbit.sh start`。Linux / macOS 需已安装 Bash；Windows 原生包需先准备 Git Bash，并确认能访问包目录和其中的 `.exe`。启动器会切换到包根目录并选择 `release` profile，读取 `.env.release`，不是 `.env`。如果另有 `overwrite.env`，先核对其最高优先级覆盖。
+4. Linux / macOS 在包根目录执行 `bash ./pomelo-orbit.sh start`；Windows 运行包内的 `pomelo-orbit.cmd`。启动器会切换到包根目录并选择 `release` profile，读取 `.env.release`。如果另有 `overwrite.env`，先核对其最高优先级覆盖。
 5. 程序以前台方式运行，不自动安装系统服务；后续按你的进程管理方案管理生命周期。按前面的检查和首登步骤验收；需要本机部署时，另行准备程序执行用户可用的 Docker / Compose。
 
 在 WSL 中运行时使用与发行版匹配的 Linux 包及 Linux 路径，不把 Windows 包当作 Linux 程序，也不混用两侧的数据库、配置和 Docker 访问条件。
@@ -166,4 +176,4 @@ docker compose logs --tail=100 orbit
 | 端口已占用 | 先检查占用者，选择空闲宿主机端口并相应调整访问地址，不停止未知服务 |
 | 迁移失败或 dirty 状态 | 保留日志与数据，由维护者核对版本和恢复方案，不手工跳过迁移或清除版本标记 |
 
-安装完成后进入[首个应用部署](./first-deployment.md)；进一步排障见[故障定位](../operations/troubleshooting.md)。
+安装完成后进入[部署首个应用](./first-deployment.md)；进一步排障见[故障定位](../operations/troubleshooting.md)。

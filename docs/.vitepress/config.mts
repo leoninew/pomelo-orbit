@@ -6,6 +6,17 @@ export default defineConfig({
   lang: 'zh-CN',
   title: 'Pomelo Orbit',
   description: 'Pomelo Orbit 使用手册：项目配置、构建部署、网络入口与实例维护',
+  markdown: {
+    config(md) {
+      const fence = md.renderer.rules.fence!;
+      md.renderer.rules.fence = (tokens, index, options, env, self) => {
+        if (tokens[index].info.trim() === 'mermaid') {
+          return `<MermaidDiagram source="${encodeURIComponent(tokens[index].content)}" />`;
+        }
+        return fence(tokens, index, options, env, self);
+      };
+    },
+  },
   themeConfig: {
     nav: [
       { text: '首页', link: '/' },

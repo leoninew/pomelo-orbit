@@ -30,3 +30,25 @@
 .VPSkipLink {
   font-size: 14px;
 }
+
+.mermaid-diagram {
+  margin: 24px 0;
+  padding: 20px 16px;
+  overflow-x: auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+}
+
+.mermaid-diagram svg {
+  display: block;
+  min-width: 360px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.mermaid-diagram p {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  font-size: 14px;
+}

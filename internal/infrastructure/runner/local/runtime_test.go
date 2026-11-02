@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -121,6 +122,53 @@ func TestRuntimeSyncFilesReplacesSnapshotAndRemovesStagedFiles(t *testing.T) {
 	entries, err := os.ReadDir(directory)
 	if err != nil || len(entries) != 1 || entries[0].Name() != "routes.yaml" {
 		t.Fatalf("snapshot directory = %+v, error = %v", entries, err)
+	}
+}
+
+func TestWorkspaceFilePreserveAndExplicitZeroMode(t *testing.T) {
+	root := t.TempDir()
+	writer := NewRuntime(nil)
+	filePath := filepath.Join(root, "config")
+	if err := writer.writeFile(context.Background(), root, deploymentport.WorkspaceFile{Path: filePath, Content: []byte("initial"), Mode: 0o600, IgnoreIfExists: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filePath, []byte("application state"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(filePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.writeFile(context.Background(), root, deploymentport.WorkspaceFile{Path: filePath, Content: []byte("ignored"), Mode: 0o644, IgnoreIfExists: true}); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filePath)
+	if err != nil || string(content) != "application state" {
+		t.Fatalf("preserved file = %q, error = %v", content, err)
+	}
+	preserved, err := os.Stat(filePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(before, preserved) || before.Mode() != preserved.Mode() || !before.ModTime().Equal(preserved.ModTime()) {
+		t.Fatalf("existing file changed: before=%v, after=%v", before, preserved)
+	}
+	if err := writer.writeFile(context.Background(), root, deploymentport.WorkspaceFile{Path: filePath, Content: []byte("replaced"), Mode: 0}); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0 {
+		t.Fatalf("mode = %04o, want 0000", info.Mode().Perm())
+	}
+	if err := os.Chmod(filePath, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	content, err = os.ReadFile(filePath)
+	if err != nil || string(content) != "replaced" {
+		t.Fatalf("replaced file = %q, error = %v", content, err)
 	}
 }
 

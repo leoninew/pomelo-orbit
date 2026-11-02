@@ -138,3 +138,24 @@ func TestServiceComponentMountOverlayMapsHostPathMode(t *testing.T) {
 		t.Fatalf("mount response lost host path mode: %#v", response.Mounts)
 	}
 }
+
+func TestServiceComponentMountOverlayMapsEmptyAndFalse(t *testing.T) {
+	empty := ""
+	disabled := false
+	input := serviceComponentOverlayInput(&servicev1.ServiceComponentOverlayUpdateReq{Mounts: []*servicev1.ServiceComponentMountOverlay{
+		{Target: "/file", Content: &empty, IgnoreIfExists: &disabled, State: "override"},
+		{Target: "/directory", ReadOnly: &disabled, State: "override"},
+	}})
+	response := serviceComponentResponse(model.ServiceComponent{Mounts: input.Mounts})
+	item := response.Mounts[0]
+	if item.Content == nil || *item.Content != "" || item.IgnoreIfExists == nil || *item.IgnoreIfExists || item.ReadOnly != nil || item.Mode != nil {
+		t.Fatalf("mount presence lost: %#v", item)
+	}
+	if response.Mounts[1].ReadOnly == nil || *response.Mounts[1].ReadOnly {
+		t.Fatalf("directory read-only presence lost: %#v", response.Mounts[1])
+	}
+	declaration := componentDeclarationResponse(model.VersionComponent{Mounts: []model.VersionComponentMount{{Content: "version", Mode: "0644", IgnoreIfExists: true}}})
+	if declaration.Mounts[0].Content != "version" || declaration.Mounts[0].Mode != "0644" || !declaration.Mounts[0].IgnoreIfExists {
+		t.Fatalf("declared mount = %#v", declaration.Mounts[0])
+	}
+}

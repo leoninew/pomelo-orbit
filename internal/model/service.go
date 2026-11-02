@@ -65,6 +65,10 @@ type ServiceComponentMount struct {
 	Target           string
 	Source           *string
 	SourceIsHostPath *bool
+	Content          *string
+	Mode             *string
+	IgnoreIfExists   *bool
+	ReadOnly         *bool
 	State            ServiceComponentOverlayState
 }
 

@@ -153,17 +153,12 @@ func MergeServiceComponent(declaration model.VersionComponent, overlay model.Ser
 			result.Mounts = append(result.Mounts, item)
 			continue
 		}
-		switch merged.State {
-		case model.ServiceComponentOverlayOverride:
-			if merged.Source == nil || merged.SourceIsHostPath == nil {
-				return result, fmt.Errorf("component %s mount overlay %s is incomplete", declaration.Name, item.Target)
-			}
-			item.Source = *merged.Source
-			item.SourceIsHostPath = *merged.SourceIsHostPath
-			result.Mounts = append(result.Mounts, item)
-		case model.ServiceComponentOverlayDeleted:
-		default:
-			return result, fmt.Errorf("component %s mount overlay %s has invalid state", declaration.Name, item.Target)
+		effective, err := model.MergeServiceComponentMount(item, merged)
+		if err != nil {
+			return result, fmt.Errorf("component %s mount overlay %s: %w", declaration.Name, item.Target, err)
+		}
+		if effective != nil {
+			result.Mounts = append(result.Mounts, *effective)
 		}
 		delete(mountOverlay, item.Target)
 	}

@@ -133,6 +133,9 @@ export interface ServiceComponentDeclaredMount {
   read_only: boolean;
   source_is_host_path: boolean;
   shared: boolean;
+  content: string;
+  mode: string;
+  ignore_if_exists: boolean;
 }
 
 export interface ServiceComponentDeclaredResources {
@@ -181,6 +184,10 @@ export interface ServiceComponentMountOverlay {
   state: string;
   target: string;
   source_is_host_path?: boolean | undefined;
+  content?: string | undefined;
+  mode?: string | undefined;
+  ignore_if_exists?: boolean | undefined;
+  read_only?: boolean | undefined;
 }
 
 export interface ServiceComponentResourceOverlay {

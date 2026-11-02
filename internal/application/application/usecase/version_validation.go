@@ -212,6 +212,9 @@ func validateComponentMount(mount model.VersionComponentMount) error {
 			return fmt.Errorf("named_volume does not support file source options")
 		}
 	case "controlled_file":
+		if mount.ReadOnly {
+			return fmt.Errorf("controlled_file does not support read_only")
+		}
 		if mount.SourceIsHostPath {
 			return fmt.Errorf("controlled_file source_is_host_path must be false")
 		}

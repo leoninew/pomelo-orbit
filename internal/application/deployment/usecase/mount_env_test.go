@@ -70,6 +70,13 @@ func TestResolveMountSpecsDoesNotMaterializePlainFile(t *testing.T) {
 	}
 }
 
+func TestControlledFileRejectsReadOnly(t *testing.T) {
+	mount := MountSpec{SourceType: mountSourceControlledFile, Source: "./config", Target: "/config", Mode: "0644", ReadOnly: true}
+	if err := validateMountSpec(mount); err == nil {
+		t.Fatal("controlled file must not accept read_only")
+	}
+}
+
 func TestResolveMountSpecsRejectsBarePathForNonVolumeMounts(t *testing.T) {
 	tests := []MountSpec{
 		{SourceType: mountSourceDirectory, Source: "data", Target: "/var/lib/app"},

@@ -557,28 +557,10 @@ func normalizeOverlay(component *model.ServiceComponent, declaration model.Versi
 			return fmt.Errorf("duplicate mount overlay %s", item.Target)
 		}
 		seenMount[item.Target] = struct{}{}
-		switch item.State {
-		case model.ServiceComponentOverlayDeleted:
-			if item.Source != nil || item.SourceIsHostPath != nil {
-				return fmt.Errorf("mount %s is deleted and cannot have source settings", item.Target)
-			}
-			mounts = append(mounts, item)
-		case model.ServiceComponentOverlayOverride:
-			if item.Source == nil || item.SourceIsHostPath == nil {
-				return fmt.Errorf("mount %s requires source and source_is_host_path", item.Target)
-			}
-			if err := model.ValidateMountSource(declarationMount.SourceType, *item.Source, *item.SourceIsHostPath); err != nil {
-				return fmt.Errorf("component %s mount %s: %w", declaration.Name, item.Target, err)
-			}
-			if err := model.ValidateSharedMount(declarationMount.SourceType, *item.Source, declarationMount.Shared); err != nil {
-				return fmt.Errorf("component %s mount %s: %w", declaration.Name, item.Target, err)
-			}
-			if *item.Source != declarationMount.Source || *item.SourceIsHostPath != declarationMount.SourceIsHostPath {
-				mounts = append(mounts, item)
-			}
-		default:
-			return fmt.Errorf("mount has invalid overlay state")
+		if _, err := model.MergeServiceComponentMount(declarationMount, item); err != nil {
+			return fmt.Errorf("component %s mount %s: %w", declaration.Name, item.Target, err)
 		}
+		mounts = append(mounts, item)
 	}
 	component.Mounts = mounts
 	if component.Resources != nil {

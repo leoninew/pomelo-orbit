@@ -82,6 +82,7 @@ type ApplicationService interface {
 type ServiceService interface {
 	ListServicesByApplication(context.Context, string, string, string) ([]model.Service, error)
 	GetService(context.Context, string, string, string) (servicedto.ServiceView, error)
+	GetServiceComponent(context.Context, string, string, string, string) (servicedto.ServiceComponentDetail, error)
 	CreateService(context.Context, string, string, servicedto.ServiceCreateInput) (servicedto.ServiceView, error)
 	UpdateServiceComponentOverlay(context.Context, string, string, string, string, servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error)
 	UpdateServiceEnv(context.Context, string, string, string, servicedto.ServiceEnvUpdateInput) (servicedto.ServiceView, error)

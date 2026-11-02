@@ -121,6 +121,9 @@ message ServiceComponentDeclaredMount {
   bool read_only = 4;
   bool source_is_host_path = 5;
   bool shared = 6;
+  string content = 7;
+  string mode = 8;
+  bool ignore_if_exists = 9;
 }
 
 message ServiceComponentDeclaredResources {
@@ -169,6 +172,10 @@ message ServiceComponentMountOverlay {
   string state = 3;
   string target = 4;
   optional bool source_is_host_path = 5;
+  optional string content = 6;
+  optional string mode = 7;
+  optional bool ignore_if_exists = 8;
+  optional bool read_only = 9;
 }
 
 message ServiceComponentResourceOverlay {

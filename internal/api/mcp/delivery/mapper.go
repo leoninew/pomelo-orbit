@@ -137,7 +137,7 @@ func serviceOverlayInput(input *servicev1.ServiceComponentOverlayUpdateReq) serv
 		if value == nil {
 			continue
 		}
-		result.Mounts = append(result.Mounts, model.ServiceComponentMount{Target: value.Target, Source: value.Source, SourceIsHostPath: value.SourceIsHostPath, State: model.ServiceComponentOverlayState(value.State)})
+		result.Mounts = append(result.Mounts, model.ServiceComponentMount{Target: value.Target, Source: value.Source, SourceIsHostPath: value.SourceIsHostPath, Content: value.Content, Mode: value.Mode, IgnoreIfExists: value.IgnoreIfExists, ReadOnly: value.ReadOnly, State: model.ServiceComponentOverlayState(value.State)})
 	}
 	for _, value := range input.Endpoints {
 		if value == nil {
@@ -292,7 +292,7 @@ func componentOutput(value model.VersionComponent) map[string]any {
 	for _, item := range value.Devices {
 		devices = append(devices, map[string]any{"driver": item.Driver, "count": item.Count, "capabilities": item.Capabilities})
 	}
-	result := map[string]any{"id": value.Id, "version_id": value.VersionId, "name": value.Name, "image": value.Image, "command": commandline.Format(value.Command), "env": env, "endpoints": endpoints, "mounts": mounts, "dependencies": dependencies, "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "user": value.User, "group_add": value.GroupAdd, "tmpfs": tmpfs, "ulimits": ulimits, "devices": devices, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
+	result := map[string]any{"id": value.Id, "version_id": value.VersionId, "name": value.Name, "image": value.Image, "entrypoint": commandline.Format(value.Entrypoint), "command": commandline.Format(value.Command), "env": env, "endpoints": endpoints, "mounts": mounts, "dependencies": dependencies, "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "user": value.User, "group_add": value.GroupAdd, "tmpfs": tmpfs, "ulimits": ulimits, "devices": devices, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 	if value.Healthcheck != nil {
 		result["healthcheck"] = healthcheckOutput(*value.Healthcheck)
 	}
@@ -330,7 +330,23 @@ func serviceOutput(value servicedto.ServiceView) map[string]any {
 }
 
 func serviceComponentOutput(value model.ServiceComponent) map[string]any {
-	return map[string]any{"id": value.Id, "service_id": value.ServiceId, "source_version_component_id": value.SourceVersionComponentId, "component_name": value.ComponentName, "entrypoint": optionalCommandOutput(value.Entrypoint), "command": optionalCommandOutput(value.Command), "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "user": value.User, "group_add": serviceGroupAddOutput(value.GroupAdd), "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
+	env := make([]map[string]any, 0, len(value.Env))
+	for _, item := range value.Env {
+		env = append(env, map[string]any{"key": item.Key, "value": item.Value, "state": item.State})
+	}
+	mounts := make([]map[string]any, 0, len(value.Mounts))
+	for _, item := range value.Mounts {
+		mounts = append(mounts, map[string]any{"target": item.Target, "source": item.Source, "source_is_host_path": item.SourceIsHostPath, "content": item.Content, "mode": item.Mode, "ignore_if_exists": item.IgnoreIfExists, "read_only": item.ReadOnly, "state": item.State})
+	}
+	endpoints := make([]map[string]any, 0, len(value.Endpoints))
+	for _, item := range value.Endpoints {
+		endpoints = append(endpoints, map[string]any{"protocol": item.Protocol, "container_port": item.ContainerPort, "mode": item.Mode, "bind_address": item.BindAddress, "listen_port": item.ListenPort, "entrypoint": item.Entrypoint, "path_prefix": item.PathPrefix, "state": item.State})
+	}
+	var resources any
+	if item := value.Resources; item != nil {
+		resources = map[string]any{"limit_cpus": item.LimitCPUs, "limit_memory": item.LimitMemory, "reservation_cpus": item.ReservationCPUs, "reservation_memory": item.ReservationMemory, "state": item.State}
+	}
+	return map[string]any{"id": value.Id, "service_id": value.ServiceId, "source_version_component_id": value.SourceVersionComponentId, "component_name": value.ComponentName, "entrypoint": optionalCommandOutput(value.Entrypoint), "command": optionalCommandOutput(value.Command), "pull_policy": value.PullPolicy, "restart_policy": value.RestartPolicy, "user": value.User, "group_add": serviceGroupAddOutput(value.GroupAdd), "env": env, "mounts": mounts, "resources": resources, "endpoints": endpoints, "status": value.Status, "created_at": formatTime(value.CreatedAt), "updated_at": formatTime(value.UpdatedAt)}
 }
 
 func optionalCommandOutput(value []string) any {

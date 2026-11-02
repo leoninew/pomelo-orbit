@@ -565,6 +565,10 @@ CREATE TABLE IF NOT EXISTS service_component_mount (
     target TEXT NOT NULL,
     source TEXT,
     source_is_host_path BIGINT,
+    content TEXT,
+    mode TEXT,
+    ignore_if_exists BIGINT,
+    read_only BIGINT,
     state TEXT NOT NULL CHECK (state IN ('override', 'deleted')),
     FOREIGN KEY (service_component_id) REFERENCES service_component(id) ON DELETE CASCADE
 );

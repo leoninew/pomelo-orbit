@@ -36,7 +36,7 @@ func TestSelectGatewayVersionForDeploymentUsesRequiredCoordinator(t *testing.T) 
 	}
 }
 
-func TestGatewayDeploymentOverwritesStaticConfigAndRecreatesContainer(t *testing.T) {
+func TestGatewayDeploymentPreservesFilePolicyWhenRecreatingContainer(t *testing.T) {
 	for _, gateway := range []bool{true, false} {
 		t.Run(map[bool]string{true: "gateway", false: "ordinary-service"}[gateway], func(t *testing.T) {
 			workspace := &gatewayDeploymentRuntimeFake{workspaceFake: testWorkspace(t.TempDir())}
@@ -69,10 +69,13 @@ func TestGatewayDeploymentOverwritesStaticConfigAndRecreatesContainer(t *testing
 				t.Fatalf("staged workspace = %+v", workspace.staged)
 			}
 			file := workspace.staged[0].Files[0]
-			if gateway && (file.IgnoreIfExists || strings.Contains(string(file.Content), "rest:") || !strings.Contains(string(file.Content), "watch: true")) {
+			if !file.IgnoreIfExists {
+				t.Fatal("deployment lost the preserve policy")
+			}
+			if gateway && (strings.Contains(string(file.Content), "rest:") || !strings.Contains(string(file.Content), "watch: true")) {
 				t.Fatalf("staged Gateway config = %s, ignore_if_exists=%v", file.Content, file.IgnoreIfExists)
 			}
-			if !gateway && (!file.IgnoreIfExists || !strings.Contains(string(file.Content), "rest:")) {
+			if !gateway && !strings.Contains(string(file.Content), "rest:") {
 				t.Fatal("ordinary Service configuration was overwritten")
 			}
 		})

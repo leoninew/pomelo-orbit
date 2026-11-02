@@ -113,7 +113,7 @@ func applyGatewayPlan(plan *model.EffectiveServicePlan) error {
 	if err != nil {
 		return err
 	}
-	file.Content, file.IgnoreIfExists = patched, false
+	file.Content = patched
 	return nil
 }
 

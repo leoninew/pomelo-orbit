@@ -1001,6 +1001,9 @@ type ServiceComponentDeclaredMount struct {
 	ReadOnly         bool                   `protobuf:"varint,4,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
 	SourceIsHostPath bool                   `protobuf:"varint,5,opt,name=source_is_host_path,json=sourceIsHostPath,proto3" json:"source_is_host_path,omitempty"`
 	Shared           bool                   `protobuf:"varint,6,opt,name=shared,proto3" json:"shared,omitempty"`
+	Content          string                 `protobuf:"bytes,7,opt,name=content,proto3" json:"content,omitempty"`
+	Mode             string                 `protobuf:"bytes,8,opt,name=mode,proto3" json:"mode,omitempty"`
+	IgnoreIfExists   bool                   `protobuf:"varint,9,opt,name=ignore_if_exists,json=ignoreIfExists,proto3" json:"ignore_if_exists,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1073,6 +1076,27 @@ func (x *ServiceComponentDeclaredMount) GetSourceIsHostPath() bool {
 func (x *ServiceComponentDeclaredMount) GetShared() bool {
 	if x != nil {
 		return x.Shared
+	}
+	return false
+}
+
+func (x *ServiceComponentDeclaredMount) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *ServiceComponentDeclaredMount) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *ServiceComponentDeclaredMount) GetIgnoreIfExists() bool {
+	if x != nil {
+		return x.IgnoreIfExists
 	}
 	return false
 }
@@ -1464,6 +1488,10 @@ type ServiceComponentMountOverlay struct {
 	State            string                 `protobuf:"bytes,3,opt,name=state,proto3" json:"state,omitempty"`
 	Target           string                 `protobuf:"bytes,4,opt,name=target,proto3" json:"target,omitempty"`
 	SourceIsHostPath *bool                  `protobuf:"varint,5,opt,name=source_is_host_path,json=sourceIsHostPath,proto3,oneof" json:"source_is_host_path,omitempty"`
+	Content          *string                `protobuf:"bytes,6,opt,name=content,proto3,oneof" json:"content,omitempty"`
+	Mode             *string                `protobuf:"bytes,7,opt,name=mode,proto3,oneof" json:"mode,omitempty"`
+	IgnoreIfExists   *bool                  `protobuf:"varint,8,opt,name=ignore_if_exists,json=ignoreIfExists,proto3,oneof" json:"ignore_if_exists,omitempty"`
+	ReadOnly         *bool                  `protobuf:"varint,9,opt,name=read_only,json=readOnly,proto3,oneof" json:"read_only,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1522,6 +1550,34 @@ func (x *ServiceComponentMountOverlay) GetTarget() string {
 func (x *ServiceComponentMountOverlay) GetSourceIsHostPath() bool {
 	if x != nil && x.SourceIsHostPath != nil {
 		return *x.SourceIsHostPath
+	}
+	return false
+}
+
+func (x *ServiceComponentMountOverlay) GetContent() string {
+	if x != nil && x.Content != nil {
+		return *x.Content
+	}
+	return ""
+}
+
+func (x *ServiceComponentMountOverlay) GetMode() string {
+	if x != nil && x.Mode != nil {
+		return *x.Mode
+	}
+	return ""
+}
+
+func (x *ServiceComponentMountOverlay) GetIgnoreIfExists() bool {
+	if x != nil && x.IgnoreIfExists != nil {
+		return *x.IgnoreIfExists
+	}
+	return false
+}
+
+func (x *ServiceComponentMountOverlay) GetReadOnly() bool {
+	if x != nil && x.ReadOnly != nil {
+		return *x.ReadOnly
 	}
 	return false
 }
@@ -2354,7 +2410,7 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x05_user\"E\n" +
 	"\x1bServiceComponentDeclaredEnv\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value\"\xd4\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xac\x02\n" +
 	"\x1dServiceComponentDeclaredMount\x12\x1f\n" +
 	"\vsource_type\x18\x01 \x01(\tR\n" +
 	"sourceType\x12\x16\n" +
@@ -2362,7 +2418,10 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x06target\x18\x03 \x01(\tR\x06target\x12\x1b\n" +
 	"\tread_only\x18\x04 \x01(\bR\breadOnly\x12-\n" +
 	"\x13source_is_host_path\x18\x05 \x01(\bR\x10sourceIsHostPath\x12\x16\n" +
-	"\x06shared\x18\x06 \x01(\bR\x06shared\"\x9f\x02\n" +
+	"\x06shared\x18\x06 \x01(\bR\x06shared\x12\x18\n" +
+	"\acontent\x18\a \x01(\tR\acontent\x12\x12\n" +
+	"\x04mode\x18\b \x01(\tR\x04mode\x12(\n" +
+	"\x10ignore_if_exists\x18\t \x01(\bR\x0eignoreIfExists\"\x9f\x02\n" +
 	"!ServiceComponentDeclaredResources\x12\"\n" +
 	"\n" +
 	"limit_cpus\x18\x01 \x01(\tH\x00R\tlimitCpus\x88\x01\x01\x12&\n" +
@@ -2418,14 +2477,24 @@ const file_orbit_v1_service_service_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x19\n" +
 	"\x05value\x18\x02 \x01(\tH\x00R\x05value\x88\x01\x01\x12\x14\n" +
 	"\x05state\x18\x03 \x01(\tR\x05stateB\b\n" +
-	"\x06_value\"\xc0\x01\n" +
+	"\x06_value\"\x81\x03\n" +
 	"\x1cServiceComponentMountOverlay\x12\x1b\n" +
 	"\x06source\x18\x02 \x01(\tH\x00R\x06source\x88\x01\x01\x12\x14\n" +
 	"\x05state\x18\x03 \x01(\tR\x05state\x12\x16\n" +
 	"\x06target\x18\x04 \x01(\tR\x06target\x122\n" +
-	"\x13source_is_host_path\x18\x05 \x01(\bH\x01R\x10sourceIsHostPath\x88\x01\x01B\t\n" +
+	"\x13source_is_host_path\x18\x05 \x01(\bH\x01R\x10sourceIsHostPath\x88\x01\x01\x12\x1d\n" +
+	"\acontent\x18\x06 \x01(\tH\x02R\acontent\x88\x01\x01\x12\x17\n" +
+	"\x04mode\x18\a \x01(\tH\x03R\x04mode\x88\x01\x01\x12-\n" +
+	"\x10ignore_if_exists\x18\b \x01(\bH\x04R\x0eignoreIfExists\x88\x01\x01\x12 \n" +
+	"\tread_only\x18\t \x01(\bH\x05R\breadOnly\x88\x01\x01B\t\n" +
 	"\a_sourceB\x16\n" +
-	"\x14_source_is_host_path\"\xb3\x02\n" +
+	"\x14_source_is_host_pathB\n" +
+	"\n" +
+	"\b_contentB\a\n" +
+	"\x05_modeB\x13\n" +
+	"\x11_ignore_if_existsB\f\n" +
+	"\n" +
+	"_read_only\"\xb3\x02\n" +
 	"\x1fServiceComponentResourceOverlay\x12\"\n" +
 	"\n" +
 	"limit_cpus\x18\x01 \x01(\tH\x00R\tlimitCpus\x88\x01\x01\x12&\n" +

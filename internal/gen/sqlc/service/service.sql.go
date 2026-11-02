@@ -427,8 +427,8 @@ func (q *Queries) InsertServiceComponentEnv(ctx context.Context, arg InsertServi
 }
 
 const insertServiceComponentMount = `-- name: InsertServiceComponentMount :exec
-INSERT INTO service_component_mount (id, service_component_id, target, source, source_is_host_path, state)
-SELECT ?, ?, ?, ?, ?, ?
+INSERT INTO service_component_mount (id, service_component_id, target, source, source_is_host_path, content, mode, ignore_if_exists, read_only, state)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 WHERE EXISTS (
   SELECT 1 FROM service_component
   JOIN service ON service.id = service_component.service_id
@@ -443,6 +443,10 @@ type InsertServiceComponentMountParams struct {
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
 	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
+	Content            sql.NullString `db:"content"`
+	Mode               sql.NullString `db:"mode"`
+	IgnoreIfExists     sql.NullInt64  `db:"ignore_if_exists"`
+	ReadOnly           sql.NullInt64  `db:"read_only"`
 	State              string         `db:"state"`
 	ProjectId          string         `db:"project_id"`
 }
@@ -454,6 +458,10 @@ func (q *Queries) InsertServiceComponentMount(ctx context.Context, arg InsertSer
 		arg.Target,
 		arg.Source,
 		arg.SourceIsHostPath,
+		arg.Content,
+		arg.Mode,
+		arg.IgnoreIfExists,
+		arg.ReadOnly,
 		arg.State,
 		arg.ServiceComponentId,
 		arg.ProjectId,
@@ -964,7 +972,7 @@ func (q *Queries) ServiceComponentEnvByComponent(ctx context.Context, arg Servic
 }
 
 const serviceComponentMountsByComponent = `-- name: ServiceComponentMountsByComponent :many
-SELECT service_component_id, target, source, source_is_host_path, state
+SELECT service_component_id, target, source, source_is_host_path, content, mode, ignore_if_exists, read_only, state
 FROM service_component_mount
 WHERE service_component_id = ?
   AND EXISTS (
@@ -986,6 +994,10 @@ type ServiceComponentMountsByComponentRow struct {
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
 	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
+	Content            sql.NullString `db:"content"`
+	Mode               sql.NullString `db:"mode"`
+	IgnoreIfExists     sql.NullInt64  `db:"ignore_if_exists"`
+	ReadOnly           sql.NullInt64  `db:"read_only"`
 	State              string         `db:"state"`
 }
 
@@ -1003,6 +1015,10 @@ func (q *Queries) ServiceComponentMountsByComponent(ctx context.Context, arg Ser
 			&i.Target,
 			&i.Source,
 			&i.SourceIsHostPath,
+			&i.Content,
+			&i.Mode,
+			&i.IgnoreIfExists,
+			&i.ReadOnly,
 			&i.State,
 		); err != nil {
 			return nil, err

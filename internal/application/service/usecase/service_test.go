@@ -330,6 +330,28 @@ func TestNormalizeOverlayAcceptsAbsoluteHostPathMountSource(t *testing.T) {
 	}
 }
 
+func TestRemapMountOverridePreservesEqualValuesAndRejectsChangedType(t *testing.T) {
+	source := "./config"
+	content := "same"
+	disabled := false
+	component := model.ServiceComponent{ComponentName: "web", Mounts: []model.ServiceComponentMount{{Target: "/config", State: model.ServiceComponentOverlayOverride, Source: &source, Content: &content, IgnoreIfExists: &disabled}}}
+	declaration := model.VersionComponent{Id: "version-one", Name: "web", Mounts: []model.VersionComponentMount{{Target: "/config", SourceType: "controlled_file", Source: source, Content: content, Mode: "0644"}}}
+	components := []model.ServiceComponent{component}
+	if err := remapServiceComponents(components, []model.VersionComponent{declaration}); err != nil {
+		t.Fatal(err)
+	}
+	if len(components[0].Mounts) != 1 || components[0].Mounts[0].Content == nil || components[0].Mounts[0].IgnoreIfExists == nil || components[0].Mounts[0].Source == nil {
+		t.Fatalf("explicit equal overrides lost: %#v", components[0].Mounts)
+	}
+	declaration.Id = "version-two"
+	declaration.Mounts[0].SourceType = "directory"
+	declaration.Mounts[0].Mode = ""
+	declaration.Mounts[0].Content = ""
+	if err := remapServiceComponents(components, []model.VersionComponent{declaration}); err == nil {
+		t.Fatal("accepted a controlled-file override for a directory")
+	}
+}
+
 func TestNormalizeOverlayAcceptsAbsoluteLogicalMountSource(t *testing.T) {
 	source := "D:/var/lib/pomelo-models/bge-m3"
 	sourceIsHostPath := false

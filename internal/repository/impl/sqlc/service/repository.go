@@ -322,7 +322,7 @@ func (r Repository) serviceComponentFromRow(ctx context.Context, q *servicesqlc.
 		return model.ServiceComponent{}, fmt.Errorf("load service component mounts %s: %w", component.Id, err)
 	}
 	for _, item := range mounts {
-		component.Mounts = append(component.Mounts, model.ServiceComponentMount{Target: item.Target, Source: dbmodel.StringPtr(item.Source), SourceIsHostPath: dbmodel.BoolPtrFromNullInt64(item.SourceIsHostPath), State: model.ServiceComponentOverlayState(item.State)})
+		component.Mounts = append(component.Mounts, model.ServiceComponentMount{Target: item.Target, Source: dbmodel.StringPtr(item.Source), SourceIsHostPath: dbmodel.BoolPtrFromNullInt64(item.SourceIsHostPath), Content: dbmodel.StringPtr(item.Content), Mode: dbmodel.StringPtr(item.Mode), IgnoreIfExists: dbmodel.BoolPtrFromNullInt64(item.IgnoreIfExists), ReadOnly: dbmodel.BoolPtrFromNullInt64(item.ReadOnly), State: model.ServiceComponentOverlayState(item.State)})
 	}
 	resource, err := q.ServiceComponentResourceByComponent(ctx, servicesqlc.ServiceComponentResourceByComponentParams{ServiceComponentId: component.Id, ProjectId: projectId})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -404,7 +404,7 @@ func insertServiceComponentOverlay(ctx context.Context, q *servicesqlc.Queries, 
 		}
 	}
 	for _, item := range component.Mounts {
-		if err := q.InsertServiceComponentMount(ctx, servicesqlc.InsertServiceComponentMountParams{Id: idutil.NewId(), ServiceComponentId: component.Id, Target: item.Target, Source: dbmodel.NullString(item.Source), SourceIsHostPath: dbmodel.NullInt64FromBoolPtr(item.SourceIsHostPath), State: string(item.State), ProjectId: projectId}); err != nil {
+		if err := q.InsertServiceComponentMount(ctx, servicesqlc.InsertServiceComponentMountParams{Id: idutil.NewId(), ServiceComponentId: component.Id, Target: item.Target, Source: dbmodel.NullString(item.Source), SourceIsHostPath: dbmodel.NullInt64FromBoolPtr(item.SourceIsHostPath), Content: dbmodel.NullString(item.Content), Mode: dbmodel.NullString(item.Mode), IgnoreIfExists: dbmodel.NullInt64FromBoolPtr(item.IgnoreIfExists), ReadOnly: dbmodel.NullInt64FromBoolPtr(item.ReadOnly), State: string(item.State), ProjectId: projectId}); err != nil {
 			return fmt.Errorf("insert service component mount: %w", err)
 		}
 	}

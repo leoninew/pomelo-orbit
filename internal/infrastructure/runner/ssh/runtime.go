@@ -382,9 +382,6 @@ func writeWorkspaceFile(ctx context.Context, client *sftp.Client, platform strin
 		return fmt.Errorf("close remote staged file: %w", closeErr)
 	}
 	if platform == model.EnvironmentPlatformLinux {
-		if mode == 0 {
-			mode = 0o644
-		}
 		if err := client.Chmod(tempPath, os.FileMode(mode)); err != nil {
 			_ = client.Remove(tempPath)
 			return fmt.Errorf("set remote file mode: %w", err)

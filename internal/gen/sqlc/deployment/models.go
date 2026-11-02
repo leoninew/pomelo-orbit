@@ -449,6 +449,10 @@ type ServiceComponentMount struct {
 	Target             string         `db:"target"`
 	Source             sql.NullString `db:"source"`
 	SourceIsHostPath   sql.NullInt64  `db:"source_is_host_path"`
+	Content            sql.NullString `db:"content"`
+	Mode               sql.NullString `db:"mode"`
+	IgnoreIfExists     sql.NullInt64  `db:"ignore_if_exists"`
+	ReadOnly           sql.NullInt64  `db:"read_only"`
 	State              string         `db:"state"`
 }
 

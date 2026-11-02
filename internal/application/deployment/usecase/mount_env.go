@@ -69,6 +69,9 @@ func validateMountSpec(m MountSpec) error {
 			return fmt.Errorf("named_volume does not support file source options")
 		}
 	case mountSourceControlledFile:
+		if m.ReadOnly {
+			return fmt.Errorf("controlled_file does not support read_only")
+		}
 		if m.SourceIsHostPath {
 			return fmt.Errorf("controlled_file source_is_host_path must be false")
 		}

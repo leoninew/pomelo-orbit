@@ -187,7 +187,7 @@ WHERE EXISTS (
 );
 
 -- name: ServiceComponentMountsByComponent :many
-SELECT service_component_id, target, source, source_is_host_path, state
+SELECT service_component_id, target, source, source_is_host_path, content, mode, ignore_if_exists, read_only, state
 FROM service_component_mount
 WHERE service_component_id = sqlc.arg(service_component_id)
   AND EXISTS (
@@ -209,8 +209,8 @@ WHERE service_component_id = sqlc.arg(service_component_id)
   );
 
 -- name: InsertServiceComponentMount :exec
-INSERT INTO service_component_mount (id, service_component_id, target, source, source_is_host_path, state)
-SELECT sqlc.arg(id), sqlc.arg(service_component_id), sqlc.arg(target), sqlc.arg(source), sqlc.arg(source_is_host_path), sqlc.arg(state)
+INSERT INTO service_component_mount (id, service_component_id, target, source, source_is_host_path, content, mode, ignore_if_exists, read_only, state)
+SELECT sqlc.arg(id), sqlc.arg(service_component_id), sqlc.arg(target), sqlc.arg(source), sqlc.arg(source_is_host_path), sqlc.arg(content), sqlc.arg(mode), sqlc.arg(ignore_if_exists), sqlc.arg(read_only), sqlc.arg(state)
 WHERE EXISTS (
   SELECT 1 FROM service_component
   JOIN service ON service.id = service_component.service_id

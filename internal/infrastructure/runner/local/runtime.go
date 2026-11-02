@@ -276,9 +276,6 @@ func (r *Runtime) writeFile(ctx context.Context, serviceDir string, file deploym
 		return fmt.Errorf("create local workspace file parent: %w", err)
 	}
 	mode := fs.FileMode(file.Mode)
-	if mode == 0 {
-		mode = 0o644
-	}
 	staged, err := os.CreateTemp(filepath.Dir(path), ".orbit-*.tmp")
 	if err != nil {
 		return fmt.Errorf("create local staged file: %w", err)

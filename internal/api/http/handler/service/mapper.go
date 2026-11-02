@@ -47,7 +47,7 @@ func serviceComponentResponse(item model.ServiceComponent) servicev1.ServiceComp
 	}
 	mounts := make([]*servicev1.ServiceComponentMountOverlay, 0, len(item.Mounts))
 	for _, value := range item.Mounts {
-		mounts = append(mounts, &servicev1.ServiceComponentMountOverlay{Target: value.Target, Source: value.Source, SourceIsHostPath: value.SourceIsHostPath, State: string(value.State)})
+		mounts = append(mounts, &servicev1.ServiceComponentMountOverlay{Target: value.Target, Source: value.Source, SourceIsHostPath: value.SourceIsHostPath, Content: value.Content, Mode: value.Mode, IgnoreIfExists: value.IgnoreIfExists, ReadOnly: value.ReadOnly, State: string(value.State)})
 	}
 	endpoints := make([]*servicev1.ServiceComponentEndpointOverlay, 0, len(item.Endpoints))
 	for _, value := range item.Endpoints {
@@ -69,7 +69,7 @@ func componentDeclarationResponse(component model.VersionComponent) servicev1.Se
 	}
 	mounts := make([]*servicev1.ServiceComponentDeclaredMount, 0, len(component.Mounts))
 	for _, item := range component.Mounts {
-		mounts = append(mounts, &servicev1.ServiceComponentDeclaredMount{SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly, SourceIsHostPath: item.SourceIsHostPath, Shared: item.Shared})
+		mounts = append(mounts, &servicev1.ServiceComponentDeclaredMount{SourceType: item.SourceType, Source: item.Source, Target: item.Target, ReadOnly: item.ReadOnly, SourceIsHostPath: item.SourceIsHostPath, Shared: item.Shared, Content: item.Content, Mode: item.Mode, IgnoreIfExists: item.IgnoreIfExists})
 	}
 	return servicev1.ServiceComponentDefinitionResp{Id: component.Id, Name: component.Name, Image: component.Image, Entrypoint: commandline.Format(component.Entrypoint), Command: commandline.Format(component.Command), PullPolicy: component.PullPolicy, RestartPolicy: component.RestartPolicy, User: component.User, GroupAdd: component.GroupAdd, Env: env, Endpoints: serviceComponentDeclaredEndpointsResponse(component.Endpoints), Mounts: mounts, Resources: componentResourcesResponse(component.Resources)}
 }
@@ -101,7 +101,7 @@ func serviceComponentOverlayInput(req *servicev1.ServiceComponentOverlayUpdateRe
 	}
 	for _, item := range req.Mounts {
 		if item != nil {
-			result.Mounts = append(result.Mounts, model.ServiceComponentMount{Target: item.Target, Source: item.Source, SourceIsHostPath: item.SourceIsHostPath, State: model.ServiceComponentOverlayState(item.State)})
+			result.Mounts = append(result.Mounts, model.ServiceComponentMount{Target: item.Target, Source: item.Source, SourceIsHostPath: item.SourceIsHostPath, Content: item.Content, Mode: item.Mode, IgnoreIfExists: item.IgnoreIfExists, ReadOnly: item.ReadOnly, State: model.ServiceComponentOverlayState(item.State)})
 		}
 	}
 	for _, item := range req.Endpoints {

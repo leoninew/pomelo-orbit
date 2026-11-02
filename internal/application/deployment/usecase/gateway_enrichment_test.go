@@ -158,8 +158,8 @@ certificatesResolvers:
 	if !reflect.DeepEqual(before, after) {
 		t.Fatalf("unmanaged static config changed: %#v", after)
 	}
-	if plan.Components[0].Mounts[0].IgnoreIfExists {
-		t.Fatal("static config will not overwrite the existing file")
+	if !plan.Components[0].Mounts[0].IgnoreIfExists {
+		t.Fatal("static config lost its preserve policy")
 	}
 	for _, want := range []model.VersionComponentMount{
 		{SourceType: "directory", Source: model.GatewayRouteConfigSource, Target: model.GatewayRouteConfigTarget, ReadOnly: true},

@@ -450,7 +450,13 @@
                     <td class="min-w-56 break-all text-foreground">{{ row.source }}</td>
                     <td class="min-w-56 break-all text-foreground">{{ row.target }}</td>
                     <td class="min-w-20 text-foreground">
-                      {{ row.read_only ? t('common.yes') : t('common.no') }}
+                      {{
+                        row.source_type === 'controlled_file'
+                          ? '-'
+                          : row.read_only
+                            ? t('common.yes')
+                            : t('common.no')
+                      }}
                     </td>
                     <td>{{ row.shared ? t('common.yes') : t('common.no') }}</td>
                     <td class="app-table-actions w-36">
@@ -1318,7 +1324,10 @@
             {{ mountErrors.target }}
           </p>
         </div>
-        <label class="flex items-center gap-2 self-end pb-2">
+        <label
+          v-if="mountForm.source_type !== 'controlled_file'"
+          class="flex items-center gap-2 self-end pb-2"
+        >
           <input v-model="mountForm.read_only" class="app-checkbox" type="checkbox" />
           <span class="text-sm text-foreground">
             {{ t('application.componentDetail.fields.readOnly') }}
@@ -1380,16 +1389,10 @@
               {{ mountContentErrors.mode }}
             </p>
           </div>
-          <label class="flex items-center gap-2">
-            <input
-              v-model="mountContentForm.ignore_if_exists"
-              class="app-checkbox"
-              type="checkbox"
-            />
-            <span class="text-sm text-foreground">
-              {{ t('application.componentDetail.fields.ignoreIfExists') }}
-            </span>
-          </label>
+          <ControlledFileWritePolicy
+            id="version-mount-policy"
+            v-model="mountContentForm.ignore_if_exists"
+          />
         </div>
         <label class="app-field-label shrink-0">
           {{ t('application.componentDetail.fields.content') }}
@@ -1433,6 +1436,7 @@
 </template>
 
 <script setup lang="ts">
+  import ControlledFileWritePolicy from '@/components/application/ControlledFileWritePolicy.vue';
   import AppInput from '@/components/ui/AppInput.vue';
   import AppTextarea from '@/components/ui/AppTextarea.vue';
   import { ArrowLeft, Plus, Save, Trash2, X } from '@lucide/vue';
@@ -2434,6 +2438,9 @@
       mountForm.shared = false;
     }
     mountForm.source_type = String(value);
+    if (mountForm.source_type === 'controlled_file') {
+      mountForm.read_only = false;
+    }
     mountErrors.source_type = '';
     if (mountForm.source_type !== 'directory' && mountForm.source_type !== 'file') {
       mountForm.source_is_host_path = false;

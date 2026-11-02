@@ -1,4 +1,11 @@
 export default {
+  controlledFile: {
+    writePolicy: '部署写入策略',
+    overwrite: '覆盖已有文件',
+    preserve: '保留已有文件',
+    preserveHelp:
+      '已有文件的内容和权限保持不变；此处修改仅在文件不存在时用于初始化，重新部署或强制重建也不会覆盖。',
+  },
   dns: {
     deleteTitle: '删除解析',
     deleteRecord: '删除 {name}',
@@ -650,10 +657,9 @@ export default {
         source: '源',
         target: '目标路径',
         readOnly: '只读',
-        sourceIsHostPath: '来源是宿主机路径',
+        sourceIsHostPath: '使用 Docker 宿主机路径',
         content: '文件内容',
         fileMode: 'Unix 文件权限',
-        ignoreIfExists: '已存在时忽略',
         dependency: '依赖组件',
         condition: '条件',
         testMode: '测试方式',
@@ -877,9 +883,16 @@ export default {
       currentValue: '当前值',
       runtimeTitle: '运行配置',
       reset: '重置',
+      mountEditor: {
+        title: '编辑挂载',
+        content: '文件内容',
+      },
       validation: {
         sourceRequired: '请填写源路径',
         sourceMustStartWithDotSlash: '挂载源必须是绝对路径或以 ./ 开头的相对路径',
+        volumeName: '命名卷只能使用卷名，不能包含 / 或反斜杠',
+        fileMode: '权限必须为 0000–0777 的四位八进制值',
+        fileSize: '文件内容不能超过 256 KiB（按 UTF-8 字节计算）',
       },
     },
     runtimeConfig: {

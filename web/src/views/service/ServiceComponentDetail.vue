@@ -342,13 +342,19 @@
                       : 'text-foreground'
                   "
                 >
-                  {{ mount.deleted ? '-' : displayValue(mount.source) }}
+                  {{ mount.deleted ? '-' : displayValue(mount.values.source) }}
                 </td>
                 <td class="min-w-56 break-all text-foreground">
                   {{ mount.target }}
                 </td>
                 <td class="min-w-20 text-foreground">
-                  {{ mount.read_only ? t('common.yes') : t('common.no') }}
+                  {{
+                    mount.source_type === 'controlled_file'
+                      ? '-'
+                      : mount.values.read_only
+                        ? t('common.yes')
+                        : t('common.no')
+                  }}
                 </td>
                 <td>{{ mount.shared ? t('common.yes') : t('common.no') }}</td>
                 <td class="app-table-actions w-36">
@@ -386,87 +392,13 @@
       </DetailInfoCard>
     </template>
 
-    <AppDialog
+    <ServiceComponentMountDialog
       :open="mountDialogOpen"
-      title="编辑 Mount"
-      width-class="w-[min(640px,calc(100vw-32px))]"
-      @update:open="setMountDialogOpen"
-    >
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div class="sm:col-span-2">
-          <label class="app-field-label mb-1.5 block">
-            {{ t('application.componentDetail.fields.sourceType') }}
-          </label>
-          <AppInput
-            :model-value="editingMount?.source_type ?? ''"
-            class="bg-muted"
-            :aria-label="t('application.componentDetail.fields.sourceType')"
-            readonly
-          />
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('application.componentDetail.fields.source') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <AppInput
-            v-model="editingMountSource"
-            :class="mountSourceError ? 'app-input-error' : ''"
-            type="text"
-            :aria-invalid="mountSourceError ? 'true' : undefined"
-            :aria-describedby="mountSourceError ? 'service-mount-source-error' : undefined"
-            @input="clearMountSourceError"
-          />
-          <p
-            v-if="mountSourceError"
-            id="service-mount-source-error"
-            class="app-field-error"
-            role="alert"
-          >
-            {{ mountSourceError }}
-          </p>
-        </div>
-        <div>
-          <label class="app-field-label mb-1.5 block">
-            {{ t('application.componentDetail.fields.target') }}
-          </label>
-          <AppInput
-            :model-value="editingMount?.target ?? ''"
-            class="bg-muted"
-            :aria-label="t('application.componentDetail.fields.target')"
-            readonly
-          />
-        </div>
-        <label class="flex items-center gap-2 self-end pb-2">
-          <input
-            :checked="editingMount?.read_only ?? false"
-            class="app-checkbox"
-            type="checkbox"
-            disabled
-          />
-          <span class="text-sm text-foreground">
-            {{ t('application.componentDetail.fields.readOnly') }}
-          </span>
-        </label>
-        <label
-          v-if="editingMount?.source_type === 'directory' || editingMount?.source_type === 'file'"
-          class="flex items-center gap-2 sm:col-span-2"
-        >
-          <input v-model="editingMountSourceIsHostPath" class="app-checkbox" type="checkbox" />
-          <span class="text-sm text-foreground">
-            {{ t('application.componentDetail.fields.sourceIsHostPath') }}
-          </span>
-        </label>
-      </div>
-      <template #footer>
-        <AppDialogActions
-          :busy="operating"
-          :confirm-label="t('common.confirm')"
-          @cancel="closeMountDialog"
-          @confirm="saveMountDialog"
-        />
-      </template>
-    </AppDialog>
+      :mount="editingMount"
+      :busy="operating"
+      @update:open="mountDialogOpen = $event"
+      @confirm="saveMountDialog"
+    />
 
     <AppDialog
       :open="endpointDialogOpen"
@@ -589,6 +521,14 @@
   } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
   import EnvironmentVariableListEditor from '@/components/environment/EnvironmentVariableListEditor.vue';
+  import ServiceComponentMountDialog from './ServiceComponentMountDialog.vue';
+  import {
+    componentMountRows,
+    componentMountOverlays,
+    componentMountHasOverrides as mountHasChanges,
+    resetComponentMount,
+    type ServiceComponentMountRow,
+  } from './serviceComponentMount';
   import {
     componentEnvironmentListRows,
     componentEnvironmentOverlays,
@@ -598,17 +538,6 @@
     type ServiceComponentEnvironmentRow,
   } from './serviceComponentEnvironment';
 
-  type MountRow = {
-    target: string;
-    source_type: string;
-    read_only: boolean;
-    base: string;
-    base_source_is_host_path: boolean;
-    shared: boolean;
-    source: string;
-    source_is_host_path: boolean;
-    deleted: boolean;
-  };
   type EndpointValues = {
     mode: string;
     bind_address: string;
@@ -705,12 +634,9 @@
   const environmentDirty = computed(
     () => !componentEnvironmentRowsEqual(environmentRows.value, savedEnvironmentRows.value)
   );
-  const mountRows = ref<MountRow[]>([]);
+  const mountRows = ref<ServiceComponentMountRow[]>([]);
   const mountDialogOpen = ref(false);
   const editingMountTarget = ref<string | null>(null);
-  const editingMountSource = ref('');
-  const editingMountSourceIsHostPath = ref(false);
-  const mountSourceError = ref('');
   const endpointRows = ref<EndpointRow[]>([]);
   const runtimeDraft = reactive<RuntimeOverlayDraft>(emptyRuntimeOverlayDraft());
   const editingRuntimeKey = ref<RuntimeFieldKey | null>(null);
@@ -821,20 +747,7 @@
     });
     environmentRows.value = rows;
     savedEnvironmentRows.value = rows.map((row) => ({ ...row }));
-    mountRows.value = declaration.mounts.map((item) => {
-      const overlay = component.mounts.find((candidate) => candidate.target === item.target);
-      return {
-        target: item.target,
-        source_type: item.source_type,
-        read_only: item.read_only,
-        base: item.source,
-        base_source_is_host_path: item.source_is_host_path,
-        shared: item.shared,
-        source: overlay?.source ?? item.source,
-        source_is_host_path: overlay?.source_is_host_path ?? item.source_is_host_path,
-        deleted: overlay?.state === 'deleted',
-      };
-    });
+    mountRows.value = componentMountRows(declaration.mounts, component.mounts);
     endpointRows.value = declaration.endpoints.map((item) => {
       const overlay = component.endpoints.find(
         (candidate) =>
@@ -971,77 +884,24 @@
   const editingMount = computed(() =>
     mountRows.value.find((row) => row.target === editingMountTarget.value)
   );
-  function openMountDialog(row: MountRow) {
+  function openMountDialog(row: ServiceComponentMountRow) {
     editingMountTarget.value = row.target;
-    editingMountSource.value = row.source;
-    editingMountSourceIsHostPath.value = row.source_is_host_path;
-    mountSourceError.value = '';
     mountDialogOpen.value = true;
   }
   function closeMountDialog() {
     mountDialogOpen.value = false;
     editingMountTarget.value = null;
-    editingMountSource.value = '';
-    editingMountSourceIsHostPath.value = false;
-    mountSourceError.value = '';
   }
-  function setMountDialogOpen(open: boolean) {
-    if (open) {
-      mountDialogOpen.value = true;
-      return;
+  function saveMountDialog(row: ServiceComponentMountRow) {
+    const index = mountRows.value.findIndex((item) => item.target === row.target);
+    if (index >= 0) {
+      mountRows.value[index] = row;
     }
     closeMountDialog();
   }
-  function clearMountSourceError() {
-    mountSourceError.value = '';
-  }
-
-  function isAbsoluteMountSource(source: string): boolean {
-    return source.startsWith('/') || /^[A-Za-z]:\//.test(source);
-  }
-
-  function isExplicitMountSource(source: string): boolean {
-    if (isAbsoluteMountSource(source)) {
-      return true;
-    }
-    return source.startsWith('./') && !source.includes('\\') && !source.split('/').includes('..');
-  }
-
-  function saveMountDialog() {
-    const row = editingMount.value;
-    if (!row) {
-      return;
-    }
-    const source = editingMountSource.value.trim();
-    if (!source) {
-      mountSourceError.value = t('service.componentDetail.validation.sourceRequired');
-      return;
-    }
-    if (
-      ['directory', 'file', 'controlled_file'].includes(row.source_type) &&
-      (!isExplicitMountSource(source) ||
-        (editingMountSourceIsHostPath.value && !isAbsoluteMountSource(source)))
-    ) {
-      mountSourceError.value = t('service.componentDetail.validation.sourceMustStartWithDotSlash');
-      return;
-    }
-    if (row.shared && !isAbsoluteMountSource(source)) {
-      mountSourceError.value = t('application.componentDetail.validation.sharedSource');
-      return;
-    }
-    row.source = source;
-    row.source_is_host_path = editingMountSourceIsHostPath.value;
-    row.deleted = false;
+  function resetMountToVersion(row: ServiceComponentMountRow) {
+    resetComponentMount(row);
     closeMountDialog();
-  }
-  function resetMountToVersion(row: MountRow) {
-    row.source = row.base;
-    row.source_is_host_path = row.base_source_is_host_path;
-    row.deleted = false;
-    closeMountDialog();
-  }
-  function mountHasChanges(row: MountRow) {
-    return row.source !== row.base || row.source_is_host_path !== row.base_source_is_host_path;
   }
   const editingEndpointRow = computed(() =>
     endpointRows.value.find((row) => row.identity === editingEndpointIdentity.value)
@@ -1246,16 +1106,7 @@
         }
         return row.overridden ? [{ key: row.key, value: row.value, state: 'override' }] : [];
       }),
-      mounts: mountRows.value.map((row) =>
-        row.deleted
-          ? { target: row.target, state: 'deleted' }
-          : {
-              target: row.target,
-              source: row.source,
-              source_is_host_path: row.source_is_host_path,
-              state: 'override',
-            }
-      ),
+      mounts: componentMountOverlays(mountRows.value),
       resources:
         resourceFields.value.length === 0
           ? undefined

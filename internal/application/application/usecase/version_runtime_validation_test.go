@@ -7,6 +7,18 @@ import (
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
 
+func TestValidateControlledFileRejectsReadOnly(t *testing.T) {
+	mount := model.VersionComponentMount{SourceType: "controlled_file", Source: "./config", Target: "/config", Mode: "0644", ReadOnly: true}
+	if err := validateComponentMount(mount); err == nil {
+		t.Fatal("controlled file must not accept read_only")
+	}
+	mount.SourceType = "directory"
+	mount.Mode = ""
+	if err := validateComponentMount(mount); err != nil {
+		t.Fatalf("directory must support read_only: %v", err)
+	}
+}
+
 func TestValidateComponentRuntimeFieldsRestartPolicy(t *testing.T) {
 	for _, policy := range []string{"no", "on-failure", "always", "unless-stopped"} {
 		policy := policy

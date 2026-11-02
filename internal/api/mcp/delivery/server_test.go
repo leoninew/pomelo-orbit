@@ -27,8 +27,8 @@ func TestToolListIncludesDeliverySurfaceAndFlatCollectionSchemas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListTools() error = %v", err)
 	}
-	if len(tools.Tools) != 66 {
-		t.Fatalf("tool count = %d, want 66", len(tools.Tools))
+	if len(tools.Tools) != 67 {
+		t.Fatalf("tool count = %d, want 67", len(tools.Tools))
 	}
 
 	byName := make(map[string]*mcp.Tool, len(tools.Tools))
@@ -406,6 +406,26 @@ func TestServiceComponentOverlayToolMapsRuntimeAndHostPathFields(t *testing.T) {
 	}
 }
 
+func TestGetServiceComponentToolReturnsDeclarationAndOverlay(t *testing.T) {
+	service := &serviceOverlayToolService{}
+	server, err := NewServer(withReadyScope(Dependencies{Application: &serviceApplicationToolService{application: model.Application{Id: "application-1", ProjectId: readyProjectId()}}, Service: service}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := connectInMemory(t, server).CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_get_service_component", Arguments: map[string]any{"service_id": "service-1", "component_id": "component-1"}})
+	if err != nil || result.IsError {
+		t.Fatalf("read component: result=%#v error=%v", result, err)
+	}
+	output := structuredOutput(t, result)
+	component := output["service_component"].(map[string]any)
+	mount := component["mounts"].([]any)[0].(map[string]any)
+	declaration := output["version_component"].(map[string]any)
+	versionMount := declaration["mounts"].([]any)[0].(map[string]any)
+	if mount["content"] != "" || mount["ignore_if_exists"] != false || versionMount["content"] != "version" || versionMount["mode"] != "0644" {
+		t.Fatalf("component output = %#v", output)
+	}
+}
+
 func TestActorAuthenticatorRunsOnlyForToolCallsAndRevalidatesTheSession(t *testing.T) {
 	project := &actorProjectService{}
 	authentications := 0
@@ -601,7 +621,7 @@ var deliveryToolNames = []string{
 	"orbit_update_version_component_devices", "orbit_update_version_component_advanced", "orbit_update_version_component_resources",
 	"orbit_update_version_component_tmpfs", "orbit_update_version_component_ulimits", "orbit_publish_version", "orbit_delete_version",
 	"orbit_list_routes", "orbit_get_route", "orbit_create_route", "orbit_update_route", "orbit_enable_route", "orbit_disable_route", "orbit_preview_route_sync", "orbit_confirm_route_sync",
-	"orbit_preview_service", "orbit_create_service", "orbit_update_service_component_overlay", "orbit_update_service_env",
+	"orbit_preview_service", "orbit_create_service", "orbit_get_service_component", "orbit_update_service_component_overlay", "orbit_update_service_env",
 	"orbit_update_service_basic", "orbit_deploy", "orbit_stop", "orbit_restart", "orbit_deployment_status", "orbit_deployment_logs",
 	"orbit_wait_deployment", "runtime_doctor", "runtime_compose_config", "runtime_compose_ps", "runtime_compose_logs",
 	"runtime_container_inspect", "runtime_network_inspect", "runtime_http_probe", "verify_deployment",
@@ -878,6 +898,15 @@ func (s *serviceToolService) ListServicesByApplication(context.Context, string, 
 
 func (s *serviceOverlayToolService) GetService(_ context.Context, _, _ string, serviceId string) (servicedto.ServiceView, error) {
 	return servicedto.ServiceView{Service: model.Service{Id: serviceId, ApplicationId: "application-1"}}, nil
+}
+
+func (s *serviceOverlayToolService) GetServiceComponent(_ context.Context, _, _, serviceId, componentId string) (servicedto.ServiceComponentDetail, error) {
+	empty := ""
+	disabled := false
+	return servicedto.ServiceComponentDetail{
+		ServiceComponent: model.ServiceComponent{Id: componentId, ServiceId: serviceId, Mounts: []model.ServiceComponentMount{{Target: "/config", State: model.ServiceComponentOverlayOverride, Content: &empty, IgnoreIfExists: &disabled}}},
+		VersionComponent: model.VersionComponent{Mounts: []model.VersionComponentMount{{Target: "/config", SourceType: "controlled_file", Content: "version", Mode: "0644"}}},
+	}, nil
 }
 
 func (s *serviceOverlayToolService) UpdateServiceComponentOverlay(_ context.Context, _, _, _, _ string, input servicedto.ServiceComponentOverlayInput) (model.ServiceComponent, error) {

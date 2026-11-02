@@ -10,6 +10,23 @@ import (
 )
 
 func (c *core) registerServiceTools(server *mcp.Server) {
+	addTool(server, "orbit_get_service_component", "Read a Service Component's complete sparse overlay and Version declaration before replacing the overlay. Optional mount values distinguish inheritance from explicit empty strings and false.", func(ctx context.Context, input struct {
+		ServiceId   string `json:"service_id" jsonschema:"required"`
+		ComponentId string `json:"component_id" jsonschema:"required"`
+	}) (map[string]any, error) {
+		if err := c.serviceInScope(ctx, input.ServiceId); err != nil {
+			return nil, err
+		}
+		projectId, err := c.currentProjectId()
+		if err != nil {
+			return nil, err
+		}
+		detail, err := c.deps.Service.GetServiceComponent(ctx, c.deps.ActorUserId, projectId, input.ServiceId, input.ComponentId)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"service_component": serviceComponentOutput(detail.ServiceComponent), "version_component": componentOutput(detail.VersionComponent)}, nil
+	})
 	addWriteTool(server, c.deps.TransactionRunner, "orbit_create_service", "Create a stopped Service whose Component overlays initially inherit the Version. The Service code is immutable after creation and must be unique within the selected Project.", func(ctx context.Context, input struct {
 		ApplicationId string `json:"application_id" jsonschema:"required"`
 		VersionId     string `json:"version_id" jsonschema:"required"`
@@ -30,7 +47,7 @@ func (c *core) registerServiceTools(server *mcp.Server) {
 		return writeResult("create_service", map[string]string{"application_id": input.ApplicationId, "service_id": service.Service.Id}, "POST", "/api/service", map[string]any{"service": serviceOutput(service)}), nil
 	})
 
-	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_service_component_overlay", "Replace one declared Service Component's complete sparse overlay, including env, mounts, resources, endpoints, entrypoint, command, pull policy, and restart policy. Preserve unrelated overlay entries because this replaces the complete overlay. Omit an optional runtime field to clear that Service override so it inherits the Version declaration; an empty entrypoint or command string explicitly selects an empty argv.", func(ctx context.Context, input struct {
+	addWriteTool(server, c.deps.TransactionRunner, "orbit_update_service_component_overlay", "Replace the complete sparse overlay; first read orbit_get_service_component and preserve unrelated values. Omitted optional mount fields inherit; empty content and false are explicit overrides. Controlled-file content is limited to 256 KiB; read_only is not supported for controlled files. ignore_if_exists preserves an existing file and initializes a missing one. An empty entrypoint or command explicitly selects an empty argv.", func(ctx context.Context, input struct {
 		ServiceId   string                                      `json:"service_id" jsonschema:"required"`
 		ComponentId string                                      `json:"component_id" jsonschema:"required"`
 		Overlay     *servicev1.ServiceComponentOverlayUpdateReq `json:"overlay" jsonschema:"required"`

@@ -341,6 +341,9 @@ function buildMounts(rows: MountRow[]): ComponentMount[] | null {
       return null;
     }
     const contentOptionsAllowed = row.source_type === 'controlled_file';
+    if (contentOptionsAllowed && row.read_only) {
+      return null;
+    }
     if (!contentOptionsAllowed && (row.content !== '' || row.mode !== '' || row.ignore_if_exists)) {
       return null;
     }

@@ -1,4 +1,11 @@
 export default {
+  controlledFile: {
+    writePolicy: 'Deployment write policy',
+    overwrite: 'Overwrite existing file',
+    preserve: 'Preserve existing file',
+    preserveHelp:
+      'Existing content and permissions remain unchanged. Edits only initialize a missing file; redeployment or forced container recreation does not overwrite it.',
+  },
   dns: {
     deleteTitle: 'Delete DNS record',
     deleteRecord: 'Delete {name}',
@@ -662,10 +669,9 @@ export default {
         source: 'Source',
         target: 'Target path',
         readOnly: 'Read only',
-        sourceIsHostPath: 'Source is a host path',
+        sourceIsHostPath: 'Use a Docker host path',
         content: 'File content',
         fileMode: 'Unix file mode',
-        ignoreIfExists: 'Ignore when present',
         dependency: 'Dependent component',
         condition: 'Condition',
         testMode: 'Test mode',
@@ -897,10 +903,17 @@ export default {
       currentValue: 'Current value',
       runtimeTitle: 'Runtime configuration',
       reset: 'Reset',
+      mountEditor: {
+        title: 'Edit mount',
+        content: 'File content',
+      },
       validation: {
         sourceRequired: 'Enter a source path.',
         sourceMustStartWithDotSlash:
           'Mount source must be an absolute path or a relative path starting with ./',
+        volumeName: 'Use a volume name without / or backslashes.',
+        fileMode: 'Permissions must be a four-digit octal value from 0000 to 0777.',
+        fileSize: 'File content must not exceed 256 KiB in UTF-8 bytes.',
       },
     },
     runtimeConfig: {

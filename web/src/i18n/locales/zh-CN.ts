@@ -135,6 +135,8 @@ export default {
     globalToolbarAria: '全局工具',
     projectMenuAria: '切换项目，当前项目：{project}',
     userMenuAria: '用户菜单',
+    expandSidebar: '展开侧栏',
+    collapseSidebar: '收起侧栏',
     breadcrumbAria: '页面路径',
     about: '关于',
     versionLabel: '版本 v{version}',

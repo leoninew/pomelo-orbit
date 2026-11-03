@@ -138,6 +138,8 @@ export default {
     globalToolbarAria: 'Global tools',
     projectMenuAria: 'Switch project, current project: {project}',
     userMenuAria: 'User menu',
+    expandSidebar: 'Expand sidebar',
+    collapseSidebar: 'Collapse sidebar',
     breadcrumbAria: 'Page path',
     about: 'About',
     versionLabel: 'Version {version}',

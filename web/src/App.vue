@@ -10,24 +10,34 @@
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <!-- Sidebar -->
         <aside
-          v-if="currentScope"
           class="app-sidebar flex shrink-0 flex-col overflow-hidden border-b border-border bg-background transition-all duration-200 motion-reduce:transition-none md:border-b-0 md:border-r"
           :class="collapsed ? 'md:w-16' : 'md:w-60'"
           :data-collapsed="collapsed ? '' : undefined"
         >
           <AppVerticalNav
+            v-if="currentScope"
             :items="sidebarItems"
             :selected-key="selectedKey"
             :collapsed="collapsed"
           />
 
-          <button
-            class="app-icon-button m-3 hidden w-auto shrink-0 md:flex"
-            @click="collapsed = !collapsed"
+          <div
+            class="app-sidebar-footer mt-auto hidden shrink-0 items-center gap-1 border-t border-border p-3 md:flex"
+            :class="collapsed ? 'flex-col' : ''"
           >
-            <PanelLeftClose v-if="!collapsed" class="size-4" />
-            <PanelLeftOpen v-else class="size-4" />
-          </button>
+            <AppUserMenu :collapsed="collapsed" />
+            <button
+              v-if="currentScope"
+              class="app-icon-button shrink-0"
+              :aria-label="t(collapsed ? 'app.expandSidebar' : 'app.collapseSidebar')"
+              :title="t(collapsed ? 'app.expandSidebar' : 'app.collapseSidebar')"
+              :aria-expanded="!collapsed"
+              @click="collapsed = !collapsed"
+            >
+              <PanelLeftClose v-if="!collapsed" class="size-4" />
+              <PanelLeftOpen v-else class="size-4" />
+            </button>
+          </div>
         </aside>
 
         <!-- Main content -->
@@ -39,6 +49,9 @@
             <RouterView />
           </div>
         </main>
+      </div>
+      <div class="flex shrink-0 border-t border-border bg-muted px-3 py-2 md:hidden">
+        <AppUserMenu />
       </div>
     </div>
 
@@ -55,6 +68,7 @@
   import AppToaster from '@/components/ui/AppToaster.vue';
   import AppTopBar from '@/components/layout/AppTopBar.vue';
   import AppVerticalNav from '@/components/layout/AppVerticalNav.vue';
+  import AppUserMenu from '@/components/layout/AppUserMenu.vue';
   import { useTheme } from '@/composables/useTheme';
   import {
     getNavigationScope,

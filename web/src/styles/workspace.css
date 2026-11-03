@@ -42,10 +42,6 @@
   color: hsl(var(--muted-foreground));
 }
 
-.app-user-menu-trigger {
-  flex-shrink: 0;
-}
-
 .app-global-tools {
   gap: 0.5rem;
 }

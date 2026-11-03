@@ -1,6 +1,21 @@
 <template>
   <div class="space-y-4">
-    <DetailPageHeader :items="[]" :title="t('project.environment.title')" />
+    <div class="app-toolbar-simple">
+      <DetailPageHeader :items="[]" :title="t('project.environment.title')" />
+      <div
+        v-if="!loading && !loadError && projectStore.activeProjectId && environment"
+        class="flex flex-wrap items-center gap-3"
+      >
+        <button v-if="isSSH" class="app-button px-4" :disabled="operating" @click="openSshCommand">
+          <KeyRound class="size-4" aria-hidden="true" />
+          {{ t('project.initialization.sshCommand') }}
+        </button>
+        <button class="app-button-primary px-5" @click="showTerminal = true">
+          <SquareTerminal class="size-4" aria-hidden="true" />
+          {{ t('project.environment.terminal.title') }}
+        </button>
+      </div>
+    </div>
 
     <AppLoadingState v-if="loading" size="section" />
     <AppEmptyState v-else-if="!projectStore.activeProjectId" />
@@ -13,21 +28,6 @@
         :disabled="operating"
         @edit="openEditDialog"
       >
-        <template #actions>
-          <button
-            v-if="isSSH"
-            class="app-button h-9 px-3"
-            :disabled="operating"
-            @click="openSshCommand"
-          >
-            <KeyRound class="size-4" aria-hidden="true" />
-            {{ t('project.initialization.sshCommand') }}
-          </button>
-          <button class="app-button h-9 px-3" @click="showTerminal = true">
-            <SquareTerminal class="size-4" aria-hidden="true" />
-            {{ t('project.environment.terminal.title') }}
-          </button>
-        </template>
         <dl class="app-detail-info-grid">
           <div class="flex gap-2">
             <dt>{{ t('project.environment.targetType') }}</dt>

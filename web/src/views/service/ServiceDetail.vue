@@ -6,6 +6,15 @@
         :title="service?.application_name || t('service.detail.title')"
       />
       <div class="flex flex-wrap items-center gap-2">
+        <button
+          v-if="service"
+          class="app-button h-9 px-3"
+          :disabled="operating"
+          @click="openCopyDialog"
+        >
+          <Copy class="size-4" />
+          {{ t('common.copy') }}
+        </button>
         <button v-if="service" class="app-button h-9 px-3" :disabled="operating" @click="preview">
           <FileCode2 class="size-4" />
           {{ t('application.detail.actions.preview') }}
@@ -117,6 +126,70 @@
         @save="persistEnvironment"
       />
     </template>
+
+    <AppDialog
+      :open="isCopyDialogOpen"
+      :title="t('service.copy.title')"
+      :description="t('service.copy.description')"
+      @update:open="setCopyDialogOpen"
+    >
+      <div class="space-y-1.5">
+        <label class="app-field-label mb-1.5 block">
+          {{ t('service.copy.targetProject') }}
+          <span class="text-destructive">*</span>
+        </label>
+        <ComboboxSelect
+          :model-value="copyTargetProjectId"
+          :options="copyProjectOptions"
+          :placeholder="t('service.copy.selectProject')"
+          :empty-text="t('service.copy.noProjects')"
+          :invalid="Boolean(copyProjectError)"
+          :disabled="operating"
+          width-class="w-full"
+          @update:model-value="handleCopyProjectChange"
+        />
+        <p v-if="copyProjectError" class="app-field-error" role="alert">
+          {{ copyProjectError }}
+        </p>
+        <p v-if="!copyProjectOptions.length" class="text-sm text-muted-foreground">
+          {{ t('service.copy.noProjects') }}
+        </p>
+      </div>
+      <div class="space-y-1.5">
+        <label for="service-copy-versions" class="app-field-label mb-1.5 block">
+          {{ t('service.copy.versions') }}
+        </label>
+        <SelectControl
+          id="service-copy-versions"
+          v-model="copyVersionScope"
+          :options="[
+            { value: 'latest', label: t('service.copy.latestVersion') },
+            { value: 'all', label: t('service.copy.allVersions') },
+          ]"
+          :disabled="operating"
+          reset-value="latest"
+        />
+      </div>
+      <fieldset v-if="copyDirectoryState.ready" :disabled="operating">
+        <DeploymentDirectoryField
+          v-model="copyDirectoryState.directory"
+          :platform="copyDirectoryState.platform"
+          :runtime-directory="copyDirectoryState.runtimeDirectory"
+          :error="copyDirectoryState.error"
+          @update:model-value="copyDirectoryState.error = ''"
+        />
+      </fieldset>
+      <p v-if="copySubmitError" class="app-field-error" role="alert">{{ copySubmitError }}</p>
+      <template #footer>
+        <AppDialogActions
+          :busy="operating"
+          :confirm-label="t('common.copy')"
+          :confirm-disabled="!copyDirectoryState.ready"
+          @cancel="setCopyDialogOpen(false)"
+          @confirm="copyService"
+        />
+      </template>
+    </AppDialog>
 
     <AppDialog
       v-if="service"
@@ -321,8 +394,8 @@
 
 <script setup lang="ts">
   import AppInput from '@/components/ui/AppInput.vue';
-  import { ArrowLeft, FileCode2, Rocket, Square, Trash2 } from '@lucide/vue';
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { ArrowLeft, Copy, FileCode2, Rocket, Square, Trash2 } from '@lucide/vue';
+  import { computed, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { ensureProjectExecutionReady } from '@/router/projectReadiness';
@@ -355,6 +428,7 @@
   import ServiceStatusBadge from '@/components/service/ServiceStatusBadge.vue';
   import { formatTime } from '@/utils/time';
   import ComboboxSelect, { type ComboboxOptionValue } from '@/components/ui/ComboboxSelect.vue';
+  import SelectControl from '@/components/ui/SelectControl.vue';
   import DetailInfoCard from '@/components/ui/DetailInfoCard.vue';
   import type { RuntimeContainerLogTarget } from '@/components/service/runtimeContainerLogs';
   import ServiceComponentsCard from './components/ServiceComponentsCard.vue';
@@ -370,6 +444,18 @@
   const { loading: operating, execute: executeOperation } = useStatusAsync();
   const { loading: previewLoading, execute: executePreview } = useStatusAsync();
   const service = ref<ServiceResp>();
+  const isCopyDialogOpen = ref(false);
+  const copyTargetProjectId = ref('');
+  const copyDeploymentDirectory = useDeploymentDirectory(() => copyTargetProjectId.value);
+  const copyDirectoryState = copyDeploymentDirectory.state;
+  const copyVersionScope = ref('latest');
+  const copyProjectError = ref('');
+  const copySubmitError = ref('');
+  const copyProjectOptions = computed(() =>
+    projectStore.activeProjects
+      .filter((project) => project.id !== projectStore.activeProjectId)
+      .map((project) => ({ value: project.id, label: project.name, description: project.code }))
+  );
   const isBasicEditDialogOpen = ref(false);
   const basicEditVersions = ref<VersionResp[]>([]);
   const basicEditForm = reactive({
@@ -400,7 +486,7 @@
   const previewContent = ref('');
   const previewError = ref('');
   const previewJoinTraefikNetwork = ref(true);
-  const serviceId = String(route.params.id || '');
+  const serviceId = computed(() => String(route.params.id || ''));
 
   function selectedProjectId() {
     const projectId = projectStore.activeProjectId;
@@ -454,7 +540,7 @@
   async function load() {
     try {
       await execute(async () => {
-        setService(await serviceApi.get(selectedProjectId(), serviceId));
+        setService(await serviceApi.get(selectedProjectId(), serviceId.value));
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.loadDetailFailed'));
@@ -464,6 +550,92 @@
 
   function validateEnvironmentKey(key: string) {
     return environmentKeyPattern.test(key) ? undefined : t('environment.validation.invalidKey');
+  }
+
+  async function openCopyDialog() {
+    try {
+      if (!projectStore.projects.length) {
+        await executeOperation(() => projectStore.fetchProjects());
+      }
+      setCopyDialogOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('service.copy.loadProjectsFailed'));
+    }
+  }
+
+  function setCopyDialogOpen(open: boolean) {
+    if (operating.value) {
+      return;
+    }
+    isCopyDialogOpen.value = open;
+    copyTargetProjectId.value = '';
+    copyVersionScope.value = 'latest';
+    copyProjectError.value = '';
+    copySubmitError.value = '';
+  }
+
+  function handleCopyProjectChange(value: ComboboxOptionValue) {
+    copyTargetProjectId.value = String(value);
+    copyProjectError.value = '';
+  }
+
+  watch(copyTargetProjectId, async (projectId) => {
+    copySubmitError.value = '';
+    const current = service.value;
+    if (!projectId || !current) {
+      return;
+    }
+    try {
+      await executeOperation(() =>
+        copyDeploymentDirectory.load(
+          projectId,
+          {
+            deployment_directory: '',
+            directory_target_revision: 0,
+            runtime_directory: '',
+            runtime_target_revision: 0,
+          },
+          current.code
+        )
+      );
+    } catch (error) {
+      copySubmitError.value =
+        error instanceof Error ? error.message : t('service.copy.loadDirectoryFailed');
+    }
+  });
+
+  async function copyService() {
+    const current = service.value;
+    if (!current) {
+      return;
+    }
+    copySubmitError.value = '';
+    copyProjectError.value = copyTargetProjectId.value ? '' : t('service.copy.projectRequired');
+    if (copyProjectError.value) {
+      return;
+    }
+    if (!copyDeploymentDirectory.validate(t('service.deploy.directoryInvalid'))) {
+      return;
+    }
+    const targetProjectId = copyTargetProjectId.value;
+    const targetProjectName = projectStore.projects.find(
+      (project) => project.id === targetProjectId
+    )?.name;
+    try {
+      await executeOperation(async () => {
+        const copied = await serviceApi.copy(selectedProjectId(), serviceId.value, {
+          target_project_id: targetProjectId,
+          copy_all_versions: copyVersionScope.value === 'all',
+          ...copyDeploymentDirectory.payload(),
+        });
+        projectStore.setActiveProject(targetProjectId);
+        await router.push(`/service/${copied.id}`);
+      });
+      setCopyDialogOpen(false);
+      toast.success(t('service.copy.success', { project: targetProjectName, code: current.code }));
+    } catch (error) {
+      copySubmitError.value = error instanceof Error ? error.message : t('service.copy.failed');
+    }
   }
 
   async function openBasicEditDialog() {
@@ -517,7 +689,7 @@
     }
     try {
       await executeOperation(async () => {
-        const updated = await serviceApi.updateBasic(selectedProjectId(), serviceId, {
+        const updated = await serviceApi.updateBasic(selectedProjectId(), serviceId.value, {
           version_id: versionId,
         });
         setService(updated);
@@ -533,7 +705,7 @@
   async function persistEnvironment(entries: EnvironmentVariableEntry[]) {
     try {
       await executeOperation(async () => {
-        const updated = await serviceApi.updateEnv(selectedProjectId(), serviceId, {
+        const updated = await serviceApi.updateEnv(selectedProjectId(), serviceId.value, {
           env: entries,
         });
         setService(updated);
@@ -555,7 +727,7 @@
     previewOpen.value = true;
     try {
       await executePreview(async () => {
-        const result = await serviceApi.preview(selectedProjectId(), serviceId, {
+        const result = await serviceApi.preview(selectedProjectId(), serviceId.value, {
           join_traefik_network: previewJoinTraefikNetwork.value,
         });
         previewContent.value = result.compose_yaml;
@@ -732,7 +904,7 @@
   async function deleteService() {
     try {
       await executeOperation(async () => {
-        await serviceApi.remove(selectedProjectId(), serviceId);
+        await serviceApi.remove(selectedProjectId(), serviceId.value);
         closeDeleteDialog();
         toast.success(t('service.toast.deleteSuccess'));
         await router.push('/services');
@@ -742,5 +914,5 @@
     }
   }
 
-  onMounted(load);
+  watch(serviceId, load, { immediate: true });
 </script>

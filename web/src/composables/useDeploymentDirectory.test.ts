@@ -27,6 +27,16 @@ describe('deployment directory', () => {
     expect(initialDeploymentDirectory(environment, snapshot, 'api')).toBe(
       'D:/Orbit Workspace/deployment/api'
     );
+    expect(
+      initialDeploymentDirectory(
+        {
+          ...environment,
+          ssh: { platform: 'linux', workspace_root: '/srv/orbit' },
+        } as EnvironmentResp,
+        snapshot,
+        'api'
+      )
+    ).toBe('/srv/orbit/deployment/api');
     const configured = {
       ...snapshot,
       deployment_directory: 'D:/custom/api',

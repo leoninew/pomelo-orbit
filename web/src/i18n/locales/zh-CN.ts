@@ -813,6 +813,21 @@ export default {
     },
   },
   service: {
+    copy: {
+      title: '复制服务',
+      description: '将应用、版本、组件及服务配置复制到另一个项目，完成后可继续编辑并自行部署。',
+      targetProject: '目标项目',
+      selectProject: '选择目标项目',
+      projectRequired: '请选择目标项目',
+      noProjects: '没有可用的目标项目',
+      versions: '版本范围',
+      latestVersion: '最新版本',
+      allVersions: '全部版本',
+      loadProjectsFailed: '加载项目失败',
+      loadDirectoryFailed: '加载目标部署目录失败',
+      failed: '复制服务失败',
+      success: '服务 {code} 已复制到项目 {project}',
+    },
     toolbar: '服务工具栏',
     filterStatus: '筛选服务状态',
     statusCheck: {

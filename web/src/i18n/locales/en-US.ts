@@ -832,6 +832,22 @@ export default {
     },
   },
   service: {
+    copy: {
+      title: 'Copy service',
+      description:
+        'Copy the application, versions, components, and service configuration to another project, then edit and deploy when ready.',
+      targetProject: 'Target project',
+      selectProject: 'Select a target project',
+      projectRequired: 'Select a target project',
+      noProjects: 'No target projects available',
+      versions: 'Version scope',
+      latestVersion: 'Latest version',
+      allVersions: 'All versions',
+      loadProjectsFailed: 'Failed to load projects',
+      loadDirectoryFailed: 'Failed to load target deployment directory',
+      failed: 'Failed to copy service',
+      success: 'Service {code} copied to project {project}',
+    },
     toolbar: 'Services toolbar',
     filterStatus: 'Filter service status',
     statusCheck: {

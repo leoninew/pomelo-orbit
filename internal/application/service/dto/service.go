@@ -40,6 +40,13 @@ type ServiceCreateInput struct {
 	Code          string
 }
 
+type ServiceCopyInput struct {
+	TargetProjectId           string
+	CopyAllVersions           bool
+	DeploymentDirectory       string
+	EnvironmentTargetRevision int64
+}
+
 // ServiceDefinition is the complete saved runtime configuration of one
 // Service. IDs are references within a caller's definition only; the Service
 // domain assigns its persisted identity when creating the configuration.

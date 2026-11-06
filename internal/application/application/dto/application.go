@@ -22,6 +22,13 @@ type ApplicationDefinition struct {
 	Versions    []VersionDefinition
 }
 
+type ApplicationCopyResult struct {
+	Application         model.Application
+	VersionIds          map[string]string
+	VersionComponentIds map[string]string
+	LatestVersionId     string
+}
+
 type VersionDefinition struct {
 	Version    model.Version
 	Components []model.VersionComponent

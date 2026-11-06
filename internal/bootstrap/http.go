@@ -79,6 +79,7 @@ type applicationServices struct {
 	RouteService                 routesvc.Service
 	ApplicationService           applicationsvc.Service
 	ServiceService               servicesvc.Service
+	ServiceCopyService           servicesvc.CopyService
 	DeploymentService            deploymentsvc.Service
 	ServiceStatusCheck           *deploymentsvc.StatusCheckService
 	DialogueService              dialoguesvc.Service
@@ -224,6 +225,7 @@ func newApplicationServices(cfg config.Config, logger *slog.Logger, database *sq
 		RouteService:       routeService,
 		ApplicationService: applicationService,
 		ServiceService:     serviceService,
+		ServiceCopyService: servicesvc.NewCopyService(serviceService, applicationService, environmentService),
 		DeploymentService:  deploymentService,
 		ServiceStatusCheck: deploymentsvc.NewStatusCheckService(stores.project, stores.service, targetResolver, dockerrunner.NewInventory(runtime)),
 		GatewayService:     gatewayService,
@@ -283,6 +285,7 @@ func newHTTPServerDependencies(cfg config.Config, logger *slog.Logger, database 
 		RouteService:                 services.RouteService,
 		ApplicationService:           services.ApplicationService,
 		ServiceService:               services.ServiceService,
+		ServiceCopyService:           services.ServiceCopyService,
 		DeploymentService:            services.DeploymentService,
 		ServiceStatusCheck:           services.ServiceStatusCheck,
 		DialogueService:              services.DialogueService,

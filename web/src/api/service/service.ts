@@ -11,6 +11,8 @@ import type {
   ServicePreviewResp,
   ServiceResp,
   ServiceCreateReq,
+  ServiceCopyReq,
+  ServiceCopyResp,
   ServiceStatusCheckPreviewResp,
   ServiceStatusCheckConfirmReq,
   ServiceStatusCheckConfirmResp,
@@ -54,6 +56,10 @@ export const serviceApi = {
 
   create(projectId: string, payload: ServiceCreateReq): Promise<ServiceResp> {
     return request.post('/api/service', payload, { params: { project_id: projectId } });
+  },
+
+  copy(projectId: string, id: string, payload: ServiceCopyReq): Promise<ServiceCopyResp> {
+    return request.post(`/api/service/${id}/copy`, payload, { params: { project_id: projectId } });
   },
 
   remove(projectId: string, id: string): Promise<void> {

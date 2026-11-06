@@ -53,6 +53,7 @@ type Dependencies struct {
 	RouteService                 routesvc.Service
 	ApplicationService           applicationsvc.Service
 	ServiceService               servicesvc.Service
+	ServiceCopyService           servicesvc.CopyService
 	DeploymentService            deploymentsvc.Service
 	ServiceStatusCheck           *deploymentsvc.StatusCheckService
 	DialogueService              dialoguesvc.Service

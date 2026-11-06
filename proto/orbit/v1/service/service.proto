@@ -45,6 +45,17 @@ message ServiceCreateReq {
   string code = 4;
 }
 
+message ServiceCopyReq {
+  string target_project_id = 1;
+  bool copy_all_versions = 2;
+  string deployment_directory = 3;
+  int64 environment_target_revision = 4;
+}
+
+message ServiceCopyResp {
+  string id = 1;
+}
+
 message ServiceBasicUpdateReq {
   string version_id = 1;
 }

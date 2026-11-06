@@ -51,6 +51,17 @@ export interface ServiceCreateReq {
   code: string;
 }
 
+export interface ServiceCopyReq {
+  target_project_id: string;
+  copy_all_versions: boolean;
+  deployment_directory: string;
+  environment_target_revision: number;
+}
+
+export interface ServiceCopyResp {
+  id: string;
+}
+
 export interface ServiceBasicUpdateReq {
   version_id: string;
 }

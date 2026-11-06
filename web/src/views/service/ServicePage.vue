@@ -409,7 +409,7 @@
   import AppInput from '@/components/ui/AppInput.vue';
   import { LayoutGrid, List, Plus, RefreshCw } from '@lucide/vue';
   import ServiceStatusCheckDialog from './components/ServiceStatusCheckDialog.vue';
-  import { computed, onMounted, reactive, ref, watch } from 'vue';
+  import { computed, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRouter } from 'vue-router';
   import { ensureProjectExecutionReady } from '@/router/projectReadiness';
@@ -436,12 +436,17 @@
   import type { VersionResp } from '@/gen/proto/orbit/v1/application/version';
   import type { ServiceResp } from '@/gen/proto/orbit/v1/service/service';
   import { useProjectStore } from '@/stores/project';
+  import { useStorageStore } from '@/stores/storage';
   import ServiceStatusBadge from '@/components/service/ServiceStatusBadge.vue';
+
+  const serviceStatusFilterKey = (projectId: string) =>
+    `pomelo_orbit_service_status_filter:${projectId}`;
 
   const { t } = useI18n();
   const toast = useToast();
   const router = useRouter();
   const projectStore = useProjectStore();
+  const storageStore = useStorageStore();
   const { status, error, execute } = useStatusAsync();
   const { loading: operating, execute: executeOp } = useStatusAsync();
 
@@ -533,8 +538,8 @@
           search: query.search.trim() || undefined,
         });
         if (projectStore.activeProjectId === projectId) {
-          services.value = resp.items ?? [];
-          pagination.total = resp.total ?? 0;
+          services.value = resp.items;
+          pagination.total = resp.total;
         }
       });
     } catch {
@@ -554,7 +559,7 @@
       if (projectStore.activeProjectId !== projectId) {
         return;
       }
-      applications.value = page.items ?? [];
+      applications.value = page.items;
       versions.value = [];
       Object.assign(createForm, {
         application_id: '',
@@ -594,7 +599,7 @@
       if (projectStore.activeProjectId !== projectId) {
         return;
       }
-      versions.value = page.items ?? [];
+      versions.value = page.items;
       createForm.version_id = versions.value[0]?.id ?? '';
     } catch (error) {
       createError.value = error instanceof Error ? error.message : t('service.toast.loadFailed');
@@ -697,7 +702,7 @@
       if (!(await deploymentDirectory.load(projectId, service, service.code))) {
         return;
       }
-      deployVersions.value = page.items ?? [];
+      deployVersions.value = page.items;
       Object.assign(deployForm, {
         version_id: service.version_id,
         force_recreate: false,
@@ -802,6 +807,10 @@
 
   function handleStatusChange(value: SelectOptionValue) {
     query.status = String(value);
+    const projectId = projectStore.activeProjectId;
+    if (projectId) {
+      storageStore.setItem(serviceStatusFilterKey(projectId), query.status);
+    }
     handleSearch();
   }
 
@@ -818,16 +827,15 @@
 
   watch(
     () => projectStore.activeProjectId,
-    () => {
+    (projectId) => {
       isStatusCheckDialogOpen.value = false;
-      query.status = '';
+      query.status = projectId
+        ? (storageStore.getItem<string>(serviceStatusFilterKey(projectId)) ?? '')
+        : '';
       query.search = '';
       pagination.current = 1;
       void fetchServices();
-    }
+    },
+    { immediate: true }
   );
-
-  onMounted(() => {
-    void fetchServices();
-  });
 </script>

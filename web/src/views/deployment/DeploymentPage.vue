@@ -138,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, onMounted, reactive, ref } from 'vue';
+  import { computed, onMounted, reactive, ref, watch } from 'vue';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
   import { MessageSquareText } from '@lucide/vue';
@@ -290,8 +290,28 @@
     }
   }
 
-  onMounted(async () => {
-    fetchDeployments();
-    await loadApps();
+  watch(
+    () => projectStore.activeProjectId,
+    (projectId) => {
+      query.application_id = '';
+      searchText.value = '';
+      pagination.current = 1;
+      pagination.total = 0;
+      deployments.value = [];
+      appOptions.value = [];
+      closeDeleteDialog();
+      if (route.query.application_id) {
+        void router.replace({ query: { ...route.query, application_id: undefined } });
+      }
+      if (projectId) {
+        void fetchDeployments();
+        void loadApps();
+      }
+    }
+  );
+
+  onMounted(() => {
+    void fetchDeployments();
+    void loadApps();
   });
 </script>

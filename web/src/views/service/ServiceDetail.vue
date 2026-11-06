@@ -480,7 +480,7 @@
       const page = await applicationApi.listVersions(selectedProjectId(), current.application_id, {
         per_page: 100,
       });
-      basicEditVersions.value = page.items ?? [];
+      basicEditVersions.value = page.items;
       isBasicEditDialogOpen.value = true;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('service.toast.loadFailed'));
@@ -605,7 +605,7 @@
       if (!(await deploymentDirectory.load(projectId, current, current.code))) {
         return;
       }
-      deployVersions.value = page.items ?? [];
+      deployVersions.value = page.items;
       Object.assign(deployForm, {
         version_id: current.version_id,
         force_recreate: false,

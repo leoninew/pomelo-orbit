@@ -556,7 +556,7 @@
         if (projectStore.activeProjectId !== projectId) {
           return;
         }
-        editApplications.value = page.items ?? [];
+        editApplications.value = page.items;
       } catch (reason) {
         toast.error(reason instanceof Error ? reason.message : '加载应用列表失败');
         return;

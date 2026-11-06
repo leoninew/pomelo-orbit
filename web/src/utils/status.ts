@@ -47,11 +47,6 @@ export function versionStatusTone(status: string): BadgeTone {
   return tones[status] ?? 'default';
 }
 
-/** 展示用 service_status：空串视为从未部署 */
-export function normalizeServiceStatus(status: string | undefined | null): string {
-  return status && status.trim() ? status : 'undeployed';
-}
-
 /**
  * docker compose 容器 State -> Badge 色调
  *

@@ -668,7 +668,7 @@
         const page = await applicationApi.list(projectId, {
           per_page: 100,
         });
-        applications.value = page.items ?? [];
+        applications.value = page.items;
       } catch (reason) {
         toast.error(reason instanceof Error ? reason.message : '加载应用列表失败');
         return;

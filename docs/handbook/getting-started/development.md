@@ -4,7 +4,7 @@
 
 ## 前置条件
 
-- Bash、Go 1.25、Node.js 22、Corepack 和 Task 3；使用的工具与路径需属于同一开发环境，不混用 Windows 原生与 WSL 工具链。
+- Bash、Go 1.25、Node.js 22.23.4、Corepack 0.34.6 和 Task 3；pnpm 10.34.9 由 `corepack pnpm` 按项目声明选择，无需全局安装。使用的工具与路径需属于同一开发环境，不混用 Windows 原生与 WSL 工具链。
 - Git 用于获取源码和管理版本；调试构建、部署功能时，还需准备 Docker Engine 和 Compose。
 - 网络可以访问 Go 模块与 npm 源。`task deps` 会安装锁定的前端依赖和项目固定版本的 Go 工具。
 
@@ -76,13 +76,13 @@ task build TAG=dev
 
 ```bash
 cd docs
-corepack yarn install --immutable
-corepack yarn dev
+corepack pnpm install --frozen-lockfile
+corepack pnpm dev
 ```
 
 打开 `http://127.0.0.1:5173/pomelo-orbit/`，修改 Markdown 后页面自动刷新。操作顺序使用步骤列表；需要说明资源关系、作用域或跨组件交互时，使用 `mermaid` 代码块绘图，避免重复相邻步骤或表格。图示保持窄屏可读。
 
-提交前在 `docs/` 运行 `corepack yarn build`，检查构建和站内链接。
+提交前在 `docs/` 运行 `corepack pnpm build`，检查构建和站内链接。
 
 ## 常用检查
 

@@ -37,13 +37,13 @@
 ### 修复单个文件
 
 ```bash
-yarn eslint --fix src/views/Home.vue
+corepack pnpm exec eslint --fix src/views/Home.vue
 ```
 
 ### 修复所有 Vue 文件
 
 ```bash
-yarn eslint --fix "src/**/*.vue"
+corepack pnpm exec eslint --fix "src/**/*.vue"
 ```
 
 ### 在保存时自动修复

@@ -20,26 +20,25 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .node-version
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install Corepack
+        run: npm install --global corepack@0.34.6
 
-      - name: Locate Yarn cache
-        id: yarn-cache
+      - name: Locate pnpm store
+        id: pnpm-store
         working-directory: web
-        run: echo "path=$(corepack yarn config get cacheFolder)" >> "$GITHUB_OUTPUT"
+        run: echo "path=$(corepack pnpm store path --silent)" >> "$GITHUB_OUTPUT"
 
-      - name: Restore Yarn cache
+      - name: Restore pnpm store
         uses: actions/cache@v4
         with:
-          path: ${{ steps.yarn-cache.outputs.path }}
-          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('web/yarn.lock') }}
-          restore-keys: ${{ runner.os }}-node22-yarn-
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-${{ runner.arch }}-pnpm10-${{ hashFiles('web/pnpm-lock.yaml') }}
 
       - name: Install locked web dependencies
         working-directory: web
-        run: corepack yarn install --immutable
+        run: corepack pnpm install --frozen-lockfile
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -78,7 +77,7 @@ jobs:
 
       - name: Run tests
         run: |
-          (cd web && corepack yarn test)
+          (cd web && corepack pnpm test)
           go test ./cmd/... ./internal/... ./sql
 
       - name: Set up Python

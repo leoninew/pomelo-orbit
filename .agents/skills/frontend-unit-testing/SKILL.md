@@ -34,7 +34,7 @@ description: 在 Pomelo Orbit 的 web 前端编写、审查或精简轻量单元
 
 ```powershell
 cd web
-corepack yarn test --reporter=default --silent=false --no-color
+corepack pnpm test --reporter=default --silent=false --no-color
 ```
 
 当前 Vitest 在 agent 环境可能默认使用隐藏已通过用例日志的 reporter；普通运行显示通过，不能证明没有警告。
@@ -55,13 +55,13 @@ corepack yarn test --reporter=default --silent=false --no-color
 
 ## 验证与交付
 
-修改前端实现或测试后，从仓库根目录进入 `web/` 运行项目固定版本的 Yarn：
+修改前端实现或测试后，从仓库根目录进入 `web/` 运行项目固定版本的 pnpm：
 
 ```powershell
 cd web
-corepack yarn lint:fix
-corepack yarn typecheck
-corepack yarn test --reporter=default --silent=false --no-color
+corepack pnpm lint:fix
+corepack pnpm typecheck
+corepack pnpm test --reporter=default --silent=false --no-color
 ```
 
 普通单元测试即可，不运行前端覆盖率。根目录 `task test -- --cov` 的覆盖率只属于 Go，前端仍运行普通测试。仅修改实践文档或 skill 时，核验文档、链接及 skill 结构即可。

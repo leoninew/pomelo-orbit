@@ -61,7 +61,7 @@ def build_release(root: Path) -> list[Path]:
         raise RuntimeError("Release builds require Go and Corepack on PATH")
 
     logger.info("Building the frontend")
-    _run([corepack, "yarn", "build"], root / "web")
+    _run([corepack, "pnpm", "build"], root / "web")
     frontend = root / "web" / "dist"
     if not (frontend / "index.html").is_file():
         raise RuntimeError("The frontend build did not produce web/dist/index.html")

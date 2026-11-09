@@ -15,7 +15,7 @@ tasks:
       GOTOOLCHAIN: local
       PATH: '{{.TASKFILE_DIR}}/bin{{if eq OS "windows"}};{{else}}:{{end}}{{.PATH}}'
     cmds:
-      - cd web && corepack yarn install --immutable
+      - cd web && corepack pnpm install --frozen-lockfile
       - mkdir -p bin
       - |
         set -e
@@ -72,7 +72,7 @@ tasks:
   web:
     desc: Start the frontend development server
     cmds:
-      - cd web && corepack yarn dev
+      - cd web && corepack pnpm dev
 
   cli:
     desc: Run the local CLI with development configuration
@@ -91,9 +91,9 @@ tasks:
       WEB_LINT_TASK: '{{if eq .FIX_ENABLED "1"}}lint:fix{{else}}lint{{end}}'
       WEB_FORMAT_TASK: '{{if eq .FIX_ENABLED "1"}}format:fix{{else}}format{{end}}'
     cmds:
-      - cd web && corepack yarn typecheck
-      - cd web && corepack yarn {{.WEB_LINT_TASK}}
-      - cd web && corepack yarn {{.WEB_FORMAT_TASK}}
+      - cd web && corepack pnpm typecheck
+      - cd web && corepack pnpm {{.WEB_LINT_TASK}}
+      - cd web && corepack pnpm {{.WEB_FORMAT_TASK}}
       - ./bin/golangci-lint config verify
       - ./bin/golangci-lint fmt {{.FIX_FORMAT_ARGS}} ./cmd/... ./internal/... ./sql
       - ./bin/golangci-lint run {{.FIX_LINT_ARGS}} ./cmd/... ./internal/... ./sql
@@ -104,7 +104,7 @@ tasks:
       COVER_ENABLED: '{{if contains "--cov" (default "" .CLI_ARGS)}}1{{end}}'
       COVER_ARGS: '{{if eq .COVER_ENABLED "1"}}-cover -coverprofile=coverage.out{{end}}'
     cmds:
-      - cd web && corepack yarn test
+      - cd web && corepack pnpm test
       - go test -tags=unit {{.COVER_ARGS}} ./internal/application/... ./internal/model/... ./internal/common/... ./internal/queue/...
 
   build:

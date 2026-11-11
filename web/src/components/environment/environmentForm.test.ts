@@ -4,6 +4,8 @@ import {
   emptyEnvironmentForm,
   environmentUpdateRequestFromForm,
   initializationEnvironmentRequestFromForm,
+  hydrateEnvironmentForm,
+  environmentFormDirty,
   validateEnvironmentForm,
 } from '@/components/environment/environmentForm';
 
@@ -40,6 +42,7 @@ describe('environmentForm', () => {
         port: 22,
         username: 'deploy',
         workspace_root: '/srv/orbit',
+        host_identity_policy: 'negotiated',
       },
     });
   });
@@ -52,6 +55,29 @@ describe('environmentForm', () => {
       host: 'host',
       username: 'username',
     });
+  });
+
+  it('preserves stable identity in editing and initialization and tracks policy changes', () => {
+    const snapshot = {
+      target_type: 'ssh',
+      ssh: {
+        platform: 'linux',
+        host: 'example.test',
+        port: 22,
+        username: 'deploy',
+        workspace_root: '/srv/orbit',
+        host_identity_policy: 'stable',
+      },
+    };
+    const form = hydrateEnvironmentForm(snapshot);
+
+    expect(form.hostIdentityPolicy).toBe('stable');
+    expect(environmentFormDirty(form, snapshot)).toBe(false);
+    expect(environmentUpdateRequestFromForm(form).ssh?.host_identity_policy).toBe('stable');
+    expect(initializationEnvironmentRequestFromForm(form).ssh?.host_identity_policy).toBe('stable');
+
+    form.hostIdentityPolicy = 'negotiated';
+    expect(environmentFormDirty(form, snapshot)).toBe(true);
   });
 
   it('accepts a local home workspace root as written', () => {

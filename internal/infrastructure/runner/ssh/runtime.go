@@ -307,10 +307,10 @@ func (r *Runtime) dialSSHWithHostKey(ctx context.Context, target environmentport
 	clientConfig := &ssh.ClientConfig{
 		User:            environment.Username,
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		HostKeyCallback: strictHostKeyCallback(environment.HostKeyFingerprint),
+		HostKeyCallback: strictHostKeyCallback(environment.HostKeyFingerprint, environment.HostIdentityPolicy),
 	}
 	if observed != nil {
-		clientConfig.HostKeyCallback = probeHostKeyCallback(environment.HostKeyFingerprint, observed)
+		clientConfig.HostKeyCallback = probeHostKeyCallback(environment.HostKeyFingerprint, environment.HostIdentityPolicy, observed)
 	}
 	clientConnection, channels, requests, err := ssh.NewClientConn(connection, address, clientConfig)
 	if err != nil {

@@ -35,7 +35,7 @@ func TestCredentialBelongsToExistingEnvironment(t *testing.T) {
 		t.Fatal("created credential without parent")
 	}
 	environment := model.Environment{Id: "env", ProjectId: "project", Code: "project", TargetType: "ssh", WorkspaceRoot: "/srv/orbit", TargetRevision: 1,
-		SSH: &model.EnvironmentSSHTarget{Platform: "linux", Host: "host", Port: 22, Username: "orbit", CredentialId: "ignored", CredentialRevision: 99}}
+		SSH: &model.EnvironmentSSHTarget{Platform: "linux", Host: "host", Port: 22, Username: "orbit", CredentialId: "ignored", CredentialRevision: 99, HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated}}
 	if err := environments.CreateEnvironment(ctx, environment); err != nil {
 		t.Fatal(err)
 	}

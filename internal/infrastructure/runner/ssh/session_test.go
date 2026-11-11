@@ -43,6 +43,11 @@ type testForwardDestination struct {
 
 func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 	t.Helper()
+	return startSessionServerWithHostKey(t, nil)
+}
+
+func startSessionServerWithHostKey(t *testing.T, hostSigner ssh.Signer) (environmentport.Target, *sessionServer) {
+	t.Helper()
 	_, key, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +73,10 @@ func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 	}
 	server := &sessionServer{blocked: make(chan struct{}, 4), commands: make(chan string, 64), forwards: make(chan testForwardDestination, 8)}
 	config := &ssh.ServerConfig{NoClientAuth: true}
-	config.AddHostKey(signer)
+	if hostSigner == nil {
+		hostSigner = signer
+	}
+	config.AddHostKey(hostSigner)
 	var connections sync.Map
 	server.disconnect = func() { connections.Range(func(conn, _ any) bool { _ = conn.(net.Conn).Close(); return true }) }
 	var workers sync.WaitGroup
@@ -184,7 +192,7 @@ func startSessionServer(t *testing.T) (environmentport.Target, *sessionServer) {
 	return environmentport.Target{
 		FileScope: "workspace",
 		Environment: model.Environment{Id: "test-env", ProjectId: "test-project", TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "workspace",
-			SSH: &model.EnvironmentSSHTarget{Platform: model.EnvironmentPlatformLinux, Host: host, Port: portNumber, Username: "managed-user", HostKeyFingerprint: ssh.FingerprintSHA256(signer.PublicKey())}},
+			SSH: &model.EnvironmentSSHTarget{Platform: model.EnvironmentPlatformLinux, Host: host, Port: portNumber, Username: "managed-user", HostKeyFingerprint: ssh.FingerprintSHA256(hostSigner.PublicKey()), HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated}},
 		PrivateKey: &environmentdto.DeploymentSSHPrivateKey{PrivateKey: string(pem.EncodeToMemory(block))},
 	}, server
 }

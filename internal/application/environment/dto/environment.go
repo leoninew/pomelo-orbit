@@ -30,6 +30,7 @@ type SSHDefinition struct {
 	Username           string
 	CredentialRevision int64
 	HostKeyFingerprint string
+	HostIdentityPolicy string
 }
 
 // SSHCredentialDefinition carries the logical key pair, not its encrypted
@@ -53,11 +54,12 @@ type LocalTargetInput struct {
 }
 
 type SSHTargetInput struct {
-	Platform      string
-	Host          string
-	Port          int
-	Username      string
-	WorkspaceRoot string
+	Platform           string
+	Host               string
+	Port               int
+	Username           string
+	WorkspaceRoot      string
+	HostIdentityPolicy *string
 }
 
 // DeploymentSSHPrivateKey is decrypted only for an SSH probe or deployment.
@@ -100,6 +102,7 @@ type SSHTargetView struct {
 	Username           string
 	WorkspaceRoot      string
 	HostKeyFingerprint string
+	HostIdentityPolicy string
 }
 
 type LocalDisplaySnapshot struct {

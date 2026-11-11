@@ -76,6 +76,7 @@ func (r Repository) CreateEnvironment(ctx context.Context, environment model.Env
 		Username:             environmentSSHUsername(environment),
 		WorkspaceRoot:        environmentWorkspaceRoot(environment),
 		HostKeyFingerprint:   environmentSSHHostKeyFingerprint(environment),
+		HostIdentityPolicy:   environmentSSHHostIdentityPolicy(environment),
 		TargetRevision:       environment.TargetRevision,
 		LastProbeRevision:    nullableInt64(environment.LastProbeRevision),
 		LastProbeStatus:      dbmodel.NullString(environment.LastProbeStatus),
@@ -100,6 +101,7 @@ func (r Repository) UpdateEnvironment(ctx context.Context, environment model.Env
 		Username:             environmentSSHUsername(environment),
 		WorkspaceRoot:        environmentWorkspaceRoot(environment),
 		HostKeyFingerprint:   environmentSSHHostKeyFingerprint(environment),
+		HostIdentityPolicy:   environmentSSHHostIdentityPolicy(environment),
 		TargetRevision:       environment.TargetRevision,
 		LastProbeRevision:    nullableInt64(environment.LastProbeRevision),
 		LastProbeStatus:      dbmodel.NullString(environment.LastProbeStatus),
@@ -192,6 +194,7 @@ func environmentFrom(row environmentsqlc.EnvironmentByIdRow) model.Environment {
 			Username:     row.Username.String,
 			CredentialId: row.SSHCredentialId.String, CredentialRevision: row.SshCredentialRevision.Int64,
 			HostKeyFingerprint: row.HostKeyFingerprint.String,
+			HostIdentityPolicy: row.HostIdentityPolicy,
 		}
 	}
 	return item
@@ -237,6 +240,13 @@ func environmentSSHHostKeyFingerprint(value model.Environment) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: value.SSH.HostKeyFingerprint, Valid: value.SSH.HostKeyFingerprint != ""}
+}
+
+func environmentSSHHostIdentityPolicy(value model.Environment) string {
+	if value.SSH == nil {
+		return model.EnvironmentHostIdentityPolicyNegotiated
+	}
+	return value.SSH.HostIdentityPolicy
 }
 
 func nullableInt64(value *int64) sql.NullInt64 {

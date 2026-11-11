@@ -114,6 +114,7 @@ type Environment struct {
 	Username             sql.NullString `db:"username"`
 	WorkspaceRoot        sql.NullString `db:"workspace_root"`
 	HostKeyFingerprint   sql.NullString `db:"host_key_fingerprint"`
+	HostIdentityPolicy   string         `db:"host_identity_policy"`
 	TargetRevision       int64          `db:"target_revision"`
 	LastProbeRevision    sql.NullInt64  `db:"last_probe_revision"`
 	LastProbeStatus      sql.NullString `db:"last_probe_status"`

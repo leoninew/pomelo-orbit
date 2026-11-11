@@ -41,6 +41,28 @@
     </template>
     <template v-else>
       <div class="space-y-1.5">
+        <div class="flex items-center gap-1.5">
+          <label class="app-field-label" :for="id('host-identity-policy')">
+            {{ t('project.environment.hostIdentityPolicy') }}
+          </label>
+          <AppTooltip :content="t('project.environment.hostIdentityPolicyHint')">
+            <button
+              type="button"
+              class="app-icon-button size-4 cursor-help"
+              :aria-label="t('project.environment.hostIdentityPolicy')"
+            >
+              <CircleHelp class="size-4" aria-hidden="true" />
+            </button>
+          </AppTooltip>
+        </div>
+        <SelectControl
+          :id="id('host-identity-policy')"
+          v-model="form.hostIdentityPolicy"
+          :options="hostIdentityPolicyOptions"
+          :disabled="disabled"
+        />
+      </div>
+      <div class="space-y-1.5">
         <label class="app-field-label block" :for="id('platform')">
           {{ t('project.environment.platform') }}
           <span class="text-destructive">*</span>
@@ -141,7 +163,9 @@
 </template>
 
 <script setup lang="ts">
+  import { CircleHelp } from '@lucide/vue';
   import AppInput from '@/components/ui/AppInput.vue';
+  import AppTooltip from '@/components/ui/AppTooltip.vue';
   import { computed } from 'vue';
   import { useI18n } from 'vue-i18n';
   import SelectControl from '@/components/ui/SelectControl.vue';
@@ -182,6 +206,10 @@
   const platformOptions = computed(() => [
     { value: 'linux', label: t('project.environment.platforms.linux') },
     { value: 'windows', label: t('project.environment.platforms.windows') },
+  ]);
+  const hostIdentityPolicyOptions = computed(() => [
+    { value: 'negotiated', label: t('project.environment.hostIdentityPolicies.negotiated') },
+    { value: 'stable', label: t('project.environment.hostIdentityPolicies.stable') },
   ]);
   const workspacePlaceholder = computed(() =>
     environmentWorkspacePlaceholder(form.value, props.localWorkspaceRoot)

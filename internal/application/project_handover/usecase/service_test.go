@@ -58,6 +58,18 @@ func TestImportDocumentReportsSafeDecodeError(t *testing.T) {
 	}
 }
 
+func TestImportRejectsPreviousPackageVersionBeforeWriting(t *testing.T) {
+	calls := []string{}
+	item := testPackage()
+	item.Version = 2
+	_, err := newTestService(&calls).Import(context.Background(), "operator", handoverdto.ImportInput{
+		Mode: handoverdto.ImportModeNew, Name: "Taken Over", Code: "taken-over", Package: item,
+	})
+	if !apperror.IsKind(err, apperror.KindValidation) || apperror.Classify(err).Message != "Unsupported handover package version" || len(calls) != 0 {
+		t.Fatalf("old package import: err=%v calls=%v", err, calls)
+	}
+}
+
 func TestImportReplaceKeepsTargetProjectIdentity(t *testing.T) {
 	calls := []string{}
 	service := newTestService(&calls)
@@ -352,6 +364,11 @@ func assertImportDocumentDecryptsCredential(t *testing.T, decryptionKey string, 
 	environment := &testEnvironmentDomain{calls: &calls}
 	service := newTestServiceWithEnvironment(&calls, environment)
 	item := testPackage()
+	item.Environment.TargetType = model.EnvironmentTargetTypeSSH
+	item.Environment.TargetRevision = 9
+	item.Environment.SSH = &environmentdto.SSHDefinition{
+		HostIdentityPolicy: model.EnvironmentHostIdentityPolicyStable, HostKeyFingerprint: "SHA256:stable", CredentialRevision: 3,
+	}
 	encrypted, err := security.EncryptString(encryptionKey, "PRIVATE KEY")
 	if err != nil {
 		t.Fatal(err)
@@ -372,6 +389,9 @@ func assertImportDocumentDecryptsCredential(t *testing.T, decryptionKey string, 
 	}
 	if environment.saved == nil || environment.saved.Credential == nil || environment.saved.Credential.PrivateKey != "PRIVATE KEY" || environment.saved.Credential.EncryptedPrivateKey != "" {
 		t.Fatalf("saved environment credential = %+v", environment.saved)
+	}
+	if !reflect.DeepEqual(environment.saved.SSH, item.Environment.SSH) || environment.saved.TargetRevision != item.Environment.TargetRevision {
+		t.Fatalf("handover changed host identity: %+v", environment.saved)
 	}
 }
 

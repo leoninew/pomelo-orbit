@@ -139,6 +139,16 @@
               {{ environment.ssh.host_key_fingerprint || t('common.notSet') }}
             </dd>
           </div>
+          <div v-if="isSSH && environment.ssh" class="flex gap-2 sm:col-span-2">
+            <dt>{{ t('project.environment.hostIdentityPolicy') }}</dt>
+            <dd class="text-foreground">
+              {{
+                t(
+                  `project.environment.hostIdentityPolicies.${environment.ssh.host_identity_policy}`
+                )
+              }}
+            </dd>
+          </div>
           <div class="flex gap-2 sm:col-span-2">
             <dt>{{ t('project.environment.lastProbeDiagnostic') }}</dt>
             <dd class="min-w-0 break-words text-muted-foreground">

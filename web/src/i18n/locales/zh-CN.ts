@@ -363,6 +363,13 @@ export default {
       usernamePlaceholder: '例如 deploy 或 Administrator',
       workspaceRoot: '工作目录',
       hostKeyFingerprint: '主机密钥指纹',
+      hostIdentityPolicy: '主机身份校验',
+      hostIdentityPolicyHint:
+        '稳定身份固定公钥，证书重签不影响连接。切换会清空指纹，需重新探测或连接。',
+      hostIdentityPolicies: {
+        negotiated: '协商身份（默认）',
+        stable: '稳定身份',
+      },
       terminal: {
         title: '终端',
         connecting: '正在连接',

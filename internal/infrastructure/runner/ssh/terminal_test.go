@@ -134,7 +134,7 @@ func terminalSSHServer(t *testing.T) (environmentport.Target, <-chan testTermina
 	target := environmentport.Target{
 		Environment: model.Environment{TargetType: model.EnvironmentTargetTypeSSH,
 			SSH: &model.EnvironmentSSHTarget{Host: host, Port: portNumber, Username: "managed-user",
-				HostKeyFingerprint: ssh.FingerprintSHA256(signer.PublicKey())}},
+				HostKeyFingerprint: ssh.FingerprintSHA256(signer.PublicKey()), HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated}},
 		PrivateKey: &environmentdto.DeploymentSSHPrivateKey{PrivateKey: string(pem.EncodeToMemory(keyBlock))},
 	}
 	return target, ptyRequests, windowChanges

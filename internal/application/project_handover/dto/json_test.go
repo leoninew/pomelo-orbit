@@ -1,15 +1,43 @@
 package dto
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
+	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	projectdto "github.com/leoninew/pomelo-orbit/internal/application/project/dto"
 	routedto "github.com/leoninew/pomelo-orbit/internal/application/route/dto"
 	servicedto "github.com/leoninew/pomelo-orbit/internal/application/service/dto"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func TestEncodeDecodePreservesStableHostIdentitySnapshot(t *testing.T) {
+	revision, status := int64(9), model.EnvironmentProbeStatusSucceeded
+	environment := environmentdto.TargetDefinition{
+		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/orbit", TargetRevision: revision,
+		LastProbeRevision: &revision, LastProbeStatus: &status,
+		SSH: &environmentdto.SSHDefinition{
+			Platform: model.EnvironmentPlatformLinux, Host: "host", Port: 22, Username: "orbit", CredentialRevision: 3,
+			HostIdentityPolicy: model.EnvironmentHostIdentityPolicyStable, HostKeyFingerprint: "SHA256:stable",
+		},
+	}
+	document, err := Encode(Package{Format: Format, Version: FormatVersion, Environment: environment})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(document), `"host_identity_policy":"stable"`) {
+		t.Fatalf("missing wire policy: %s", document)
+	}
+	decoded, err := Decode(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Version != 3 || !reflect.DeepEqual(decoded.Environment, environment) {
+		t.Fatalf("snapshot changed during handover: %+v", decoded)
+	}
+}
 
 func TestEncodeDecodeKeepsInternalReferencesWithoutProjectOwnership(t *testing.T) {
 	projectId := "source-project"

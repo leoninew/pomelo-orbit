@@ -156,6 +156,7 @@ func saveEnvironmentInput(req *initv1.ProjectInitializationEnvironmentReq) initd
 		input.SSH = &environmentdto.SSHTargetInput{
 			Platform: req.Ssh.Platform, Host: req.Ssh.Host, Port: int(req.Ssh.Port),
 			Username: req.Ssh.Username, WorkspaceRoot: req.Ssh.WorkspaceRoot,
+			HostIdentityPolicy: req.Ssh.HostIdentityPolicy,
 		}
 	}
 	return input
@@ -177,5 +178,6 @@ func sshTargetResponse(item *environmentdto.SSHTargetView) *environmentv1.Enviro
 	return &environmentv1.EnvironmentSSHTargetResp{
 		Platform: item.Platform, Host: item.Host, Port: int32(item.Port),
 		Username: item.Username, WorkspaceRoot: item.WorkspaceRoot, HostKeyFingerprint: item.HostKeyFingerprint,
+		HostIdentityPolicy: item.HostIdentityPolicy,
 	}
 }

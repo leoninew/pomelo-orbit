@@ -12,6 +12,7 @@ import {
 
 export type EnvironmentTargetType = 'local' | 'ssh';
 export type EnvironmentPlatform = 'linux' | 'windows';
+export type HostIdentityPolicy = 'negotiated' | 'stable';
 
 export type EnvironmentForm = {
   targetType: EnvironmentTargetType;
@@ -20,6 +21,7 @@ export type EnvironmentForm = {
   port: number;
   username: string;
   workspaceRoot: string;
+  hostIdentityPolicy: HostIdentityPolicy;
 };
 
 export type EnvironmentFormErrors = {
@@ -39,6 +41,7 @@ export type EnvironmentTargetSnapshot = {
     port?: number;
     username?: string;
     workspace_root?: string;
+    host_identity_policy: string;
   };
 };
 
@@ -55,6 +58,7 @@ export function emptyEnvironmentForm(): EnvironmentForm {
     port: 22,
     username: '',
     workspaceRoot: '',
+    hostIdentityPolicy: 'negotiated',
   };
 }
 
@@ -78,6 +82,7 @@ export function hydrateEnvironmentForm(
     form.port = snapshot.ssh.port || 22;
     form.username = snapshot.ssh.username || '';
     form.workspaceRoot = snapshot.ssh.workspace_root || defaultDeploymentWorkspaceRoot();
+    form.hostIdentityPolicy = snapshot.ssh.host_identity_policy as HostIdentityPolicy;
     return form;
   }
   form.targetType = 'local';
@@ -181,6 +186,7 @@ export function environmentTargetPayload(form: EnvironmentForm): {
     port: number;
     username: string;
     workspace_root: string;
+    host_identity_policy: HostIdentityPolicy;
   };
 } {
   if (form.targetType === 'local') {
@@ -194,6 +200,7 @@ export function environmentTargetPayload(form: EnvironmentForm): {
       port: form.port,
       username: form.username.trim(),
       workspace_root: form.workspaceRoot.trim(),
+      host_identity_policy: form.hostIdentityPolicy,
     },
   };
 }
@@ -233,6 +240,7 @@ export function environmentFormDirty(
     form.host.trim() !== ssh.host ||
     form.port !== ssh.port ||
     form.username.trim() !== ssh.username ||
+    form.hostIdentityPolicy !== ssh.host_identity_policy ||
     form.workspaceRoot.trim() !== ssh.workspace_root
   );
 }

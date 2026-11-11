@@ -54,7 +54,7 @@ func copyDatabase(t *testing.T) *sql.DB {
 	if err := environmentrepo.NewRepository(database).CreateEnvironment(ctx, model.Environment{
 		Id: "target-environment", ProjectId: "target", Code: "target", TargetType: "ssh",
 		WorkspaceRoot: "/srv/orbit", TargetRevision: 2,
-		SSH: &model.EnvironmentSSHTarget{Platform: "linux", Host: "example.test", Port: 22, Username: "orbit"},
+		SSH: &model.EnvironmentSSHTarget{Platform: "linux", Host: "example.test", Port: 22, Username: "orbit", HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated},
 	}); err != nil {
 		t.Fatal(err)
 	}

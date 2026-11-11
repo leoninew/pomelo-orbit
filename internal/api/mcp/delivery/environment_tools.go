@@ -24,11 +24,12 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 			WorkspaceRoot string `json:"workspace_root"`
 		} `json:"local,omitempty"`
 		SSH *struct {
-			Platform      string `json:"platform"`
-			Host          string `json:"host"`
-			Port          int    `json:"port"`
-			Username      string `json:"username"`
-			WorkspaceRoot string `json:"workspace_root"`
+			Platform           string  `json:"platform"`
+			Host               string  `json:"host"`
+			Port               int     `json:"port"`
+			Username           string  `json:"username"`
+			WorkspaceRoot      string  `json:"workspace_root"`
+			HostIdentityPolicy *string `json:"host_identity_policy,omitempty"`
 		} `json:"ssh,omitempty"`
 	}) (map[string]any, error) {
 		if input.TargetType == nil && input.Local == nil && input.SSH == nil {
@@ -40,7 +41,7 @@ func (c *core) registerEnvironmentTools(server *mcp.Server) {
 			local = &environmentdto.LocalTargetInput{WorkspaceRoot: input.Local.WorkspaceRoot}
 		}
 		if input.SSH != nil {
-			ssh = &environmentdto.SSHTargetInput{Platform: input.SSH.Platform, Host: input.SSH.Host, Port: input.SSH.Port, Username: input.SSH.Username, WorkspaceRoot: input.SSH.WorkspaceRoot}
+			ssh = &environmentdto.SSHTargetInput{Platform: input.SSH.Platform, Host: input.SSH.Host, Port: input.SSH.Port, Username: input.SSH.Username, WorkspaceRoot: input.SSH.WorkspaceRoot, HostIdentityPolicy: input.SSH.HostIdentityPolicy}
 		}
 		projectId, _, err := c.requireReadyEnvironment(ctx)
 		if err != nil {

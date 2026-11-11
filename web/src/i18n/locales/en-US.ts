@@ -369,6 +369,13 @@ export default {
       usernamePlaceholder: 'e.g. deploy or Administrator',
       workspaceRoot: 'Workspace Root',
       hostKeyFingerprint: 'Host Key Fingerprint',
+      hostIdentityPolicy: 'Host Identity Verification',
+      hostIdentityPolicyHint:
+        'Stable identity pins the public key across certificate renewals. Switching clears the fingerprint; probe or connect again.',
+      hostIdentityPolicies: {
+        negotiated: 'Negotiated identity (default)',
+        stable: 'Stable identity',
+      },
       terminal: {
         title: 'Terminal',
         connecting: 'Connecting',

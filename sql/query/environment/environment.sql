@@ -1,6 +1,6 @@
 -- name: EnvironmentById :one
 SELECT e.id, e.project_id, e.code, e.target_type, e.platform, e.host, e.port, e.username, e.workspace_root,
-       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.target_revision,
+       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.host_identity_policy, e.target_revision,
        e.last_probe_revision, e.last_probe_status, e.last_probe_at, e.last_probe_diagnostic,
        e.gateway_application_id, e.created_at, e.updated_at
 FROM environment e
@@ -9,7 +9,7 @@ WHERE e.id = ?;
 
 -- name: EnvironmentByProjectId :one
 SELECT e.id, e.project_id, e.code, e.target_type, e.platform, e.host, e.port, e.username, e.workspace_root,
-       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.target_revision,
+       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.host_identity_policy, e.target_revision,
        e.last_probe_revision, e.last_probe_status, e.last_probe_at, e.last_probe_diagnostic,
        e.gateway_application_id, e.created_at, e.updated_at
 FROM environment e
@@ -18,7 +18,7 @@ WHERE e.project_id = ?;
 
 -- name: EnvironmentByTarget :one
 SELECT e.id, e.project_id, e.code, e.target_type, e.platform, e.host, e.port, e.username, e.workspace_root,
-       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.target_revision,
+       c.id AS ssh_credential_id, c.revision AS ssh_credential_revision, e.host_key_fingerprint, e.host_identity_policy, e.target_revision,
        e.last_probe_revision, e.last_probe_status, e.last_probe_at, e.last_probe_diagnostic,
        e.gateway_application_id, e.created_at, e.updated_at
 FROM environment e
@@ -32,15 +32,15 @@ WHERE e.project_id <> sqlc.arg(project_id)
 -- name: CreateEnvironment :exec
 INSERT INTO environment (
   id, project_id, code, target_type, platform, host, port, username, workspace_root,
-  host_key_fingerprint, target_revision,
+  host_key_fingerprint, host_identity_policy, target_revision,
   last_probe_revision, last_probe_status, last_probe_at, last_probe_diagnostic,
   gateway_application_id, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateEnvironment :exec
 UPDATE environment
 SET code = ?, target_type = ?, platform = ?, host = ?, port = ?, username = ?, workspace_root = ?,
-    host_key_fingerprint = ?,
+    host_key_fingerprint = ?, host_identity_policy = ?,
     target_revision = ?, last_probe_revision = ?, last_probe_status = ?, last_probe_at = ?, last_probe_diagnostic = ?,
     gateway_application_id = ?, updated_at = ?
 WHERE id = ?;

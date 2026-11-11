@@ -127,6 +127,7 @@ func readyTargetEnvironment() model.Environment {
 		SSH: &model.EnvironmentSSHTarget{
 			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit",
 			CredentialId: "credential-1", CredentialRevision: revision, HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
+			HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated,
 		},
 	}
 }

@@ -697,6 +697,7 @@ CREATE TABLE IF NOT EXISTS environment (
     username TEXT,
     workspace_root TEXT,
     host_key_fingerprint TEXT,
+    host_identity_policy TEXT NOT NULL DEFAULT 'negotiated' CHECK (host_identity_policy IN ('negotiated', 'stable')),
     target_revision BIGINT NOT NULL,
     last_probe_revision BIGINT,
     last_probe_status TEXT,

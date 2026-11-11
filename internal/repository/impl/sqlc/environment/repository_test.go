@@ -28,7 +28,7 @@ func TestRecordHostKeyBindsTargetAndLeavesProbeAndGatewayUntouched(t *testing.T)
 	environment := model.Environment{Id: "environment", ProjectId: "project", Code: "project", TargetType: model.EnvironmentTargetTypeSSH,
 		WorkspaceRoot: "/srv/orbit", TargetRevision: revision, LastProbeRevision: &revision, LastProbeStatus: &status,
 		LastProbeAt: &probedAt, LastProbeDiagnostic: &diagnostic, GatewayApplicationId: &gateway,
-		SSH: &model.EnvironmentSSHTarget{Platform: "linux", Host: "host", Port: 22, Username: "orbit", CredentialId: "credential", CredentialRevision: 2}}
+		SSH: &model.EnvironmentSSHTarget{Platform: "linux", Host: "host", Port: 22, Username: "orbit", CredentialId: "credential", CredentialRevision: 2, HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated}}
 	repo := NewRepository(database)
 	if err := repo.CreateEnvironment(ctx, environment); err != nil {
 		t.Fatal(err)
@@ -71,5 +71,24 @@ func TestRecordHostKeyBindsTargetAndLeavesProbeAndGatewayUntouched(t *testing.T)
 	after.SSH.HostKeyFingerprint, after.UpdatedAt = before.SSH.HostKeyFingerprint, before.UpdatedAt
 	if !reflect.DeepEqual(before, after) {
 		t.Fatalf("pin changed unrelated environment fields: before=%+v after=%+v", before, after)
+	}
+	after.SSH.HostIdentityPolicy = model.EnvironmentHostIdentityPolicyStable
+	after.SSH.HostKeyFingerprint = ""
+	after.TargetRevision++
+	if err := repo.UpdateEnvironment(ctx, after); err != nil {
+		t.Fatal(err)
+	}
+	if recorded, err := repo.RecordHostKey(ctx, before, "SHA256:stale"); err != nil || recorded {
+		t.Fatalf("old policy observation recorded=%v err=%v", recorded, err)
+	}
+	if recorded, err := repo.RecordHostKey(ctx, after, "SHA256:stable"); err != nil || !recorded {
+		t.Fatalf("stable policy observation recorded=%v err=%v", recorded, err)
+	}
+	stored, err := repo.EnvironmentByProject(ctx, after.ProjectId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.SSH.HostIdentityPolicy != model.EnvironmentHostIdentityPolicyStable || stored.SSH.HostKeyFingerprint != "SHA256:stable" || stored.TargetRevision != after.TargetRevision {
+		t.Fatalf("stored stable policy: %+v", stored)
 	}
 }

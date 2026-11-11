@@ -9,6 +9,7 @@ message EnvironmentSSHTargetResp {
   string username = 4;
   string workspace_root = 5;
   string host_key_fingerprint = 6;
+  string host_identity_policy = 7;
 }
 
 message EnvironmentSSHTargetReq {
@@ -17,6 +18,7 @@ message EnvironmentSSHTargetReq {
   int32 port = 3;
   string username = 4;
   string workspace_root = 5;
+  optional string host_identity_policy = 6;
 }
 
 message EnvironmentLocalTargetResp {

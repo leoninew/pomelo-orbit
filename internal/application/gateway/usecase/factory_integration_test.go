@@ -296,6 +296,7 @@ func seedGatewayFactoryEnvironment(t *testing.T, database *sql.DB) {
 			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy",
 			CredentialId: "gateway-factory-credential", CredentialRevision: 1,
 			HostKeyFingerprint: "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated,
 		},
 	}
 	if err := environmentrepo.NewRepository(database).CreateEnvironment(context.Background(), environment); err != nil {

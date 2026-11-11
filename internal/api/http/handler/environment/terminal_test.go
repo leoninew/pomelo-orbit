@@ -142,7 +142,7 @@ func terminalHTTPFixture(t *testing.T, origins []string, monitorReason <-chan st
 		WorkspaceRoot:  "/srv/orbit",
 		TargetRevision: revision, LastProbeRevision: &revision, LastProbeStatus: &status,
 		SSH: &model.EnvironmentSSHTarget{Platform: model.EnvironmentPlatformLinux, Host: "remote-host", Port: 22, Username: "configured-user",
-			CredentialId: "credential", CredentialRevision: 1, HostKeyFingerprint: "SHA256:hostkey"},
+			CredentialId: "credential", CredentialRevision: 1, HostKeyFingerprint: "SHA256:hostkey", HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated},
 	}}
 	store.member.Store(true)
 	const secret = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="

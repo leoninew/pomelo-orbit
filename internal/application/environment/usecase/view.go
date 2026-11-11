@@ -48,6 +48,7 @@ func (s Service) toView(item model.Environment) environmentdto.View {
 			Platform: item.SSH.Platform, Host: item.SSH.Host, Port: item.SSH.Port,
 			Username: item.SSH.Username, WorkspaceRoot: item.WorkspaceRoot,
 			HostKeyFingerprint: item.SSH.HostKeyFingerprint,
+			HostIdentityPolicy: item.SSH.HostIdentityPolicy,
 		}
 	}
 	return view

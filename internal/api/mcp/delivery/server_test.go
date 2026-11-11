@@ -84,6 +84,7 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 		SSH: &environmentdto.SSHTargetView{
 			Platform: model.EnvironmentPlatformLinux, Host: "host.example.test", Port: 22, Username: "orbit", WorkspaceRoot: "/srv/orbit",
 			HostKeyFingerprint: "SHA256:abc",
+			HostIdentityPolicy: model.EnvironmentHostIdentityPolicyStable,
 		},
 	}}
 	server, err := NewServer(withReadyScope(Dependencies{Environment: environment}))
@@ -100,14 +101,28 @@ func TestProjectEnvironmentToolsUseProjectScopeWithoutInitializationCredentials(
 	if getOutput["project_id"] != "project-1" || environment.userId != "actor" || environment.projectId != "project-1" {
 		t.Fatalf("get environment scope = output %#v service %#v", getOutput, environment)
 	}
+	sshOutput := getOutput["environment"].(map[string]any)["ssh"].(map[string]any)
+	if sshOutput["host_identity_policy"] != model.EnvironmentHostIdentityPolicyStable {
+		t.Fatalf("SSH policy output = %#v", sshOutput)
+	}
 
 	workspaceRoot := "/srv/orbit-next"
 	updateResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "orbit_update_project_environment", Arguments: map[string]any{"ssh": map[string]any{"platform": "linux", "host": "host.example.test", "port": 22, "username": "orbit", "workspace_root": workspaceRoot}}})
 	if err != nil || updateResult.IsError {
 		t.Fatalf("CallTool(update environment) result=%#v err=%v", updateResult, err)
 	}
-	if environment.update.SSH == nil || environment.update.SSH.WorkspaceRoot != workspaceRoot {
+	if environment.update.SSH == nil || environment.update.SSH.WorkspaceRoot != workspaceRoot || environment.update.SSH.HostIdentityPolicy != nil {
 		t.Fatalf("update input = %#v", environment.update)
+	}
+	policyResult, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "orbit_update_project_environment",
+		Arguments: map[string]any{"ssh": map[string]any{
+			"platform": "linux", "host": "host.example.test", "port": 22, "username": "orbit", "workspace_root": workspaceRoot,
+			"host_identity_policy": model.EnvironmentHostIdentityPolicyStable,
+		}},
+	})
+	if err != nil || policyResult.IsError || environment.update.SSH.HostIdentityPolicy == nil || *environment.update.SSH.HostIdentityPolicy != model.EnvironmentHostIdentityPolicyStable {
+		t.Fatalf("policy update input=%+v result=%+v err=%v", environment.update, policyResult, err)
 	}
 	encodedUpdate, err := json.Marshal(structuredOutput(t, updateResult))
 	if err != nil {

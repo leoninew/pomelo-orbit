@@ -12,6 +12,9 @@ const (
 	EnvironmentPlatformLinux   = "linux"
 	EnvironmentPlatformWindows = "windows"
 
+	EnvironmentHostIdentityPolicyNegotiated = "negotiated"
+	EnvironmentHostIdentityPolicyStable     = "stable"
+
 	EnvironmentProbeStatusSucceeded = "succeeded"
 	EnvironmentProbeStatusFailed    = "failed"
 )
@@ -45,6 +48,7 @@ type EnvironmentSSHTarget struct {
 	CredentialId       string
 	CredentialRevision int64
 	HostKeyFingerprint string
+	HostIdentityPolicy string
 }
 
 func (e Environment) IsLocal() bool {

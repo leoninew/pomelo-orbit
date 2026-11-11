@@ -105,6 +105,7 @@ func (s Service) configurationFromEnvironment(ctx context.Context, environment m
 		Platform: environment.SSH.Platform, Host: environment.SSH.Host, Port: environment.SSH.Port,
 		Username: environment.SSH.Username, CredentialRevision: environment.SSH.CredentialRevision,
 		HostKeyFingerprint: environment.SSH.HostKeyFingerprint,
+		HostIdentityPolicy: environment.SSH.HostIdentityPolicy,
 	}
 	credential, err := s.environmentCredential(ctx, environment.Id)
 	if err != nil {
@@ -184,6 +185,7 @@ func environmentFromConfiguration(project model.Project, existing model.Environm
 			Platform: strings.TrimSpace(input.SSH.Platform), Host: strings.TrimSpace(input.SSH.Host), Port: input.SSH.Port,
 			Username: strings.TrimSpace(input.SSH.Username), CredentialId: credential.Id,
 			CredentialRevision: input.SSH.CredentialRevision, HostKeyFingerprint: strings.TrimSpace(input.SSH.HostKeyFingerprint),
+			HostIdentityPolicy: input.SSH.HostIdentityPolicy,
 		}
 	}
 	return environment, nil

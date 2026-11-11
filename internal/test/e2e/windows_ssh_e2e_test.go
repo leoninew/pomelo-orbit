@@ -381,6 +381,7 @@ func windowsSSHRuntimeTarget(environmentId string, projectId string, target wind
 				Platform: model.EnvironmentPlatformWindows, Host: target.host, Port: target.port,
 				Username:           target.username,
 				HostKeyFingerprint: target.hostKeyFingerprint,
+				HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated,
 			},
 		},
 		PrivateKey: &environmentdto.DeploymentSSHPrivateKey{PrivateKey: target.privateKey},

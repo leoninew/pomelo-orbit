@@ -221,6 +221,7 @@ func environmentOutput(value environmentdto.View) map[string]any {
 			"platform": value.SSH.Platform, "host": value.SSH.Host, "port": value.SSH.Port,
 			"username": value.SSH.Username, "workspace_root": value.SSH.WorkspaceRoot,
 			"host_key_fingerprint": value.SSH.HostKeyFingerprint,
+			"host_identity_policy": value.SSH.HostIdentityPolicy,
 		}
 	}
 	if value.Local != nil {

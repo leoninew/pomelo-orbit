@@ -656,6 +656,7 @@ func seedRouteTestGateway(t *testing.T, database *sql.DB) {
 			Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22, Username: "deploy",
 			CredentialId: "route-test-credential", CredentialRevision: 1,
 			HostKeyFingerprint: "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+			HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated,
 		},
 	}
 	if err := environmentRepo.CreateEnvironment(ctx, environment); err != nil {

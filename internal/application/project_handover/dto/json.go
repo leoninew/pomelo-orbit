@@ -36,7 +36,7 @@ func newDecodeError(message string, err error) error {
 	return decodeError{message: message, err: err}
 }
 
-// Encode serializes a package using the v2 wire format. Ownership fields are
+// Encode serializes a package using the current wire format. Ownership fields are
 // deliberately not transferable: the import target supplies every project ID.
 func Encode(item Package) ([]byte, error) {
 	raw, err := json.Marshal(item)

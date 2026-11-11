@@ -79,7 +79,7 @@ func (p EnvironmentProber) Probe(ctx context.Context, environment model.Environm
 	clientConfig := &ssh.ClientConfig{
 		User:            environment.SSH.Username,
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		HostKeyCallback: probeHostKeyCallback(environment.SSH.HostKeyFingerprint, &observedFingerprint),
+		HostKeyCallback: probeHostKeyCallback(environment.SSH.HostKeyFingerprint, environment.SSH.HostIdentityPolicy, &observedFingerprint),
 	}
 	clientConnection, channels, requests, err := ssh.NewClientConn(connection, address, clientConfig)
 	if err != nil {
@@ -164,20 +164,29 @@ func parseSigner(privateKey environmentdto.DeploymentSSHPrivateKey) (ssh.Signer,
 	return signer, nil
 }
 
-func strictHostKeyCallback(expected string) ssh.HostKeyCallback {
+func hostKeyFingerprint(key ssh.PublicKey, policy string) string {
+	if policy == model.EnvironmentHostIdentityPolicyStable {
+		if certificate, ok := key.(*ssh.Certificate); ok {
+			key = certificate.Key
+		}
+	}
+	return ssh.FingerprintSHA256(key)
+}
+
+func strictHostKeyCallback(expected, policy string) ssh.HostKeyCallback {
 	expected = strings.TrimSpace(expected)
 	return func(_ string, _ net.Addr, key ssh.PublicKey) error {
-		if expected == "" || ssh.FingerprintSHA256(key) != expected {
+		if expected == "" || hostKeyFingerprint(key, policy) != expected {
 			return errors.New("SSH host key fingerprint mismatch")
 		}
 		return nil
 	}
 }
 
-func probeHostKeyCallback(expected string, observed *string) ssh.HostKeyCallback {
+func probeHostKeyCallback(expected, policy string, observed *string) ssh.HostKeyCallback {
 	expected = strings.TrimSpace(expected)
 	return func(_ string, _ net.Addr, key ssh.PublicKey) error {
-		fingerprint := ssh.FingerprintSHA256(key)
+		fingerprint := hostKeyFingerprint(key, policy)
 		if expected != "" && fingerprint != expected {
 			return errors.New("SSH host key fingerprint mismatch")
 		}

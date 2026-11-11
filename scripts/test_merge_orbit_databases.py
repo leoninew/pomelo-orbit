@@ -23,7 +23,7 @@ def fixture():
 
 
 def environment(updated, probe):
-    return {'id': 'environment', 'project_id': 'project', 'code': 'demo', 'target_type': 'ssh', 'platform': 'linux', 'host': 'host.invalid', 'port': 22, 'username': 'operator', 'workspace_root': '/orbit', 'host_key_fingerprint': None, 'target_revision': 5, 'last_probe_revision': 4, 'last_probe_status': 'succeeded', 'last_probe_at': probe, 'last_probe_diagnostic': None, 'updated_at': updated}
+    return {'id': 'environment', 'project_id': 'project', 'code': 'demo', 'target_type': 'ssh', 'platform': 'linux', 'host': 'host.invalid', 'port': 22, 'username': 'operator', 'workspace_root': '/orbit', 'host_key_fingerprint': None, 'host_identity_policy': 'negotiated', 'target_revision': 5, 'last_probe_revision': 4, 'last_probe_status': 'succeeded', 'last_probe_at': probe, 'last_probe_diagnostic': None, 'updated_at': updated}
 
 
 class MergeTests(unittest.TestCase):
@@ -86,6 +86,11 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(merged['environment'][0]['last_probe_at'], NEWER)
         self.assertEqual(merged['environment'][0]['last_probe_revision'], 4)
         self.assertEqual(merged['environment'][0]['target_revision'], 5)
+        data['right']['environment'][0]['host_identity_policy'] = 'stable'
+        merged, mapping, decisions = merge.merge_project(data, keys)
+        self.assertEqual(merged['environment'][0]['last_probe_at'], OLDER)
+        self.assertEqual(merged['environment'][0]['host_identity_policy'], 'negotiated')
+        data['right']['environment'][0]['host_identity_policy'] = 'negotiated'
         data['right']['environment'][0]['host'] = 'other.invalid'
         merged, mapping, decisions = merge.merge_project(data, keys)
         self.assertEqual(merged['environment'][0]['last_probe_at'], OLDER)

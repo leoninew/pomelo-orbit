@@ -21,11 +21,11 @@ func TestStrictHostKeyCallbackAcceptsOnlyConfiguredFingerprint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	callback := strictHostKeyCallback(ssh.FingerprintSHA256(signer.PublicKey()))
+	callback := strictHostKeyCallback(ssh.FingerprintSHA256(signer.PublicKey()), model.EnvironmentHostIdentityPolicyNegotiated)
 	if err := callback("example.test:22", nil, signer.PublicKey()); err != nil {
 		t.Fatalf("matching fingerprint rejected: %v", err)
 	}
-	if err := strictHostKeyCallback("SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")("example.test:22", nil, signer.PublicKey()); err == nil {
+	if err := strictHostKeyCallback("SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", model.EnvironmentHostIdentityPolicyNegotiated)("example.test:22", nil, signer.PublicKey()); err == nil {
 		t.Fatal("unexpected host key acceptance")
 	}
 }
@@ -40,7 +40,7 @@ func TestProbeHostKeyCallbackAcceptsEmptyExpectedAndRecordsFingerprint(t *testin
 		t.Fatal(err)
 	}
 	var observed string
-	callback := probeHostKeyCallback("", &observed)
+	callback := probeHostKeyCallback("", model.EnvironmentHostIdentityPolicyNegotiated, &observed)
 	if err := callback("example.test:22", nil, signer.PublicKey()); err != nil {
 		t.Fatalf("empty expected fingerprint rejected: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestProbeHostKeyCallbackAcceptsEmptyExpectedAndRecordsFingerprint(t *testin
 	if observed != ssh.FingerprintSHA256(signer.PublicKey()) {
 		t.Fatal("rekey replaced the observed host key")
 	}
-	if err := probeHostKeyCallback("SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", &observed)("example.test:22", nil, signer.PublicKey()); err == nil {
+	if err := probeHostKeyCallback("SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", model.EnvironmentHostIdentityPolicyNegotiated, &observed)("example.test:22", nil, signer.PublicKey()); err == nil {
 		t.Fatal("mismatched expected fingerprint accepted")
 	}
 }

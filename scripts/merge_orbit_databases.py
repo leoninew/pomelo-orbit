@@ -340,7 +340,7 @@ def merge_project(data, keys, allow_idle=()):
         for key, entries in groups.items():
             side, winner = choose(entries, table, key)
             if table == 'environment':
-                target_fields = ('target_type', 'platform', 'host', 'port', 'username', 'workspace_root', 'host_key_fingerprint', 'target_revision', 'last_probe_revision')
+                target_fields = ('target_type', 'platform', 'host', 'port', 'username', 'workspace_root', 'host_key_fingerprint', 'host_identity_policy', 'target_revision', 'last_probe_revision')
                 probes = [(origin, row) for origin, row in entries if row.get('last_probe_at') and all(row[field] == winner[field] for field in target_fields)]
                 if probes:
                     probe_fields = ('last_probe_revision', 'last_probe_status', 'last_probe_at', 'last_probe_diagnostic')

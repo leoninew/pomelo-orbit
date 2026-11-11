@@ -30,7 +30,7 @@ func TestSaveInitializationPersistsSSHWithoutCreatingCredential(t *testing.T) {
 	if len(credentials.items) != 0 || store.environment.SSH == nil || store.environment.SSH.CredentialId != "" {
 		t.Fatalf("save created a credential: environment=%#v credentials=%#v", store.environment, credentials.items)
 	}
-	if view.SSH == nil || view.SSH.Host != "192.0.2.10" {
+	if view.SSH == nil || view.SSH.Host != "192.0.2.10" || view.SSH.HostIdentityPolicy != model.EnvironmentHostIdentityPolicyNegotiated {
 		t.Fatalf("saved environment = %#v", view)
 	}
 }
@@ -53,7 +53,7 @@ func TestPrepareSSHEnvironmentCreatesAndReusesEnvironmentCredential(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.PublicKey == "" || len(credentials.items) != 1 || first.Environment.SSH == nil || first.Environment.SSH.Platform != model.EnvironmentPlatformLinux {
+	if first.PublicKey == "" || len(credentials.items) != 1 || first.Environment.SSH == nil || first.Environment.SSH.Platform != model.EnvironmentPlatformLinux || first.Environment.SSH.HostIdentityPolicy != model.EnvironmentHostIdentityPolicyNegotiated {
 		t.Fatalf("first SSH command = view=%#v key=%q credentials=%#v", first, first.PublicKey, credentials.items)
 	}
 	if first.KeyCreatedAt.IsZero() || !first.KeyCreatedAt.Equal(credentials.items[0].CreatedAt) || first.SourceHost != "orbit-control" {

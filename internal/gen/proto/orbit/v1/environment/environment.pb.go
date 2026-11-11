@@ -29,6 +29,7 @@ type EnvironmentSSHTargetResp struct {
 	Username           string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
 	WorkspaceRoot      string                 `protobuf:"bytes,5,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
 	HostKeyFingerprint string                 `protobuf:"bytes,6,opt,name=host_key_fingerprint,json=hostKeyFingerprint,proto3" json:"host_key_fingerprint,omitempty"`
+	HostIdentityPolicy string                 `protobuf:"bytes,7,opt,name=host_identity_policy,json=hostIdentityPolicy,proto3" json:"host_identity_policy,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -105,15 +106,23 @@ func (x *EnvironmentSSHTargetResp) GetHostKeyFingerprint() string {
 	return ""
 }
 
+func (x *EnvironmentSSHTargetResp) GetHostIdentityPolicy() string {
+	if x != nil {
+		return x.HostIdentityPolicy
+	}
+	return ""
+}
+
 type EnvironmentSSHTargetReq struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Platform      string                 `protobuf:"bytes,1,opt,name=platform,proto3" json:"platform,omitempty"`
-	Host          string                 `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
-	Port          int32                  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
-	Username      string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
-	WorkspaceRoot string                 `protobuf:"bytes,5,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Platform           string                 `protobuf:"bytes,1,opt,name=platform,proto3" json:"platform,omitempty"`
+	Host               string                 `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
+	Port               int32                  `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	Username           string                 `protobuf:"bytes,4,opt,name=username,proto3" json:"username,omitempty"`
+	WorkspaceRoot      string                 `protobuf:"bytes,5,opt,name=workspace_root,json=workspaceRoot,proto3" json:"workspace_root,omitempty"`
+	HostIdentityPolicy *string                `protobuf:"bytes,6,opt,name=host_identity_policy,json=hostIdentityPolicy,proto3,oneof" json:"host_identity_policy,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *EnvironmentSSHTargetReq) Reset() {
@@ -177,6 +186,13 @@ func (x *EnvironmentSSHTargetReq) GetUsername() string {
 func (x *EnvironmentSSHTargetReq) GetWorkspaceRoot() string {
 	if x != nil {
 		return x.WorkspaceRoot
+	}
+	return ""
+}
+
+func (x *EnvironmentSSHTargetReq) GetHostIdentityPolicy() string {
+	if x != nil && x.HostIdentityPolicy != nil {
+		return *x.HostIdentityPolicy
 	}
 	return ""
 }
@@ -625,20 +641,23 @@ var File_orbit_v1_environment_environment_proto protoreflect.FileDescriptor
 
 const file_orbit_v1_environment_environment_proto_rawDesc = "" +
 	"\n" +
-	"&orbit/v1/environment/environment.proto\x12\x14orbit.v1.environment\"\xd3\x01\n" +
+	"&orbit/v1/environment/environment.proto\x12\x14orbit.v1.environment\"\x85\x02\n" +
 	"\x18EnvironmentSSHTargetResp\x12\x1a\n" +
 	"\bplatform\x18\x01 \x01(\tR\bplatform\x12\x12\n" +
 	"\x04host\x18\x02 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x03 \x01(\x05R\x04port\x12\x1a\n" +
 	"\busername\x18\x04 \x01(\tR\busername\x12%\n" +
 	"\x0eworkspace_root\x18\x05 \x01(\tR\rworkspaceRoot\x120\n" +
-	"\x14host_key_fingerprint\x18\x06 \x01(\tR\x12hostKeyFingerprint\"\xa0\x01\n" +
+	"\x14host_key_fingerprint\x18\x06 \x01(\tR\x12hostKeyFingerprint\x120\n" +
+	"\x14host_identity_policy\x18\a \x01(\tR\x12hostIdentityPolicy\"\xf0\x01\n" +
 	"\x17EnvironmentSSHTargetReq\x12\x1a\n" +
 	"\bplatform\x18\x01 \x01(\tR\bplatform\x12\x12\n" +
 	"\x04host\x18\x02 \x01(\tR\x04host\x12\x12\n" +
 	"\x04port\x18\x03 \x01(\x05R\x04port\x12\x1a\n" +
 	"\busername\x18\x04 \x01(\tR\busername\x12%\n" +
-	"\x0eworkspace_root\x18\x05 \x01(\tR\rworkspaceRoot\"\x8f\x01\n" +
+	"\x0eworkspace_root\x18\x05 \x01(\tR\rworkspaceRoot\x125\n" +
+	"\x14host_identity_policy\x18\x06 \x01(\tH\x00R\x12hostIdentityPolicy\x88\x01\x01B\x17\n" +
+	"\x15_host_identity_policy\"\x8f\x01\n" +
 	"\x1aEnvironmentLocalTargetResp\x12%\n" +
 	"\x0eworkspace_root\x18\x01 \x01(\tR\rworkspaceRoot\x12\x1a\n" +
 	"\bplatform\x18\x02 \x01(\tR\bplatform\x12\x12\n" +
@@ -732,6 +751,7 @@ func file_orbit_v1_environment_environment_proto_init() {
 	if File_orbit_v1_environment_environment_proto != nil {
 		return
 	}
+	file_orbit_v1_environment_environment_proto_msgTypes[1].OneofWrappers = []any{}
 	file_orbit_v1_environment_environment_proto_msgTypes[3].OneofWrappers = []any{}
 	file_orbit_v1_environment_environment_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}

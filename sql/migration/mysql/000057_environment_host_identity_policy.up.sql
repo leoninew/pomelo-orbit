@@ -1,0 +1,1 @@
+ALTER TABLE environment ADD COLUMN host_identity_policy VARCHAR(32) NOT NULL DEFAULT 'negotiated', ADD CONSTRAINT chk_environment_host_identity_policy CHECK (host_identity_policy IN ('negotiated', 'stable'));

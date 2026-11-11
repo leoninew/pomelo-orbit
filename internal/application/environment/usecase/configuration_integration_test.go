@@ -51,6 +51,7 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 		SSH: &environmentdto.SSHDefinition{
 			Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "deployer",
 			CredentialRevision: 4, HostKeyFingerprint: "SHA256:AbCdEf0123456789+/=",
+			HostIdentityPolicy: model.EnvironmentHostIdentityPolicyStable,
 		},
 		Credential: &environmentdto.SSHCredentialDefinition{PublicKey: "ssh-ed25519 AAAA source", PrivateKey: "PRIVATE KEY", Revision: 4},
 	}
@@ -63,6 +64,9 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 	}
 	if saved.Credential.PrivateKey != "PRIVATE KEY" || saved.SSH.Host != "10.0.0.10" || saved.TargetRevision != 3 {
 		t.Fatalf("saved configuration = %+v", saved)
+	}
+	if saved.SSH.HostIdentityPolicy != model.EnvironmentHostIdentityPolicyStable || saved.SSH.HostKeyFingerprint != configuration.SSH.HostKeyFingerprint {
+		t.Fatalf("host identity snapshot changed: %+v", saved.SSH)
 	}
 	if saved.LastProbeRevision == nil || *saved.LastProbeRevision != probeRevision || saved.LastProbeAt == nil || !saved.LastProbeAt.Equal(probedAt) {
 		t.Fatalf("saved probe state = %+v", saved)
@@ -84,7 +88,7 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 
 	_, err = service.SaveTargetDefinitionForUser(ctx, "user-2", "project-2", environmentdto.TargetDefinition{
 		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/other", TargetRevision: 1,
-		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "other", CredentialRevision: 1},
+		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "other", CredentialRevision: 1, HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated},
 		Credential: &environmentdto.SSHCredentialDefinition{PublicKey: "ssh-ed25519 AAAA other", PrivateKey: "OTHER PRIVATE KEY", Revision: 1},
 	})
 	if err != nil {
@@ -95,7 +99,7 @@ func TestSaveTargetDefinitionForUserPersistsKnownSSHTargetWithoutProbe(t *testin
 	}
 	if _, err := service.SaveTargetDefinitionForUser(ctx, "user-2", "project-2", environmentdto.TargetDefinition{
 		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/other", TargetRevision: 1,
-		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "other", CredentialRevision: 1},
+		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "other", CredentialRevision: 1, HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated},
 		Credential: &environmentdto.SSHCredentialDefinition{PublicKey: "ssh-ed25519 AAAA other", PrivateKey: "OTHER PRIVATE KEY", Revision: 1},
 	}); err != nil {
 		t.Fatalf("SaveTargetDefinitionForUser() rejected a target released by a deprecated project: %v", err)
@@ -126,7 +130,7 @@ func TestSaveTargetDefinitionForHandoverPersistsBoundTarget(t *testing.T) {
 	service := testConfigurationEnvironmentService(database)
 	configuration := environmentdto.TargetDefinition{
 		TargetType: model.EnvironmentTargetTypeSSH, WorkspaceRoot: "/srv/orbit", TargetRevision: 1,
-		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "deployer", CredentialRevision: 1},
+		SSH:        &environmentdto.SSHDefinition{Platform: model.EnvironmentPlatformLinux, Host: "10.0.0.10", Port: 22, Username: "deployer", CredentialRevision: 1, HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated},
 		Credential: &environmentdto.SSHCredentialDefinition{PublicKey: "ssh-ed25519 AAAA source", PrivateKey: "PRIVATE KEY", Revision: 1},
 	}
 	if _, err := service.SaveTargetDefinitionForUser(ctx, "user-1", "project-1", configuration); err != nil {

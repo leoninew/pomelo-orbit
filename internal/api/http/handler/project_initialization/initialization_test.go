@@ -6,8 +6,22 @@ import (
 	environmentdto "github.com/leoninew/pomelo-orbit/internal/application/environment/dto"
 	gatewaydto "github.com/leoninew/pomelo-orbit/internal/application/gateway/dto"
 	initdto "github.com/leoninew/pomelo-orbit/internal/application/project_initialization/dto"
+	environmentv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/environment"
+	initv1 "github.com/leoninew/pomelo-orbit/internal/gen/proto/orbit/v1/project_initialization"
 	"github.com/leoninew/pomelo-orbit/internal/model"
 )
+
+func TestSaveEnvironmentInputPreservesPolicyPresence(t *testing.T) {
+	stable, empty := model.EnvironmentHostIdentityPolicyStable, ""
+	for _, policy := range []*string{nil, &stable, &empty} {
+		input := saveEnvironmentInput(&initv1.ProjectInitializationEnvironmentReq{
+			Ssh: &environmentv1.EnvironmentSSHTargetReq{HostIdentityPolicy: policy},
+		})
+		if input.SSH == nil || input.SSH.HostIdentityPolicy != policy {
+			t.Fatalf("policy presence lost: %+v", input)
+		}
+	}
+}
 
 func TestInitializationResponseMapsLocalWorkspaceAndDefaults(t *testing.T) {
 	revision := int64(1)
@@ -56,6 +70,7 @@ func TestInitializationResponseMapsSSHTarget(t *testing.T) {
 			SSH: &environmentdto.SSHTargetView{
 				Platform: model.EnvironmentPlatformLinux, Host: "192.0.2.10", Port: 22,
 				Username: "deploy", WorkspaceRoot: "/srv/orbit",
+				HostIdentityPolicy: model.EnvironmentHostIdentityPolicyStable,
 			},
 		},
 	}
@@ -63,7 +78,7 @@ func TestInitializationResponseMapsSSHTarget(t *testing.T) {
 	if resp.Environment == nil || resp.Environment.TargetType != model.EnvironmentTargetTypeSSH || resp.Environment.WorkspaceRoot != "/srv/orbit" {
 		t.Fatalf("ssh snapshot = %#v", resp.Environment)
 	}
-	if resp.Environment.Ssh == nil || resp.Environment.Ssh.Host != "192.0.2.10" || resp.Environment.Local != nil {
+	if resp.Environment.Ssh == nil || resp.Environment.Ssh.Host != "192.0.2.10" || resp.Environment.Local != nil || resp.Environment.Ssh.HostIdentityPolicy != model.EnvironmentHostIdentityPolicyStable {
 		t.Fatalf("ssh target = %#v", resp.Environment.Ssh)
 	}
 }

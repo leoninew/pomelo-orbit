@@ -91,6 +91,7 @@ func projectEnvironmentUpdateInput(req *environmentv1.ProjectEnvironmentUpdateRe
 		input.SSH = &environmentdto.SSHTargetInput{
 			Platform: req.Ssh.Platform, Host: req.Ssh.Host, Port: int(req.Ssh.Port),
 			Username: req.Ssh.Username, WorkspaceRoot: req.Ssh.WorkspaceRoot,
+			HostIdentityPolicy: req.Ssh.HostIdentityPolicy,
 		}
 	}
 	return input
@@ -117,6 +118,7 @@ func environmentResponse(item environmentdto.View) *environmentv1.EnvironmentRes
 			Platform: item.SSH.Platform, Host: item.SSH.Host, Port: int32(item.SSH.Port),
 			Username: item.SSH.Username, WorkspaceRoot: item.SSH.WorkspaceRoot,
 			HostKeyFingerprint: item.SSH.HostKeyFingerprint,
+			HostIdentityPolicy: item.SSH.HostIdentityPolicy,
 		}
 	}
 	if item.Local != nil {

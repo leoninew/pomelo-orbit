@@ -15,6 +15,7 @@ export interface EnvironmentSSHTargetResp {
   username: string;
   workspace_root: string;
   host_key_fingerprint: string;
+  host_identity_policy: string;
 }
 
 export interface EnvironmentSSHTargetReq {
@@ -23,6 +24,7 @@ export interface EnvironmentSSHTargetReq {
   port: number;
   username: string;
   workspace_root: string;
+  host_identity_policy?: string | undefined;
 }
 
 export interface EnvironmentLocalTargetResp {

@@ -378,6 +378,7 @@ func testProbeEnvironment(projectId string) model.Environment {
 			Username:     "deploy",
 			CredentialId: "credential-1", CredentialRevision: 3,
 			HostKeyFingerprint: "SHA256:abcdefghijklmnopqrstuvwxyz0123456789abcde=",
+			HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated,
 		},
 	}
 }

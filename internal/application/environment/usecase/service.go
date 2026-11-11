@@ -217,6 +217,9 @@ func validateEnvironment(item model.Environment, localPlatform string, allowEmpt
 		if item.SSH.HostKeyFingerprint != "" && !hostKeyFingerprintPattern.MatchString(item.SSH.HostKeyFingerprint) {
 			return apperror.New(apperror.KindValidation, "Environment host_key_fingerprint must use SHA256 format")
 		}
+		if item.SSH.HostIdentityPolicy != model.EnvironmentHostIdentityPolicyNegotiated && item.SSH.HostIdentityPolicy != model.EnvironmentHostIdentityPolicyStable {
+			return apperror.New(apperror.KindValidation, "Environment host_identity_policy must be negotiated or stable")
+		}
 	default:
 		return apperror.New(apperror.KindValidation, "Environment target_type must be local or ssh")
 	}
@@ -247,6 +250,9 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 				ssh.CredentialId = item.SSH.CredentialId
 				ssh.CredentialRevision = item.SSH.CredentialRevision
 				ssh.HostKeyFingerprint = item.SSH.HostKeyFingerprint
+				if input.SSH.HostIdentityPolicy == nil {
+					ssh.HostIdentityPolicy = item.SSH.HostIdentityPolicy
+				}
 			}
 			item.TargetType = targetType
 			item.WorkspaceRoot = strings.TrimSpace(input.SSH.WorkspaceRoot)
@@ -267,10 +273,13 @@ func applyUpdate(item *model.Environment, input environmentdto.UpdateInput) erro
 		}
 		if input.SSH != nil {
 			credentialId, credentialRevision := item.SSH.CredentialId, item.SSH.CredentialRevision
-			hostKeyFingerprint := item.SSH.HostKeyFingerprint
+			hostKeyFingerprint, hostIdentityPolicy := item.SSH.HostKeyFingerprint, item.SSH.HostIdentityPolicy
 			item.SSH = sshTargetFromInput(input.SSH)
 			item.SSH.CredentialId, item.SSH.CredentialRevision = credentialId, credentialRevision
 			item.SSH.HostKeyFingerprint = hostKeyFingerprint
+			if input.SSH.HostIdentityPolicy == nil {
+				item.SSH.HostIdentityPolicy = hostIdentityPolicy
+			}
 			item.WorkspaceRoot = strings.TrimSpace(input.SSH.WorkspaceRoot)
 		}
 	}
@@ -283,7 +292,11 @@ func sshTargetFromInput(input *environmentdto.SSHTargetInput) *model.Environment
 	}
 	target := &model.EnvironmentSSHTarget{
 		Platform: strings.TrimSpace(input.Platform), Host: strings.TrimSpace(input.Host), Port: input.Port,
-		Username: strings.TrimSpace(input.Username),
+		Username:           strings.TrimSpace(input.Username),
+		HostIdentityPolicy: model.EnvironmentHostIdentityPolicyNegotiated,
+	}
+	if input.HostIdentityPolicy != nil {
+		target.HostIdentityPolicy = *input.HostIdentityPolicy
 	}
 	return target
 }
@@ -316,6 +329,7 @@ func environmentTargetChanged(before, after model.Environment) bool {
 		return before.SSH != after.SSH
 	}
 	return before.SSH.Platform != after.SSH.Platform ||
+		before.SSH.HostIdentityPolicy != after.SSH.HostIdentityPolicy ||
 		before.SSH.Host != after.SSH.Host ||
 		before.SSH.Port != after.SSH.Port ||
 		before.SSH.Username != after.SSH.Username ||
@@ -335,6 +349,7 @@ func environmentIdentityChanged(before, after model.Environment) bool {
 		return before.SSH != after.SSH
 	}
 	return before.SSH.Platform != after.SSH.Platform ||
+		before.SSH.HostIdentityPolicy != after.SSH.HostIdentityPolicy ||
 		before.SSH.Host != after.SSH.Host ||
 		before.SSH.Port != after.SSH.Port ||
 		before.SSH.Username != after.SSH.Username ||

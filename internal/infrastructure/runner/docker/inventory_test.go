@@ -45,7 +45,7 @@ func TestInventoryReadsComposeProjectsAndExcludesOneoffContainers(t *testing.T) 
 func TestInventoryPreservesCommandFailureAndRejectsInvalidOutput(t *testing.T) {
 	failure := errors.New("exit status 1")
 	query := &inventoryQuery{output: "daemon unavailable", err: failure}
-	if _, err := NewInventory(query).Containers(context.Background(), environmentport.Target{}); !errors.Is(err, failure) || !strings.Contains(err.Error(), query.output) {
+	if _, err := NewInventory(query).Containers(context.Background(), environmentport.Target{}); !errors.Is(err, failure) || !strings.Contains(err.Error(), query.output) || !strings.Contains(err.Error(), "requested command: docker ps --all --filter label=com.docker.compose.project --format {{json .}}") {
 		t.Fatalf("error=%v", err)
 	}
 	query.output, query.err = "invalid JSON", nil

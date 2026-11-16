@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	deploymentport "github.com/leoninew/pomelo-orbit/internal/application/deployment/port"
@@ -137,8 +138,14 @@ func TestServiceStatusCheckObservesBatchAndConfirmsEachService(t *testing.T) {
 func TestServiceStatusCheckFailedQueryLeavesRecordsUntouched(t *testing.T) {
 	service, store, inventory := newStatusCheckTestService()
 	inventory.err = errors.New("Docker daemon connection refused")
-	if _, err := service.PreviewServiceStatusCheck(context.Background(), "user-1", "project-1"); !apperror.IsKind(err, apperror.KindUnavailable) || !errors.Is(err, inventory.err) {
+	_, err := service.PreviewServiceStatusCheck(context.Background(), "user-1", "project-1")
+	if !apperror.IsKind(err, apperror.KindUnavailable) || !errors.Is(err, inventory.err) {
 		t.Fatalf("error=%v", err)
+	}
+	for _, detail := range []string{`environment_id="environment-1"`, `target_type="local"`, `workspace_root="/srv/orbit"`} {
+		if !strings.Contains(err.Error(), detail) {
+			t.Fatalf("error=%v missing %s", err, detail)
+		}
 	}
 	if len(store.saved) != 0 || len(service.checks.snapshots) != 0 {
 		t.Fatal("failed query saved records or published a snapshot")

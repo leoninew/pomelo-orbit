@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -87,6 +88,7 @@ func (s *StatusCheckService) PreviewServiceStatusCheck(ctx context.Context, acto
 	defer cancel()
 	containers, err := s.inventory.Containers(queryCtx, target)
 	if err != nil {
+		err = fmt.Errorf("environment_id=%q target_type=%q workspace_root=%q: %w", target.Environment.Id, target.Environment.TargetType, target.Environment.WorkspaceRoot, err)
 		return deploymentdto.ServiceStatusCheckPreview{}, apperror.WrapWithCode(apperror.KindUnavailable, "service_status_check_unavailable", "Failed to query environment containers", err)
 	}
 	var secret [32]byte

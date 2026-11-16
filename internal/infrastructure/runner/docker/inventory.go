@@ -21,7 +21,8 @@ type Inventory struct{ runner QueryRunner }
 func NewInventory(runner QueryRunner) Inventory { return Inventory{runner: runner} }
 
 func (i Inventory) Containers(ctx context.Context, target environmentport.Target) (map[string][]deploymentport.ContainerState, error) {
-	output, err := i.runner.QueryAtEnvironmentRoot(ctx, target, "docker", "ps", "--all", "--filter", "label=com.docker.compose.project", "--format", `{{json .}}`)
+	args := []string{"ps", "--all", "--filter", "label=com.docker.compose.project", "--format", `{{json .}}`}
+	output, err := i.runner.QueryAtEnvironmentRoot(ctx, target, "docker", args...)
 	if err != nil {
 		if diagnostic := strings.TrimSpace(output); diagnostic != "" {
 			const maxDiagnosticBytes = 8192
@@ -30,7 +31,7 @@ func (i Inventory) Containers(ctx context.Context, target environmentport.Target
 			}
 			err = fmt.Errorf("%w\n%s", err, diagnostic)
 		}
-		return nil, err
+		return nil, fmt.Errorf("container inventory query (requested command: docker %s): %w", strings.Join(args, " "), err)
 	}
 	result := make(map[string][]deploymentport.ContainerState)
 	decoder := json.NewDecoder(strings.NewReader(output))

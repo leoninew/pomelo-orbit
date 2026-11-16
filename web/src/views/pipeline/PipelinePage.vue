@@ -1,21 +1,22 @@
 <template>
   <div class="space-y-6">
-    <div class="app-toolbar-simple">
-      <SearchControl
-        v-model="search"
-        placeholder="搜索流水线"
-        :loading="status === 'loading'"
-        @search="searchPipelines"
-      />
-      <div class="flex flex-wrap items-center gap-3">
+    <div class="app-toolbar-scroll">
+      <div class="app-toolbar-row">
         <SelectControl
           :model-value="kind"
           :options="pipelineKindOptions"
           placeholder="筛选流水线类型"
-          width-class="w-40"
+          width-class="w-40 shrink-0"
           @update:model-value="updatePipelineKind"
         />
-        <button class="app-button-primary h-10 px-4" @click="openCreateDialog">
+        <SearchControl
+          v-model="search"
+          placeholder="搜索流水线"
+          :loading="status === 'loading'"
+          class="shrink-0"
+          @search="searchPipelines"
+        />
+        <button class="app-button-primary ml-auto h-10 shrink-0 px-4" @click="openCreateDialog">
           <Plus class="size-4" />
           新建模板
         </button>

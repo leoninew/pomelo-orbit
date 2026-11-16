@@ -4,15 +4,13 @@
 </template>
 
 <script setup lang="ts">
-  import createDOMPurify from 'dompurify';
+  import domPurify from 'dompurify';
   import { marked } from 'marked';
   import { computed } from 'vue';
 
   const props = defineProps<{ content: string }>();
-  const sanitizer = createDOMPurify(window);
-
   const html = computed(() =>
-    sanitizer.sanitize(marked.parse(props.content, { async: false, breaks: true, gfm: true }))
+    domPurify.sanitize(marked.parse(props.content, { async: false, breaks: true, gfm: true }))
   );
 </script>
 

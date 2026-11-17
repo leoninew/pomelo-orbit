@@ -17,9 +17,8 @@ from datetime import datetime, timezone
 
 SIDES = ('left', 'right')
 EXCLUDED = {'user', 'user_role', 'role', 'role_permission', 'permission', 'login_history', 'mcp_access_token', 'schema_migrations'}
-TERMINAL = {'ran_to_completion', 'faulted', 'canceled'}
-TASK_TERMINAL = {'succeeded', 'failed', 'canceled'}
 GLOBAL_TABLES = {'repository', 'repository_credential'}
+PRESERVE_SIDE_TABLES = {'environment', 'environment_credential'}
 NATURAL_KEYS = [
     ('project', ('code',)), ('environment', ('project_id',)),
     ('environment_credential', ('environment_id',)), ('application', ('project_id', 'code')),
@@ -168,9 +167,11 @@ def primary_keys(metadata):
     return keys
 
 
-def select_project(projects, selector):
-    matches = [(side, row) for side in SIDES for row in projects[side] if row['id'] == selector or row['code'] == selector]
-    require(matches, 'Project selector did not match either database')
+def select_project(projects, field, selector):
+    require(field in ('name', 'code'), 'Select a project by exact name or code')
+    matches = [(side, row) for side in SIDES for row in projects[side] if row[field] == selector]
+    require(matches, f'Project {field} did not match either database')
+    require(all(sum(side == candidate for side, row in matches) <= 1 for candidate in SIDES), f'Project {field} is ambiguous')
     ids = {row['id'] for side, row in matches}
     codes = {row['code'] for side, row in matches}
     while True:
@@ -180,7 +181,10 @@ def select_project(projects, selector):
         if expanded_ids == ids and expanded_codes == codes:
             break
         ids, codes = expanded_ids, expanded_codes
-    require(all(sum(side == candidate for side, row in expanded) <= 1 for candidate in SIDES), 'Ambiguous project identity; reconcile project codes first')
+    require(all(sum(side == candidate for side, row in expanded) <= 1 for candidate in SIDES), 'Ambiguous project identity; use a project code to disambiguate')
+    require(len(expanded) == len(SIDES), 'Project identity did not resolve on both databases')
+    selected = dict(expanded)
+    require(selected['left']['id'] == selected['right']['id'] or selected['left']['code'] == selected['right']['code'], 'Selected projects do not share an ID or code')
     return ids
 
 
@@ -259,26 +263,8 @@ def remap(value, mapping):
     return value
 
 
-def idle_deployments(data, deployment_ids):
-    accepted = {}
-    for deployment_id in deployment_ids:
-        records = [[row for row in data[side]['deployment'] if row['id'] == deployment_id] for side in SIDES]
-        tasks = [[row for row in data[side]['background_task'] if json.loads(row['payload_json']).get('deployment_id') == deployment_id] for side in SIDES]
-        require(all(len(rows) == 1 for rows in records + tasks), f'Idle deployment needs one matching task on both sides: {deployment_id}')
-        require(records[0] == records[1] and tasks[0] == tasks[1], f'Idle deployment/task differs: {deployment_id}')
-        row, task = records[0][0], tasks[0][0]
-        require(row['status'] == 'running' and not row['finished_at'] and task['status'] == 'succeeded' and task['finished_at'] and not task['locked_at'] and not task['locked_by'] and (datetime.now(timezone.utc) - latest(task)).days >= 7, f'Idle deployment evidence insufficient: {deployment_id}')
-        accepted[deployment_id] = row
-    return accepted
-
-
-def merge_project(data, keys, allow_idle=()):
+def merge_project(data, keys):
     working = copy.deepcopy(data)
-    idle = idle_deployments(working, allow_idle)
-    for tables in working.values():
-        for table in ('deployment', 'pipeline_run'):
-            require(all(row['status'] in TERMINAL or (table == 'deployment' and row == idle.get(row['id'])) for row in tables[table]), f'Active execution in {table}')
-        require(all(row['status'] in TASK_TERMINAL for row in tables['background_task']), 'Active background task')
     project_side, project = choose([(side, row) for side in SIDES for row in working[side]['project']], 'project', 'identity')
     mapping = {}
     for table, fields in NATURAL_KEYS:
@@ -332,6 +318,8 @@ def merge_project(data, keys, allow_idle=()):
         tables['service_env'] = [row for row in tables['service_env'] if owners['service'][row['service_id']] == side]
     merged, decisions = {}, []
     for table in filtered['left']:
+        if table in PRESERVE_SIDE_TABLES:
+            continue
         groups = {}
         for side in SIDES:
             for row in filtered[side][table]:
@@ -339,23 +327,27 @@ def merge_project(data, keys, allow_idle=()):
         merged[table] = []
         for key, entries in groups.items():
             side, winner = choose(entries, table, key)
-            if table == 'environment':
-                target_fields = ('target_type', 'platform', 'host', 'port', 'username', 'workspace_root', 'host_key_fingerprint', 'host_identity_policy', 'target_revision', 'last_probe_revision')
-                probes = [(origin, row) for origin, row in entries if row.get('last_probe_at') and all(row[field] == winner[field] for field in target_fields)]
-                if probes:
-                    probe_fields = ('last_probe_revision', 'last_probe_status', 'last_probe_at', 'last_probe_diagnostic')
-                    probe_entries = [(origin, {**{field: row[field] for field in probe_fields}, 'updated_at': row['last_probe_at']}) for origin, row in probes]
-                    probe_side, probe = choose(probe_entries, 'environment_probe', key)
-                    for field in probe_fields:
-                        winner[field] = probe[field]
-                    if probe_side != side:
-                        decisions.append({'table': table, 'key': key, 'probe_winner': probe_side, 'rule': 'latest_probe_for_same_target_and_probe_revision'})
             merged[table].append(winner)
             if len(entries) == 2 and entries[0][1] != entries[1][1]:
                 decisions.append({'table': table, 'key': key, 'winner': side, 'fields': sorted(field for field in winner if entries[0][1][field] != entries[1][1][field])})
-    for deployment_id, original in idle.items():
-        require([row for row in merged['deployment'] if row['id'] == deployment_id] == [original], 'Idle deployment would be modified')
     return merged, mapping, decisions
+
+
+def merged_rows_by_side(data, merged, mapping):
+    project = merged['project'][0]
+    result = {}
+    for side in SIDES:
+        result[side] = copy.deepcopy(merged)
+        for table in PRESERVE_SIDE_TABLES:
+            result[side][table] = copy.deepcopy(data[side][table])
+        for environment in result[side]['environment']:
+            for field in ('id', 'project_id', 'gateway_application_id'):
+                environment[field] = mapping.get(environment[field], environment[field])
+            environment['code'] = project['code']
+        for credential in result[side]['environment_credential']:
+            for field in ('id', 'environment_id'):
+                credential[field] = mapping.get(credential[field], credential[field])
+    return result
 
 
 def aggregate(tables, parent, parent_id):
@@ -373,8 +365,13 @@ def aggregate(tables, parent, parent_id):
 
 
 def audit(databases, before, merged, mapping, conditions):
-    removed = {row['id'] for tables in before.values() for rows in tables.values() for row in rows if 'id' in row} - {row['id'] for rows in merged.values() for row in rows if 'id' in row}
-    require(not any(value in encode(merged) for value in removed), 'Merged data still contains a removed ID, including JSON/text references')
+    removed = {
+        side: ({row['id'] for rows in before[side].values() for row in rows if 'id' in row}
+               - {row['id'] for rows in merged[side].values() for row in rows if 'id' in row})
+        for side in SIDES
+    }
+    for side in SIDES:
+        require(not any(value in encode(merged[side]) for value in removed[side]), f'{side}: merged data still contains a removed ID, including JSON/text references')
     inherited, catalogs = set(), {}
     for side, database in databases.items():
         rows = database.query(' UNION ALL '.join(f"SELECT '{table}' AS table_name,id FROM public.{ident(table)}" for table in sorted(set(REFERENCES.values()))))
@@ -382,23 +379,28 @@ def audit(databases, before, merged, mapping, conditions):
         for table, entries in before[side].items():
             for row in entries:
                 for field, target in REFERENCES.items():
+                    if table in ('deployment', 'pipeline_run') and field == 'ssh_credential_id':
+                        continue
                     if row.get(field) and row[field] not in catalogs[side][target]:
                         inherited.add((table, field, mapping.get(row[field], row[field])))
     missing = set()
     for side, database in databases.items():
-        known = {table: (ids - removed) | {row.get('id') for row in merged.get(table, [])} for table, ids in catalogs[side].items()}
-        for table, entries in merged.items():
+        known = {table: (ids - removed[side]) | {row.get('id') for row in merged[side].get(table, [])} for table, ids in catalogs[side].items()}
+        for table, entries in merged[side].items():
             for row in entries:
                 for field, target in REFERENCES.items():
+                    if table in ('deployment', 'pipeline_run') and field == 'ssh_credential_id':
+                        continue
                     if row.get(field) and row[field] not in known[target]:
                         missing.add((table, field, row[field]))
-        if removed:
-            pattern = quote('|'.join(sorted(removed)))
+        if removed[side]:
+            pattern = quote('|'.join(sorted(removed[side])))
             outside = database.query(' UNION ALL '.join(f"SELECT '{table}' AS table_name,count(*) AS count FROM public.{ident(table)} entry WHERE NOT coalesce(({condition}),false) AND to_jsonb(entry)::text ~ {pattern} HAVING count(*)>0" for table, condition in sorted(conditions.items())))
             require(not outside, f'{side}: references to removed IDs outside selected project')
     require(not missing - inherited, 'Merge would introduce missing business references')
-    semantic_audit(merged)
-    return sorted(missing), removed
+    for side in SIDES:
+        semantic_audit(merged[side])
+    return sorted(missing), sorted(removed['left'] | removed['right']), removed
 
 
 def semantic_audit(tables):
@@ -413,7 +415,7 @@ def semantic_audit(tables):
 
 
 def check_credentials(data, merged, key_names):
-    encrypted = {row[field] for tables in [*data.values(), merged] for table, field in (('environment_credential', 'encrypted_private_key'), ('repository_credential', 'encrypted_data')) for row in tables[table] if row[field]}
+    encrypted = {row['encrypted_data'] for tables in [*data.values(), *merged.values()] for row in tables['repository_credential'] if row['encrypted_data']}
     if not encrypted:
         return
     require(all(key_names.values()), 'Encrypted credentials require --left-key-env and --right-key-env (process variables)')
@@ -479,8 +481,8 @@ def transaction_sql(before, merged, conditions, keys, order, hashes, removed, re
 
 def load_scope(databases, metadata, selector, saved_ids=None, dependency_ids=None):
     if saved_ids is None:
-        projects = {side: database.query('SELECT id,code FROM public.project') for side, database in databases.items()}
-        saved_ids = sorted(select_project(projects, selector))
+        projects = {side: database.query('SELECT id,name,code FROM public.project') for side, database in databases.items()}
+        saved_ids = sorted(select_project(projects, selector['field'], selector['value']))
     conditions = scopes(metadata, saved_ids)
     data = {side: database.snapshot(conditions)[0] for side, database in databases.items()}
     if dependency_ids is None:
@@ -505,13 +507,13 @@ def options_parser():
         if command == 'apply':
             subparser.add_argument('--plan', type=Path, required=True)
         else:
-            subparser.add_argument('--project', required=True, help='Exact project code or ID on either side')
+            selector = subparser.add_mutually_exclusive_group(required=True)
+            selector.add_argument('--project-code', help='Exact project code on either side')
+            selector.add_argument('--project-name', help='Exact project name on either side; ambiguous names are rejected')
             subparser.add_argument('--output', type=Path, required=True, help='Local JSON report with complete business rows and differences')
         if command in ('plan', 'apply'):
             subparser.add_argument('--left-key-env')
             subparser.add_argument('--right-key-env')
-        if command == 'plan':
-            subparser.add_argument('--allow-idle-deployment', action='append', default=[], metavar='ID')
     return parser
 
 
@@ -530,40 +532,62 @@ def run_command(args):
     saved = None
     if args.command == 'apply':
         saved = json.loads(args.plan.read_text(encoding='utf-8'))
-        require(saved.get('format') == 1 and saved.get('status') == 'ready', 'A successful plan is required')
+        require(saved.get('format') == 2 and saved.get('status') == 'ready', 'A successful plan in the current format is required')
         require(saved['endpoints'] == endpoints and saved['cwd'] == str(args.cwd.resolve()), 'Plan endpoints or dbtalk directory changed')
         require(saved['database_identities'] == identities, 'DSN variables now resolve to different database endpoints')
         require(saved['schema_hash'] == schema_hash, 'Schema changed since plan')
-    selector = saved['project'] if saved else args.project
+    selector = saved['project_selector'] if saved else {
+        'field': 'code' if args.project_code is not None else 'name',
+        'value': args.project_code if args.project_code is not None else args.project_name,
+    }
     ids, conditions, data, hashes = load_scope(databases, metadata, selector, saved['project_ids'] if saved else None, saved['dependency_ids'] if saved else None)
-    report = {'format': 1, 'observed_at': datetime.now(timezone.utc).isoformat(), 'project': selector, 'project_ids': ids, 'endpoints': endpoints, 'database_identities': identities, 'cwd': str(args.cwd.resolve()), 'schema_hash': schema_hash, 'before': {side: table_hashes(tables) for side, tables in data.items()}, 'before_rows': data, 'differences': row_differences(data['left'], data['right'], keys), 'counts_before': {side: {table: len(rows) for table, rows in tables.items()} for side, tables in data.items()}}
+    report = {
+        'format': 2,
+        'observed_at': datetime.now(timezone.utc).isoformat(),
+        'project_selector': selector,
+        'project_ids': ids,
+        'endpoints': endpoints,
+        'database_identities': identities,
+        'cwd': str(args.cwd.resolve()),
+        'schema_hash': schema_hash,
+        'before': {side: table_hashes(tables) for side, tables in data.items()},
+        'before_rows': data,
+        'differences': row_differences(data['left'], data['right'], keys),
+        'counts_before': {side: {table: len(rows) for table, rows in tables.items()} for side, tables in data.items()},
+        'environment_config_policy': 'preserve_per_database',
+    }
     if args.command == 'verify':
         report['identical'] = report['before']['left'] == report['before']['right']
         report['different_tables'] = [table for table in data['left'] if report['before']['left'][table] != report['before']['right'][table]]
         write_report(args.output, report)
         return 0 if report['identical'] else 2
     if saved:
-        require(all(table_hashes(saved['before_rows'][side]) == saved['before'][side] for side in SIDES) and table_hashes(saved['merged_rows']) == saved['expected'], 'Plan rows do not match plan fingerprints')
-        states = {side: classify_state(report['before'][side], saved['before'][side], saved['expected']) for side in SIDES}
+        require(
+            all(table_hashes(saved['before_rows'][side]) == saved['before'][side] for side in SIDES)
+            and all(table_hashes(saved['merged_rows_by_side'][side]) == saved['expected_by_side'][side] for side in SIDES),
+            'Plan rows do not match plan fingerprints',
+        )
+        states = {side: classify_state(report['before'][side], saved['before'][side], saved['expected_by_side'][side]) for side in SIDES}
         committed = [side for side in SIDES if states[side] == 'expected']
-        if committed:
-            merged, mapping, decisions = copy.deepcopy(data[committed[0]]), saved['id_mapping'], saved['decisions']
-        else:
-            merged, mapping, decisions = merge_project(data, keys, saved['allow_idle_deployments'])
-        require(table_hashes(merged) == saved['expected'], 'Recomputed merge differs from reviewed plan')
+        merged_by_side = copy.deepcopy(saved['merged_rows_by_side'])
+        mapping, decisions = saved['id_mapping'], saved['decisions']
+        if not committed:
+            merged, mapping, decisions = merge_project(data, keys)
+            merged_by_side = merged_rows_by_side(data, merged, mapping)
+            require(all(table_hashes(merged_by_side[side]) == saved['expected_by_side'][side] for side in SIDES), 'Recomputed merge differs from reviewed plan')
     else:
-        report.update({'allow_idle_deployments': args.allow_idle_deployment})
         report.update({'status': 'blocked', 'blocker': 'Plan validation has not completed'})
         write_report(args.output, report)
         try:
-            merged, mapping, decisions = merge_project(data, keys, args.allow_idle_deployment)
+            merged, mapping, decisions = merge_project(data, keys)
+            merged_by_side = merged_rows_by_side(data, merged, mapping)
         except MergeError as error:
             report.update({'status': 'blocked', 'blocker': str(error)})
             write_report(args.output, report)
             raise
     try:
-        inherited, removed = audit(databases, data, merged, mapping, conditions)
-        check_credentials(data, merged, key_names)
+        inherited, removed, removed_by_side = audit(databases, data, merged_by_side, mapping, conditions)
+        check_credentials(data, merged_by_side, key_names)
     except MergeError as error:
         if not saved:
             report.update({'status': 'blocked', 'blocker': str(error)})
@@ -571,7 +595,18 @@ def run_command(args):
         raise
     if not saved:
         report.pop('blocker', None)
-        report.update({'status': 'ready', 'expected': table_hashes(merged), 'merged_rows': merged, 'changes_by_side': {side: row_differences(data[side], merged, keys) for side in SIDES}, 'dependency_ids': {table: sorted({row['id'] for tables in data.values() for row in tables[table]}) for table in GLOBAL_TABLES}, 'counts_after': {table: len(rows) for table, rows in merged.items()}, 'id_mapping': mapping, 'decisions': decisions, 'inherited_missing_references': inherited, 'environment_after': merged['environment']})
+        report.update({
+            'status': 'ready',
+            'expected_by_side': {side: table_hashes(merged_by_side[side]) for side in SIDES},
+            'merged_rows_by_side': merged_by_side,
+            'changes_by_side': {side: row_differences(data[side], merged_by_side[side], keys) for side in SIDES},
+            'dependency_ids': {table: sorted({row['id'] for tables in data.values() for row in tables[table]}) for table in GLOBAL_TABLES},
+            'counts_after_by_side': {side: {table: len(rows) for table, rows in tables.items()} for side, tables in merged_by_side.items()},
+            'id_mapping': mapping,
+            'decisions': decisions,
+            'inherited_missing_references': inherited,
+            'removed_ids_by_side': {side: sorted(values) for side, values in removed_by_side.items()},
+        })
         write_report(args.output, report)
         return 0
     order = table_order(metadata, conditions)
@@ -580,21 +615,21 @@ def run_command(args):
     journal = {'plan': str(args.plan.resolve()), 'plan_hash': fingerprint(saved), 'started_at': datetime.now(timezone.utc).isoformat(), 'sides': {side: states[side] for side in SIDES}, 'actual_rows': {}, 'verification_differences': {}}
     write_report(journal_path, journal)
     for side in pending:
-        databases[side].execute(transaction_sql(data[side], merged, conditions, keys, order, hashes[side], removed, True))
+        databases[side].execute(transaction_sql(data[side], merged_by_side[side], conditions, keys, order, hashes[side], removed_by_side[side], True))
         current, current_hashes = databases[side].snapshot(conditions)
         require(current_hashes == hashes[side], f'{side}: rehearsal did not leave the original snapshot unchanged')
         journal['sides'][side] = 'rehearsed'
         write_report(journal_path, journal)
     for side in pending:
-        databases[side].execute(transaction_sql(data[side], merged, conditions, keys, order, hashes[side], removed, False))
+        databases[side].execute(transaction_sql(data[side], merged_by_side[side], conditions, keys, order, hashes[side], removed_by_side[side], False))
         journal['sides'][side] = 'committed'
         write_report(journal_path, journal)
     for side in SIDES:
         actual, current_hashes = databases[side].snapshot(conditions)
         journal['actual_rows'][side] = actual
-        journal['verification_differences'][side] = row_differences(merged, actual, keys)
+        journal['verification_differences'][side] = row_differences(merged_by_side[side], actual, keys)
         write_report(journal_path, journal)
-        require(table_hashes(actual) == saved['expected'], f'{side}: post-commit verification differs; inspect execution journal')
+        require(table_hashes(actual) == saved['expected_by_side'][side], f'{side}: post-commit verification differs; inspect execution journal')
         journal['sides'][side] = 'verified'
         write_report(journal_path, journal)
     return 0
